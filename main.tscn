@@ -1,0 +1,58 @@
+[gd_scene load_steps=11 format=3 uid="uid://dma8o0k87ay67"]
+
+[ext_resource type="Script" uid="uid://b0nnpitsvn2am" path="res://main.gd" id="1_ig7tw"]
+[ext_resource type="Script" uid="uid://burjatjhmdkuv" path="res://Simulation/World.gd" id="2_0xm2m"]
+[ext_resource type="PackedScene" uid="uid://co6dly5p7eavi" path="res://Scenes/Restaurant.tscn" id="3_h2yge"]
+[ext_resource type="PackedScene" uid="uid://bxga08qa31ahy" path="res://Scenes/ResidentialBuilding.tscn" id="4_lquwl"]
+[ext_resource type="PackedScene" uid="uid://bjous0rfhgj1c" path="res://Scenes/Building.tscn" id="7_272bh"]
+[ext_resource type="PackedScene" uid="uid://bggbe2630kb8s" path="res://Scenes/Park.tscn" id="9_kek77"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1bvp3"]
+sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+
+[sub_resource type="Sky" id="Sky_lquwl"]
+sky_material = SubResource("ProceduralSkyMaterial_1bvp3")
+
+[sub_resource type="Environment" id="Environment_7mycd"]
+background_mode = 2
+sky = SubResource("Sky_lquwl")
+tonemap_mode = 2
+glow_enabled = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_272bh"]
+albedo_color = Color(0.03137255, 0.41960785, 0, 1)
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_ig7tw")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.8660254, -0.43301278, 0.25, 0, 0.49999997, 0.86602545, -0.50000006, 0.75, -0.43301266, 0, 2.1261566, 0)
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_7mycd")
+
+[node name="World" type="CSGBox3D" parent="."]
+transform = Transform3D(94.054825, 0, 0, 0, 0.08193505, 0, 0, 0, 392.3955, 0, 0, 0)
+material = SubResource("StandardMaterial3D_272bh")
+script = ExtResource("2_0xm2m")
+
+[node name="Restaurant" parent="." groups=["work"] instance=ExtResource("3_h2yge")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.128957, 0, -13.21262)
+job_capacity = 2
+
+[node name="ResidentialBuilding" parent="." instance=ExtResource("4_lquwl")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.386494, 0, -7.919175)
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.0115862, 5.9405136)
+
+[node name="Building" parent="." node_paths=PackedStringArray("debug_panel") groups=["work"] instance=ExtResource("7_272bh")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.3147726)
+building_name = "Building1"
+debug_panel = NodePath("")
+job_capacity = 2
+
+[node name="Park" parent="." instance=ExtResource("9_kek77")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.737816, 0.2162342, -1.4004898)

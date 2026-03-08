@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3 uid="uid://xwf5gxy5g8c"]
+
+[ext_resource type="Script" uid="uid://bf6j1j6o17q7i" path="res://Entities/Citizens/Citizen.gd" id="1_qc8p4"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_cbg8l"]
+
+[node name="Citizen" type="Node3D" groups=["citizens"]]
+script = ExtResource("1_qc8p4")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0019844, 0)
+mesh = SubResource("CapsuleMesh_cbg8l")

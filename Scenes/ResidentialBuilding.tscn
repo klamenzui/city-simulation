@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3 uid="uid://bxga08qa31ahy"]
+
+[ext_resource type="Script" uid="uid://bj48dr0vegu14" path="res://Entities/Buildings/ResidentialBuilding.gd" id="1_yup4x"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_3mnc2"]
+
+[node name="ResidentialBuilding" type="Node3D" groups=["buildings"] node_paths=PackedStringArray("entrance")]
+script = ExtResource("1_yup4x")
+building_name = "HomeBlock A"
+entrance = NodePath("Entrance")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(2.9985769, 0, 0, 0, 8.570732, 0, 0, 0, 2.2894664, 0, 0, 0)
+mesh = SubResource("BoxMesh_3mnc2")
+
+[node name="Entrance" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.699409, 0, 0.3735838)
