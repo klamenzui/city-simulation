@@ -23,6 +23,29 @@ var current_action: Action = null
 
 var _world_ref: World = null
 
+# --- Movement / Navigation ---
+@export var move_speed_min: float = 1.6
+@export var move_speed_max: float = 2.4
+@export var move_acceleration: float = 5.5
+@export var move_deceleration: float = 7.0
+@export var turn_speed: float = 8.0
+@export var waypoint_reach_distance: float = 0.35
+@export var arrival_distance: float = 0.65
+@export var ground_probe_up: float = 4.0
+@export var ground_probe_down: float = 12.0
+@export var repath_interval_sec: float = 0.6
+@export var gravity_strength: float = 28.0
+@export var max_fall_speed: float = 35.0
+@export var ground_snap_rate: float = 18.0
+
+var _nav_agent: NavigationAgent3D = null
+var _is_travelling: bool = false
+var _travel_target: Vector3 = Vector3.ZERO
+var _repath_time_left: float = 0.0
+var _walk_speed: float = 2.0
+var _current_speed: float = 0.0
+var _vertical_speed: float = 0.0
+var _ground_fallback_y: float = 0.0
 # --- Variation / Personality ---
 @export var schedule_offset_min: int = -25
 @export var schedule_offset_max: int = 25
@@ -70,13 +93,22 @@ func _ready() -> void:
 	low_energy_threshold = low_energy_threshold_base + randf_range(-low_energy_threshold_jitter, low_energy_threshold_jitter)
 	work_motivation = work_motivation_base + randf_range(-work_motivation_jitter, work_motivation_jitter)
 	park_interest = clamp(park_interest_base + randf_range(-park_interest_jitter, park_interest_jitter), 0.0, 0.9)
+	_walk_speed = randf_range(move_speed_min, move_speed_max)
 
 	decision_cooldown_left = randi_range(0, 10)
 
 	_setup_clickable()
 	_setup_highlight()
+	_setup_navigation()
 	call_deferred("_auto_resolve_refs")
 
+func _physics_process(delta: float) -> void:
+	if _world_ref != null and _world_ref.is_paused:
+		return
+	if _is_travelling:
+		_move_along_path(delta)
+	else:
+		global_position = _apply_grounding(global_position, delta)
 
 # ── Klick-Erkennung via Area3D ─────────────────────────────────────────────────
 func _setup_clickable() -> void:
@@ -117,7 +149,130 @@ func _setup_highlight() -> void:
 	_highlight_material.emission_enabled = true
 	_highlight_material.emission = Color(0.6, 0.4, 0.0)
 
+func _setup_navigation() -> void:
+	_nav_agent = get_node_or_null("NavigationAgent3D") as NavigationAgent3D
+	if _nav_agent == null:
+		_nav_agent = NavigationAgent3D.new()
+		_nav_agent.name = "NavigationAgent3D"
+		add_child(_nav_agent)
 
+	_nav_agent.path_desired_distance = waypoint_reach_distance
+	_nav_agent.target_desired_distance = arrival_distance
+	_nav_agent.path_max_distance = 2.0
+	_nav_agent.radius = 0.35
+	_nav_agent.height = 1.8
+	_nav_agent.avoidance_enabled = false
+
+func _probe_ground_hit(pos: Vector3) -> Dictionary:
+	if not is_inside_tree():
+		return {}
+
+	var from := pos + Vector3.UP * ground_probe_up
+	var to := pos + Vector3.DOWN * ground_probe_down
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.collide_with_areas = false
+	return get_world_3d().direct_space_state.intersect_ray(query)
+
+func _project_to_ground(pos: Vector3) -> Vector3:
+	var hit := _probe_ground_hit(pos)
+	if hit.is_empty():
+		var fallback := pos
+		fallback.y = maxf(pos.y, _ground_fallback_y)
+		return fallback
+
+	var grounded := pos
+	grounded.y = (hit["position"] as Vector3).y
+	return grounded
+
+func _apply_grounding(pos: Vector3, delta: float) -> Vector3:
+	var grounded := pos
+	var hit := _probe_ground_hit(pos)
+	if hit.is_empty():
+		_vertical_speed = max(_vertical_speed - gravity_strength * delta, -max_fall_speed)
+		grounded.y += _vertical_speed * delta
+		if grounded.y < _ground_fallback_y:
+			grounded.y = _ground_fallback_y
+			_vertical_speed = 0.0
+		return grounded
+
+	_vertical_speed = 0.0
+	var floor_y := (hit["position"] as Vector3).y
+	grounded.y = lerp(grounded.y, floor_y, clamp(ground_snap_rate * delta, 0.0, 1.0))
+	return grounded
+
+func set_position_grounded(pos: Vector3) -> void:
+	_vertical_speed = 0.0
+	global_position = _project_to_ground(pos)
+	_ground_fallback_y = global_position.y
+
+func begin_travel_to(target_pos: Vector3) -> void:
+	if _nav_agent == null:
+		_setup_navigation()
+
+	_travel_target = _project_to_ground(target_pos)
+	_ground_fallback_y = _travel_target.y
+	_is_travelling = true
+	_repath_time_left = 0.0
+	_current_speed = 0.0
+	_nav_agent.target_position = _travel_target
+
+func has_reached_travel_target() -> bool:
+	if not _is_travelling:
+		return true
+
+	var to_target := _travel_target - global_position
+	to_target.y = 0.0
+	return to_target.length() <= arrival_distance
+
+func stop_travel() -> void:
+	_is_travelling = false
+	_current_speed = 0.0
+	if _nav_agent != null:
+		_nav_agent.target_position = global_position
+
+func _move_along_path(delta: float) -> void:
+	if _nav_agent == null:
+		return
+
+	_repath_time_left -= delta
+	if _repath_time_left <= 0.0:
+		_repath_time_left = repath_interval_sec
+		_nav_agent.target_position = _travel_target
+
+	if _nav_agent.is_navigation_finished() or has_reached_travel_target():
+		stop_travel()
+		set_position_grounded(_travel_target)
+		return
+
+	var next_path_point := _nav_agent.get_next_path_position()
+	var to_next := next_path_point - global_position
+	to_next.y = 0.0
+	var distance_to_next := to_next.length()
+	if distance_to_next <= 0.001:
+		_current_speed = move_toward(_current_speed, 0.0, move_deceleration * delta)
+		return
+
+	var desired_speed: float = _walk_speed
+	if distance_to_next < 1.2:
+		desired_speed *= clamp(distance_to_next / 1.2, 0.25, 1.0)
+
+	if _current_speed < desired_speed:
+		_current_speed = move_toward(_current_speed, desired_speed, move_acceleration * delta)
+	else:
+		_current_speed = move_toward(_current_speed, desired_speed, move_deceleration * delta)
+
+	var dir: Vector3 = to_next / distance_to_next
+	var step: float = minf(_current_speed * delta, distance_to_next)
+	var next_pos: Vector3 = global_position + dir * step
+	global_position = _apply_grounding(next_pos, delta)
+	_update_facing(dir, delta)
+
+func _update_facing(move_dir: Vector3, delta: float) -> void:
+	if move_dir.length_squared() <= 0.0001:
+		return
+
+	var target_yaw := atan2(move_dir.x, move_dir.z)
+	rotation.y = lerp_angle(rotation.y, target_yaw, clamp(turn_speed * delta, 0.0, 1.0))
 # Wird von main.gd via debug_panel-Setter ausgelöst; oder direkt aufgerufen.
 func set_selected(selected: bool) -> void:
 	if _mesh_instance == null:
@@ -172,7 +327,7 @@ func _auto_resolve_refs() -> void:
 
 	if home:
 		current_location = home
-		global_position = home.get_entrance_pos()
+		set_position_grounded(home.get_entrance_pos())
 
 
 func _try_find_job_once() -> void:
@@ -254,6 +409,7 @@ func _update_work_day(world: World) -> void:
 func sim_tick(world: World) -> void:
 	if _world_ref == null:
 		_world_ref = world
+		_ground_fallback_y = world.get_ground_fallback_y()
 		_connect_time_signals(world)
 
 	var mod := current_action.get_needs_modifier(world, self) if current_action != null else Action.DEFAULT_NEEDS_MOD
