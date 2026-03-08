@@ -21,6 +21,8 @@ signal speed_changed(multiplier: float)
 var _timer: Timer
 
 func _ready() -> void:
+	use_collision = true
+
 	add_child(time)
 	add_child(economy)
 
@@ -94,6 +96,9 @@ func set_speed(multiplier: float) -> void:
 	
 func world_day() -> int:
 	return time.day
+
+func get_ground_fallback_y() -> float:
+	return global_position.y
 
 func register_citizen(c: Citizen) -> void:
 	if c and not citizens.has(c):
