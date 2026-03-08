@@ -1,0 +1,52 @@
+extends Node
+class_name TimeSystem
+
+signal day_changed(day: int)
+signal hour_changed(hour: int)
+signal rent_due()
+signal payday()
+
+@export var start_hour: int = 7
+
+var day: int = 1
+var minutes_total: int = 0
+
+func _ready() -> void:
+	minutes_total = start_hour * 60
+
+func get_hour() -> int:
+	return (minutes_total / 60) % 24
+
+func get_minute() -> int:
+	return minutes_total % 60
+
+func advance(minutes: int) -> void:
+	var old_hour := get_hour()
+	minutes_total += minutes
+
+	while minutes_total >= 24 * 60:
+		minutes_total -= 24 * 60
+		day += 1
+		day_changed.emit(day)
+		# daily (simple)
+		rent_due.emit()
+		payday.emit()
+
+	var new_hour := get_hour()
+	if new_hour != old_hour:
+		hour_changed.emit(new_hour)
+		
+func get_time_string() -> String:
+	return "%02d:%02d" % [get_hour(), get_minute()]
+
+# --- Weekday / Weekend ---
+# English: day=1 -> Monday (0=Mon..6=Sun)
+func get_weekday_index() -> int:
+	return int((day - 1) % 7)
+
+func get_weekday_name() -> String:
+	var names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+	return names[get_weekday_index()]
+
+func is_weekend() -> bool:
+	return get_weekday_index() >= 5  # Sat/Sun

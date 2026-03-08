@@ -1,0 +1,148 @@
+[gd_scene load_steps=21 format=3 uid="uid://c2sjyx3wuxudg"]
+
+[ext_resource type="Shader" uid="uid://cti2sesbqgm5l" path="res://environment/sky/stylized-sky.gdshader" id="1_rvtj8"]
+[ext_resource type="Texture2D" uid="uid://vpvcwfakc8j4" path="res://environment/sky/Sun.png" id="2_j74et"]
+[ext_resource type="Texture2D" uid="uid://ma1amrxj8bnk" path="res://environment/sky/Moon.png" id="3_k8l6f"]
+[ext_resource type="Script" uid="uid://cul8rswmnvo7v" path="res://environment/sky/sky_time_manager.gd" id="4_n8hut"]
+[ext_resource type="Script" uid="uid://b5rhg6c5pg6lh" path="res://environment/sky/celestial_bodies.gd" id="5_3jj7m"]
+[ext_resource type="Script" uid="uid://41xqbr5e1ws5" path="res://environment/sky/time_ui_controller.gd" id="6_wx8dr"]
+
+[sub_resource type="Curve" id="Curve_snkxs"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.124717, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.738665), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_d5u1n"]
+curve = SubResource("Curve_snkxs")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_ompse"]
+noise_type = 2
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_hxq44"]
+seamless = true
+noise = SubResource("FastNoiseLite_ompse")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_nfynj"]
+noise_type = 2
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_3opsr"]
+seamless = true
+noise = SubResource("FastNoiseLite_nfynj")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_ui3ll"]
+noise_type = 2
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_fbbf8"]
+seamless = true
+noise = SubResource("FastNoiseLite_ui3ll")
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_bknui"]
+load_path = "res://.godot/imported/shooting_star_sampler.png-ff1e808fa5f8310e548f777b9285bd3e.s3tc.ctex"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_r752e"]
+shader = ExtResource("1_rvtj8")
+shader_parameter/cloud_shape_sampler = SubResource("NoiseTexture2D_3opsr")
+shader_parameter/cloud_noise_sampler = SubResource("NoiseTexture2D_hxq44")
+shader_parameter/cloud_curves = SubResource("CurveTexture_d5u1n")
+shader_parameter/clouds_samples = 32
+shader_parameter/shadow_sample = 4
+shader_parameter/clouds_density = 0.4
+shader_parameter/clouds_scale = 1.0
+shader_parameter/clouds_smoothness = 0.05
+shader_parameter/clouds_light_color = Color(0.227451, 0.447059, 1, 1)
+shader_parameter/clouds_shadow_intensity = 8.0
+shader_parameter/high_clouds_sampler = SubResource("NoiseTexture2D_fbbf8")
+shader_parameter/high_clouds_density = 0.0
+shader_parameter/top_color = Color(0.027451, 0.101961, 0.25098, 1)
+shader_parameter/bottom_color = Color(0.027451, 0.101961, 0.25098, 1)
+shader_parameter/sun_scatter = Color(0.12549, 0.0862745, 0.372549, 1)
+shader_parameter/sun_visible = true
+shader_parameter/sun_direction = Vector3(0, 0.3, -1)
+shader_parameter/sun_color = Color(1, 0.9, 0.85, 1)
+shader_parameter/sun_sampler = ExtResource("2_j74et")
+shader_parameter/sun_size = 3.0
+shader_parameter/sun_intensity = 2.0
+shader_parameter/sun_bloom = 0.8
+shader_parameter/moon_visible = true
+shader_parameter/moon_position = Vector3(0, 0.5, -1)
+shader_parameter/moon_sampler = ExtResource("3_k8l6f")
+shader_parameter/moon_size = 4.0
+shader_parameter/moon_phase = 0.0
+shader_parameter/moon_brightness = 1.0
+shader_parameter/moon_tint = Color(0.9, 0.9, 1, 1)
+shader_parameter/planet1_visible = false
+shader_parameter/planet1_position = Vector3(0.3, 0.4, -1)
+shader_parameter/planet1_size = 2.0
+shader_parameter/planet1_color = Color(1, 0.95, 0.8, 1)
+shader_parameter/planet2_visible = false
+shader_parameter/planet2_position = Vector3(-0.5, 0.3, -1)
+shader_parameter/planet2_size = 1.5
+shader_parameter/planet2_color = Color(1, 0.6, 0.4, 1)
+shader_parameter/planet3_visible = false
+shader_parameter/planet3_position = Vector3(0.6, 0.2, -1)
+shader_parameter/planet3_size = 3.0
+shader_parameter/planet3_color = Color(0.9, 0.85, 0.75, 1)
+shader_parameter/stars_intensity = 4.0
+shader_parameter/stars_tint = Color(1, 1, 1, 1)
+shader_parameter/stars_scintillation = 0.5
+shader_parameter/shooting_stars_intensity = 0.5
+shader_parameter/shooting_star_sampler = SubResource("CompressedTexture2D_bknui")
+shader_parameter/shooting_star_tint = Color(1, 0.662745, 0.419608, 1)
+
+[sub_resource type="Sky" id="Sky_abajw"]
+sky_material = SubResource("ShaderMaterial_r752e")
+
+[sub_resource type="Environment" id="Environment_11a00"]
+background_mode = 2
+sky = SubResource("Sky_abajw")
+tonemap_mode = 2
+glow_enabled = true
+adjustment_enabled = true
+adjustment_saturation = 1.5
+
+[sub_resource type="Animation" id="Animation_ltkld"]
+resource_name = "Cycle"
+length = 1200.0
+loop_mode = 1
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_7o7p5"]
+_data = {
+&"Cycle": SubResource("Animation_ltkld")
+}
+
+[node name="EnhancedSky" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_11a00")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, 0.75, -0.433013, 0, 0, 0)
+shadow_enabled = true
+directional_shadow_mode = 0
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("AnimationLibrary_7o7p5")
+}
+
+[node name="SkyTimeManager" type="Node" parent="."]
+script = ExtResource("4_n8hut")
+day_length = 240.0
+time_scale = 20.0
+
+[node name="CelestialBodies" type="Node" parent="."]
+script = ExtResource("5_3jj7m")
+
+[node name="TimeDisplay" type="Label" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -110.0
+offset_top = 614.0
+offset_right = -8.0
+offset_bottom = 640.0
+grow_horizontal = 0
+text = "00:00"
+horizontal_alignment = 2
+
+[node name="TimeUIController" type="Node" parent="."]
+script = ExtResource("6_wx8dr")
