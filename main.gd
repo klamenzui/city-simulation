@@ -1,4 +1,4 @@
-﻿extends Node3D
+extends Node3D
 
 @onready var world: World = $World
 
@@ -67,9 +67,8 @@ func _bind_building_clicks() -> void:
 	for building in world.buildings:
 		if building == null:
 			continue
-		var cb := _on_building_clicked.bind(building)
-		if not building.clicked.is_connected(cb):
-			building.clicked.connect(cb)
+		if not building.clicked.is_connected(_on_building_clicked):
+			building.clicked.connect(_on_building_clicked)
 
 func _spawn_citizens() -> void:
 	var spawned := CitizenFactory.spawn_citizens(self, world, CITIZEN_COUNT)

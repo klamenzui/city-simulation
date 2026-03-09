@@ -28,9 +28,12 @@ func start(world, citizen) -> void:
 		finished = true
 		return
 
-	if citizen.wallet.balance < restaurant.meal_price:
+	var meal_price: int = restaurant.meal_price
+	if restaurant.has_method("get_meal_price"):
+		meal_price = int(restaurant.get_meal_price(world))
+	if citizen.wallet.balance < meal_price:
 		print("[Citizen %s] Can't afford meal (balance: %d, price: %d)." % [
-			citizen.citizen_name, citizen.wallet.balance, restaurant.meal_price
+			citizen.citizen_name, citizen.wallet.balance, meal_price
 		])
 		restaurant.leave(citizen)
 		_can_eat = false

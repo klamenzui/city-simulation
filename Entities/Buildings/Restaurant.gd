@@ -12,9 +12,13 @@ func _ready() -> void:
 		job_capacity = 5
 	open_hour = 8
 	close_hour = 22
+	define_stock_item("meal", 48, meal_price, 70, 30, "food")
 
 func get_service_type() -> String:
 	return "food"
+
+func get_meal_price(_world = null) -> int:
+	return get_item_price("meal", 1)
 
 func try_enter(c: Citizen) -> bool:
 	return try_add_visitor(c)
@@ -25,14 +29,10 @@ func leave(c: Citizen) -> void:
 func sell_meal(world: World, buyer: Citizen) -> bool:
 	if buyer == null:
 		return false
-	if not is_open(world.time.get_hour()):
-		return false
-	if not world.economy.transfer(buyer.wallet, account, meal_price):
-		return false
-	record_income(meal_price)
-	return true
+	return sell_item(world, buyer, "meal", 1) > 0
 
 func _get_extra_info(_world = null) -> Dictionary:
-	return {
-		"Meal price": "%d €" % meal_price,
-	}
+	var info := get_commercial_info()
+	info["Meal price"] = "%d EUR" % get_meal_price(_world)
+	info["Meal stock"] = str(get_stock("meal"))
+	return info

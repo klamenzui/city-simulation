@@ -1,10 +1,7 @@
 extends Node3D
 class_name Citizen
 
-const CitizenHungerGoapScript = preload("res://Simulation/GOAP/CitizenHungerGoap.gd")
-const CitizenFunGoapScript = preload("res://Simulation/GOAP/CitizenFunGoap.gd")
-const StudyAtUniversityActionScript = preload("res://Actions/StudyAtUniversityAction.gd")
-const BuyGroceriesActionScript = preload("res://Actions/BuyGroceriesAction.gd")
+const CitizenAgentScript = preload("res://Simulation/Citizens/CitizenAgent.gd")
 
 # Emittiert wenn der Spieler auf diesen Citizen klickt
 signal clicked
@@ -35,8 +32,7 @@ var current_location: Building = null
 var current_action: Action = null
 
 var _world_ref: World = null
-var _hunger_goap = CitizenHungerGoapScript.new()
-var _fun_goap = CitizenFunGoapScript.new()
+var _agent = CitizenAgentScript.new()
 
 # --- Movement / Navigation ---
 @export var move_speed_min: float = 1.6
@@ -114,16 +110,11 @@ func _ready() -> void:
 
 	_setup_clickable()
 	_setup_highlight()
-	_setup_navigation()
+	_agent.setup(self)
 	call_deferred("_auto_resolve_refs")
 
 func _physics_process(delta: float) -> void:
-	if _world_ref != null and _world_ref.is_paused:
-		return
-	if _is_travelling:
-		_move_along_path(delta)
-	else:
-		global_position = _apply_grounding(global_position, delta)
+	_agent.physics_step(self, delta, _world_ref)
 
 # ── Klick-Erkennung via Area3D ─────────────────────────────────────────────────
 func _setup_clickable() -> void:
@@ -216,39 +207,16 @@ func _apply_grounding(pos: Vector3, delta: float) -> Vector3:
 	return grounded
 
 func set_position_grounded(pos: Vector3) -> void:
-	_vertical_speed = 0.0
-	global_position = _project_to_ground(pos)
-	if _world_ref != null:
-		_ground_fallback_y = _world_ref.get_ground_fallback_y()
-	else:
-		_ground_fallback_y = global_position.y
+	_agent.locomotion.set_position_grounded(self, pos, _world_ref)
 
 func begin_travel_to(target_pos: Vector3) -> void:
-	if _nav_agent == null:
-		_setup_navigation()
-
-	if _world_ref != null:
-		_ground_fallback_y = _world_ref.get_ground_fallback_y()
-
-	_travel_target = _project_to_ground(target_pos)
-	_is_travelling = true
-	_repath_time_left = 0.0
-	_current_speed = 0.0
-	_nav_agent.target_position = _travel_target
+	_agent.locomotion.begin_travel_to(self, target_pos, _world_ref)
 
 func has_reached_travel_target() -> bool:
-	if not _is_travelling:
-		return true
-
-	var to_target := _travel_target - global_position
-	to_target.y = 0.0
-	return to_target.length() <= arrival_distance
+	return _agent.locomotion.has_reached_travel_target(self)
 
 func stop_travel() -> void:
-	_is_travelling = false
-	_current_speed = 0.0
-	if _nav_agent != null:
-		_nav_agent.target_position = global_position
+	_agent.locomotion.stop_travel(self)
 
 func _move_along_path(delta: float) -> void:
 	if _nav_agent == null:
@@ -474,257 +442,39 @@ func _update_work_day(world: World) -> void:
 
 
 func sim_tick(world: World) -> void:
-	if _world_ref == null:
-		set_world_ref(world)
-
-	var mod := current_action.get_needs_modifier(world, self) if current_action != null else Action.DEFAULT_NEEDS_MOD
-	needs.advance(world.minutes_per_tick, mod.hunger_mul, mod.energy_mul, mod.fun_mul, mod.get("hunger_add", 0.0), mod.energy_add, mod.fun_add)
-
-	_update_work_day(world)
-	# BUG FIX: get_health_delta() must be called every tick to keep _last_health in sync.
-	# Previously only called inside _update_debug (requires debug_panel) → showed large
-	# jumps like "-8.5" when a citizen was first selected after many silent ticks.
-	var h_delta := needs.get_health_delta()
-	_update_debug(world, h_delta)
-
-	if current_action != null:
-		current_action.tick(world, self, world.minutes_per_tick)
-		if current_action.is_done():
-			current_action.finish(world, self)
-			current_action = null
-		return
-	if decision_cooldown_left > 0:
-		decision_cooldown_left -= world.minutes_per_tick
-		if decision_cooldown_left > 0:
-			return
-
-	plan_next_action(world)
-	decision_cooldown_left = randi_range(decision_cooldown_range_min, decision_cooldown_range_max)
-
+	_agent.sim_tick(self, world)
 
 func plan_next_action(world: World) -> void:
-	var hour := world.time.get_hour()
-	var minute := world.time.get_minute()
-	var now_total := hour * 60 + minute
+	_agent.planner.plan_next_action(world, self)
 
-	var is_night := (hour >= 22 or hour < 6)
-	var weekend := world.time.is_weekend()
+func can_afford_restaurant(world: World) -> bool:
+	if favorite_restaurant == null:
+		return false
+	var price: int = favorite_restaurant.meal_price
+	if favorite_restaurant.has_method("get_meal_price"):
+		price = int(favorite_restaurant.get_meal_price(world))
+	return wallet.balance >= price
 
-	var has_work := (job != null and job.workplace != null) and (not weekend)
+func can_afford_groceries(world: World) -> bool:
+	if favorite_supermarket == null:
+		return false
+	var price: int = favorite_supermarket.grocery_price
+	if favorite_supermarket.has_method("get_grocery_price"):
+		price = int(favorite_supermarket.get_grocery_price(world))
+	return wallet.balance >= price
 
-	var work_start_total := 0
-	var work_end_total := 0
-	var shift_total_minutes := 0
-	if has_work:
-		work_start_total = job.start_hour * 60 + schedule_offset
-		shift_total_minutes = int(job.shift_hours * 60)
-		work_end_total = work_start_total + shift_total_minutes
+func can_afford_shop_item(_world: World) -> bool:
+	if favorite_shop == null:
+		return false
+	var price: int = favorite_shop.item_price
+	if favorite_shop.has_method("get_item_price_quote"):
+		price = int(favorite_shop.get_item_price_quote(1.0))
+	return wallet.balance >= price
 
-	var in_work_window := has_work and (now_total >= work_start_total and now_total < work_end_total)
-	var is_lunch_window := (now_total >= (11 * 60 + 30) and now_total <= (13 * 60 + 30))
-
-	var remaining_work := 0
-	if has_work:
-		remaining_work = max(0, shift_total_minutes - work_minutes_today)
-
-	# 0) SUPER HUNGRY → eat has ABSOLUTE priority (even over energy=0 safety).
-	# BUG FIX: Previously energy=0 check came first, so citizens waking from
-	# starvation-sleep with E=0 were immediately sent back to sleep → death spiral.
-	var super_hungry := needs.hunger >= 80.0
-	var can_afford_meal := (favorite_restaurant != null and
-		wallet.balance >= favorite_restaurant.meal_price)
-
-	if needs.hunger >= hunger_threshold and _hunger_goap.try_plan(world, self):
-		return
-
-	if job != null and not job.meets_requirements(self) and not is_night:
-		var uni := _find_nearest_university(home.get_entrance_pos() if home else global_position)
-		if uni != null:
-			if current_location != uni:
-				_start_action(GoToBuildingAction.new(uni, 25), world)
-				return
-			_start_action(StudyAtUniversityActionScript.new(uni), world)
-			return
-	if super_hungry and can_afford_meal:
-		if current_location != favorite_restaurant:
-			_start_action(GoToBuildingAction.new(favorite_restaurant, 15), world)
-			return
-		_start_action(EatAtRestaurantAction.new(favorite_restaurant), world)
-		return
-
-	if super_hungry and not can_afford_meal:
-		if home != null and home_food_stock > 0:
-			if current_location != home:
-				_start_action(GoToBuildingAction.new(home, 20), world)
-				return
-			_start_action(EatAtHomeAction.new(), world)
-			return
-
-		if favorite_supermarket != null and wallet.balance >= favorite_supermarket.grocery_price:
-			if current_location != favorite_supermarket:
-				_start_action(GoToBuildingAction.new(favorite_supermarket, 18), world)
-				return
-			_start_action(BuyGroceriesActionScript.new(favorite_supermarket), world)
-			return
-
-		needs.health -= 0.5
-		needs.health = clamp(needs.health, 0.0, 100.0)
-		if home != null and current_location != home:
-			_start_action(GoToBuildingAction.new(home, 20), world)
-			return
-		return
-
-	# 1) HARD SAFETY: Energy empty → go home + sleep (only when NOT starving)
-	if home != null and needs.energy <= 1.0:
-		if current_location != home:
-			_start_action(GoToBuildingAction.new(home, 20), world)
-			return
-		_start_action(SleepAction.new(), world)
-		return
-
-	# 1.5) NIGHT CURFEW
-	# BUG FIX: Old threshold was H<75, leaving H=75-84 as a dead zone at night
-	# (not super_hungry, but also not allowed to eat since `not is_night` blocked it).
-	# Now the curfew only applies when hunger is genuinely low (< 65).
-	if is_night and needs.hunger < 65.0:
-		if home != null:
-			if current_location != home:
-				_start_action(GoToBuildingAction.new(home, 20), world)
-				return
-			if needs.energy < needs.TARGET_ENERGY_MIN:
-				_start_action(SleepAction.new(), world)
-				return
-			_start_action(RelaxAtHomeAction.new(), world)
-			return
-
-	var MEAL_HUNGER_THRESHOLD := 50.0
-
-	# 2) NEED TO EAT?
-	var want_to_eat := needs.hunger >= MEAL_HUNGER_THRESHOLD and can_afford_meal
-	if not want_to_eat and is_lunch_window and needs.hunger >= 30.0 and randf() < 0.5:
-		want_to_eat = can_afford_meal
-
-	# BUG FIX: Allow eating at night when genuinely hungry (>= 65).
-	# Old `not is_night` completely blocked night eating for H=65-84.
-	var night_eating_ok := (not is_night) or (needs.hunger >= 65.0)
-	if want_to_eat and night_eating_ok:
-		if current_location != favorite_restaurant:
-			_start_action(GoToBuildingAction.new(favorite_restaurant, 15), world)
-			return
-		_start_action(EatAtRestaurantAction.new(favorite_restaurant), world)
-		return
-
-	# 3) WORK
-	if in_work_window and remaining_work > 0:
-		if is_lunch_window:
-			if favorite_park != null and needs.energy > 35.0 and randf() < 0.45:
-				if current_location != favorite_park:
-					_start_action(GoToBuildingAction.new(favorite_park, 25), world)
-					return
-				_start_action(RelaxAtParkAction.new(45), world)
-				return
-			if home != null:
-				if current_location != home:
-					_start_action(GoToBuildingAction.new(home, 20), world)
-					return
-				_start_action(RelaxAtHomeAction.new(), world)
-				return
-
-		if needs.energy < low_energy_threshold:
-			if home != null:
-				if current_location != home:
-					_start_action(GoToBuildingAction.new(home, 20), world)
-					return
-				_start_action(SleepAction.new(), world)
-				return
-
-		if current_location == job.workplace:
-			_start_action(WorkAction.new(job), world)
-			return
-
-		var energy_factor = clamp(needs.energy / 100.0, 0.35, 1.0)
-		var p_go_work = clamp(0.85 * work_motivation * energy_factor, 0.35, 0.98)
-
-		if randf() < p_go_work:
-			_start_action(GoToBuildingAction.new(job.workplace, 20), world)
-			return
-		else:
-			if home != null:
-				if current_location != home:
-					_start_action(GoToBuildingAction.new(home, 20), world)
-					return
-				_start_action(RelaxAtHomeAction.new(), world)
-				return
-
-	# 4) SLEEP
-	var should_sleep := false
-	if needs.energy < needs.TARGET_ENERGY_MIN:
-		if needs.energy < low_energy_threshold:
-			# BUG FIX: Previously no affordability check here.
-			# When broke (e.g. 2§) AND hungry AND tired, the citizen traveled to the
-			# restaurant, EatAtRestaurantAction immediately aborted (can't afford),
-			# plan_next_action fired again next tick → infinite restaurant loop.
-			# Fix: only eat-before-sleep when we can actually afford the meal.
-			if needs.hunger > 50.0 and can_afford_meal and not is_night:
-				if current_location != favorite_restaurant:
-					_start_action(GoToBuildingAction.new(favorite_restaurant, 15), world)
-					return
-				_start_action(EatAtRestaurantAction.new(favorite_restaurant), world)
-				return
-			should_sleep = true
-		elif is_night and randf() < 0.85:
-			should_sleep = true
-		elif randf() < 0.12:
-			should_sleep = true
-
-	if home != null and should_sleep:
-		if current_location != home:
-			_start_action(GoToBuildingAction.new(home, 20), world)
-			return
-		_start_action(SleepAction.new(), world)
-		return
-
-	# 5) FUN
-	if needs.fun < needs.TARGET_FUN_MIN and not is_night and not in_work_window:
-		if _fun_goap.try_plan(world, self):
-			return
-
-		var park_p := park_interest
-		if weekend:
-			park_p = clamp(park_p * 1.6, 0.0, 0.95)
-
-		if favorite_park != null and needs.energy > 35.0 and randf() < park_p:
-			if current_location != favorite_park:
-				_start_action(GoToBuildingAction.new(favorite_park, 25), world)
-				return
-			_start_action(RelaxAtParkAction.new(), world)
-			return
-
-		if home != null:
-			if current_location != home:
-				_start_action(GoToBuildingAction.new(home, 20), world)
-				return
-			_start_action(RelaxAtHomeAction.new(), world)
-			return
-
-	# 6) DEFAULT
-	if not is_night and weekend and favorite_park != null and needs.energy > 45.0:
-		var p2 = clamp(park_interest * 0.6, 0.0, 0.6)
-		if randf() < p2:
-			if current_location != favorite_park:
-				_start_action(GoToBuildingAction.new(favorite_park, 25), world)
-				return
-			_start_action(RelaxAtParkAction.new(), world)
-			return
-
-	if home != null:
-		if current_location != home:
-			_start_action(GoToBuildingAction.new(home, 20), world)
-			return
-		_start_action(RelaxAtHomeAction.new(), world)
-		return
-
-
+func can_afford_cinema(_world: World) -> bool:
+	if favorite_cinema == null:
+		return false
+	return wallet.balance >= favorite_cinema.ticket_price
 func _find_first_residential_building() -> ResidentialBuilding:
 	if _world_ref != null:
 		return _world_ref.find_first_residential_building()

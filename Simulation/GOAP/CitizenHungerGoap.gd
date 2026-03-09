@@ -1,4 +1,4 @@
-﻿extends RefCounted
+extends RefCounted
 class_name CitizenHungerGoap
 
 const GoapActionScript = preload("res://Simulation/GOAP/GoapAction.gd")
@@ -14,7 +14,7 @@ func try_plan(world, citizen) -> bool:
 
 	var state: Dictionary = _build_state(world, citizen)
 	var goal: Dictionary = {"hunger_satisfied": true}
-	var actions: Array = _build_actions(citizen)
+	var actions: Array = _build_actions()
 	var plan: Array = GoapPlannerScript.plan(state, goal, actions, 6)
 	if plan.is_empty():
 		return false
@@ -29,14 +29,14 @@ func _build_state(world, citizen) -> Dictionary:
 	state["has_home"] = citizen.home != null
 	state["has_restaurant"] = citizen.favorite_restaurant != null
 	state["has_supermarket"] = citizen.favorite_supermarket != null
-	state["can_afford_restaurant"] = citizen.favorite_restaurant != null and citizen.wallet.balance >= citizen.favorite_restaurant.meal_price
-	state["can_afford_groceries"] = citizen.favorite_supermarket != null and citizen.wallet.balance >= citizen.favorite_supermarket.grocery_price
+	state["can_afford_restaurant"] = citizen.can_afford_restaurant(world)
+	state["can_afford_groceries"] = citizen.can_afford_groceries(world)
 	state["has_home_food"] = citizen.home_food_stock > 0
 	state["hunger_satisfied"] = citizen.needs.hunger <= citizen.needs.TARGET_HUNGER_MAX
 	state["is_night"] = world.time.get_hour() >= 22 or world.time.get_hour() < 6
 	return state
 
-func _build_actions(_citizen) -> Array:
+func _build_actions() -> Array:
 	var actions: Array = []
 	actions.append(GoapActionScript.new(
 		"go_home",

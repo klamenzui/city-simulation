@@ -1,4 +1,4 @@
-﻿extends RefCounted
+extends RefCounted
 class_name CitizenFunGoap
 
 const GoapActionScript = preload("res://Simulation/GOAP/GoapAction.gd")
@@ -34,8 +34,8 @@ func _build_state(world, citizen) -> Dictionary:
 	state["has_shop"] = citizen.favorite_shop != null
 	state["has_cinema"] = citizen.favorite_cinema != null
 
-	state["can_afford_shop"] = citizen.favorite_shop != null and citizen.wallet.balance >= citizen.favorite_shop.item_price
-	state["can_afford_cinema"] = citizen.favorite_cinema != null and citizen.wallet.balance >= citizen.favorite_cinema.ticket_price
+	state["can_afford_shop"] = citizen.can_afford_shop_item(world)
+	state["can_afford_cinema"] = citizen.can_afford_cinema(world)
 	state["energy_ok"] = citizen.needs.energy >= 18.0
 	state["is_night"] = world.time.get_hour() >= 22 or world.time.get_hour() < 6
 	state["fun_recovered"] = citizen.needs.fun >= citizen.needs.TARGET_FUN_MIN
