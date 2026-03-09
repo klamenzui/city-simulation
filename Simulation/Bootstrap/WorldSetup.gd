@@ -1,4 +1,4 @@
-extends RefCounted
+﻿extends RefCounted
 class_name WorldSetup
 
 const DEFAULT_RENT_PER_DAY := 15
@@ -16,6 +16,8 @@ static func configure_scene_buildings(tree: SceneTree, world: World) -> void:
 		world.register_building(building)
 		_ensure_work_capacity(building)
 		_configure_residential(building, world)
+		_configure_city_hall(building)
+		_configure_university(building)
 
 static func _ensure_work_capacity(building: Building) -> void:
 	if "work" in building.get_groups() and building.job_capacity == 0:
@@ -31,3 +33,15 @@ static func _configure_residential(building: Building, world: World) -> void:
 	var rent_callback := residential.charge_rent.bind(world)
 	if not world.time.rent_due.is_connected(rent_callback):
 		world.time.rent_due.connect(rent_callback)
+
+static func _configure_city_hall(building: Building) -> void:
+	if building is not CityHall:
+		return
+	if building.account.balance <= 0:
+		building.account.balance = 4500
+
+static func _configure_university(building: Building) -> void:
+	if building is not University:
+		return
+	if building.job_capacity <= 0:
+		building.job_capacity = 6

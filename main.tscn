@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://dma8o0k87ay67"]
+[gd_scene load_steps=11 format=3 uid="uid://cwh6kpqgqp78h"]
 
 [ext_resource type="Script" uid="uid://b0nnpitsvn2am" path="res://main.gd" id="1_ig7tw"]
 [ext_resource type="Script" uid="uid://burjatjhmdkuv" path="res://Simulation/World.gd" id="2_0xm2m"]
@@ -46,12 +46,11 @@ job_capacity = 2
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.386494, 0, -7.919175)
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.0115862, 5.9405136)
+transform = Transform3D(1, 0, 0, 0, 0.9771533, 0.21253583, 0, -0.21253583, 0.9771533, 0, 8.830686, 24.783987)
 
-[node name="Building" parent="." node_paths=PackedStringArray("debug_panel") groups=["work"] instance=ExtResource("7_272bh")]
+[node name="Building" parent="." groups=["work"] instance=ExtResource("7_272bh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.3147726)
 building_name = "Building1"
-debug_panel = NodePath("")
 job_capacity = 2
 
 [node name="Park" parent="." instance=ExtResource("9_kek77")]

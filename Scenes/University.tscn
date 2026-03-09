@@ -1,0 +1,19 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Entities/Buildings/University.gd" id="1"]
+
+[sub_resource type="BoxMesh" id="1"]
+
+[node name="University" type="Node3D" groups=["buildings"] node_paths=PackedStringArray("entrance")]
+script = ExtResource("1")
+building_name = "University"
+entrance = NodePath("Entrance")
+capacity = 45
+job_capacity = 8
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(5.2, 0, 0, 0, 3.1, 0, 0, 0, 4.0, 0, 0, 0)
+mesh = SubResource("1")
+
+[node name="Entrance" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.2, 0, 0)

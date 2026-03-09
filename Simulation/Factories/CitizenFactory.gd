@@ -1,4 +1,4 @@
-extends RefCounted
+﻿extends RefCounted
 class_name CitizenFactory
 
 const CITIZEN_SCENE_PATH := "res://Entities/Citizens/Citizen.tscn"
@@ -17,9 +17,15 @@ const LAST_NAMES := [
 ]
 
 const JOB_TITLES := [
-	"Baecker", "Lehrer", "Ingenieur", "Kellner", "Programmierer",
-	"Fahrer", "Mechaniker", "Arzt", "Verkaeufer", "Designer"
+	"Baecker", "Kellner", "Programmierer", "Fahrer", "Mechaniker",
+	"Verkaeufer", "Designer", "Doctor", "Teacher", "Engineer"
 ]
+
+const EDUCATION_JOBS := {
+	"Doctor": 1,
+	"Teacher": 1,
+	"Engineer": 1,
+}
 
 static func spawn_citizens(parent: Node, world: World, count: int) -> Array[Citizen]:
 	var spawned: Array[Citizen] = []
@@ -47,6 +53,9 @@ static func spawn_citizens(parent: Node, world: World, count: int) -> Array[Citi
 		citizen.citizen_name = "%s %s" % [first_name, last_name]
 
 		citizen.job = _create_random_job()
+		citizen.set_world_ref(world)
+		if citizen.job != null:
+			world.register_job(citizen.job)
 
 		parent.add_child(citizen)
 		world.register_citizen(citizen)
@@ -57,9 +66,10 @@ static func spawn_citizens(parent: Node, world: World, count: int) -> Array[Citi
 static func _create_random_job() -> Job:
 	var job := Job.new()
 	job.title = _random_job_title()
-	job.wage_per_hour = randi_range(10, 22)
+	job.wage_per_hour = randi_range(10, 26)
 	job.start_hour = randi_range(7, 9)
 	job.shift_hours = 8
+	job.required_education_level = int(EDUCATION_JOBS.get(job.title, 0))
 	return job
 
 static func _random_job_title() -> String:

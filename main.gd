@@ -1,40 +1,93 @@
-extends Node3D
+﻿extends Node3D
 
 @onready var world: World = $World
 
 const CITIZEN_COUNT := 6
+const RoadBuilderScript = preload("res://Simulation/Bootstrap/RoadBuilder.gd")
+const SupermarketScene = preload("res://Scenes/Supermarket.tscn")
+const ShopScene = preload("res://Scenes/Shop.tscn")
+const CinemaScene = preload("res://Scenes/Cinema.tscn")
+const UniversityScene = preload("res://Scenes/University.tscn")
+const CityHallScene = preload("res://Scenes/CityHall.tscn")
 
 var _pause_btn: Button
 var _speed_label: Label
 var _debug_panel: DebugPanel
 var _selected_citizen: Citizen = null
-var _citizen_clicked_this_frame: bool = false
+var _selected_building: Building = null
+var _entity_clicked_this_frame: bool = false
+var _building_panel_refresh_left: float = 0.0
 
 func _ready() -> void:
 	get_viewport().physics_object_picking = true
 
-	NavigationSetup.ensure_region(self, world)
-	WorldSetup.configure_scene_buildings(get_tree(), world)
-
+	_setup_world_systems()
 	_build_debug_panel()
+	_bind_building_clicks()
 	_spawn_citizens()
 	_build_hud()
+
+func _process(delta: float) -> void:
+	if _selected_building == null or _debug_panel == null or not _debug_panel.visible:
+		return
+	_building_panel_refresh_left -= delta
+	if _building_panel_refresh_left <= 0.0:
+		_building_panel_refresh_left = 0.25
+		_selected_building.refresh_info_panel(world)
+
+func _setup_world_systems() -> void:
+	_spawn_missing_core_buildings()
+	NavigationSetup.ensure_region(self, world)
+	WorldSetup.configure_scene_buildings(get_tree(), world)
+	RoadBuilderScript.build_simple_roads(self, world)
+
+func _spawn_missing_core_buildings() -> void:
+	_spawn_if_missing("Supermarket", SupermarketScene, Vector3(15.0, 0.0, 9.0))
+	_spawn_if_missing("Shop", ShopScene, Vector3(19.0, 0.0, -4.0))
+	_spawn_if_missing("Cinema", CinemaScene, Vector3(-18.0, 0.0, -9.0))
+	_spawn_if_missing("University", UniversityScene, Vector3(-14.0, 0.0, 10.0))
+	_spawn_if_missing("CityHall", CityHallScene, Vector3(1.0, 0.0, 15.0))
+
+func _spawn_if_missing(node_name: String, scene: PackedScene, pos: Vector3) -> void:
+	if get_node_or_null(node_name) != null:
+		return
+	var instance := scene.instantiate() as Node3D
+	if instance == null:
+		return
+	instance.name = node_name
+	instance.position = pos
+	add_child(instance)
 
 func _build_debug_panel() -> void:
 	_debug_panel = preload("res://Scenes/DebugPanel.tscn").instantiate()
 	add_child(_debug_panel)
 	_debug_panel.visible = false
 
+func _bind_building_clicks() -> void:
+	for building in world.buildings:
+		if building == null:
+			continue
+		var cb := _on_building_clicked.bind(building)
+		if not building.clicked.is_connected(cb):
+			building.clicked.connect(cb)
+
 func _spawn_citizens() -> void:
 	var spawned := CitizenFactory.spawn_citizens(self, world, CITIZEN_COUNT)
 	for citizen in spawned:
-		citizen.clicked.connect(_on_citizen_clicked.bind(citizen))
-		citizen.clicked.connect(_on_citizen_clicked_frame_flag.bind(citizen))
+		var cb := _on_citizen_clicked.bind(citizen)
+		if not citizen.clicked.is_connected(cb):
+			citizen.clicked.connect(cb)
 
 func _on_citizen_clicked(c: Citizen) -> void:
+	_entity_clicked_this_frame = true
+
 	if _selected_citizen == c:
 		_deselect()
 		return
+
+	if _selected_building != null:
+		_selected_building.select(null, world)
+		_selected_building = null
 
 	if _selected_citizen != null:
 		_selected_citizen.select(null)
@@ -43,11 +96,34 @@ func _on_citizen_clicked(c: Citizen) -> void:
 	c.select(_debug_panel)
 	_debug_panel.visible = true
 
+func _on_building_clicked(b: Building) -> void:
+	_entity_clicked_this_frame = true
+
+	if _selected_building == b:
+		_deselect()
+		return
+
+	if _selected_citizen != null:
+		_selected_citizen.select(null)
+		_selected_citizen = null
+
+	if _selected_building != null:
+		_selected_building.select(null, world)
+
+	_selected_building = b
+	b.select(_debug_panel, world)
+	_debug_panel.visible = true
+	_building_panel_refresh_left = 0.0
+
 func _deselect() -> void:
 	if _selected_citizen != null:
 		_selected_citizen.select(null)
 		_selected_citizen = null
-	_debug_panel.visible = false
+	if _selected_building != null:
+		_selected_building.select(null, world)
+		_selected_building = null
+	if _debug_panel != null:
+		_debug_panel.visible = false
 
 func _build_hud() -> void:
 	var canvas := CanvasLayer.new()
@@ -76,15 +152,15 @@ func _build_hud() -> void:
 		hbox.add_child(btn)
 
 	var hint := Label.new()
-	hint.text = "Click citizen -> Debug"
+	hint.text = "Click citizen/building -> Info"
 	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	hint.custom_minimum_size = Vector2(0, 36)
 	hbox.add_child(hint)
 
 	_speed_label = Label.new()
-	_speed_label.text = "1x"
+	_speed_label.text = "1.0x"
 	_speed_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_speed_label.custom_minimum_size = Vector2(36, 36)
+	_speed_label.custom_minimum_size = Vector2(42, 36)
 	hbox.add_child(_speed_label)
 
 	world.paused_changed.connect(_on_world_paused)
@@ -100,12 +176,9 @@ func _input(event: InputEvent) -> void:
 		call_deferred("_check_deselect_this_frame")
 
 func _check_deselect_this_frame() -> void:
-	if not _citizen_clicked_this_frame:
+	if not _entity_clicked_this_frame:
 		_deselect()
-	_citizen_clicked_this_frame = false
-
-func _on_citizen_clicked_frame_flag(_c: Citizen) -> void:
-	_citizen_clicked_this_frame = true
+	_entity_clicked_this_frame = false
 
 func _on_pause_pressed() -> void:
 	world.toggle_pause()
@@ -119,4 +192,4 @@ func _on_world_paused(paused: bool) -> void:
 	_pause_btn.text = "Resume" if paused else "Pause"
 
 func _on_world_speed_changed(multiplier: float) -> void:
-	_speed_label.text = "%dx" % int(multiplier)
+	_speed_label.text = "%.1fx" % multiplier

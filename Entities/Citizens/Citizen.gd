@@ -1,27 +1,42 @@
 extends Node3D
 class_name Citizen
 
+const CitizenHungerGoapScript = preload("res://Simulation/GOAP/CitizenHungerGoap.gd")
+const CitizenFunGoapScript = preload("res://Simulation/GOAP/CitizenFunGoap.gd")
+const StudyAtUniversityActionScript = preload("res://Actions/StudyAtUniversityAction.gd")
+const BuyGroceriesActionScript = preload("res://Actions/BuyGroceriesAction.gd")
+
 # Emittiert wenn der Spieler auf diesen Citizen klickt
 signal clicked
 
 @export var citizen_name: String = "Alex"
 @export var home_path: NodePath
 @export var restaurant_path: NodePath
+@export var supermarket_path: NodePath
+@export var shop_path: NodePath
+@export var cinema_path: NodePath
 @export var park_path: NodePath
 @export var job: Job
 @export var debug_panel: DebugPanel
 
 var home: ResidentialBuilding
 var favorite_restaurant: Restaurant
+var favorite_supermarket: Supermarket
+var favorite_shop: Shop
+var favorite_cinema: Cinema
 var favorite_park: Building
 
 var needs := Needs.new()
 var wallet := Account.new()
+var home_food_stock: int = 2
+var education_level: int = 0
 
 var current_location: Building = null
 var current_action: Action = null
 
 var _world_ref: World = null
+var _hunger_goap = CitizenHungerGoapScript.new()
+var _fun_goap = CitizenFunGoapScript.new()
 
 # --- Movement / Navigation ---
 @export var move_speed_min: float = 1.6
@@ -177,7 +192,7 @@ func _project_to_ground(pos: Vector3) -> Vector3:
 	var hit := _probe_ground_hit(pos)
 	if hit.is_empty():
 		var fallback := pos
-		fallback.y = maxf(pos.y, _ground_fallback_y)
+		fallback.y = _ground_fallback_y
 		return fallback
 
 	var grounded := pos
@@ -203,14 +218,19 @@ func _apply_grounding(pos: Vector3, delta: float) -> Vector3:
 func set_position_grounded(pos: Vector3) -> void:
 	_vertical_speed = 0.0
 	global_position = _project_to_ground(pos)
-	_ground_fallback_y = global_position.y
+	if _world_ref != null:
+		_ground_fallback_y = _world_ref.get_ground_fallback_y()
+	else:
+		_ground_fallback_y = global_position.y
 
 func begin_travel_to(target_pos: Vector3) -> void:
 	if _nav_agent == null:
 		_setup_navigation()
 
+	if _world_ref != null:
+		_ground_fallback_y = _world_ref.get_ground_fallback_y()
+
 	_travel_target = _project_to_ground(target_pos)
-	_ground_fallback_y = _travel_target.y
 	_is_travelling = true
 	_repath_time_left = 0.0
 	_current_speed = 0.0
@@ -298,6 +318,12 @@ func _auto_resolve_refs() -> void:
 		home = get_node_or_null(home_path) as ResidentialBuilding
 	if restaurant_path != NodePath():
 		favorite_restaurant = get_node_or_null(restaurant_path) as Restaurant
+	if supermarket_path != NodePath():
+		favorite_supermarket = get_node_or_null(supermarket_path) as Supermarket
+	if shop_path != NodePath():
+		favorite_shop = get_node_or_null(shop_path) as Shop
+	if cinema_path != NodePath():
+		favorite_cinema = get_node_or_null(cinema_path) as Cinema
 	if park_path != NodePath():
 		favorite_park = get_node_or_null(park_path) as Building
 
@@ -313,13 +339,30 @@ func _auto_resolve_refs() -> void:
 		else:
 			print("[Citizen %s] WARNING: Home %s is full, could not register as tenant!" % [citizen_name, home.name])
 
+	var origin := home.get_entrance_pos() if home else global_position
+
 	if favorite_restaurant == null:
-		favorite_restaurant = _find_nearest_restaurant(home.get_entrance_pos() if home else global_position)
+		favorite_restaurant = _find_nearest_restaurant(origin, false)
 		if favorite_restaurant:
 			print("[Citizen %s] Auto-found restaurant: %s" % [citizen_name, favorite_restaurant.name])
 
+	if favorite_supermarket == null:
+		favorite_supermarket = _find_nearest_supermarket(origin, false)
+		if favorite_supermarket:
+			print("[Citizen %s] Auto-found supermarket: %s" % [citizen_name, favorite_supermarket.name])
+
+	if favorite_shop == null:
+		favorite_shop = _find_nearest_shop(origin, false)
+		if favorite_shop:
+			print("[Citizen %s] Auto-found shop: %s" % [citizen_name, favorite_shop.name])
+
+	if favorite_cinema == null:
+		favorite_cinema = _find_nearest_cinema(origin, false)
+		if favorite_cinema:
+			print("[Citizen %s] Auto-found cinema: %s" % [citizen_name, favorite_cinema.name])
+
 	if favorite_park == null:
-		favorite_park = _find_nearest_park(home.get_entrance_pos() if home else global_position)
+		favorite_park = _find_nearest_park(origin)
 		if favorite_park:
 			print("[Citizen %s] Auto-found park: %s" % [citizen_name, favorite_park.name])
 
@@ -329,25 +372,46 @@ func _auto_resolve_refs() -> void:
 		current_location = home
 		set_position_grounded(home.get_entrance_pos())
 
-
 func _try_find_job_once() -> void:
 	if job == null:
 		return
 	if job.workplace != null:
 		return
 
-	var root := get_tree().current_scene
 	var from_pos := home.get_entrance_pos() if home else global_position
-	job.resolve_nearest(root, from_pos)
+	if _world_ref != null:
+		job.workplace = _world_ref.find_nearest_open_workplace(from_pos, job.workplace_name)
 
-	if job.workplace:
-		var hired := job.try_get_employed(self)
-		if hired:
-			print("[Citizen %s] Employed at: %s" % [citizen_name, job.workplace.name])
-		else:
-			job.workplace = null
-			print("[Citizen %s] Workplace full, will retry later." % citizen_name)
+	if job.workplace == null:
+		var root := get_tree().current_scene
+		job.resolve_nearest(root, from_pos)
 
+	if job.workplace == null:
+		return
+
+	if not job.meets_requirements(self):
+		print("[Citizen %s] Needs education level %d for job %s (current %d)." % [
+			citizen_name,
+			job.required_education_level,
+			job.title,
+			education_level
+		])
+		job.workplace = null
+		return
+
+	var hired := job.try_get_employed(self)
+	if hired:
+		print("[Citizen %s] Employed at: %s" % [citizen_name, job.workplace.name])
+	else:
+		job.workplace = null
+		print("[Citizen %s] Workplace full, will retry later." % citizen_name)
+
+func set_world_ref(world: World) -> void:
+	if world == null:
+		return
+	_world_ref = world
+	_ground_fallback_y = world.get_ground_fallback_y()
+	_connect_time_signals(world)
 
 func _connect_time_signals(world: World) -> void:
 	if world == null or world.time == null:
@@ -390,11 +454,14 @@ func _update_debug(world: World, h_delta: float) -> void:
 		"Health"   : "%.1f / 100" % needs.health,
 		"──────────2": "",
 		"Money"    : "%d §" % wallet.balance,
+		"Groceries": str(home_food_stock),
+		"Education": "%d" % education_level,
 		"Workplace": job.workplace.name if (job and job.workplace) else "unemployed",
 		"WorkToday": "%d / %d min" % [
 			work_minutes_today,
 			int(job.shift_hours * 60) if job else 0
 		],
+		"JobReqEdu": "%d" % (job.required_education_level if job else 0),
 		"Motivation": "%.2f" % work_motivation,
 		"ParkInterest": "%.2f" % park_interest,
 	})
@@ -408,9 +475,7 @@ func _update_work_day(world: World) -> void:
 
 func sim_tick(world: World) -> void:
 	if _world_ref == null:
-		_world_ref = world
-		_ground_fallback_y = world.get_ground_fallback_y()
-		_connect_time_signals(world)
+		set_world_ref(world)
 
 	var mod := current_action.get_needs_modifier(world, self) if current_action != null else Action.DEFAULT_NEEDS_MOD
 	needs.advance(world.minutes_per_tick, mod.hunger_mul, mod.energy_mul, mod.fun_mul, mod.get("hunger_add", 0.0), mod.energy_add, mod.fun_add)
@@ -469,6 +534,17 @@ func plan_next_action(world: World) -> void:
 	var can_afford_meal := (favorite_restaurant != null and
 		wallet.balance >= favorite_restaurant.meal_price)
 
+	if needs.hunger >= hunger_threshold and _hunger_goap.try_plan(world, self):
+		return
+
+	if job != null and not job.meets_requirements(self) and not is_night:
+		var uni := _find_nearest_university(home.get_entrance_pos() if home else global_position)
+		if uni != null:
+			if current_location != uni:
+				_start_action(GoToBuildingAction.new(uni, 25), world)
+				return
+			_start_action(StudyAtUniversityActionScript.new(uni), world)
+			return
 	if super_hungry and can_afford_meal:
 		if current_location != favorite_restaurant:
 			_start_action(GoToBuildingAction.new(favorite_restaurant, 15), world)
@@ -477,6 +553,20 @@ func plan_next_action(world: World) -> void:
 		return
 
 	if super_hungry and not can_afford_meal:
+		if home != null and home_food_stock > 0:
+			if current_location != home:
+				_start_action(GoToBuildingAction.new(home, 20), world)
+				return
+			_start_action(EatAtHomeAction.new(), world)
+			return
+
+		if favorite_supermarket != null and wallet.balance >= favorite_supermarket.grocery_price:
+			if current_location != favorite_supermarket:
+				_start_action(GoToBuildingAction.new(favorite_supermarket, 18), world)
+				return
+			_start_action(BuyGroceriesActionScript.new(favorite_supermarket), world)
+			return
+
 		needs.health -= 0.5
 		needs.health = clamp(needs.health, 0.0, 100.0)
 		if home != null and current_location != home:
@@ -595,7 +685,10 @@ func plan_next_action(world: World) -> void:
 		return
 
 	# 5) FUN
-	if needs.fun < needs.TARGET_FUN_MIN and not is_night:
+	if needs.fun < needs.TARGET_FUN_MIN and not is_night and not in_work_window:
+		if _fun_goap.try_plan(world, self):
+			return
+
 		var park_p := park_interest
 		if weekend:
 			park_p = clamp(park_p * 1.6, 0.0, 0.95)
@@ -633,13 +726,19 @@ func plan_next_action(world: World) -> void:
 
 
 func _find_first_residential_building() -> ResidentialBuilding:
+	if _world_ref != null:
+		return _world_ref.find_first_residential_building()
+
 	for node in get_tree().get_nodes_in_group("buildings"):
 		if node is ResidentialBuilding:
 			return node
 	return null
 
 
-func _find_nearest_restaurant(from_pos: Vector3) -> Restaurant:
+func _find_nearest_restaurant(from_pos: Vector3, require_open: bool = true) -> Restaurant:
+	if _world_ref != null:
+		return _world_ref.find_nearest_restaurant(from_pos, require_open)
+
 	var best: Restaurant = null
 	var best_dist := INF
 	for node in get_tree().get_nodes_in_group("buildings"):
@@ -652,7 +751,72 @@ func _find_nearest_restaurant(from_pos: Vector3) -> Restaurant:
 	return best
 
 
+func _find_nearest_supermarket(from_pos: Vector3, require_open: bool = true) -> Supermarket:
+	if _world_ref != null:
+		return _world_ref.find_nearest_supermarket(from_pos, require_open)
+
+	var best: Supermarket = null
+	var best_dist := INF
+	for node in get_tree().get_nodes_in_group("buildings"):
+		if node is Supermarket:
+			var market := node as Supermarket
+			var d := from_pos.distance_to(market.global_position)
+			if d < best_dist:
+				best_dist = d
+				best = market
+	return best
+
+
+func _find_nearest_shop(from_pos: Vector3, require_open: bool = true) -> Shop:
+	if _world_ref != null:
+		return _world_ref.find_nearest_shop(from_pos, require_open)
+
+	var best: Shop = null
+	var best_dist := INF
+	for node in get_tree().get_nodes_in_group("buildings"):
+		if node is Shop and node is not Supermarket:
+			var shop := node as Shop
+			var d := from_pos.distance_to(shop.global_position)
+			if d < best_dist:
+				best_dist = d
+				best = shop
+	return best
+
+
+func _find_nearest_cinema(from_pos: Vector3, require_open: bool = true) -> Cinema:
+	if _world_ref != null:
+		return _world_ref.find_nearest_cinema(from_pos, require_open)
+
+	var best: Cinema = null
+	var best_dist := INF
+	for node in get_tree().get_nodes_in_group("buildings"):
+		if node is Cinema:
+			var cinema := node as Cinema
+			var d := from_pos.distance_to(cinema.global_position)
+			if d < best_dist:
+				best_dist = d
+				best = cinema
+	return best
+
+func _find_nearest_university(from_pos: Vector3, require_open: bool = true) -> University:
+	if _world_ref != null:
+		return _world_ref.find_nearest_university(from_pos, require_open)
+
+	var best: University = null
+	var best_dist := INF
+	for node in get_tree().get_nodes_in_group("buildings"):
+		if node is University:
+			var uni := node as University
+			var d := from_pos.distance_to(uni.global_position)
+			if d < best_dist:
+				best_dist = d
+				best = uni
+	return best
+
 func _find_nearest_park(from_pos: Vector3) -> Building:
+	if _world_ref != null:
+		return _world_ref.find_nearest_park(from_pos)
+
 	var best: Building = null
 	var best_dist := INF
 	for node in get_tree().get_nodes_in_group("parks"):
@@ -664,6 +828,9 @@ func _find_nearest_park(from_pos: Vector3) -> Building:
 				best = b
 	return best
 
+
+func start_action(a: Action, world: World) -> void:
+	_start_action(a, world)
 
 func _start_action(a: Action, world: World) -> void:
 	current_action = a
