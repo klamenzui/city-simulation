@@ -67,8 +67,10 @@ func _on_tick() -> void:
 			citizen.sim_tick(self)
 
 func _on_day_changed(_day: int) -> void:
-	# Hook for future global day-based systems.
-	pass
+	economy.begin_new_day()
+	for building in buildings:
+		if building is CommercialBuilding:
+			(building as CommercialBuilding).run_daily_supply(self)
 
 func _on_payday() -> void:
 	print("\n=== PAYDAY (Day %d) ===" % world_day())

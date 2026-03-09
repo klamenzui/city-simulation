@@ -13,25 +13,33 @@ func _ready() -> void:
 		job_capacity = 4
 	open_hour = 9
 	close_hour = 20
+	define_stock_item("clothing", 34, item_price, 56, 20, "clothes")
 
 func get_service_type() -> String:
 	return "shopping"
 
+func get_item_price_quote(multiplier: float = 1.0) -> int:
+	var base := get_item_price("clothing", 1)
+	return maxi(int(round(float(base) * multiplier)), 1)
+
 func buy_item(world: World, buyer: Citizen, multiplier: float = 1.0) -> bool:
-	if buyer == null:
+	if world == null or buyer == null:
 		return false
 	if not is_open(world.time.get_hour()):
 		return false
-	var price := int(round(item_price * multiplier))
-	if price <= 0:
-		price = 1
+	if not can_sell_item("clothing", 1):
+		return false
+
+	var price := get_item_price_quote(multiplier)
 	if not world.economy.transfer(buyer.wallet, account, price):
 		return false
-	record_income(price)
+
+	_finalize_sale("clothing", 1, price)
 	buyer.needs.fun = clamp(buyer.needs.fun + fun_gain, 0.0, 100.0)
 	return true
 
 func _get_extra_info(_world = null) -> Dictionary:
-	return {
-		"Base item price": "%d €" % item_price,
-	}
+	var info := get_commercial_info()
+	info["Base item price"] = "%d EUR" % get_item_price_quote(1.0)
+	info["Clothing stock"] = str(get_stock("clothing"))
+	return info

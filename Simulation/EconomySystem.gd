@@ -1,12 +1,33 @@
-# EconomySystem.gd
 extends Node
 class_name EconomySystem
 
 var jobs: Array[Job] = []
+var market_account: Account = Account.new()
+
+var commodity_stock: Dictionary = {}
+var commodity_target_stock: Dictionary = {}
+var commodity_base_price: Dictionary = {}
+var commodity_demand_today: Dictionary = {}
+
+func _ready() -> void:
+	market_account.owner_name = "RegionalMarket"
+	market_account.balance = 250000
+
+	_define_commodity("food", 900, 1200, 4)
+	_define_commodity("clothes", 480, 700, 7)
+	_define_commodity("entertainment", 2000, 2500, 2)
+
+func _define_commodity(key: String, stock: int, target_stock: int, base_price: int) -> void:
+	commodity_stock[key] = maxi(stock, 0)
+	commodity_target_stock[key] = maxi(target_stock, 1)
+	commodity_base_price[key] = maxi(base_price, 1)
+	commodity_demand_today[key] = 0
 
 func transfer(from_acc: Account, to_acc: Account, amount: int) -> bool:
 	if amount <= 0:
 		return true
+	if from_acc == null or to_acc == null:
+		return false
 	if from_acc.balance < amount:
 		return false
 	from_acc.balance -= amount
@@ -28,3 +49,66 @@ func get_open_jobs() -> Array[Job]:
 		if job.workplace != null and job.workplace.has_free_job_slots():
 			open_jobs.append(job)
 	return open_jobs
+
+func get_wholesale_unit_price(commodity: String) -> int:
+	var key: String = commodity
+	if not commodity_base_price.has(key):
+		_define_commodity(key, 400, 600, 5)
+
+	var base := float(maxi(int(commodity_base_price.get(key, 1)), 1))
+	var stock := float(maxi(int(commodity_stock.get(key, 0)), 0))
+	var target := float(maxi(int(commodity_target_stock.get(key, 1)), 1))
+	var demand := float(maxi(int(commodity_demand_today.get(key, 0)), 0))
+
+	var scarcity: float = clamp((target - stock) / target, -0.2, 1.0)
+	var demand_pressure: float = clamp(demand / target, 0.0, 1.5)
+	var multiplier: float = 1.0 + maxf(scarcity, 0.0) * 0.55 + demand_pressure * 0.25
+	return maxi(int(round(base * multiplier)), 1)
+
+func buy_wholesale(buyer: Account, commodity: String, requested_qty: int) -> Dictionary:
+	var result := {
+		"qty": 0,
+		"unit_price": 0,
+		"total_cost": 0,
+	}
+	if buyer == null:
+		return result
+
+	var request: int = maxi(requested_qty, 0)
+	if request <= 0:
+		return result
+
+	var key: String = commodity
+	if not commodity_stock.has(key):
+		_define_commodity(key, 400, 600, 5)
+
+	var unit_price: int = get_wholesale_unit_price(key)
+	var available: int = maxi(int(commodity_stock.get(key, 0)), 0)
+	if available <= 0:
+		return result
+
+	var affordable: int = buyer.balance / unit_price
+	var qty: int = mini(request, mini(available, affordable))
+	if qty <= 0:
+		return result
+
+	var total: int = qty * unit_price
+	if not transfer(buyer, market_account, total):
+		return result
+
+	commodity_stock[key] = available - qty
+	commodity_demand_today[key] = int(commodity_demand_today.get(key, 0)) + qty
+
+	result["qty"] = qty
+	result["unit_price"] = unit_price
+	result["total_cost"] = total
+	return result
+
+func begin_new_day() -> void:
+	for key in commodity_stock.keys():
+		var commodity: String = str(key)
+		var stock: int = int(commodity_stock.get(commodity, 0))
+		var target: int = int(commodity_target_stock.get(commodity, 1))
+		var refill: int = int(round(float(maxi(target - stock, 0)) * 0.18))
+		commodity_stock[commodity] = stock + refill
+		commodity_demand_today[commodity] = 0
