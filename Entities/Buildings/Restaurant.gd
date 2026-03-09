@@ -1,29 +1,38 @@
-extends Building
+extends CommercialBuilding
 class_name Restaurant
 
 @export var meal_price: int = 15
-@export var capacity: int = 8
 
-var inside: Array[Citizen] = []
+func _ready() -> void:
+	super._ready()
+	building_type = BuildingType.RESTAURANT
+	if capacity <= 0:
+		capacity = 20
+	if job_capacity <= 0:
+		job_capacity = 5
+	open_hour = 8
+	close_hour = 22
+
+func get_service_type() -> String:
+	return "food"
 
 func try_enter(c: Citizen) -> bool:
-	if c == null:
-		return false
-	if inside.size() >= capacity:
-		return false
-	if inside.has(c):
-		return true
-	inside.append(c)
-	return true
+	return try_add_visitor(c)
 
 func leave(c: Citizen) -> void:
-	inside.erase(c)
+	remove_visitor(c)
 
-# BUG FIX: sell_meal previously reduced hunger here AND in the action tick,
-# causing double (or conflicting) hunger restoration.
-# Now sell_meal ONLY handles the money transfer.
-# Hunger reduction is done gradually in EatAtRestaurantAction.tick().
 func sell_meal(world: World, buyer: Citizen) -> bool:
 	if buyer == null:
 		return false
-	return world.economy.transfer(buyer.wallet, account, meal_price)
+	if not is_open(world.time.get_hour()):
+		return false
+	if not world.economy.transfer(buyer.wallet, account, meal_price):
+		return false
+	record_income(meal_price)
+	return true
+
+func _get_extra_info(_world = null) -> Dictionary:
+	return {
+		"Meal price": "%d €" % meal_price,
+	}

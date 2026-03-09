@@ -1,0 +1,19 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Entities/Buildings/Supermarket.gd" id="1"]
+
+[sub_resource type="BoxMesh" id="1"]
+
+[node name="Supermarket" type="Node3D" groups=["buildings"] node_paths=PackedStringArray("entrance")]
+script = ExtResource("1")
+building_name = "Supermarket"
+entrance = NodePath("Entrance")
+capacity = 30
+job_capacity = 6
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(4.5, 0, 0, 0, 2.2, 0, 0, 0, 3.2, 0, 0, 0)
+mesh = SubResource("1")
+
+[node name="Entrance" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6, 0, 0)

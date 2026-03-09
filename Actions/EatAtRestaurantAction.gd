@@ -1,8 +1,6 @@
 extends Action
 class_name EatAtRestaurantAction
 
-# How fast hunger drops while eating (per minute).
-# From 85 hunger to 20 = 65 / 1.5 ≈ 43 minutes. Feels right for a restaurant.
 const HUNGER_REDUCE_PER_MIN := 1.5
 
 var restaurant: Restaurant
@@ -22,8 +20,10 @@ func start(world, citizen) -> void:
 	if restaurant == null:
 		finished = true
 		return
+	if not restaurant.is_open(world.time.get_hour()):
+		finished = true
+		return
 
-	# Respect restaurant capacity.
 	if not restaurant.try_enter(citizen):
 		finished = true
 		return
@@ -37,15 +37,16 @@ func start(world, citizen) -> void:
 		finished = true
 		return
 
-	world.economy.transfer(citizen.wallet, restaurant.account, restaurant.meal_price)
-	_paid = true
+	_paid = restaurant.sell_meal(world, citizen)
+	if not _paid:
+		restaurant.leave(citizen)
+		_can_eat = false
+		finished = true
 
-# English comment: Eating should reduce hunger net (overriding baseline hunger increase).
 func get_needs_modifier(world, citizen) -> Dictionary:
 	if not _can_eat or not _paid:
 		return Action.DEFAULT_NEEDS_MOD
 
-	# Base hunger rises +0.10/min; we want net -1.5/min → add about -1.6/min.
 	return {
 		"hunger_mul": -5.0,
 		"energy_mul": 1.0,

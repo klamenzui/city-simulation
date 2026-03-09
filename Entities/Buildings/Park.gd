@@ -1,8 +1,13 @@
-extends Building
+﻿extends Building
 class_name Park
 
 func _ready() -> void:
-	# BUG FIX: super._ready() was missing. Without it, Building._ready() never ran,
-	# so Park was never added to the "buildings" group and its Account was never initialized.
 	super._ready()
+	building_type = BuildingType.PARK
+	open_hour = 6
+	close_hour = 23
+	capacity = max(capacity, 40)
 	add_to_group("parks")
+
+func get_service_type() -> String:
+	return "fun"
