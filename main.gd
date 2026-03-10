@@ -9,6 +9,8 @@ const ShopScene = preload("res://Scenes/Shop.tscn")
 const CinemaScene = preload("res://Scenes/Cinema.tscn")
 const UniversityScene = preload("res://Scenes/University.tscn")
 const CityHallScene = preload("res://Scenes/CityHall.tscn")
+const FarmScene = preload("res://Scenes/Farm.tscn")
+const FactoryScene = preload("res://Scenes/Factory.tscn")
 
 var _pause_btn: Button
 var _speed_label: Label
@@ -47,6 +49,8 @@ func _spawn_missing_core_buildings() -> void:
 	_spawn_if_missing("Cinema", CinemaScene, Vector3(-18.0, 0.0, -9.0))
 	_spawn_if_missing("University", UniversityScene, Vector3(-14.0, 0.0, 10.0))
 	_spawn_if_missing("CityHall", CityHallScene, Vector3(1.0, 0.0, 15.0))
+	_spawn_if_missing("Farm", FarmScene, Vector3(-24.0, 0.0, 14.0))
+	_spawn_if_missing("Factory", FactoryScene, Vector3(24.0, 0.0, 14.0))
 
 func _spawn_if_missing(node_name: String, scene: PackedScene, pos: Vector3) -> void:
 	if get_node_or_null(node_name) != null:

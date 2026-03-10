@@ -13,7 +13,9 @@ enum BuildingType {
 	CITY_HALL,
 	UNIVERSITY,
 	CINEMA,
-	PARK
+	PARK,
+	FARM,
+	FACTORY,
 }
 
 @export var building_name: String = "Building"
@@ -130,10 +132,10 @@ func get_info(world = null) -> Dictionary:
 			close_hour,
 			"OPEN" if is_open(hour) else "CLOSED"
 		],
-		"Income today": "%d €" % income_today,
-		"Expenses today": "%d €" % expenses_today,
-		"Profit today": "%d €" % get_profit_today(),
-		"Balance": "%d €" % account.balance,
+		"Income today": "%d EUR" % income_today,
+		"Expenses today": "%d EUR" % expenses_today,
+		"Profit today": "%d EUR" % get_profit_today(),
+		"Balance": "%d EUR" % account.balance,
 	}
 
 	var extra := _get_extra_info(world)
@@ -164,6 +166,10 @@ func get_building_type_name() -> String:
 			return "Cinema"
 		BuildingType.PARK:
 			return "Park"
+		BuildingType.FARM:
+			return "Farm"
+		BuildingType.FACTORY:
+			return "Factory"
 		_:
 			return "Generic"
 
