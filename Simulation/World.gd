@@ -67,10 +67,10 @@ func _on_tick() -> void:
 			citizen.sim_tick(self)
 
 func _on_day_changed(_day: int) -> void:
-	economy.begin_new_day()
-	for building in buildings:
-		if building is CommercialBuilding:
-			(building as CommercialBuilding).run_daily_supply(self)
+	# Daily economy cycle is executed after payday in _on_payday().
+	# This keeps tax collection based on the previous day's finances
+	# and prevents midnight production from being taxed immediately.
+	pass
 
 func _on_payday() -> void:
 	print("\n=== PAYDAY (Day %d) ===" % world_day())
@@ -119,6 +119,21 @@ func _on_payday() -> void:
 	print("===========================\n")
 
 	_rollover_building_finances()
+	_run_daily_market_cycle()
+
+
+func _run_daily_market_cycle() -> void:
+	economy.begin_new_day()
+
+	# 1) Producers generate raw supply for the market.
+	for building in buildings:
+		if building is CommercialBuilding:
+			(building as CommercialBuilding).run_daily_production(self)
+
+	# 2) Consumers/commercials restock from the market.
+	for building2 in buildings:
+		if building2 is CommercialBuilding:
+			(building2 as CommercialBuilding).run_daily_supply(self)
 
 func _pay_welfare(citizen: Citizen, amount: int, city_hall) -> bool:
 	if city_hall != null and city_hall.pay_welfare(self, citizen, amount):
