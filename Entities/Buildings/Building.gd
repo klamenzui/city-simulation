@@ -82,7 +82,7 @@ func _infer_click_bounds() -> AABB:
 	var to_local := global_transform.affine_inverse()
 
 	for mesh in meshes:
-		if mesh == null or mesh.mesh == null:
+		if mesh == null or mesh.mesh == null or not mesh.is_inside_tree():
 			continue
 		var local_xf := to_local * mesh.global_transform
 		for corner in _aabb_corners(mesh.mesh.get_aabb()):
