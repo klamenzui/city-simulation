@@ -1,5 +1,4 @@
 extends RefCounted
-class_name RoadBuilder
 
 const ROAD_PARENT_NAME := "RoadNetwork"
 const ROAD_WIDTH := 1.4
@@ -89,3 +88,4 @@ static func _add_hub_patch(parent: Node3D, hub: Vector3, mat: StandardMaterial3D
 static func _clear_children(node: Node) -> void:
 	for child in node.get_children():
 		child.queue_free()
+

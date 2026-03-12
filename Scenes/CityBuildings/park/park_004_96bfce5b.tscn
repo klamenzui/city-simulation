@@ -1,0 +1,56 @@
+[gd_scene load_steps=6 format=4]
+
+[ext_resource type="Script" path="res://Entities/Buildings/Park.gd" id="1_lvc4n"]
+[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/KayKit_City_Builder_Bits_1.0_EXTRA/Assets/fbx/citybits_texture.png" id="2_fhced"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xa0ym"]
+resource_name = "citybits_texture"
+vertex_color_use_as_albedo = true
+albedo_texture = ExtResource("2_fhced")
+emission_enabled = true
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_yc4dg"]
+_surfaces = [{
+"aabb": AABB(-0.01, -0.01, 0, 0.02, 0.02, 0.0009999998),
+"format": 34359742465,
+"index_count": 84,
+"index_data": PackedByteArray("AAABAAIAAgADAAAAAAADAAQABAADAAIABAAFAAAAAAAFAAYABgAFAAQABgABAAAAAgAHAAQABAAHAAYACAACAAEABwACAAgAAQAGAAkACQAGAAcACQAKAAEAAQAKAAgABwALAAkACAALAAcACgAJAAwADAAJAAsADQAIAAoACwAIAA0ADAAOAAoACgAOAA0ACwAPAAwADgAMAA8ADQAPAAsADwANAA4A"),
+"name": "citybits_texture",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 16,
+"vertex_data": PackedByteArray("CtcjvArXIzxtEoM6CtcjuwrXIzxtEoM6CtcjuwrXI7xtEoM6CtcjvArXI7xtEoM6CtcjvArXI7wAAAAACtcjvArXIzwAAAAACtcjuwrXIzwAAAAACtcjuwrXI7wAAAAACtcjOwrXI7xtEoM6CtcjOwrXIzwAAAAACtcjOwrXIzxtEoM6CtcjOwrXI7wAAAAACtcjPArXIzwAAAAACtcjPArXI7xtEoM6CtcjPArXIzxtEoM6CtcjPArXI7wAAAAA")
+}]
+blend_shape_mode = 0
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_v8ibh"]
+resource_name = "Cube_14206"
+_surfaces = [{
+"aabb": AABB(-0.01, -0.01, 0, 0.02, 0.02, 0.0009999998),
+"attribute_data": PackedByteArray("fe6JPnp0Hj/HNJQ+e3QeP8c0lD56dB4/fe6JPnp0Hj997ok+hoshP33uiT56dB4/xzSUPnp0Hj/HNJQ+hoshP33uiT6GiyE/fe6JPoaLIT997ok+enQeP33uiT56dB4/icKoPjqTIT+Jwqg+g4AeP4nCqD6DgB4/icKoPjqTIT997ok+hospP8c0lD6Giyk/xzSUPoaLKT997ok+hospPxF7nj6Giyk/EXuePoaLKT9bwag+hospP1vBqD6Giyk/W8GoPoaLIT9bwag+enQePxF7nj57dB4/EXuePoeLIT/HNJQ+h4shP8c0lD57dB4/fe6JPnp0Hj997ok+hoshP4g9Lz8OF8M+iD0vP/bovD5kGio/9ui8PmQaKj8OF8M+EXuePoaLIT8Re54+enQeP1vBqD56dB4/W8GoPoaLIT9kGio/DBfDPmQaKj/06Lw+iD0vP/TovD6IPS8/DBfDPhF7nj57dB4/W8GoPnp0Hj9bwag+enQePxF7nj56dB4/ZBoqP/bovD6IPS8/9ui8Pog9Lz/06Lw+ZBoqP/TovD4="),
+"format": 34359742487,
+"index_count": 84,
+"index_data": PackedByteArray("AAABAAIAAgADAAAABAAFAAYABgAHAAQACAAJAAoACgALAAgADAANAA4ADgAPAAwAEAARABIAEgATABAAFAASABEAEQAVABQAFgAUABUAFQAXABYAGAAZABoAGgAbABgAHAAdAB4AHgAfABwAIAAhACIAIgAjACAAJAAlACYAJgAnACQAKAApACoAKgArACgALAAtAC4ALgAvACwAMAAxADIAMgAzADAA"),
+"material": SubResource("StandardMaterial3D_xa0ym"),
+"name": "citybits_texture",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 52,
+"vertex_data": PackedByteArray("CtcjvArXIzxtEoM6CtcjuwrXIzxtEoM6CtcjuwrXI7xtEoM6CtcjvArXI7xtEoM6CtcjvArXI7wAAAAACtcjvArXI7xtEoM6CtcjuwrXI7xtEoM6CtcjuwrXI7wAAAAACtcjvArXI7wAAAAACtcjvArXIzwAAAAACtcjvArXIzxtEoM6CtcjvArXI7xtEoM6CtcjPArXI7wAAAAACtcjPArXI7xtEoM6CtcjPArXIzxtEoM6CtcjPArXIzwAAAAACtcjvArXI7wAAAAACtcjuwrXI7wAAAAACtcjuwrXIzwAAAAACtcjvArXIzwAAAAACtcjOwrXIzwAAAAACtcjOwrXI7wAAAAACtcjPArXIzwAAAAACtcjPArXI7wAAAAACtcjPArXIzwAAAAACtcjPArXIzxtEoM6CtcjOwrXIzxtEoM6CtcjOwrXIzwAAAAACtcjuwrXIzwAAAAACtcjuwrXIzxtEoM6CtcjvArXIzxtEoM6CtcjvArXIzwAAAAACtcjOwrXIzwAAAAACtcjOwrXIzxtEoM6CtcjuwrXIzxtEoM6CtcjuwrXIzwAAAAACtcjOwrXI7wAAAAACtcjOwrXI7xtEoM6CtcjPArXI7xtEoM6CtcjPArXI7wAAAAACtcjuwrXI7wAAAAACtcjuwrXI7xtEoM6CtcjOwrXI7xtEoM6CtcjOwrXI7wAAAAACtcjOwrXIzxtEoM6CtcjPArXIzxtEoM6CtcjPArXI7xtEoM6CtcjOwrXI7xtEoM6CtcjuwrXIzxtEoM6CtcjOwrXIzxtEoM6CtcjOwrXI7xtEoM6CtcjuwrXI7xtEoM6/3//f+iii27/f/9/6KKLbv9//3/oootu/3//f////z//fwAA////v/9/AAD///+//38AAP///7//fwAA////vwAA/3////+/AAD/f////78AAP9/////vwAA/3////+/////f////7////9/////v////3////+/////f////7//////////v/////////+//////////7//////////v/////////+//////////7//////////v/////////+//3///////z//f///////P/9///////8//3///////z//f////v//P/9////+//8//3////7//z//f////v//P/9///////8//3///////z//f///////P/9///////8//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9//3////8//3//f////z//f/9/////P/9//3////8//3//f////z//f/9/////P/9//3////8//3//f////z8=")
+}]
+blend_shape_mode = 0
+shadow_mesh = SubResource("ArrayMesh_yc4dg")
+
+[node name="park_park_04" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_park", "parks"]]
+script = ExtResource("1_lvc4n")
+building_name = "Park 04 (Park)"
+building_type = 9
+entrance = NodePath("Entrance")
+
+[node name="park_road_straight" type="MeshInstance3D" parent="."]
+transform = Transform3D(100, 0, 0, 0, -1.1920929e-05, 99.99999, 0, -99.99999, -1.1920929e-05, 0, 0, 0)
+mesh = SubResource("ArrayMesh_v8ibh")
+skeleton = NodePath("")
+
+[node name="Entrance" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)

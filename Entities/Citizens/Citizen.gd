@@ -52,6 +52,8 @@ var _agent = CitizenAgentScript.new()
 var _nav_agent: NavigationAgent3D = null
 var _is_travelling: bool = false
 var _travel_target: Vector3 = Vector3.ZERO
+var _travel_route: PackedVector3Array = PackedVector3Array()
+var _travel_route_index: int = -1
 var _repath_time_left: float = 0.0
 var _walk_speed: float = 2.0
 var _current_speed: float = 0.0
@@ -116,7 +118,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	_agent.physics_step(self, delta, _world_ref)
 
-# ── Klick-Erkennung via Area3D ─────────────────────────────────────────────────
+# Click detection via Area3D
 func _setup_clickable() -> void:
 	var area := Area3D.new()
 	area.name = "ClickArea"
@@ -143,7 +145,7 @@ func _on_area_input_event(_camera: Camera3D, event: InputEvent,
 		get_viewport().set_input_as_handled()
 
 
-# ── Highlight (Auswahl-Farbe) ──────────────────────────────────────────────────
+# Highlight selection material
 func _setup_highlight() -> void:
 	_mesh_instance = get_node_or_null("MeshInstance3D") as MeshInstance3D
 	if _mesh_instance == null:
@@ -218,6 +220,21 @@ func has_reached_travel_target() -> bool:
 func stop_travel() -> void:
 	_agent.locomotion.stop_travel(self)
 
+func _advance_travel_route() -> bool:
+	if _travel_route.is_empty():
+		return false
+
+	var next_index := _travel_route_index + 1
+	if next_index >= _travel_route.size():
+		return false
+
+	_travel_route_index = next_index
+	_travel_target = _project_to_ground(_travel_route[_travel_route_index])
+	if _nav_agent != null:
+		_nav_agent.target_position = _travel_target
+	_repath_time_left = repath_interval_sec
+	return true
+
 func _move_along_path(delta: float) -> void:
 	if _nav_agent == null:
 		return
@@ -228,6 +245,9 @@ func _move_along_path(delta: float) -> void:
 		_nav_agent.target_position = _travel_target
 
 	if _nav_agent.is_navigation_finished() or has_reached_travel_target():
+		if _advance_travel_route():
+			set_position_grounded(_travel_target)
+			return
 		stop_travel()
 		set_position_grounded(_travel_target)
 		return
@@ -261,7 +281,7 @@ func _update_facing(move_dir: Vector3, delta: float) -> void:
 
 	var target_yaw := atan2(move_dir.x, move_dir.z)
 	rotation.y = lerp_angle(rotation.y, target_yaw, clamp(turn_speed * delta, 0.0, 1.0))
-# Wird von main.gd via debug_panel-Setter ausgelöst; oder direkt aufgerufen.
+# Called from main.gd when selection/debug panel changes.
 func set_selected(selected: bool) -> void:
 	if _mesh_instance == null:
 		return
@@ -271,16 +291,16 @@ func set_selected(selected: bool) -> void:
 		_mesh_instance.set_surface_override_material(0, _original_material)
 
 
-# ── Selektion: von main.gd aufgerufen ─────────────────────────────────────────
-# BUG FIX: _set() wird in GDScript NICHT für @export var aufgerufen — die
+# Selection entrypoint called from main.gd
+# NOTE: _set() is not called for exported vars in this case.
 # Variable ist schon definiert, daher greift der _set-Fallback nie.
-# Lösung: main.gd ruft select(panel) direkt auf statt debug_panel zuzuweisen.
+# Solution: main.gd calls select(panel) directly.
 func select(panel) -> void:
 	debug_panel = panel
 	set_selected(panel != null)
 
 
-# ── Referenzen auto-auflösen ───────────────────────────────────────────────────
+# Auto-resolve optional node references
 func _auto_resolve_refs() -> void:
 	if home_path != NodePath():
 		home = get_node_or_null(home_path) as ResidentialBuilding
@@ -403,7 +423,7 @@ func _update_debug(world: World, h_delta: float) -> void:
 		if needs.energy <= 10.0:   reason += " [exhausted]"
 		if needs.fun <= 0.0:       reason += " [depressed]"
 		if h_delta > 0:            reason = " [recovering]"
-		print("[%s] ❤ Health %s%.1f → %.1f%s" % [
+		print("[%s] Health %s%.1f -> %.1f%s" % [
 			citizen_name,
 			"+" if h_delta > 0 else "",
 			h_delta, needs.health, reason
@@ -415,13 +435,13 @@ func _update_debug(world: World, h_delta: float) -> void:
 		"Citizen"  : citizen_name,
 		"Location" : current_location.name if current_location else "travelling...",
 		"Action"   : current_action.label if current_action else "idle",
-		"──────────": "",
+		"----------": "",
 		"Hunger"   : "%.1f / 100  (eat@50)" % needs.hunger,
 		"Energy"   : "%.1f / 100  (sleep@80)" % needs.energy,
 		"Fun"      : "%.1f / 100  (relax@30)" % needs.fun,
 		"Health"   : "%.1f / 100" % needs.health,
-		"──────────2": "",
-		"Money"    : "%d §" % wallet.balance,
+		"----------2": "",
+		"Money"    : "%d EUR" % wallet.balance,
 		"Groceries": str(home_food_stock),
 		"Education": "%d" % education_level,
 		"Workplace": job.workplace.name if (job and job.workplace) else "unemployed",
@@ -597,10 +617,10 @@ func _start_action(a: Action, world: World) -> void:
 			loc = "-> " + target.name
 
 	var health_icon := ""
-	if needs.health < 50.0:    health_icon = " ☠"
-	elif needs.health < 75.0:  health_icon = " 🤒"
+	if needs.health < 50.0:    health_icon = " [LOW]"
+	elif needs.health < 75.0:  health_icon = " [WARN]"
 
-	print("[%s] %02d:%02d (%s) | %-10s | H:%.0f E:%.0f F:%.0f HP:%.0f%s | 💰%d | at=%s" % [
+	print("[%s] %02d:%02d (%s) | %-10s | H:%.0f E:%.0f F:%.0f HP:%.0f%s | $%d | at=%s" % [
 		citizen_name, h, m, w,
 		a.label,
 		needs.hunger, needs.energy, needs.fun, needs.health, health_icon,
@@ -615,10 +635,10 @@ func pay_rent(world: World, landlord: ResidentialBuilding, amount: int) -> void:
 	var before := wallet.balance
 	var success := world.economy.transfer(wallet, landlord.account, amount)
 	if success:
-		print("[%s] 🏠 Rent paid: %d § (balance: %d → %d)" % [
+		print("[%s] Rent paid: %d EUR (balance: %d -> %d)" % [
 			citizen_name, amount, before, wallet.balance
 		])
 	else:
-		print("[%s] ⚠ Could not pay rent! Need %d §, have %d §" % [
+		print("[%s] Could not pay rent! Need %d EUR, have %d EUR" % [
 			citizen_name, amount, wallet.balance
 		])
