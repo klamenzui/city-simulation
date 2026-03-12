@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://ti5aspgertd1"]
+
+[ext_resource type="Texture2D" uid="uid://by8lx8tdudqvc" path="res://ImportedCitySource/selector.png" id="1_g5dyd"]
+
+[node name="Selector" type="Node3D"]
+
+[node name="Cursor" type="Sprite3D" parent="."]
+axis = 1
+texture = ExtResource("1_g5dyd")

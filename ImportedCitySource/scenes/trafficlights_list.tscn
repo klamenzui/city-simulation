@@ -1,0 +1,145 @@
+[gd_scene load_steps=2 format=3 uid="uid://c6hlutt713me0"]
+
+[ext_resource type="PackedScene" uid="uid://btysdbo6rqmmu" path="res://ImportedCitySource/scenes/trafficlight_c_active.tscn" id="2_13wej"]
+
+[node name="Trafficlight" type="Node3D"]
+
+[node name="trafficlight_C0" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 8.3, 0, 1)
+
+[node name="trafficlight_C1" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, -1, 0, 8.3)
+light_color = 1
+
+[node name="trafficlight_C2" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 11.7, 0, -1)
+
+[node name="trafficlight_C3" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(1, 0, -1.74846e-07, 0, 1, 0, 1.74846e-07, 0, 1, 1, 0, 11.7)
+light_color = 1
+
+[node name="trafficlight_C4" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 18.3, 0, 1)
+
+[node name="trafficlight_C5" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, -1, 0, 18.3)
+light_color = 1
+
+[node name="trafficlight_C6" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 21.7, 0, -1)
+
+[node name="trafficlight_C7" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(1, 0, -1.74846e-07, 0, 1, 0, 1.74846e-07, 0, 1, 1, 0, 21.7)
+light_color = 1
+
+[node name="trafficlight_C8" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 1.7, 0, 9)
+
+[node name="trafficlight_C9" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(1, 0, -1.74846e-07, 0, 1, 0, 1.74846e-07, 0, 1, 11, 0, 1.7)
+light_color = 1
+
+[node name="trafficlight_C10" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 9, 0, 8.3)
+light_color = 1
+
+[node name="trafficlight_C11" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 8.3, 0, 11)
+
+[node name="trafficlight_C12" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 11.7, 0, 9)
+
+[node name="trafficlight_C13" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(1, 0, -1.74846e-07, 0, 1, 0, 1.74846e-07, 0, 1, 11, 0, 11.7)
+light_color = 1
+
+[node name="trafficlight_C14" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 18.3, 0, 11)
+
+[node name="trafficlight_C15" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 9, 0, 18.3)
+light_color = 1
+
+[node name="trafficlight_C16" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 21.7, 0, 9)
+
+[node name="trafficlight_C17" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(1, 0, -1.74846e-07, 0, 1, 0, 1.74846e-07, 0, 1, 11, 0, 21.7)
+light_color = 1
+
+[node name="trafficlight_C18" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 28.3, 0, 11)
+
+[node name="trafficlight_C19" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 9, 0, 28.3)
+light_color = 1
+
+[node name="trafficlight_C20" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 1.7, 0, 19)
+
+[node name="trafficlight_C21" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(1, 0, -1.74846e-07, 0, 1, 0, 1.74846e-07, 0, 1, 21, 0, 1.7)
+light_color = 1
+
+[node name="trafficlight_C22" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 8.3, 0, 21)
+
+[node name="trafficlight_C23" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 19, 0, 8.3)
+light_color = 1
+
+[node name="trafficlight_C24" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 11.7, 0, 19)
+
+[node name="trafficlight_C25" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(1, 0, -1.74846e-07, 0, 1, 0, 1.74846e-07, 0, 1, 21, 0, 11.7)
+light_color = 1
+
+[node name="trafficlight_C26" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 19, 0, 18.3)
+light_color = 1
+
+[node name="trafficlight_C27" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 18.3, 0, 21)
+
+[node name="trafficlight_C28" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 21.7, 0, 19)
+
+[node name="trafficlight_C29" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(1, 0, -1.74846e-07, 0, 1, 0, 1.74846e-07, 0, 1, 21, 0, 21.7)
+light_color = 1
+
+[node name="trafficlight_C30" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 28.3, 0, 21)
+
+[node name="trafficlight_C31" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 19, 0, 28.3)
+light_color = 1
+
+[node name="trafficlight_C32" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 8.3, 0, 31)
+
+[node name="trafficlight_C33" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 29, 0, 8.3)
+light_color = 1
+
+[node name="trafficlight_C34" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 11.7, 0, 29)
+
+[node name="trafficlight_C35" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(1, 0, -1.74846e-07, 0, 1, 0, 1.74846e-07, 0, 1, 31, 0, 11.7)
+light_color = 1
+
+[node name="trafficlight_C36" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 18.3, 0, 31)
+
+[node name="trafficlight_C37" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 29, 0, 18.3)
+light_color = 1
+
+[node name="trafficlight_C38" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 21.7, 0, 29)
+
+[node name="trafficlight_C39" parent="." instance=ExtResource("2_13wej")]
+transform = Transform3D(1, 0, -1.74846e-07, 0, 1, 0, 1.74846e-07, 0, 1, 31, 0, 21.7)
+light_color = 1

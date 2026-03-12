@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3 uid="uid://cqq7gwno88a72"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_68dxe"]
+albedo_color = Color(0.301961, 0.976471, 0.513726, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_n2h48"]
+material = SubResource("StandardMaterial3D_68dxe")
+
+[node name="Point" type="Node3D" groups=["lane_waypoint_right"]]
+
+[node name="Marker3D" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
+mesh = SubResource("SphereMesh_n2h48")
+skeleton = NodePath("../..")

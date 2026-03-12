@@ -1,11 +1,14 @@
 extends CSGBox3D
 class_name World
 
+const RoadGraphScript = preload("res://Simulation/Navigation/RoadGraph.gd")
+
 @export var minutes_per_tick: int = 10
 @export var tick_interval_sec: float = 0.5
 
 var time: TimeSystem = TimeSystem.new()
 var economy: EconomySystem = EconomySystem.new()
+var road_graph = RoadGraphScript.new()
 
 # Reserve account used as fallback / infrastructure sink.
 var city_account: Account = Account.new()
@@ -173,6 +176,16 @@ func set_speed(multiplier: float) -> void:
 
 func world_day() -> int:
 	return time.day
+
+func rebuild_road_graph(root: Node3D) -> void:
+	if road_graph == null:
+		road_graph = RoadGraphScript.new()
+	road_graph.rebuild_from_scene(root)
+
+func get_road_path(start_pos: Vector3, end_pos: Vector3) -> PackedVector3Array:
+	if road_graph == null:
+		return PackedVector3Array()
+	return road_graph.find_path_points(start_pos, end_pos)
 
 func get_ground_fallback_y() -> float:
 	var world_height := size.y * absf(scale.y)

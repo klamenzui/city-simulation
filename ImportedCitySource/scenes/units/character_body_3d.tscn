@@ -1,0 +1,43 @@
+[gd_scene load_steps=5 format=3 uid="uid://c3vw5ipy6h2t8"]
+
+[ext_resource type="Script" uid="uid://b1db1rhvhskay" path="res://ImportedCitySource/scripts/character_body_3d.gd" id="1_8y6wi"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_5vvyt"]
+radius = 0.250843
+height = 0.987324
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_5vvyt"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_8y6wi"]
+
+[node name="CharacterBody3D" type="CharacterBody3D"]
+up_direction = Vector3(0.999445, 0.0333148, 0)
+script = ExtResource("1_8y6wi")
+target = Vector3(10, 0, 10)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+shape = SubResource("CapsuleShape3D_5vvyt")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0.1, 0)
+mesh = SubResource("CapsuleMesh_5vvyt")
+skeleton = NodePath("")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.05, 0, 0, 0, -0.00149902, 0.0499775, 0, -0.0499775, -0.00149902, 0, 0.371922, -0.289461)
+mesh = SubResource("CapsuleMesh_8y6wi")
+
+[node name="ObstacleRayCastForward" type="RayCast3D" parent="MeshInstance3D2"]
+transform = Transform3D(20, 0, 0, 0, -20, -1.74846e-06, 0, 1.74846e-06, -20, 0, -1.2, -0.03)
+
+[node name="ObstacleRayCastLeft" type="RayCast3D" parent="MeshInstance3D2"]
+transform = Transform3D(18.7939, 6.8404, 1.74845e-06, 6.8404, -18.7938, 0, 1.64301e-06, 5.98007e-07, -20, 0, -1.2, 0.03)
+
+[node name="ObstacleRayCastRight" type="RayCast3D" parent="MeshInstance3D2"]
+transform = Transform3D(18.7939, -6.8404, -1.74846e-06, -6.8404, -18.7938, 0, -1.64301e-06, 5.98007e-07, -20, 0, -1.2, 0.03)
+
+[node name="GroundCheckRay" type="RayCast3D" parent="MeshInstance3D2"]
+transform = Transform3D(20, 0, 0, 0, -19.5107, -4.39692, 0, 4.39692, -19.5107, 0, -0.377954, -0.43241)

@@ -34,8 +34,8 @@ var visitors: Array[Citizen] = []
 var income_today: int = 0
 var expenses_today: int = 0
 
-var _mesh_instance: MeshInstance3D = null
-var _original_material: Material = null
+var _highlight_targets: Array[MeshInstance3D] = []
+var _original_overlay_by_mesh: Dictionary = {}
 var _highlight_material: StandardMaterial3D = null
 
 func _ready() -> void:
@@ -50,34 +50,81 @@ func _setup_clickable() -> void:
 		area = Area3D.new()
 		area.name = "ClickArea"
 		area.input_ray_pickable = true
-
-		var shape_node := CollisionShape3D.new()
-		var shape := BoxShape3D.new()
-		shape.size = _infer_click_shape_size()
-		shape_node.shape = shape
-		shape_node.position = Vector3(0, shape.size.y * 0.5, 0)
-
-		area.add_child(shape_node)
 		add_child(area)
+
+	var shape_node := area.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if shape_node == null:
+		shape_node = CollisionShape3D.new()
+		shape_node.name = "CollisionShape3D"
+		area.add_child(shape_node)
+
+	var shape := shape_node.shape as BoxShape3D
+	if shape == null:
+		shape = BoxShape3D.new()
+		shape_node.shape = shape
+
+	var bounds := _infer_click_bounds()
+	shape.size = bounds.size
+	shape_node.position = bounds.position + bounds.size * 0.5
 
 	if not area.input_event.is_connected(_on_area_input_event):
 		area.input_event.connect(_on_area_input_event)
 
-func _infer_click_shape_size() -> Vector3:
-	var mesh := get_node_or_null("MeshInstance3D") as MeshInstance3D
-	if mesh == null or mesh.mesh == null:
-		return Vector3(2.0, 2.0, 2.0)
+func _infer_click_bounds() -> AABB:
+	var meshes: Array[MeshInstance3D] = []
+	_collect_mesh_instances(self, meshes)
+	if meshes.is_empty():
+		return AABB(Vector3(-0.75, 0.0, -0.75), Vector3(1.5, 2.0, 1.5))
 
-	var aabb := mesh.mesh.get_aabb()
-	var size := aabb.size
-	var scale := mesh.transform.basis.get_scale()
-	size.x *= absf(scale.x)
-	size.y *= absf(scale.y)
-	size.z *= absf(scale.z)
-	size.x = maxf(size.x, 1.5)
-	size.y = maxf(size.y, 1.5)
-	size.z = maxf(size.z, 1.5)
-	return size
+	var has_points := false
+	var min_v := Vector3.ZERO
+	var max_v := Vector3.ZERO
+	var to_local := global_transform.affine_inverse()
+
+	for mesh in meshes:
+		if mesh == null or mesh.mesh == null:
+			continue
+		var local_xf := to_local * mesh.global_transform
+		for corner in _aabb_corners(mesh.mesh.get_aabb()):
+			var p := local_xf * corner
+			if not has_points:
+				has_points = true
+				min_v = p
+				max_v = p
+			else:
+				min_v = Vector3(minf(min_v.x, p.x), minf(min_v.y, p.y), minf(min_v.z, p.z))
+				max_v = Vector3(maxf(max_v.x, p.x), maxf(max_v.y, p.y), maxf(max_v.z, p.z))
+
+	if not has_points:
+		return AABB(Vector3(-0.75, 0.0, -0.75), Vector3(1.5, 2.0, 1.5))
+
+	var size := max_v - min_v
+	size = Vector3(maxf(size.x, 1.5), maxf(size.y, 1.5), maxf(size.z, 1.5))
+	var base_y := minf(min_v.y, 0.0)
+	return AABB(Vector3(min_v.x, base_y, min_v.z), size)
+
+func _collect_mesh_instances(node: Node, out: Array[MeshInstance3D]) -> void:
+	for child in node.get_children():
+		if child is MeshInstance3D:
+			var mesh := child as MeshInstance3D
+			if mesh.mesh != null:
+				out.append(mesh)
+		if child is Node:
+			_collect_mesh_instances(child as Node, out)
+
+func _aabb_corners(aabb: AABB) -> Array[Vector3]:
+	var p := aabb.position
+	var s := aabb.size
+	return [
+		p,
+		p + Vector3(s.x, 0, 0),
+		p + Vector3(0, s.y, 0),
+		p + Vector3(0, 0, s.z),
+		p + Vector3(s.x, s.y, 0),
+		p + Vector3(s.x, 0, s.z),
+		p + Vector3(0, s.y, s.z),
+		p + s,
+	]
 
 func _on_area_input_event(_camera: Camera3D, event: InputEvent,
 		_position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
@@ -88,23 +135,32 @@ func _on_area_input_event(_camera: Camera3D, event: InputEvent,
 		get_viewport().set_input_as_handled()
 
 func _setup_highlight() -> void:
-	_mesh_instance = get_node_or_null("MeshInstance3D") as MeshInstance3D
-	if _mesh_instance == null:
+	_highlight_targets.clear()
+	_original_overlay_by_mesh.clear()
+	_collect_mesh_instances(self, _highlight_targets)
+	if _highlight_targets.is_empty():
 		return
 
-	_original_material = _mesh_instance.get_surface_override_material(0)
 	_highlight_material = StandardMaterial3D.new()
 	_highlight_material.albedo_color = Color(0.95, 0.75, 0.12)
 	_highlight_material.emission_enabled = true
 	_highlight_material.emission = Color(0.5, 0.35, 0.05)
 
+	for mesh in _highlight_targets:
+		if mesh == null:
+			continue
+		_original_overlay_by_mesh[mesh] = mesh.material_overlay
+
 func set_selected(selected: bool) -> void:
-	if _mesh_instance == null:
+	if _highlight_targets.is_empty():
 		return
-	if selected:
-		_mesh_instance.set_surface_override_material(0, _highlight_material)
-	else:
-		_mesh_instance.set_surface_override_material(0, _original_material)
+	for mesh in _highlight_targets:
+		if mesh == null:
+			continue
+		if selected:
+			mesh.material_overlay = _highlight_material
+		else:
+			mesh.material_overlay = _original_overlay_by_mesh.get(mesh, null)
 
 func select(panel: DebugPanel, world = null) -> void:
 	debug_panel = panel

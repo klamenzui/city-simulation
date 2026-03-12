@@ -1,4 +1,4 @@
-extends RefCounted
+﻿extends RefCounted
 class_name CitizenLocomotion
 
 func setup(citizen) -> void:
@@ -29,14 +29,29 @@ func set_position_grounded(citizen, pos: Vector3, world) -> void:
 func begin_travel_to(citizen, target_pos: Vector3, world) -> void:
 	if citizen == null:
 		return
+
 	citizen._setup_navigation()
 	if world != null:
 		citizen._ground_fallback_y = world.get_ground_fallback_y()
-	citizen._travel_target = citizen._project_to_ground(target_pos)
+
+	var route := PackedVector3Array()
+	if world != null and world.has_method("get_road_path"):
+		route = world.get_road_path(citizen.global_position, target_pos)
+
+	if route.size() < 2:
+		route.append(citizen.global_position)
+		route.append(target_pos)
+
+	citizen._travel_route = route
+	citizen._travel_route_index = 0
 	citizen._is_travelling = true
 	citizen._repath_time_left = 0.0
 	citizen._current_speed = 0.0
-	citizen._nav_agent.target_position = citizen._travel_target
+
+	if not citizen._advance_travel_route():
+		citizen._travel_target = citizen._project_to_ground(target_pos)
+		if citizen._nav_agent != null:
+			citizen._nav_agent.target_position = citizen._travel_target
 
 func has_reached_travel_target(citizen) -> bool:
 	if citizen == null:
@@ -52,5 +67,7 @@ func stop_travel(citizen) -> void:
 		return
 	citizen._is_travelling = false
 	citizen._current_speed = 0.0
+	citizen._travel_route = PackedVector3Array()
+	citizen._travel_route_index = -1
 	if citizen._nav_agent != null:
 		citizen._nav_agent.target_position = citizen.global_position

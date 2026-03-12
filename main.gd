@@ -4,6 +4,8 @@ extends Node3D
 
 const CITIZEN_COUNT := 6
 const RoadBuilderScript = preload("res://Simulation/Bootstrap/RoadBuilder.gd")
+const ImportedCitySetupScript = preload("res://Simulation/Bootstrap/ImportedCitySetup.gd")
+const RestaurantScene = preload("res://Scenes/Restaurant.tscn")
 const SupermarketScene = preload("res://Scenes/Supermarket.tscn")
 const ShopScene = preload("res://Scenes/Shop.tscn")
 const CinemaScene = preload("res://Scenes/Cinema.tscn")
@@ -38,19 +40,69 @@ func _process(delta: float) -> void:
 		_selected_building.refresh_info_panel(world)
 
 func _setup_world_systems() -> void:
+	var has_scene_city: bool = get_node_or_null("World/City") != null
+	var imported_city: Node3D = null
+	if not has_scene_city:
+		imported_city = ImportedCitySetupScript.ensure_city_visual(self)
+
 	_spawn_missing_core_buildings()
 	NavigationSetup.ensure_region(self, world)
 	WorldSetup.configure_scene_buildings(get_tree(), world)
-	RoadBuilderScript.build_simple_roads(self, world)
+	if not has_scene_city and imported_city == null:
+		RoadBuilderScript.build_simple_roads(self, world)
+
+	world.rebuild_road_graph(self)
 
 func _spawn_missing_core_buildings() -> void:
-	_spawn_if_missing("Supermarket", SupermarketScene, Vector3(15.0, 0.0, 9.0))
-	_spawn_if_missing("Shop", ShopScene, Vector3(19.0, 0.0, -4.0))
-	_spawn_if_missing("Cinema", CinemaScene, Vector3(-18.0, 0.0, -9.0))
-	_spawn_if_missing("University", UniversityScene, Vector3(-14.0, 0.0, 10.0))
-	_spawn_if_missing("CityHall", CityHallScene, Vector3(1.0, 0.0, 15.0))
-	_spawn_if_missing("Farm", FarmScene, Vector3(-24.0, 0.0, 14.0))
-	_spawn_if_missing("Factory", FactoryScene, Vector3(24.0, 0.0, 14.0))
+	if not _has_building_type("restaurant"):
+		_spawn_if_missing("Restaurant", RestaurantScene, Vector3(11.0, 0.0, -7.0))
+	if not _has_building_type("supermarket"):
+		_spawn_if_missing("Supermarket", SupermarketScene, Vector3(15.0, 0.0, 9.0))
+	if not _has_building_type("shop"):
+		_spawn_if_missing("Shop", ShopScene, Vector3(19.0, 0.0, -4.0))
+	if not _has_building_type("cinema"):
+		_spawn_if_missing("Cinema", CinemaScene, Vector3(-18.0, 0.0, -9.0))
+	if not _has_building_type("university"):
+		_spawn_if_missing("University", UniversityScene, Vector3(-14.0, 0.0, 10.0))
+	if not _has_building_type("city_hall"):
+		_spawn_if_missing("CityHall", CityHallScene, Vector3(1.0, 0.0, 15.0))
+	if not _has_building_type("farm"):
+		_spawn_if_missing("Farm", FarmScene, Vector3(-24.0, 0.0, 14.0))
+	if not _has_building_type("factory"):
+		_spawn_if_missing("Factory", FactoryScene, Vector3(24.0, 0.0, 14.0))
+
+func _has_building_type(type_id: String) -> bool:
+	for node in get_tree().get_nodes_in_group("buildings"):
+		if node is not Building:
+			continue
+		match type_id:
+			"restaurant":
+				if node is Restaurant:
+					return true
+			"supermarket":
+				if node is Supermarket:
+					return true
+			"shop":
+				if node is Shop and node is not Supermarket:
+					return true
+			"cinema":
+				if node is Cinema:
+					return true
+			"university":
+				if node is University:
+					return true
+			"city_hall":
+				if node is CityHall:
+					return true
+			"farm":
+				if node is Farm:
+					return true
+			"factory":
+				if node is Factory:
+					return true
+			_:
+				pass
+	return false
 
 func _spawn_if_missing(node_name: String, scene: PackedScene, pos: Vector3) -> void:
 	if get_node_or_null(node_name) != null:
