@@ -246,7 +246,8 @@ func _move_along_path(delta: float) -> void:
 
 	if _nav_agent.is_navigation_finished() or has_reached_travel_target():
 		if _advance_travel_route():
-			set_position_grounded(_travel_target)
+			# Keep moving naturally to the next segment target.
+			# Snapping here teleports citizens between route points.
 			return
 		stop_travel()
 		set_position_grounded(_travel_target)
@@ -433,7 +434,7 @@ func _update_debug(world: World, h_delta: float) -> void:
 		"Time"     : "%s (%s)" % [world.time.get_time_string(), world.time.get_weekday_name()],
 		"Weekend"  : str(world.time.is_weekend()),
 		"Citizen"  : citizen_name,
-		"Location" : current_location.name if current_location else "travelling...",
+		"Location" : current_location.building_name if current_location else "travelling...",
 		"Action"   : current_action.label if current_action else "idle",
 		"----------": "",
 		"Hunger"   : "%.1f / 100  (eat@50)" % needs.hunger,
@@ -444,7 +445,7 @@ func _update_debug(world: World, h_delta: float) -> void:
 		"Money"    : "%d EUR" % wallet.balance,
 		"Groceries": str(home_food_stock),
 		"Education": "%d" % education_level,
-		"Workplace": job.workplace.name if (job and job.workplace) else "unemployed",
+		"Workplace": job.workplace.building_name if (job and job.workplace) else "unemployed",
 		"WorkToday": "%d / %d min" % [
 			work_minutes_today,
 			int(job.shift_hours * 60) if job else 0
