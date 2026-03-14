@@ -8,6 +8,7 @@ class_name Job
 @export var shift_hours: int = 8  # always 8h shift
 
 @export var workplace_name: String = ""  # optional filter by building_name
+@export var workplace_service_type: String = ""  # optional filter by service type
 @export var required_education_level: int = 0
 
 var workplace: Building = null
@@ -41,6 +42,8 @@ func _auto_find_workplace(root: Node, from_pos: Vector3) -> Building:
 		var b := node as Building
 
 		if workplace_name != "" and b.building_name != workplace_name:
+			continue
+		if workplace_service_type != "" and b.get_service_type() != workplace_service_type:
 			continue
 		if not b.has_free_job_slots():
 			continue

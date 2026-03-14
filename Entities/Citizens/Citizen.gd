@@ -33,6 +33,9 @@ var current_action: Action = null
 
 var _world_ref: World = null
 var _agent = CitizenAgentScript.new()
+var _last_job_requirement_notice_level: int = -1
+var _last_job_requirement_notice_title: String = ""
+var _last_workplace_full_notice_day: int = -1
 
 # --- Movement / Navigation ---
 @export var move_speed_min: float = 1.6
@@ -319,41 +322,41 @@ func _auto_resolve_refs() -> void:
 	if home == null:
 		home = _find_first_residential_building()
 		if home:
-			print("[Citizen %s] Auto-found home: %s" % [citizen_name, home.name])
+			print("[Citizen %s] Auto-found home: %s" % [citizen_name, _building_label(home)])
 
 	if home != null:
 		var added := home.add_tenant(self)
 		if added:
-			print("[Citizen %s] Registered as tenant at: %s" % [citizen_name, home.name])
+			print("[Citizen %s] Registered as tenant at: %s" % [citizen_name, _building_label(home)])
 		else:
-			print("[Citizen %s] WARNING: Home %s is full, could not register as tenant!" % [citizen_name, home.name])
+			print("[Citizen %s] WARNING: Home %s is full, could not register as tenant!" % [citizen_name, _building_label(home)])
 
 	var origin := home.get_entrance_pos() if home else global_position
 
 	if favorite_restaurant == null:
 		favorite_restaurant = _find_nearest_restaurant(origin, false)
 		if favorite_restaurant:
-			print("[Citizen %s] Auto-found restaurant: %s" % [citizen_name, favorite_restaurant.name])
+			print("[Citizen %s] Auto-found restaurant: %s" % [citizen_name, _building_label(favorite_restaurant)])
 
 	if favorite_supermarket == null:
 		favorite_supermarket = _find_nearest_supermarket(origin, false)
 		if favorite_supermarket:
-			print("[Citizen %s] Auto-found supermarket: %s" % [citizen_name, favorite_supermarket.name])
+			print("[Citizen %s] Auto-found supermarket: %s" % [citizen_name, _building_label(favorite_supermarket)])
 
 	if favorite_shop == null:
 		favorite_shop = _find_nearest_shop(origin, false)
 		if favorite_shop:
-			print("[Citizen %s] Auto-found shop: %s" % [citizen_name, favorite_shop.name])
+			print("[Citizen %s] Auto-found shop: %s" % [citizen_name, _building_label(favorite_shop)])
 
 	if favorite_cinema == null:
 		favorite_cinema = _find_nearest_cinema(origin, false)
 		if favorite_cinema:
-			print("[Citizen %s] Auto-found cinema: %s" % [citizen_name, favorite_cinema.name])
+			print("[Citizen %s] Auto-found cinema: %s" % [citizen_name, _building_label(favorite_cinema)])
 
 	if favorite_park == null:
 		favorite_park = _find_nearest_park(origin)
 		if favorite_park:
-			print("[Citizen %s] Auto-found park: %s" % [citizen_name, favorite_park.name])
+			print("[Citizen %s] Auto-found park: %s" % [citizen_name, _building_label(favorite_park)])
 
 	_try_find_job_once()
 
@@ -369,7 +372,7 @@ func _try_find_job_once() -> void:
 
 	var from_pos := home.get_entrance_pos() if home else global_position
 	if _world_ref != null:
-		job.workplace = _world_ref.find_nearest_open_workplace(from_pos, job.workplace_name)
+		job.workplace = _world_ref.find_nearest_open_workplace(from_pos, job.workplace_name, job.workplace_service_type)
 
 	if job.workplace == null:
 		var root := get_tree().current_scene
@@ -379,21 +382,17 @@ func _try_find_job_once() -> void:
 		return
 
 	if not job.meets_requirements(self):
-		print("[Citizen %s] Needs education level %d for job %s (current %d)." % [
-			citizen_name,
-			job.required_education_level,
-			job.title,
-			education_level
-		])
+		_maybe_log_job_requirement_notice()
 		job.workplace = null
 		return
 
 	var hired := job.try_get_employed(self)
 	if hired:
-		print("[Citizen %s] Employed at: %s" % [citizen_name, job.workplace.name])
+		_reset_job_notice_state()
+		print("[Citizen %s] Employed at: %s" % [citizen_name, _building_label(job.workplace)])
 	else:
 		job.workplace = null
-		print("[Citizen %s] Workplace full, will retry later." % citizen_name)
+		_maybe_log_workplace_full_notice()
 
 func set_world_ref(world: World) -> void:
 	if world == null:
@@ -608,12 +607,12 @@ func _start_action(a: Action, world: World) -> void:
 	var h := world.time.get_hour()
 	var m := world.time.get_minute()
 	var w := world.time.get_weekday_name()
-	var loc = current_location.name if current_location else "travelling"
+	var loc = _building_label(current_location) if current_location else "travelling"
 
 	if a is GoToBuildingAction:
 		var target := (a as GoToBuildingAction).target
 		if target != null:
-			loc = "-> " + target.name
+			loc = "-> " + _building_label(target)
 
 	var health_icon := ""
 	if needs.health < 50.0:    health_icon = " [LOW]"
@@ -641,3 +640,34 @@ func pay_rent(world: World, landlord: ResidentialBuilding, amount: int) -> void:
 		print("[%s] Could not pay rent! Need %d EUR, have %d EUR" % [
 			citizen_name, amount, wallet.balance
 		])
+
+func _building_label(building: Building) -> String:
+	if building == null:
+		return "Unknown"
+	return building.get_display_name()
+
+func _maybe_log_job_requirement_notice() -> void:
+	if job == null:
+		return
+	if _last_job_requirement_notice_level == education_level and _last_job_requirement_notice_title == job.title:
+		return
+	_last_job_requirement_notice_level = education_level
+	_last_job_requirement_notice_title = job.title
+	print("[Citizen %s] Needs education level %d for job %s (current %d)." % [
+		citizen_name,
+		job.required_education_level,
+		job.title,
+		education_level
+	])
+
+func _maybe_log_workplace_full_notice() -> void:
+	var today := _world_ref.world_day() if _world_ref != null else -1
+	if _last_workplace_full_notice_day == today:
+		return
+	_last_workplace_full_notice_day = today
+	print("[Citizen %s] Workplace full, will retry later." % citizen_name)
+
+func _reset_job_notice_state() -> void:
+	_last_job_requirement_notice_level = -1
+	_last_job_requirement_notice_title = ""
+	_last_workplace_full_notice_day = -1

@@ -40,7 +40,9 @@ var _highlight_material: StandardMaterial3D = null
 
 func _ready() -> void:
 	add_to_group("buildings")
-	account.owner_name = building_name
+	if building_name.strip_edges().is_empty():
+		building_name = name
+	account.owner_name = get_display_name()
 	_setup_clickable()
 	_setup_highlight()
 
@@ -295,3 +297,8 @@ func begin_new_day() -> void:
 
 func get_entrance_pos() -> Vector3:
 	return entrance.global_position if entrance else global_position
+
+func get_display_name() -> String:
+	if not building_name.strip_edges().is_empty():
+		return building_name
+	return name

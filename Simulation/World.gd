@@ -328,7 +328,7 @@ func find_nearest_building_with_service(from_pos: Vector3, service_type: String,
 			best = building
 	return best
 
-func find_nearest_open_workplace(from_pos: Vector3, workplace_name_filter: String = "") -> Building:
+func find_nearest_open_workplace(from_pos: Vector3, workplace_name_filter: String = "", workplace_service_type_filter: String = "") -> Building:
 	var best: Building = null
 	var best_dist := INF
 
@@ -338,6 +338,8 @@ func find_nearest_open_workplace(from_pos: Vector3, workplace_name_filter: Strin
 		if not building.has_free_job_slots():
 			continue
 		if workplace_name_filter != "" and building.building_name != workplace_name_filter:
+			continue
+		if workplace_service_type_filter != "" and building.get_service_type() != workplace_service_type_filter:
 			continue
 
 		var dist := from_pos.distance_to(building.global_position)
