@@ -27,6 +27,19 @@ const EDUCATION_JOBS := {
 	"Engineer": 1,
 }
 
+const JOB_SERVICE_TYPES := {
+	"Baecker": "food",
+	"Kellner": "food",
+	"Programmierer": "governance",
+	"Fahrer": "production_goods",
+	"Mechaniker": "production_goods",
+	"Verkaeufer": "shopping",
+	"Designer": "fun",
+	"Doctor": "governance",
+	"Teacher": "education",
+	"Engineer": "production_goods",
+}
+
 static func spawn_citizens(parent: Node, world: World, count: int) -> Array[Citizen]:
 	var spawned: Array[Citizen] = []
 	if parent == null or world == null or count <= 0:
@@ -70,6 +83,7 @@ static func _create_random_job() -> Job:
 	job.start_hour = randi_range(7, 9)
 	job.shift_hours = 8
 	job.required_education_level = int(EDUCATION_JOBS.get(job.title, 0))
+	job.workplace_service_type = str(JOB_SERVICE_TYPES.get(job.title, ""))
 	return job
 
 static func _random_job_title() -> String:

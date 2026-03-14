@@ -5,9 +5,7 @@ var target: Building
 var travel_minutes: int = 20
 var _arrival_target: Vector3 = Vector3.ZERO
 
-# Small XZ scatter so multiple citizens arriving at the same building
-# don't all land on exactly the same world position.
-const ARRIVAL_SCATTER := 0.6
+const MAX_TRAVEL_SIM_MIN := 240
 
 func _init(_target: Building = null, _travel: int = 20) -> void:
 	super()
@@ -23,13 +21,10 @@ func start(world: World, citizen: Citizen) -> void:
 
 	citizen.current_location = null  # in transit
 
-	var base := target.get_entrance_pos()
-	var offset := Vector3(
-		randf_range(-ARRIVAL_SCATTER, ARRIVAL_SCATTER),
-		0.0,
-		randf_range(-ARRIVAL_SCATTER, ARRIVAL_SCATTER)
-	)
-	_arrival_target = base + offset
+	# Use the exact entrance as arrival point. Random scatter produced
+	# unreachable targets for some imported buildings and could leave
+	# citizens stuck in GoTo forever.
+	_arrival_target = target.get_entrance_pos()
 	citizen.begin_travel_to(_arrival_target)
 
 	# Path movement now drives completion; keep action timer disabled.
@@ -41,6 +36,9 @@ func tick(world: World, citizen: Citizen, dt: int) -> void:
 		finished = true
 		return
 	if citizen.has_reached_travel_target():
+		finished = true
+		return
+	if elapsed_minutes >= MAX_TRAVEL_SIM_MIN:
 		finished = true
 
 func finish(world: World, citizen: Citizen) -> void:
