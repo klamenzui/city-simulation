@@ -3,6 +3,7 @@ class_name TimeSystem
 
 signal day_changed(day: int)
 signal hour_changed(hour: int)
+signal time_advanced(day: int, hour: int, minute: int)
 signal rent_due()
 signal payday()
 
@@ -13,9 +14,10 @@ var minutes_total: int = 0
 
 func _ready() -> void:
 	minutes_total = start_hour * 60
+	time_advanced.emit(day, get_hour(), get_minute())
 
 func get_hour() -> int:
-	return (minutes_total / 60) % 24
+	return int(minutes_total / 60) % 24
 
 func get_minute() -> int:
 	return minutes_total % 60
@@ -35,9 +37,19 @@ func advance(minutes: int) -> void:
 	var new_hour := get_hour()
 	if new_hour != old_hour:
 		hour_changed.emit(new_hour)
+	time_advanced.emit(day, new_hour, get_minute())
 		
 func get_time_string() -> String:
 	return "%02d:%02d" % [get_hour(), get_minute()]
+
+func get_weekday_name_short_de() -> String:
+	var names = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+	return names[get_weekday_index()]
+
+#"Time"     : "%s (%s)" % [world.time.get_time_string(), world.time.get_weekday_name()],
+#"Weekend"  : str(world.time.is_weekend()),
+func get_ui_date_string() -> String:
+	return "%s | Tag %d (Weekend %s)" % [get_weekday_name_short_de(), day, str(is_weekend())]
 
 # --- Weekday / Weekend ---
 # English: day=1 -> Monday (0=Mon..6=Sun)
