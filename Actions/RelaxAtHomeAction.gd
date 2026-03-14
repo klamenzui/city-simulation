@@ -23,5 +23,9 @@ func get_needs_modifier(world, citizen) -> Dictionary:
 func tick(world, citizen, dt: int) -> void:
 	super.tick(world, citizen, dt)
 
+	if citizen.needs.hunger >= citizen.hunger_threshold:
+		finished = true
+		return
+
 	if citizen.needs.fun >= citizen.needs.TARGET_FUN_MIN:
 		finished = true

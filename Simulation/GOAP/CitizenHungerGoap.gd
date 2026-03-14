@@ -23,12 +23,18 @@ func try_plan(world, citizen) -> bool:
 
 func _build_state(world, citizen) -> Dictionary:
 	var state: Dictionary = {}
+	var restaurant_open: bool = citizen.favorite_restaurant != null and citizen.favorite_restaurant.is_open(world.time.get_hour())
+	var supermarket_open: bool = citizen.favorite_supermarket != null and citizen.favorite_supermarket.is_open(world.time.get_hour())
 	state["at_home"] = citizen.current_location == citizen.home
 	state["at_restaurant"] = citizen.current_location == citizen.favorite_restaurant
 	state["at_supermarket"] = citizen.current_location == citizen.favorite_supermarket
 	state["has_home"] = citizen.home != null
 	state["has_restaurant"] = citizen.favorite_restaurant != null
 	state["has_supermarket"] = citizen.favorite_supermarket != null
+	state["restaurant_open"] = restaurant_open
+	state["restaurant_has_meal"] = restaurant_open and citizen.favorite_restaurant.can_sell_item("meal", 1)
+	state["supermarket_open"] = supermarket_open
+	state["supermarket_has_groceries"] = supermarket_open and citizen.favorite_supermarket.can_sell_item("grocery_bundle", 1)
 	state["can_afford_restaurant"] = citizen.can_afford_restaurant(world)
 	state["can_afford_groceries"] = citizen.can_afford_groceries(world)
 	state["has_home_food"] = citizen.home_food_stock > 0
@@ -47,19 +53,19 @@ func _build_actions() -> Array:
 	actions.append(GoapActionScript.new(
 		"go_restaurant",
 		1.0,
-		{"has_restaurant": true, "can_afford_restaurant": true, "at_restaurant": false, "is_night": false},
+		{"has_restaurant": true, "restaurant_open": true, "restaurant_has_meal": true, "can_afford_restaurant": true, "at_restaurant": false, "is_night": false},
 		{"at_restaurant": true, "at_home": false, "at_supermarket": false}
 	))
 	actions.append(GoapActionScript.new(
 		"go_supermarket",
 		1.1,
-		{"has_supermarket": true, "can_afford_groceries": true, "at_supermarket": false},
+		{"has_supermarket": true, "supermarket_open": true, "supermarket_has_groceries": true, "can_afford_groceries": true, "at_supermarket": false},
 		{"at_supermarket": true, "at_home": false, "at_restaurant": false}
 	))
 	actions.append(GoapActionScript.new(
 		"buy_groceries",
 		0.8,
-		{"at_supermarket": true, "can_afford_groceries": true},
+		{"at_supermarket": true, "supermarket_has_groceries": true, "can_afford_groceries": true},
 		{"has_home_food": true}
 	))
 	actions.append(GoapActionScript.new(
@@ -71,7 +77,7 @@ func _build_actions() -> Array:
 	actions.append(GoapActionScript.new(
 		"eat_restaurant",
 		0.8,
-		{"at_restaurant": true, "can_afford_restaurant": true},
+		{"at_restaurant": true, "restaurant_has_meal": true, "can_afford_restaurant": true},
 		{"hunger_satisfied": true}
 	))
 	return actions

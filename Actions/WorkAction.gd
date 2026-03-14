@@ -68,6 +68,10 @@ func tick(world, citizen, dt: int) -> void:
 	# with no pauses → hunger=100 and energy=0 by end of day.
 	#
 	# Interrupt conditions (priority order):
+	if citizen.needs.health <= 35.0:
+		finished = true
+		return
+
 	if citizen.needs.energy <= citizen.low_energy_threshold:
 		# Too tired to work safely → go home.
 		finished = true

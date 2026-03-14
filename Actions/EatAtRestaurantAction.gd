@@ -1,7 +1,9 @@
 extends Action
 class_name EatAtRestaurantAction
 
-const HUNGER_REDUCE_PER_MIN := 1.5
+const HUNGER_REDUCE_PER_MIN := 1.15
+const ENERGY_RECOVER_PER_MIN := 0.22
+const MAX_MEAL_MIN := 80
 
 var restaurant: Restaurant
 var _paid := false
@@ -16,6 +18,7 @@ func start(world, citizen) -> void:
 	super.start(world, citizen)
 	_paid = false
 	_can_eat = true
+	remaining_minutes = MAX_MEAL_MIN
 
 	if restaurant == null:
 		finished = true
@@ -51,12 +54,12 @@ func get_needs_modifier(world, citizen) -> Dictionary:
 		return Action.DEFAULT_NEEDS_MOD
 
 	return {
-		"hunger_mul": -5.0,
-		"energy_mul": 1.0,
-		"fun_mul": 1.0,
-		"hunger_add": 0.0,
-		"energy_add": 0.0,
-		"fun_add": 0.05,
+		"hunger_mul": 0.15,
+		"energy_mul": 0.35,
+		"fun_mul": 0.55,
+		"hunger_add": -HUNGER_REDUCE_PER_MIN,
+		"energy_add": ENERGY_RECOVER_PER_MIN,
+		"fun_add": 0.08,
 	}
 
 func tick(world, citizen, dt: int) -> void:

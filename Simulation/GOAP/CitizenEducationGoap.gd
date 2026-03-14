@@ -13,6 +13,12 @@ func try_plan(world, citizen) -> bool:
 		return false
 	if citizen.job.meets_requirements(citizen):
 		return false
+	if citizen.needs.health <= 35.0:
+		return false
+	if citizen.needs.hunger >= 70.0:
+		return false
+	if citizen.needs.energy <= citizen.low_energy_threshold:
+		return false
 
 	var state = _build_state(world, citizen)
 	var goal = {"education_progress": true}

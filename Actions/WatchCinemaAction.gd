@@ -47,6 +47,9 @@ func tick(world, citizen, dt: int) -> void:
 	if not _ticket_paid:
 		finished = true
 		return
+	if citizen.needs.hunger >= 70.0 or citizen.needs.energy <= 18.0 or citizen.needs.health <= 35.0:
+		finished = true
+		return
 	if elapsed_minutes >= watch_minutes:
 		finished = true
 	elif citizen.needs.fun >= citizen.needs.TARGET_FUN_MIN:
