@@ -16,6 +16,8 @@ const FactoryScene = preload("res://Scenes/Factory.tscn")
 
 var _pause_btn: Button
 var _speed_label: Label
+var _date_label: Label
+var _clock_label: Label
 var _debug_panel: DebugPanel
 var _selected_citizen: Citizen = null
 var _selected_building: Building = null
@@ -184,6 +186,39 @@ func _build_hud() -> void:
 	var canvas := CanvasLayer.new()
 	add_child(canvas)
 
+	var top_margin := MarginContainer.new()
+	top_margin.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	top_margin.offset_top = 10
+	top_margin.offset_bottom = 54
+	canvas.add_child(top_margin)
+
+	var top_center := CenterContainer.new()
+	top_center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	top_margin.add_child(top_center)
+
+	var time_panel := PanelContainer.new()
+	top_center.add_child(time_panel)
+
+	var time_box := HBoxContainer.new()
+	time_box.add_theme_constant_override("separation", 12)
+	time_panel.add_child(time_box)
+
+	_date_label = Label.new()
+	_date_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_date_label.custom_minimum_size = Vector2(104, 34)
+	time_box.add_child(_date_label)
+
+	var separator := Label.new()
+	separator.text = "|"
+	separator.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	time_box.add_child(separator)
+
+	_clock_label = Label.new()
+	_clock_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_clock_label.add_theme_font_size_override("font_size", 18)
+	_clock_label.custom_minimum_size = Vector2(66, 34)
+	time_box.add_child(_clock_label)
+
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	panel.position = Vector2(10, -60)
@@ -220,6 +255,8 @@ func _build_hud() -> void:
 
 	world.paused_changed.connect(_on_world_paused)
 	world.speed_changed.connect(_on_world_speed_changed)
+	world.time.time_advanced.connect(_on_time_advanced)
+	_refresh_time_hud()
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_accept"):
@@ -248,3 +285,12 @@ func _on_world_paused(paused: bool) -> void:
 
 func _on_world_speed_changed(multiplier: float) -> void:
 	_speed_label.text = "%.1fx" % multiplier
+
+func _on_time_advanced(_day: int, _hour: int, _minute: int) -> void:
+	_refresh_time_hud()
+
+func _refresh_time_hud() -> void:
+	if _date_label == null or _clock_label == null or world == null or world.time == null:
+		return
+	_date_label.text = world.time.get_ui_date_string()
+	_clock_label.text = world.time.get_time_string()

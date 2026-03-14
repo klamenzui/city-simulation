@@ -1,7 +1,7 @@
-[gd_scene load_steps=12 format=4]
+[gd_scene format=4 uid="uid://d1w6v6f36ay88"]
 
-[ext_resource type="Script" path="res://Entities/Buildings/Restaurant.gd" id="1_bnsec"]
-[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="2_x0jau"]
+[ext_resource type="Script" uid="uid://fg3i5r23xtys" path="res://Entities/Buildings/Restaurant.gd" id="1_bnsec"]
+[ext_resource type="Texture2D" uid="uid://b3b5vu8lonkcv" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="2_x0jau"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_k7ndb"]
 resource_name = "Material"
@@ -121,35 +121,35 @@ shadow_mesh = SubResource("ArrayMesh_q8sic")
 [sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_0r0hh"]
 data = PackedVector3Array(-1, 0, -0.9, -1, 0.1, -1, -1, 0.1, -0.9, -1, 0, -0.9, -1, 0, -1, -1, 0.1, -1, 0.9, 0, -1, 1, 0.1, -1, 0.9, 0.1, -1, 0.9, 0, -1, 1, 0, -1, 1, 0.1, -1, 1, 0, 0.9, 1, 0.1, 1, 1, 0.1, 0.9, 1, 0, 0.9, 1, 0, 1, 1, 0.1, 1, -0.9, 0, 1, -1, 0.1, 1, -0.9, 0.1, 1, -0.9, 0, 1, -1, 0, 1, -1, 0.1, 1, 0.9, 0, 0.9, 1, 0, 1, 1, 0, 0.9, 0.9, 0, 0.9, 0.9, 0, 1, 1, 0, 1, 0.9, 0, 0.9, -0.9, 0, 1, 0.9, 0, 1, 0.9, 0, -0.9, 0.9, 0, 0.9, 1, 0, 0.9, 0.9, 0, -0.9, 1, 0, 0.9, 1, 0, -0.9, 0.9, 0, 0.9, -0.9, 0, 0.9, -0.9, 0, 1, 0.9, 0, -0.9, -0.9, 0, 0.9, 0.9, 0, 0.9, -1, 0, 0.9, -0.9, 0, 1, -0.9, 0, 0.9, -1, 0, 0.9, -1, 0, 1, -0.9, 0, 1, -0.9, 0, -0.9, -1, 0, 0.9, -0.9, 0, 0.9, 0.9, 0, -0.9, -0.9, 0, -0.9, -0.9, 0, 0.9, -0.9, 0, -0.9, -1, 0, -0.9, -1, 0, 0.9, -1, 0, -1, -1, 0, -0.9, -0.9, 0, -0.9, -1, 0, -1, -0.9, 0, -0.9, -0.9, 0, -1, 0.9, 0, -1, -0.9, 0, -1, -0.9, 0, -0.9, 0.9, 0, -1, -0.9, 0, -0.9, 0.9, 0, -0.9, 0.9, 0, -1, 0.9, 0, -0.9, 1, 0, -0.9, 0.9, 0, -1, 1, 0, -0.9, 1, 0, -1, -0.9, 0.1, 0.9, -1, 0.1, 1, -1, 0.1, 0.9, -0.9, 0.1, 0.9, -0.9, 0.1, 1, -1, 0.1, 1, 1, 0.1, 0.9, 0.9, 0.1, 1, 0.9, 0.1, 0.9, 1, 0.1, 0.9, 1, 0.1, 1, 0.9, 0.1, 1, 0.9, 0.1, 1, -0.9, 0, 1, -0.9, 0.1, 1, 0.9, 0.1, 1, 0.9, 0, 1, -0.9, 0, 1, 1, 0, 1, 0.9, 0.1, 1, 1, 0.1, 1, 1, 0, 1, 0.9, 0, 1, 0.9, 0.1, 1, -0.9, 0.1, -1, 0.9, 0, -1, 0.9, 0.1, -1, -0.9, 0.1, -1, -0.9, 0, -1, 0.9, 0, -1, 0.9, 0.1, -1, -0.9, 0.1, -0.9, -0.9, 0.1, -1, 0.9, 0.1, -1, 0.9, 0.1, -0.9, -0.9, 0.1, -0.9, 0.9, 0.1, -0.9, 1, 0.1, -0.9, 1, 0.1, 0.9, 0.9, 0.1, -0.9, 1, 0.1, 0.9, 0.9, 0.1, 0.9, -0.9, 0.1, -0.9, -1, 0.1, 0.9, -1, 0.1, -0.9, -0.9, 0.1, -0.9, -0.9, 0.1, 0.9, -1, 0.1, 0.9, 0.9, 0.1, 1, -0.9, 0.1, 0.9, 0.9, 0.1, 0.9, 0.9, 0.1, 1, -0.9, 0.1, 1, -0.9, 0.1, 0.9, -1, 0, -1, -0.9, 0.1, -1, -1, 0.1, -1, -1, 0, -1, -0.9, 0, -1, -0.9, 0.1, -1, -0.9, 0.1, -0.9, 0.9, 0.1, 0.9, -0.9, 0.1, 0.9, -0.9, 0.1, -0.9, 0.9, 0.1, -0.9, 0.9, 0.1, 0.9, 1, 0.1, -1, 0.9, 0.1, -0.9, 0.9, 0.1, -1, 1, 0.1, -1, 1, 0.1, -0.9, 0.9, 0.1, -0.9, -0.9, 0.1, -1, -1, 0.1, -0.9, -1, 0.1, -1, -0.9, 0.1, -1, -0.9, 0.1, -0.9, -1, 0.1, -0.9, 1, 0, -1, 1, 0.1, -0.9, 1, 0.1, -1, 1, 0, -1, 1, 0, -0.9, 1, 0.1, -0.9, 1, 0.1, -0.9, 1, 0, 0.9, 1, 0.1, 0.9, 1, 0.1, -0.9, 1, 0, -0.9, 1, 0, 0.9, -1, 0, 1, -1, 0.1, 0.9, -1, 0.1, 1, -1, 0, 1, -1, 0, 0.9, -1, 0.1, 0.9, -1, 0.1, 0.9, -1, 0, -0.9, -1, 0.1, -0.9, -1, 0.1, 0.9, -1, 0, 0.9, -1, 0, -0.9)
 
-[node name="services_restaurant_03" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_services", "commercial", "work"]]
+[node name="services_restaurant_03" type="Node3D" unique_id=110290479 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_services", "commercial", "work"]]
 script = ExtResource("1_bnsec")
 building_name = "Restaurant 03 (Services)"
 building_type = 2
 entrance = NodePath("Entrance")
 
-[node name="Station" type="MeshInstance3D" parent="."]
+[node name="Station" type="MeshInstance3D" parent="." unique_id=1784500908]
 transform = Transform3D(100, 0, 0, 0, 100, -1.62921e-05, 0, 1.62921e-05, 100, 0, 0, 0)
 mesh = SubResource("ArrayMesh_60lcf")
 skeleton = NodePath("")
 
-[node name="StaticBody3D" type="StaticBody3D" parent="Station"]
+[node name="StaticBody3D" type="StaticBody3D" parent="Station" unique_id=595998003]
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Station/StaticBody3D"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Station/StaticBody3D" unique_id=431449320]
 transform = Transform3D(1, 0, 0, 0, 1, 1.42109e-14, 0, -1.42109e-14, 1, 0, 0, 0)
 shape = SubResource("ConcavePolygonShape3D_rod8h")
 
-[node name="base1" type="Node3D" parent="."]
+[node name="base1" type="Node3D" parent="." unique_id=453855499]
 transform = Transform3D(2.52076, 0, 0, 0, 2.19132, 0, 0, 0, 2.51092, 0.190814, -0.0213185, -0.0794868)
 
-[node name="base" type="MeshInstance3D" parent="base1"]
+[node name="base" type="MeshInstance3D" parent="base1" unique_id=938174435]
 mesh = SubResource("ArrayMesh_iry5v")
 skeleton = NodePath("")
 
-[node name="StaticBody3D" type="StaticBody3D" parent="base1/base"]
+[node name="StaticBody3D" type="StaticBody3D" parent="base1/base" unique_id=1437970463]
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="base1/base/StaticBody3D"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="base1/base/StaticBody3D" unique_id=1730481431]
 transform = Transform3D(1, 0, -7.10543e-15, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 shape = SubResource("ConcavePolygonShape3D_0r0hh")
 
-[node name="Entrance" type="Node3D" parent="."]
+[node name="Entrance" type="Node3D" parent="." unique_id=1635759490]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.11933684, 0.06, -0.07948685)

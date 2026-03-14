@@ -431,8 +431,6 @@ func _update_debug(world: World, h_delta: float) -> void:
 		])
 
 	debug_panel.update_debug({
-		"Time"     : "%s (%s)" % [world.time.get_time_string(), world.time.get_weekday_name()],
-		"Weekend"  : str(world.time.is_weekend()),
 		"Citizen"  : citizen_name,
 		"Location" : current_location.building_name if current_location else "travelling...",
 		"Action"   : current_action.label if current_action else "idle",
