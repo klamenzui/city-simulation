@@ -6,9 +6,17 @@ const CitizenFunGoapScript = preload("res://Simulation/GOAP/CitizenFunGoap.gd")
 const CitizenEnergyGoapScript = preload("res://Simulation/GOAP/CitizenEnergyGoap.gd")
 const CitizenWorkGoapScript = preload("res://Simulation/GOAP/CitizenWorkGoap.gd")
 const CitizenEducationGoapScript = preload("res://Simulation/GOAP/CitizenEducationGoap.gd")
+const BuyGroceriesActionScript = preload("res://Actions/BuyGroceriesAction.gd")
+const EatAtHomeActionScript = preload("res://Actions/EatAtHomeAction.gd")
+const EatAtRestaurantActionScript = preload("res://Actions/EatAtRestaurantAction.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
 const RelaxAtHomeActionScript = preload("res://Actions/RelaxAtHomeAction.gd")
 const SleepActionScript = preload("res://Actions/SleepAction.gd")
+
+const CRITICAL_HUNGER := 80.0
+const CRITICAL_ENERGY := 10.0
+const LOW_HEALTH := 35.0
+const CRITICAL_HEALTH := 20.0
 
 var _hunger_goap = CitizenHungerGoapScript.new()
 var _fun_goap = CitizenFunGoapScript.new()
@@ -19,6 +27,9 @@ var _education_goap = CitizenEducationGoapScript.new()
 func plan_next_action(world, citizen) -> bool:
 	if world == null or citizen == null:
 		return false
+
+	if _try_survival_override(world, citizen):
+		return true
 
 	var candidates = _build_goal_candidates(world, citizen)
 	candidates.sort_custom(_sort_goal_candidates)
@@ -42,25 +53,32 @@ func _build_goal_candidates(world, citizen) -> Array:
 	var now_total: int = hour * 60 + minute
 	var weekend: bool = world.time.is_weekend()
 	var is_night: bool = hour >= 22 or hour < 6
+	var low_health: bool = citizen.needs.health <= LOW_HEALTH
 
 	var hunger_deficit: float = clamp((citizen.needs.hunger - citizen.hunger_threshold) / 40.0, 0.0, 1.0)
-	if citizen.needs.hunger >= 80.0:
+	if citizen.needs.hunger >= CRITICAL_HUNGER:
 		hunger_deficit = maxf(hunger_deficit, 1.0)
+	if low_health and citizen.needs.hunger >= 65.0:
+		hunger_deficit = maxf(hunger_deficit, 1.15)
 
 	var energy_deficit: float = clamp((citizen.low_energy_threshold - citizen.needs.energy) / 40.0, 0.0, 1.0)
 	if citizen.needs.energy <= 8.0:
 		energy_deficit = maxf(energy_deficit, 1.0)
+	if low_health and citizen.needs.energy <= 35.0:
+		energy_deficit = maxf(energy_deficit, 1.05)
 
 	var fun_deficit: float = clamp((citizen.needs.TARGET_FUN_MIN - citizen.needs.fun) / 35.0, 0.0, 1.0)
 	if is_night:
 		fun_deficit *= 0.3
+	if citizen.needs.hunger >= 60.0 or citizen.needs.energy <= 25.0 or low_health:
+		fun_deficit = 0.0
 
 	var education_need: float = 0.0
-	if citizen.job != null and not citizen.job.meets_requirements(citizen) and not is_night:
+	if citizen.job != null and not citizen.job.meets_requirements(citizen) and not is_night and not low_health:
 		education_need = 1.0
 
 	var work_need: float = 0.0
-	if citizen.job != null and citizen.job.workplace != null and citizen.job.meets_requirements(citizen) and not weekend:
+	if citizen.job != null and citizen.job.workplace != null and citizen.job.meets_requirements(citizen) and not weekend and not low_health:
 		var shift_minutes: int = int(citizen.job.shift_hours * 60)
 		var work_start: int = citizen.job.start_hour * 60 + citizen.schedule_offset
 		var work_end: int = work_start + shift_minutes
@@ -100,6 +118,9 @@ func _fallback_idle(world, citizen, is_night: bool) -> bool:
 	if citizen.home == null:
 		return false
 
+	if _try_survival_override(world, citizen):
+		return true
+
 	if is_night and citizen.needs.energy < citizen.needs.TARGET_ENERGY_MIN:
 		if citizen.current_location != citizen.home:
 			citizen.start_action(GoToBuildingActionScript.new(citizen.home, 20), world)
@@ -112,3 +133,70 @@ func _fallback_idle(world, citizen, is_night: bool) -> bool:
 		return true
 	citizen.start_action(RelaxAtHomeActionScript.new(), world)
 	return true
+
+func _try_survival_override(world, citizen) -> bool:
+	var critical_hunger: bool = citizen.needs.hunger >= CRITICAL_HUNGER
+	var critical_energy: bool = citizen.needs.energy <= CRITICAL_ENERGY
+	var critical_health: bool = citizen.needs.health <= CRITICAL_HEALTH
+
+	if not critical_hunger and not critical_energy and not critical_health:
+		return false
+
+	if critical_hunger:
+		if citizen.current_location == citizen.home and citizen.home_food_stock > 0:
+			citizen.start_action(EatAtHomeActionScript.new(), world)
+			return true
+
+		if citizen.home_food_stock > 0 and citizen.home != null and citizen.current_location != citizen.home:
+			citizen.start_action(GoToBuildingActionScript.new(citizen.home, 20), world)
+			return true
+
+		if _can_eat_at_restaurant(world, citizen):
+			if citizen.current_location == citizen.favorite_restaurant:
+				citizen.start_action(EatAtRestaurantActionScript.new(citizen.favorite_restaurant), world)
+			else:
+				citizen.start_action(GoToBuildingActionScript.new(citizen.favorite_restaurant, 15), world)
+			return true
+
+		if _can_buy_groceries(world, citizen):
+			if citizen.current_location == citizen.favorite_supermarket:
+				citizen.start_action(BuyGroceriesActionScript.new(citizen.favorite_supermarket), world)
+			else:
+				citizen.start_action(GoToBuildingActionScript.new(citizen.favorite_supermarket, 18), world)
+			return true
+
+	if citizen.home == null:
+		return false
+
+	if citizen.current_location != citizen.home:
+		citizen.start_action(GoToBuildingActionScript.new(citizen.home, 20), world)
+		return true
+
+	if citizen.needs.fun < citizen.needs.TARGET_FUN_MIN and citizen.needs.hunger < citizen.hunger_threshold and citizen.needs.energy >= 20.0:
+		citizen.start_action(RelaxAtHomeActionScript.new(), world)
+		return true
+
+	if citizen.needs.energy < citizen.needs.TARGET_ENERGY_MIN or critical_energy:
+		citizen.start_action(SleepActionScript.new(), world)
+		return true
+
+	citizen.start_action(RelaxAtHomeActionScript.new(), world)
+	return true
+
+func _can_eat_at_restaurant(world, citizen) -> bool:
+	if citizen.favorite_restaurant == null:
+		return false
+	if not citizen.favorite_restaurant.is_open(world.time.get_hour()):
+		return false
+	if not citizen.favorite_restaurant.can_sell_item("meal", 1):
+		return false
+	return citizen.can_afford_restaurant(world)
+
+func _can_buy_groceries(world, citizen) -> bool:
+	if citizen.favorite_supermarket == null:
+		return false
+	if not citizen.favorite_supermarket.is_open(world.time.get_hour()):
+		return false
+	if not citizen.favorite_supermarket.can_sell_item("grocery_bundle", 1):
+		return false
+	return citizen.can_afford_groceries(world)

@@ -487,12 +487,29 @@ func can_afford_shop_item(_world: World) -> bool:
 	var price: int = favorite_shop.item_price
 	if favorite_shop.has_method("get_item_price_quote"):
 		price = int(favorite_shop.get_item_price_quote(1.0))
-	return wallet.balance >= price
+	return wallet.balance >= price + _get_fun_cash_reserve(_world)
 
 func can_afford_cinema(_world: World) -> bool:
 	if favorite_cinema == null:
 		return false
-	return wallet.balance >= favorite_cinema.ticket_price
+	return wallet.balance >= favorite_cinema.ticket_price + _get_fun_cash_reserve(_world)
+
+func _get_fun_cash_reserve(world: World) -> int:
+	var reserve: int = 20
+	if home != null:
+		reserve = maxi(reserve, home.rent_per_day)
+	if favorite_supermarket != null:
+		var grocery_price: int = favorite_supermarket.grocery_price
+		if favorite_supermarket.has_method("get_grocery_price"):
+			grocery_price = int(favorite_supermarket.get_grocery_price(world))
+		reserve += grocery_price
+	elif favorite_restaurant != null:
+		var meal_price: int = favorite_restaurant.meal_price
+		if favorite_restaurant.has_method("get_meal_price"):
+			meal_price = int(favorite_restaurant.get_meal_price(world))
+		reserve += meal_price
+	return reserve
+
 func _find_first_residential_building() -> ResidentialBuilding:
 	if _world_ref != null:
 		return _world_ref.find_first_residential_building()

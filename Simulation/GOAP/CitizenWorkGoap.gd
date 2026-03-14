@@ -41,7 +41,7 @@ func _build_state(world, citizen) -> Dictionary:
 	state["at_workplace"] = citizen.current_location == citizen.job.workplace
 	state["in_work_window"] = in_work_window
 	state["work_remaining"] = remaining_work > 0
-	state["work_fit"] = citizen.needs.energy > citizen.low_energy_threshold and citizen.needs.hunger < 75.0
+	state["work_fit"] = citizen.needs.health > 35.0 and citizen.needs.energy > citizen.low_energy_threshold and citizen.needs.hunger < 75.0
 	state["work_progress"] = false
 	return state
 

@@ -35,6 +35,9 @@ func tick(world, citizen, dt: int) -> void:
 	if not _tuition_paid:
 		finished = true
 		return
+	if citizen.needs.hunger >= 70.0 or citizen.needs.energy <= citizen.low_energy_threshold or citizen.needs.health <= 35.0:
+		finished = true
+		return
 	if elapsed_minutes >= study_minutes_target:
 		finished = true
 
