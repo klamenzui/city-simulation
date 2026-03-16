@@ -45,8 +45,11 @@ var _last_workplace_full_notice_day: int = -1
 @export var turn_speed: float = 8.0
 @export var waypoint_reach_distance: float = 0.35
 @export var arrival_distance: float = 0.65
+@export var final_arrival_distance: float = 0.18
 @export var ground_probe_up: float = 4.0
 @export var ground_probe_down: float = 12.0
+@export var max_ground_step_up: float = 0.85
+@export var max_ground_probe_skips: int = 8
 @export var repath_interval_sec: float = 0.6
 @export var gravity_strength: float = 28.0
 @export var max_fall_speed: float = 35.0
@@ -180,9 +183,27 @@ func _probe_ground_hit(pos: Vector3) -> Dictionary:
 
 	var from := pos + Vector3.UP * ground_probe_up
 	var to := pos + Vector3.DOWN * ground_probe_down
-	var query := PhysicsRayQueryParameters3D.create(from, to)
-	query.collide_with_areas = false
-	return get_world_3d().direct_space_state.intersect_ray(query)
+	var exclude: Array[RID] = []
+	var attempts := maxi(max_ground_probe_skips, 1)
+
+	for _attempt in range(attempts):
+		var query := PhysicsRayQueryParameters3D.create(from, to)
+		query.collide_with_areas = false
+		query.exclude = exclude
+
+		var hit := get_world_3d().direct_space_state.intersect_ray(query)
+		if hit.is_empty():
+			return {}
+
+		var hit_pos: Vector3 = hit.get("position", pos)
+		if hit_pos.y <= pos.y + max_ground_step_up:
+			return hit
+
+		if not hit.has("rid"):
+			return {}
+		exclude.append(hit["rid"])
+
+	return {}
 
 func _project_to_ground(pos: Vector3) -> Vector3:
 	var hit := _probe_ground_hit(pos)
@@ -214,14 +235,32 @@ func _apply_grounding(pos: Vector3, delta: float) -> Vector3:
 func set_position_grounded(pos: Vector3) -> void:
 	_agent.locomotion.set_position_grounded(self, pos, _world_ref)
 
-func begin_travel_to(target_pos: Vector3) -> void:
-	_agent.locomotion.begin_travel_to(self, target_pos, _world_ref)
+func begin_travel_to(target_pos: Vector3, target_building: Building = null) -> void:
+	_agent.locomotion.begin_travel_to(self, target_pos, target_building, _world_ref)
 
 func has_reached_travel_target() -> bool:
 	return _agent.locomotion.has_reached_travel_target(self)
 
 func stop_travel() -> void:
 	_agent.locomotion.stop_travel(self)
+
+func get_debug_travel_path() -> PackedVector3Array:
+	var path := PackedVector3Array()
+	path.append(global_position)
+
+	if not _is_travelling:
+		return path
+
+	if _travel_target != Vector3.ZERO:
+		path.append(_travel_target)
+
+	var start_idx := clampi(_travel_route_index + 1, 0, _travel_route.size())
+	for i in range(start_idx, _travel_route.size()):
+		var point: Vector3 = _travel_route[i]
+		if path[path.size() - 1].distance_to(point) >= 0.05:
+			path.append(point)
+
+	return path
 
 func _advance_travel_route() -> bool:
 	if _travel_route.is_empty():
@@ -239,42 +278,33 @@ func _advance_travel_route() -> bool:
 	return true
 
 func _move_along_path(delta: float) -> void:
-	if _nav_agent == null:
-		return
+	var to_target := _travel_target - global_position
+	to_target.y = 0.0
+	var distance_to_target := to_target.length()
+	var is_last_waypoint: bool = _travel_route_index >= _travel_route.size() - 1
+	var reach_distance: float = final_arrival_distance if is_last_waypoint else waypoint_reach_distance
 
-	_repath_time_left -= delta
-	if _repath_time_left <= 0.0:
-		_repath_time_left = repath_interval_sec
-		_nav_agent.target_position = _travel_target
-
-	if _nav_agent.is_navigation_finished() or has_reached_travel_target():
+	if distance_to_target <= reach_distance:
 		if _advance_travel_route():
-			# Keep moving naturally to the next segment target.
-			# Snapping here teleports citizens between route points.
 			return
 		stop_travel()
-		set_position_grounded(_travel_target)
 		return
 
-	var next_path_point := _nav_agent.get_next_path_position()
-	var to_next := next_path_point - global_position
-	to_next.y = 0.0
-	var distance_to_next := to_next.length()
-	if distance_to_next <= 0.001:
+	if distance_to_target <= 0.001:
 		_current_speed = move_toward(_current_speed, 0.0, move_deceleration * delta)
 		return
 
 	var desired_speed: float = _walk_speed
-	if distance_to_next < 1.2:
-		desired_speed *= clamp(distance_to_next / 1.2, 0.25, 1.0)
+	if distance_to_target < 1.2:
+		desired_speed *= clamp(distance_to_target / 1.2, 0.25, 1.0)
 
 	if _current_speed < desired_speed:
 		_current_speed = move_toward(_current_speed, desired_speed, move_acceleration * delta)
 	else:
 		_current_speed = move_toward(_current_speed, desired_speed, move_deceleration * delta)
 
-	var dir: Vector3 = to_next / distance_to_next
-	var step: float = minf(_current_speed * delta, distance_to_next)
+	var dir: Vector3 = to_target / distance_to_target
+	var step: float = minf(_current_speed * delta, distance_to_target)
 	var next_pos: Vector3 = global_position + dir * step
 	global_position = _apply_grounding(next_pos, delta)
 	_update_facing(dir, delta)
@@ -332,6 +362,8 @@ func _auto_resolve_refs() -> void:
 			print("[Citizen %s] WARNING: Home %s is full, could not register as tenant!" % [citizen_name, _building_label(home)])
 
 	var origin := home.get_entrance_pos() if home else global_position
+	if home != null and _world_ref != null and _world_ref.has_method("get_pedestrian_access_point"):
+		origin = _world_ref.get_pedestrian_access_point(origin, home)
 
 	if favorite_restaurant == null:
 		favorite_restaurant = _find_nearest_restaurant(origin, false)
@@ -371,6 +403,8 @@ func _try_find_job_once() -> void:
 		return
 
 	var from_pos := home.get_entrance_pos() if home else global_position
+	if home != null and _world_ref != null and _world_ref.has_method("get_pedestrian_access_point"):
+		from_pos = _world_ref.get_pedestrian_access_point(from_pos, home)
 	if _world_ref != null:
 		job.workplace = _world_ref.find_nearest_open_workplace(from_pos, job.workplace_name, job.workplace_service_type)
 
@@ -450,6 +484,7 @@ func _update_debug(world: World, h_delta: float) -> void:
 		"JobReqEdu": "%d" % (job.required_education_level if job else 0),
 		"Motivation": "%.2f" % work_motivation,
 		"ParkInterest": "%.2f" % park_interest,
+		"Position": "%d, %d, %d " % [global_position.x, global_position.y, global_position.z],
 	})
 
 func _update_work_day(world: World) -> void:

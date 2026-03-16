@@ -10,7 +10,7 @@
 [ext_resource type="PackedScene" uid="uid://be8wm5bigk0dh" path="res://ImportedCitySource/assets/roads/road_tsplit.gltf" id="7_dfq0k"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/services/services_001_bf24cdee.tscn" id="9_elw4l"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/services/services_002_16fa335f.tscn" id="12_05tku"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/services/services_003_bb6f7293.tscn" id="15_6ibml"]
+[ext_resource type="PackedScene" uid="uid://d1w6v6f36ay88" path="res://Scenes/CityBuildings/services/services_003_bb6f7293.tscn" id="15_6ibml"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/services/services_004_b6d7b717.tscn" id="17_xnuy3"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/garages/garages_001_59117338.tscn" id="19_hoo0a"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/garages/garages_002_1d40ed03.tscn" id="21_6qke2"]
@@ -56,8 +56,6 @@
 [ext_resource type="PackedScene" uid="uid://dbuq281j5rn7b" path="res://ImportedCitySource/scenes/streetlights_list.tscn" id="80_alj7c"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_026_3655f724.tscn" id="81_kw84u"]
 [ext_resource type="PackedScene" uid="uid://c6hlutt713me0" path="res://ImportedCitySource/scenes/trafficlights_list.tscn" id="81_t7kw1"]
-[ext_resource type="PackedScene" uid="uid://fk752nm6ye3e" path="res://ImportedCitySource/scenes/way_point_left.tscn" id="82_elw4l"]
-[ext_resource type="PackedScene" uid="uid://cqq7gwno88a72" path="res://ImportedCitySource/scenes/way_point_right.tscn" id="83_pxy3g"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_027_7a4a6478.tscn" id="83_vlhcu"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_028_6657dffd.tscn" id="86_1tqe6"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_029_44ee7201.tscn" id="87_6jwup"]
@@ -664,18 +662,6 @@ _surfaces = [{
 }]
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_cnvbv")
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_68dxe"]
-albedo_color = Color(1, 0.705882, 0.513726, 1)
-
-[sub_resource type="SphereMesh" id="SphereMesh_n2h48"]
-material = SubResource("StandardMaterial3D_68dxe")
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0h45e"]
-albedo_color = Color(0.301961, 0.976471, 0.513726, 1)
-
-[sub_resource type="SphereMesh" id="SphereMesh_mq1k5"]
-material = SubResource("StandardMaterial3D_0h45e")
 
 [node name="Main" type="Node3D" unique_id=695877239]
 script = ExtResource("1_ig7tw")
@@ -2711,220 +2697,7 @@ transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 21.7, 
 transform = Transform3D(1, 0, -1.74846e-07, 0, 1, 0, 1.74846e-07, 0, 1, 31, 0, 21.7)
 light_color = 1
 
-[node name="PathPointsLeft" type="Node3D" parent="World/City" unique_id=563468523]
-
-[node name="Point" parent="World/City/PathPointsLeft" unique_id=1803289001 instance=ExtResource("82_elw4l")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.166137, 0, 0)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsLeft/Point" unique_id=1137673653]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsLeft/Point" unique_id=199135773]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_n2h48")
-skeleton = NodePath("../..")
-
-[node name="Point2" parent="World/City/PathPointsLeft" unique_id=1655673603 instance=ExtResource("82_elw4l")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.395241, 0, 0.876993)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsLeft/Point2" unique_id=461331211]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsLeft/Point2" unique_id=1517978855]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_n2h48")
-skeleton = NodePath("../..")
-
-[node name="Point3" parent="World/City/PathPointsLeft" unique_id=1034333522 instance=ExtResource("82_elw4l")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.341949, 0, 7.24375)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsLeft/Point3" unique_id=830212211]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsLeft/Point3" unique_id=652044741]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_n2h48")
-skeleton = NodePath("../..")
-
-[node name="Point4" parent="World/City/PathPointsLeft" unique_id=1528461691 instance=ExtResource("82_elw4l")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.233964, 0, 10.0038)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsLeft/Point4" unique_id=210989142]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsLeft/Point4" unique_id=243564056]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_n2h48")
-skeleton = NodePath("../..")
-
-[node name="Point5" parent="World/City/PathPointsLeft" unique_id=104634369 instance=ExtResource("82_elw4l")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.39276, 0, 10.3209)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsLeft/Point5" unique_id=1242460243]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsLeft/Point5" unique_id=1619865167]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_n2h48")
-skeleton = NodePath("../..")
-
-[node name="Point6" parent="World/City/PathPointsLeft" unique_id=553214759 groups=["road_group"] instance=ExtResource("82_elw4l")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.18507, 0, 10.3209)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsLeft/Point6" unique_id=1171217120]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsLeft/Point6" unique_id=1340282376]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_n2h48")
-skeleton = NodePath("../..")
-
-[node name="Point7" parent="World/City/PathPointsLeft" unique_id=1310142436 groups=["road_group"] instance=ExtResource("82_elw4l")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.78739, 0, 11.3476)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsLeft/Point7" unique_id=1274764230]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsLeft/Point7" unique_id=774938923]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_n2h48")
-skeleton = NodePath("../..")
-
-[node name="Point8" parent="World/City/PathPointsLeft" unique_id=1037814090 groups=["road_group"] instance=ExtResource("82_elw4l")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.71036, 0, 17.2547)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsLeft/Point8" unique_id=1082979004]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsLeft/Point8" unique_id=1065062425]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_n2h48")
-skeleton = NodePath("../..")
-
-[node name="Point9" parent="World/City/PathPointsLeft" unique_id=1544088159 groups=["road_group"] instance=ExtResource("82_elw4l")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.71785, 0, 21.3389)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsLeft/Point9" unique_id=657066497]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsLeft/Point9" unique_id=257560854]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_n2h48")
-skeleton = NodePath("../..")
-
-[node name="Point10" parent="World/City/PathPointsLeft" unique_id=223871412 groups=["road_group"] instance=ExtResource("82_elw4l")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.71785, 0, 27.2845)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsLeft/Point10" unique_id=290604835]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsLeft/Point10" unique_id=2085125928]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_n2h48")
-skeleton = NodePath("../..")
-
-[node name="Point11" parent="World/City/PathPointsLeft" unique_id=1326309865 groups=["road_group"] instance=ExtResource("82_elw4l")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.49654, 0, 29.5898)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsLeft/Point11" unique_id=1589822963]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsLeft/Point11" unique_id=487430027]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_n2h48")
-skeleton = NodePath("../..")
-
-[node name="Point12" parent="World/City/PathPointsLeft" unique_id=2117305701 groups=["road_group"] instance=ExtResource("82_elw4l")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.75875, 0, 29.5898)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsLeft/Point12" unique_id=1457011716]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsLeft/Point12" unique_id=532397328]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_n2h48")
-skeleton = NodePath("../..")
-
-[node name="PathPointsRight" type="Node3D" parent="World/City" unique_id=1020008223]
-
-[node name="Point" parent="World/City/PathPointsRight" unique_id=817492288 instance=ExtResource("83_pxy3g")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.463345, 0, 7.13387)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsRight/Point" unique_id=674593626]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsRight/Point" unique_id=1576163985]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_mq1k5")
-skeleton = NodePath("../..")
-
-[node name="Point2" parent="World/City/PathPointsRight" unique_id=2112368576 instance=ExtResource("83_pxy3g")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.42948, 0, 0.42062)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsRight/Point2" unique_id=1401225032]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsRight/Point2" unique_id=171127620]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_mq1k5")
-skeleton = NodePath("../..")
-
-[node name="Point3" parent="World/City/PathPointsRight" unique_id=583156623 instance=ExtResource("83_pxy3g")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.12381, 0, 0.309814)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsRight/Point3" unique_id=412288091]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsRight/Point3" unique_id=1218477420]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_mq1k5")
-skeleton = NodePath("../..")
-
-[node name="Point4" parent="World/City/PathPointsRight" unique_id=1527349237 instance=ExtResource("83_pxy3g")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.58191, 0, 0.309814)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsRight/Point4" unique_id=851552355]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsRight/Point4" unique_id=435860789]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_mq1k5")
-skeleton = NodePath("../..")
-
-[node name="Point5" parent="World/City/PathPointsRight" unique_id=2048572094 instance=ExtResource("83_pxy3g")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.3438, 0, 0.309814)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsRight/Point5" unique_id=337949829]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsRight/Point5" unique_id=373242226]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_mq1k5")
-skeleton = NodePath("../..")
-
-[node name="Point6" parent="World/City/PathPointsRight" unique_id=676354703 instance=ExtResource("83_pxy3g")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.6179, 0, 0.309814)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsRight/Point6" unique_id=1940523779]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsRight/Point6" unique_id=478583881]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_mq1k5")
-skeleton = NodePath("../..")
-
-[node name="Point7" parent="World/City/PathPointsRight" unique_id=1320378935 instance=ExtResource("83_pxy3g")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29.6475, 0, 0.438584)
-
-[node name="Marker3D2" type="Marker3D" parent="World/City/PathPointsRight/Point7" unique_id=980058835]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, 0, 0)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="World/City/PathPointsRight/Point7" unique_id=1461965423]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
-mesh = SubResource("SphereMesh_mq1k5")
-skeleton = NodePath("../..")
-
 [node name="Camera3D" type="Camera3D" parent="." unique_id=844519805]
-transform = Transform3D(1, 0, 0, 0, 0.9771533, 0.21253583, 0, -0.21253583, 0.9771533, 0, 8.830686, 24.783987)
+transform = Transform3D(1, 0, 0, 0, 0.9771533, 0.21253583, 0, -0.21253583, 0.9771533, 14.017018, 8.830686, 24.263132)
 current = true
 script = ExtResource("400_camctl")

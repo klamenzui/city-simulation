@@ -2,7 +2,7 @@ extends Node3D
 
 @onready var world: World = $World
 
-const CITIZEN_COUNT := 6
+const CITIZEN_COUNT := 10
 const RoadBuilderScript = preload("res://Simulation/Bootstrap/RoadBuilder.gd")
 const ImportedCitySetupScript = preload("res://Simulation/Bootstrap/ImportedCitySetup.gd")
 const RestaurantScene = preload("res://Scenes/Restaurant.tscn")
@@ -23,23 +23,28 @@ var _selected_citizen: Citizen = null
 var _selected_building: Building = null
 var _entity_clicked_this_frame: bool = false
 var _building_panel_refresh_left: float = 0.0
+var _citizen_path_debug: MeshInstance3D = null
+var _citizen_path_debug_mesh: ImmediateMesh = null
+var _citizen_path_debug_material: StandardMaterial3D = null
 
 func _ready() -> void:
 	get_viewport().physics_object_picking = true
 
 	_setup_world_systems()
+	_setup_citizen_path_debug()
 	_build_debug_panel()
 	_bind_building_clicks()
 	_spawn_citizens()
 	_build_hud()
 
 func _process(delta: float) -> void:
-	if _selected_building == null or _debug_panel == null or not _debug_panel.visible:
-		return
-	_building_panel_refresh_left -= delta
-	if _building_panel_refresh_left <= 0.0:
-		_building_panel_refresh_left = 0.25
-		_selected_building.refresh_info_panel(world)
+	_update_selected_citizen_path_debug()
+
+	if _selected_building != null and _debug_panel != null and _debug_panel.visible:
+		_building_panel_refresh_left -= delta
+		if _building_panel_refresh_left <= 0.0:
+			_building_panel_refresh_left = 0.25
+			_selected_building.refresh_info_panel(world)
 
 func _setup_world_systems() -> void:
 	var has_scene_city: bool = get_node_or_null("World/City") != null
@@ -54,6 +59,7 @@ func _setup_world_systems() -> void:
 		RoadBuilderScript.build_simple_roads(self, world)
 
 	world.rebuild_road_graph(self)
+	world.rebuild_pedestrian_graph(self)
 
 func _spawn_missing_core_buildings() -> void:
 	if not _has_building_type("restaurant"):
@@ -121,6 +127,26 @@ func _build_debug_panel() -> void:
 	add_child(_debug_panel)
 	_debug_panel.visible = false
 
+func _setup_citizen_path_debug() -> void:
+	_citizen_path_debug = MeshInstance3D.new()
+	_citizen_path_debug.name = "SelectedCitizenPathDebug"
+	_citizen_path_debug.top_level = true
+	_citizen_path_debug.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_citizen_path_debug.visible = false
+
+	_citizen_path_debug_mesh = ImmediateMesh.new()
+	_citizen_path_debug.mesh = _citizen_path_debug_mesh
+
+	_citizen_path_debug_material = StandardMaterial3D.new()
+	_citizen_path_debug_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_citizen_path_debug_material.albedo_color = Color(0.05, 0.95, 0.35, 1.0)
+	_citizen_path_debug_material.emission_enabled = true
+	_citizen_path_debug_material.emission = Color(0.05, 0.95, 0.35, 1.0)
+	_citizen_path_debug_material.no_depth_test = true
+	_citizen_path_debug.material_override = _citizen_path_debug_material
+
+	add_child(_citizen_path_debug)
+
 func _bind_building_clicks() -> void:
 	for building in world.buildings:
 		if building == null:
@@ -148,10 +174,12 @@ func _on_citizen_clicked(c: Citizen) -> void:
 
 	if _selected_citizen != null:
 		_selected_citizen.select(null)
+		_clear_selected_citizen_path_debug()
 
 	_selected_citizen = c
 	c.select(_debug_panel)
 	_debug_panel.visible = true
+	_update_selected_citizen_path_debug()
 
 func _on_building_clicked(b: Building) -> void:
 	_entity_clicked_this_frame = true
@@ -163,6 +191,7 @@ func _on_building_clicked(b: Building) -> void:
 	if _selected_citizen != null:
 		_selected_citizen.select(null)
 		_selected_citizen = null
+		_clear_selected_citizen_path_debug()
 
 	if _selected_building != null:
 		_selected_building.select(null, world)
@@ -179,8 +208,49 @@ func _deselect() -> void:
 	if _selected_building != null:
 		_selected_building.select(null, world)
 		_selected_building = null
+	_clear_selected_citizen_path_debug()
 	if _debug_panel != null:
 		_debug_panel.visible = false
+
+func _update_selected_citizen_path_debug() -> void:
+	if _citizen_path_debug == null or _citizen_path_debug_mesh == null:
+		return
+
+	if _selected_citizen == null or not is_instance_valid(_selected_citizen):
+		_clear_selected_citizen_path_debug()
+		return
+
+	var path := _selected_citizen.get_debug_travel_path()
+	if path.size() < 2:
+		_clear_selected_citizen_path_debug()
+		return
+
+	_citizen_path_debug.visible = true
+	_citizen_path_debug.global_transform = Transform3D.IDENTITY
+	_citizen_path_debug_mesh.clear_surfaces()
+
+	var path_offset := Vector3.UP * 0.18
+	_citizen_path_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, _citizen_path_debug_material)
+	for point in path:
+		_citizen_path_debug_mesh.surface_add_vertex((point as Vector3) + path_offset)
+	_citizen_path_debug_mesh.surface_end()
+
+	_citizen_path_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _citizen_path_debug_material)
+	for point in path:
+		var center := (point as Vector3) + path_offset
+		_citizen_path_debug_mesh.surface_add_vertex(center)
+		_citizen_path_debug_mesh.surface_add_vertex(center + Vector3.UP * 0.35)
+		_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(-0.10, 0.0, 0.0))
+		_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(0.10, 0.0, 0.0))
+		_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(0.0, 0.0, -0.10))
+		_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(0.0, 0.0, 0.10))
+	_citizen_path_debug_mesh.surface_end()
+
+func _clear_selected_citizen_path_debug() -> void:
+	if _citizen_path_debug_mesh != null:
+		_citizen_path_debug_mesh.clear_surfaces()
+	if _citizen_path_debug != null:
+		_citizen_path_debug.visible = false
 
 func _build_hud() -> void:
 	var canvas := CanvasLayer.new()

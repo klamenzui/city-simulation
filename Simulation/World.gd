@@ -2,6 +2,7 @@ extends CSGBox3D
 class_name World
 
 const RoadGraphScript = preload("res://Simulation/Navigation/RoadGraph.gd")
+const PedestrianGraphScript = preload("res://Simulation/Navigation/PedestrianGraph.gd")
 
 @export var minutes_per_tick: int = 10
 @export var tick_interval_sec: float = 0.5
@@ -9,6 +10,7 @@ const RoadGraphScript = preload("res://Simulation/Navigation/RoadGraph.gd")
 var time: TimeSystem = TimeSystem.new()
 var economy: EconomySystem = EconomySystem.new()
 var road_graph = RoadGraphScript.new()
+var pedestrian_graph = PedestrianGraphScript.new()
 
 # Reserve account used as fallback / infrastructure sink.
 var city_account: Account = Account.new()
@@ -182,10 +184,35 @@ func rebuild_road_graph(root: Node3D) -> void:
 		road_graph = RoadGraphScript.new()
 	road_graph.rebuild_from_scene(root)
 
+func rebuild_pedestrian_graph(root: Node3D) -> void:
+	if pedestrian_graph == null:
+		pedestrian_graph = PedestrianGraphScript.new()
+	pedestrian_graph.rebuild_from_scene(root, buildings)
+
 func get_road_path(start_pos: Vector3, end_pos: Vector3) -> PackedVector3Array:
 	if road_graph == null:
 		return PackedVector3Array()
 	return road_graph.find_path_points(start_pos, end_pos)
+
+func get_pedestrian_path(start_pos: Vector3, end_pos: Vector3, start_building: Building = null, end_building: Building = null) -> PackedVector3Array:
+	if pedestrian_graph == null:
+		return PackedVector3Array()
+	return pedestrian_graph.find_path_points(start_pos, end_pos, start_building, end_building)
+
+func get_pedestrian_access_point(pos: Vector3, building: Building = null) -> Vector3:
+	if pedestrian_graph == null:
+		return pos
+	return pedestrian_graph.get_access_point(pos, building)
+
+func has_pedestrian_route(start_pos: Vector3, end_pos: Vector3, start_building: Building = null, end_building: Building = null) -> bool:
+	if pedestrian_graph == null or not pedestrian_graph.has_graph():
+		return true
+	return pedestrian_graph.has_path_between(start_pos, end_pos, start_building, end_building)
+
+func get_pedestrian_component_id(pos: Vector3, building: Building = null) -> int:
+	if pedestrian_graph == null:
+		return 0
+	return pedestrian_graph.get_component_id_for_pos(pos, building)
 
 func get_ground_fallback_y() -> float:
 	var world_height := size.y * absf(scale.y)
@@ -231,6 +258,8 @@ func find_nearest_restaurant(from_pos: Vector3, require_open: bool = true) -> Re
 		var restaurant := building as Restaurant
 		if require_open and not restaurant.is_open(time.get_hour()):
 			continue
+		if not _is_building_pedestrian_reachable(from_pos, restaurant):
+			continue
 		var dist := from_pos.distance_to(restaurant.global_position)
 		if dist < best_dist:
 			best_dist = dist
@@ -248,6 +277,8 @@ func find_nearest_shop(from_pos: Vector3, require_open: bool = true) -> Shop:
 		var shop := building as Shop
 		if require_open and not shop.is_open(time.get_hour()):
 			continue
+		if not _is_building_pedestrian_reachable(from_pos, shop):
+			continue
 		var dist := from_pos.distance_to(shop.global_position)
 		if dist < best_dist:
 			best_dist = dist
@@ -263,6 +294,8 @@ func find_nearest_cinema(from_pos: Vector3, require_open: bool = true) -> Cinema
 		var cinema := building as Cinema
 		if require_open and not cinema.is_open(time.get_hour()):
 			continue
+		if not _is_building_pedestrian_reachable(from_pos, cinema):
+			continue
 		var dist := from_pos.distance_to(cinema.global_position)
 		if dist < best_dist:
 			best_dist = dist
@@ -275,6 +308,8 @@ func find_nearest_park(from_pos: Vector3) -> Building:
 		if building == null:
 			continue
 		if not building.is_in_group("parks"):
+			continue
+		if not _is_building_pedestrian_reachable(from_pos, building):
 			continue
 		var dist := from_pos.distance_to(building.global_position)
 		if dist < best_dist:
@@ -291,6 +326,8 @@ func find_nearest_supermarket(from_pos: Vector3, require_open: bool = true) -> S
 		var market := building as Supermarket
 		if require_open and not market.is_open(time.get_hour()):
 			continue
+		if not _is_building_pedestrian_reachable(from_pos, market):
+			continue
 		var dist := from_pos.distance_to(market.global_position)
 		if dist < best_dist:
 			best_dist = dist
@@ -305,6 +342,8 @@ func find_nearest_university(from_pos: Vector3, require_open: bool = true) -> Un
 			continue
 		var uni := building as University
 		if require_open and not uni.is_open(time.get_hour()):
+			continue
+		if not _is_building_pedestrian_reachable(from_pos, uni):
 			continue
 		var dist := from_pos.distance_to(uni.global_position)
 		if dist < best_dist:
@@ -321,6 +360,8 @@ func find_nearest_building_with_service(from_pos: Vector3, service_type: String,
 		if building.get_service_type() != service_type:
 			continue
 		if require_open and not building.is_open(time.get_hour()):
+			continue
+		if not _is_building_pedestrian_reachable(from_pos, building):
 			continue
 		var dist := from_pos.distance_to(building.global_position)
 		if dist < best_dist:
@@ -341,6 +382,8 @@ func find_nearest_open_workplace(from_pos: Vector3, workplace_name_filter: Strin
 			continue
 		if workplace_service_type_filter != "" and building.get_service_type() != workplace_service_type_filter:
 			continue
+		if not _is_building_pedestrian_reachable(from_pos, building):
+			continue
 
 		var dist := from_pos.distance_to(building.global_position)
 		if dist < best_dist:
@@ -348,3 +391,10 @@ func find_nearest_open_workplace(from_pos: Vector3, workplace_name_filter: Strin
 			best = building
 
 	return best
+
+func _is_building_pedestrian_reachable(from_pos: Vector3, building: Building) -> bool:
+	if building == null:
+		return false
+	if pedestrian_graph == null or not pedestrian_graph.has_graph():
+		return true
+	return pedestrian_graph.has_path_between(from_pos, building.get_entrance_pos(), null, building)

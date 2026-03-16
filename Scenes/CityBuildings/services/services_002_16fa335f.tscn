@@ -930,11 +930,5 @@ transform = Transform3D(-2.19167, 0, 2.47455e-07, 0, 1.3319, 0, -3.30933e-07, 0,
 mesh = SubResource("ArrayMesh_iry5v")
 skeleton = NodePath("")
 
-[node name="StaticBody3D" type="StaticBody3D" parent="base1/base"]
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="base1/base/StaticBody3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, -7.10543e-15, 0, 1, 0, 0, 0)
-shape = SubResource("ConcavePolygonShape3D_baglu")
-
 [node name="Entrance" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.11508012, 0.06, 0.109637976)

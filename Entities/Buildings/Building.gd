@@ -194,6 +194,7 @@ func get_info(world = null) -> Dictionary:
 		"Expenses today": "%d EUR" % expenses_today,
 		"Profit today": "%d EUR" % get_profit_today(),
 		"Balance": "%d EUR" % account.balance,
+		"Position": "%d, %d, %d " % [global_position.x, global_position.y, global_position.z],
 	}
 
 	var extra := _get_extra_info(world)
@@ -296,7 +297,11 @@ func begin_new_day() -> void:
 	expenses_today = 0
 
 func get_entrance_pos() -> Vector3:
-	return entrance.global_position if entrance else global_position
+	#return entrance.global_position if entrance else global_position
+	return get_node("Entrance").global_position
+
+func get_footprint_bounds() -> AABB:
+	return _infer_click_bounds()
 
 func get_display_name() -> String:
 	if not building_name.strip_edges().is_empty():

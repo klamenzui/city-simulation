@@ -19,13 +19,12 @@ func start(world: World, citizen: Citizen) -> void:
 		finished = true
 		return
 
-	citizen.current_location = null  # in transit
-
 	# Use the exact entrance as arrival point. Random scatter produced
 	# unreachable targets for some imported buildings and could leave
 	# citizens stuck in GoTo forever.
 	_arrival_target = target.get_entrance_pos()
-	citizen.begin_travel_to(_arrival_target)
+	citizen.begin_travel_to(_arrival_target, target)
+	citizen.current_location = null  # in transit after we snapped out of the source building
 
 	# Path movement now drives completion; keep action timer disabled.
 	remaining_minutes = 0
@@ -44,6 +43,8 @@ func tick(world: World, citizen: Citizen, dt: int) -> void:
 func finish(world: World, citizen: Citizen) -> void:
 	if target == null:
 		return
+	var reached_target := citizen.has_reached_travel_target()
 	citizen.stop_travel()
+	if not reached_target:
+		return
 	citizen.current_location = target
-	citizen.set_position_grounded(_arrival_target)
