@@ -97,7 +97,7 @@ skeleton = NodePath("")
 
 [node name="building-sample-tower-d2" type="Node3D" parent="." instance=ExtResource("4_8h0af")]
 
-[node name="building-sample-tower-d" type="MeshInstance3D" parent="building-sample-tower-d2"]
+[node name="building-sample-tower-d_mesh" type="MeshInstance3D" parent="building-sample-tower-d2"]
 mesh = SubResource("ArrayMesh_0fyg1")
 skeleton = NodePath("")
 

@@ -4,6 +4,8 @@ class_name NavigationSetup
 static func ensure_region(root: Node3D, world: World, region_name: String = "NavigationRegion3D") -> void:
 	if root == null or world == null:
 		return
+	if has_dedicated_pedestrian_nav(root):
+		return
 	if root.get_node_or_null(region_name) != null:
 		return
 
@@ -30,3 +32,9 @@ static func ensure_region(root: Node3D, world: World, region_name: String = "Nav
 	nav_region.name = region_name
 	nav_region.navigation_mesh = nav_mesh
 	root.add_child(nav_region)
+
+static func has_dedicated_pedestrian_nav(root: Node3D) -> bool:
+	if root == null:
+		return false
+	return root.get_node_or_null("World/City/only_people_nav") != null \
+		or root.get_node_or_null("ImportedCity/only_people_nav") != null

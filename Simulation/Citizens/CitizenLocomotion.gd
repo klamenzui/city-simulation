@@ -1,4 +1,4 @@
-﻿extends RefCounted
+extends RefCounted
 class_name CitizenLocomotion
 
 func setup(citizen) -> void:
@@ -26,7 +26,7 @@ func set_position_grounded(citizen, pos: Vector3, world) -> void:
 	else:
 		citizen._ground_fallback_y = citizen.global_position.y
 
-func begin_travel_to(citizen, target_pos: Vector3, world) -> void:
+func begin_travel_to(citizen, target_pos: Vector3, target_building, world) -> void:
 	if citizen == null:
 		return
 
@@ -34,13 +34,32 @@ func begin_travel_to(citizen, target_pos: Vector3, world) -> void:
 	if world != null:
 		citizen._ground_fallback_y = world.get_ground_fallback_y()
 
+	var route_start = citizen.global_position
+
 	var route := PackedVector3Array()
-	if world != null and world.has_method("get_road_path"):
-		route = world.get_road_path(citizen.global_position, target_pos)
+	var used_pedestrian_path := false
+	if world != null and world.has_method("get_pedestrian_path"):
+		used_pedestrian_path = true
+		if world.has_method("has_pedestrian_route") and not world.has_pedestrian_route(route_start, target_pos, citizen.current_location, target_building):
+			route.append(route_start)
+			route.append(route_start)
+		else:
+			route = world.get_pedestrian_path(route_start, target_pos, citizen.current_location, target_building)
+	elif world != null and world.has_method("get_road_path"):
+		route = world.get_road_path(route_start, target_pos)
 
 	if route.size() < 2:
-		route.append(citizen.global_position)
-		route.append(target_pos)
+		if used_pedestrian_path:
+			route.append(route_start)
+			route.append(route_start)
+		else:
+			var fallback_start = route_start
+			var fallback_end := target_pos
+			if world != null and world.has_method("get_pedestrian_access_point"):
+				fallback_start = world.get_pedestrian_access_point(route_start)
+				fallback_end = world.get_pedestrian_access_point(target_pos)
+			route.append(fallback_start)
+			route.append(fallback_end)
 
 	citizen._travel_route = route
 	citizen._travel_route_index = 0
@@ -56,11 +75,11 @@ func begin_travel_to(citizen, target_pos: Vector3, world) -> void:
 func has_reached_travel_target(citizen) -> bool:
 	if citizen == null:
 		return true
-	if not citizen._is_travelling:
-		return true
+	if citizen._is_travelling and citizen._travel_route_index < citizen._travel_route.size() - 1:
+		return false
 	var to_target: Vector3 = citizen._travel_target - citizen.global_position
 	to_target.y = 0.0
-	return to_target.length() <= citizen.arrival_distance
+	return to_target.length() <= citizen.final_arrival_distance
 
 func stop_travel(citizen) -> void:
 	if citizen == null:
