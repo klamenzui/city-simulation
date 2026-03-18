@@ -4,6 +4,7 @@ class_name WorkAction
 var job
 var worked_net := 0
 var current_day := -1
+var _finish_reason: String = ""
 
 func _init(_job) -> void:
 	super()
@@ -14,6 +15,15 @@ func start(world, citizen) -> void:
 	super.start(world, citizen)
 	current_day = world.time.day
 	worked_net = 0
+	_finish_reason = ""
+	var workplace_label = job.workplace.get_display_name() if job != null and job.workplace != null else "Unknown"
+	citizen.debug_log("Work shift started at %s for %s (worked_today=%d/%d min, wage=%d/h)." % [
+		workplace_label,
+		job.title if job != null else "Unknown",
+		citizen.work_minutes_today,
+		int(job.shift_hours * 60) if job != null else 0,
+		job.wage_per_hour if job != null else 0
+	])
 
 # English comment: Work increases need drain compared to idle.
 # Base (per minute): hunger +0.10, energy -0.08, fun -0.03.
@@ -69,24 +79,39 @@ func tick(world, citizen, dt: int) -> void:
 	#
 	# Interrupt conditions (priority order):
 	if citizen.needs.health <= 35.0:
+		_finish_reason = "health %.0f <= 35" % citizen.needs.health
 		finished = true
 		return
 
 	if citizen.needs.energy <= citizen.low_energy_threshold:
 		# Too tired to work safely → go home.
+		_finish_reason = "energy %.0f <= %.0f" % [citizen.needs.energy, citizen.low_energy_threshold]
 		finished = true
 		return
 
 	if citizen.needs.hunger >= 70.0:
 		# Hungry enough to warrant a meal break. plan_next_action will handle eating,
 		# then re-check work window and return to work if shift is not yet complete.
+		_finish_reason = "hunger %.0f >= 70" % citizen.needs.hunger
 		finished = true
 		return
 
 	if is_lunch and now_total == (11 * 60 + 30):
 		# Start of lunch window → break. Only trigger once (at the boundary minute).
+		_finish_reason = "lunch break at 11:30"
 		finished = true
 		return
 
 	if worked_net >= shift_minutes:
+		_finish_reason = "completed shift (%d/%d min)" % [worked_net, shift_minutes]
 		finished = true
+
+func finish(world, citizen) -> void:
+	var workplace_label = job.workplace.get_display_name() if job != null and job.workplace != null else "Unknown"
+	if _finish_reason != "":
+		citizen.debug_log("Work shift stopped at %s: %s. worked_today=%d/%d min." % [
+			workplace_label,
+			_finish_reason,
+			citizen.work_minutes_today,
+			int(job.shift_hours * 60) if job != null else 0
+		])

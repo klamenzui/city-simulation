@@ -70,6 +70,7 @@ var _road_cells: Dictionary = {}
 var _crosswalk_cells: Dictionary = {}
 var _crosswalk_axes: Dictionary = {}
 var _boundary_node_by_side: Dictionary = {}
+var _boundary_nodes_by_road: Dictionary = {}
 var _is_ready: bool = false
 
 func rebuild_from_scene(root: Node3D, _buildings: Array = []) -> void:
@@ -83,6 +84,7 @@ func rebuild_from_scene(root: Node3D, _buildings: Array = []) -> void:
 	_crosswalk_cells.clear()
 	_crosswalk_axes.clear()
 	_boundary_node_by_side.clear()
+	_boundary_nodes_by_road.clear()
 	_is_ready = false
 
 	if root == null:
@@ -93,6 +95,7 @@ func rebuild_from_scene(root: Node3D, _buildings: Array = []) -> void:
 	_build_boundary_nodes()
 	_initialize_neighbor_buckets()
 	_build_side_links()
+	_build_road_cross_links()
 	_build_corner_links()
 	_build_crosswalk_links()
 	_rebuild_components()
@@ -201,6 +204,11 @@ func _build_boundary_nodes() -> void:
 			var node_idx := _append_unique_node(midpoint)
 			var side_id := int(side["id"])
 			_boundary_node_by_side[_side_key(road, side_id)] = node_idx
+			var road_key := _grid_key(road)
+			var road_nodes := _boundary_nodes_by_road.get(road_key, []) as Array
+			if not road_nodes.has(node_idx):
+				road_nodes.append(node_idx)
+				_boundary_nodes_by_road[road_key] = road_nodes
 			if not _access_node_indices.has(node_idx):
 				_access_node_indices.append(node_idx)
 			_node_meta[node_idx] = {
@@ -229,6 +237,18 @@ func _build_side_links() -> void:
 			var next_idx := int(_boundary_node_by_side.get(_side_key(next_road, side_id), -1))
 			if next_idx >= 0:
 				_connect_nodes(node_idx, next_idx)
+
+func _build_road_cross_links() -> void:
+	for node_indices_value in _boundary_nodes_by_road.values():
+		var node_indices := node_indices_value as Array
+		if node_indices.size() < 2:
+			continue
+
+		for i in range(node_indices.size()):
+			var a_idx := int(node_indices[i])
+			for j in range(i + 1, node_indices.size()):
+				var b_idx := int(node_indices[j])
+				_connect_nodes(a_idx, b_idx)
 
 func _build_corner_links() -> void:
 	for node_idx_value in _access_node_indices:

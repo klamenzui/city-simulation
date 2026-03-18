@@ -13,11 +13,13 @@ const UniversityScene = preload("res://Scenes/University.tscn")
 const CityHallScene = preload("res://Scenes/CityHall.tscn")
 const FarmScene = preload("res://Scenes/Farm.tscn")
 const FactoryScene = preload("res://Scenes/Factory.tscn")
+const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
 
 var _pause_btn: Button
 var _speed_label: Label
 var _date_label: Label
 var _clock_label: Label
+var _citizen_stats_label: Label
 var _debug_panel: DebugPanel
 var _selected_citizen: Citizen = null
 var _selected_building: Building = null
@@ -25,9 +27,15 @@ var _entity_clicked_this_frame: bool = false
 var _building_panel_refresh_left: float = 0.0
 var _citizen_path_debug: MeshInstance3D = null
 var _citizen_path_debug_mesh: ImmediateMesh = null
-var _citizen_path_debug_material: StandardMaterial3D = null
+var _citizen_path_line_material: StandardMaterial3D = null
+var _citizen_path_active_material: StandardMaterial3D = null
+var _citizen_path_start_material: StandardMaterial3D = null
+var _citizen_path_waypoint_material: StandardMaterial3D = null
+var _citizen_path_end_material: StandardMaterial3D = null
+var _citizen_path_failed_material: StandardMaterial3D = null
 
 func _ready() -> void:
+	SimLogger.start_new_session(false)
 	get_viewport().physics_object_picking = true
 
 	_setup_world_systems()
@@ -137,15 +145,23 @@ func _setup_citizen_path_debug() -> void:
 	_citizen_path_debug_mesh = ImmediateMesh.new()
 	_citizen_path_debug.mesh = _citizen_path_debug_mesh
 
-	_citizen_path_debug_material = StandardMaterial3D.new()
-	_citizen_path_debug_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_citizen_path_debug_material.albedo_color = Color(0.05, 0.95, 0.35, 1.0)
-	_citizen_path_debug_material.emission_enabled = true
-	_citizen_path_debug_material.emission = Color(0.05, 0.95, 0.35, 1.0)
-	_citizen_path_debug_material.no_depth_test = true
-	_citizen_path_debug.material_override = _citizen_path_debug_material
+	_citizen_path_line_material = _create_path_debug_material(Color(0.10, 0.95, 0.35, 1.0))
+	_citizen_path_active_material = _create_path_debug_material(Color(0.10, 0.85, 1.0, 1.0))
+	_citizen_path_start_material = _create_path_debug_material(Color(0.20, 1.0, 0.20, 1.0))
+	_citizen_path_waypoint_material = _create_path_debug_material(Color(1.0, 0.82, 0.18, 1.0))
+	_citizen_path_end_material = _create_path_debug_material(Color(1.0, 0.22, 0.22, 1.0))
+	_citizen_path_failed_material = _create_path_debug_material(Color(1.0, 0.35, 0.10, 1.0))
 
 	add_child(_citizen_path_debug)
+
+func _create_path_debug_material(color: Color) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = color
+	material.emission_enabled = true
+	material.emission = color
+	material.no_depth_test = true
+	return material
 
 func _bind_building_clicks() -> void:
 	for building in world.buildings:
@@ -220,31 +236,66 @@ func _update_selected_citizen_path_debug() -> void:
 		_clear_selected_citizen_path_debug()
 		return
 
-	var path := _selected_citizen.get_debug_travel_path()
-	if path.size() < 2:
+	if not _selected_citizen.has_debug_travel_route():
 		_clear_selected_citizen_path_debug()
 		return
+
+	var route := _selected_citizen.get_debug_travel_route_points()
+	if route.size() < 2:
+		_clear_selected_citizen_path_debug()
+		return
+
+	var is_active_route := _selected_citizen.is_debug_travelling()
+	var route_failed := _selected_citizen.did_debug_last_travel_fail()
+	var current_target := _selected_citizen.get_debug_travel_current_target()
+	var current_target_idx := _selected_citizen.get_debug_travel_route_index()
+	var route_material := _citizen_path_failed_material if route_failed else _citizen_path_line_material
 
 	_citizen_path_debug.visible = true
 	_citizen_path_debug.global_transform = Transform3D.IDENTITY
 	_citizen_path_debug_mesh.clear_surfaces()
 
 	var path_offset := Vector3.UP * 0.18
-	_citizen_path_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, _citizen_path_debug_material)
-	for point in path:
+	_citizen_path_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, route_material)
+	for point in route:
 		_citizen_path_debug_mesh.surface_add_vertex((point as Vector3) + path_offset)
 	_citizen_path_debug_mesh.surface_end()
 
-	_citizen_path_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _citizen_path_debug_material)
-	for point in path:
-		var center := (point as Vector3) + path_offset
-		_citizen_path_debug_mesh.surface_add_vertex(center)
-		_citizen_path_debug_mesh.surface_add_vertex(center + Vector3.UP * 0.35)
-		_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(-0.10, 0.0, 0.0))
-		_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(0.10, 0.0, 0.0))
-		_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(0.0, 0.0, -0.10))
-		_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(0.0, 0.0, 0.10))
+	if is_active_route and current_target != Vector3.ZERO:
+		_citizen_path_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _citizen_path_active_material)
+		_citizen_path_debug_mesh.surface_add_vertex(_selected_citizen.global_position + path_offset)
+		_citizen_path_debug_mesh.surface_add_vertex(current_target + path_offset)
+		_add_path_debug_marker(current_target + path_offset, 0.18, 0.42)
+		_citizen_path_debug_mesh.surface_end()
+
+	_citizen_path_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _citizen_path_start_material)
+	_add_path_debug_marker(route[0] + path_offset, 0.18, 0.42)
 	_citizen_path_debug_mesh.surface_end()
+
+	if route.size() > 2:
+		_citizen_path_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _citizen_path_waypoint_material)
+		for i in range(1, route.size() - 1):
+			var point: Vector3 = route[i]
+			if current_target_idx == i and current_target.distance_to(point) < 0.05:
+				continue
+			_add_path_debug_marker(point + path_offset, 0.12, 0.28)
+		_citizen_path_debug_mesh.surface_end()
+
+	_citizen_path_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _citizen_path_end_material)
+	_add_path_debug_marker(route[route.size() - 1] + path_offset, 0.20, 0.48)
+	_citizen_path_debug_mesh.surface_end()
+
+func _add_path_debug_marker(center: Vector3, radius: float, height: float) -> void:
+	_citizen_path_debug_mesh.surface_add_vertex(center)
+	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3.UP * height)
+	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(-radius, 0.0, 0.0))
+	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(radius, 0.0, 0.0))
+	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(0.0, 0.0, -radius))
+	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(0.0, 0.0, radius))
+	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(-radius * 0.75, 0.0, -radius * 0.75))
+	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(radius * 0.75, 0.0, radius * 0.75))
+	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(-radius * 0.75, 0.0, radius * 0.75))
+	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(radius * 0.75, 0.0, -radius * 0.75))
 
 func _clear_selected_citizen_path_debug() -> void:
 	if _citizen_path_debug_mesh != null:
@@ -288,6 +339,16 @@ func _build_hud() -> void:
 	_clock_label.add_theme_font_size_override("font_size", 18)
 	_clock_label.custom_minimum_size = Vector2(66, 34)
 	time_box.add_child(_clock_label)
+
+	var separator2 := Label.new()
+	separator2.text = "|"
+	separator2.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	time_box.add_child(separator2)
+
+	_citizen_stats_label = Label.new()
+	_citizen_stats_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_citizen_stats_label.custom_minimum_size = Vector2(210, 34)
+	time_box.add_child(_citizen_stats_label)
 
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
@@ -360,7 +421,31 @@ func _on_time_advanced(_day: int, _hour: int, _minute: int) -> void:
 	_refresh_time_hud()
 
 func _refresh_time_hud() -> void:
-	if _date_label == null or _clock_label == null or world == null or world.time == null:
+	if _date_label == null or _clock_label == null or _citizen_stats_label == null or world == null or world.time == null:
 		return
 	_date_label.text = world.time.get_ui_date_string()
 	_clock_label.text = world.time.get_time_string()
+	_citizen_stats_label.text = "Citizens: %d | Unbeschaeftigt: %d" % [
+		_count_registered_citizens(),
+		_count_unemployed_citizens()
+	]
+
+func _count_registered_citizens() -> int:
+	if world == null:
+		return 0
+	var total := 0
+	for citizen in world.citizens:
+		if citizen != null:
+			total += 1
+	return total
+
+func _count_unemployed_citizens() -> int:
+	if world == null:
+		return 0
+	var unemployed := 0
+	for citizen in world.citizens:
+		if citizen == null:
+			continue
+		if citizen.job == null or citizen.job.workplace == null:
+			unemployed += 1
+	return unemployed
