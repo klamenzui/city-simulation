@@ -1,0 +1,1132 @@
+=== Simulation Log ===
+Started: 2026-03-18T23:35:46
+Path: C:/dev/projects/Godot/city-simulation/logs.txt
+
+[Citizen Sophie Koch] Auto-found home: Residential 01 (Multi-building)
+[Citizen Sophie Koch] Registered as tenant at: Residential 01 (Multi-building)
+[Citizen Sophie Koch] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Sophie Koch] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Sophie Koch] Employed at: Factory 01 (Garages) | job=Fahrer reqEdu=0/0 service=production_goods workplace=Factory 01 (Garages) wage=25 shift=07+8h worked=0min
+[Citizen Hannah Richter] Auto-found home: Residential 03 (Multi-building)
+[Citizen Hannah Richter] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Hannah Richter] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Hannah Richter] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Hannah Richter] No reachable open workplace found for Doctor (service=governance, reqEdu=1, from=Residential 03 (Multi-building)).
+[Citizen Luca Zimmermann] Auto-found home: Residential 02 (Multilayer)
+[Citizen Luca Zimmermann] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen Luca Zimmermann] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Luca Zimmermann] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Luca Zimmermann] Employed at: Shop 01 (Commercial building) | job=Verkaeufer reqEdu=0/0 service=shopping workplace=Shop 01 (Commercial building) wage=24 shift=08+8h worked=0min
+[Citizen Felix Braun] Auto-found home: Residential 03 (Multi-building)
+[Citizen Felix Braun] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Felix Braun] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Felix Braun] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Felix Braun] Employed at: Cafe 14 (Stores) | job=Baecker reqEdu=0/0 service=food workplace=Cafe 14 (Stores) wage=25 shift=09+8h worked=0min
+[Citizen Anna Hartmann] Auto-found home: Residential 03 (Multilayer)
+[Citizen Anna Hartmann] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Anna Hartmann] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Anna Hartmann] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Anna Hartmann] Employed at: Factory 01 (Garages) | job=Mechaniker reqEdu=0/0 service=production_goods workplace=Factory 01 (Garages) wage=21 shift=08+8h worked=0min
+[Citizen Simon Schulz] Auto-found home: Residential 03 (Multilayer)
+[Citizen Simon Schulz] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Simon Schulz] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Simon Schulz] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Simon Schulz] Employed at: Factory 01 (Garages) | job=Fahrer reqEdu=0/0 service=production_goods workplace=Factory 01 (Garages) wage=20 shift=09+8h worked=0min
+[Citizen Sara Schroeder] Auto-found home: Residential 04 (Multi-building)
+[Citizen Sara Schroeder] Registered as tenant at: Residential 04 (Multi-building)
+[Citizen Sara Schroeder] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Sara Schroeder] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Sara Schroeder] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 04 (Multi-building)).
+[Citizen Clara Wolf] Auto-found home: Residential 03 (Multi-building)
+[Citizen Clara Wolf] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Clara Wolf] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Clara Wolf] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Clara Wolf] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 03 (Multi-building)).
+[Citizen Laura Meyer] Auto-found home: Residential 02 (Multi-building)
+[Citizen Laura Meyer] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Laura Meyer] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Laura Meyer] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Laura Meyer] Employed at: Factory 01 (Garages) | job=Mechaniker reqEdu=0/0 service=production_goods workplace=Factory 01 (Garages) wage=23 shift=09+8h worked=0min
+[Citizen Jonas Schmidt] Auto-found home: Residential 05 (Multilayer)
+[Citizen Jonas Schmidt] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen Jonas Schmidt] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Jonas Schmidt] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Jonas Schmidt] Needs education level 1 for job Engineer (current 0). Candidate workplace: Factory 01 (Garages). Study option: University 02 (Services) (tuition 25 EUR).
+[Citizen Noah Neumann] Auto-found home: Residential 05 (Multi-building)
+[Citizen Noah Neumann] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Noah Neumann] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Noah Neumann] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Noah Neumann] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 05 (Multi-building)).
+[Citizen Lea Hoffmann] Auto-found home: Residential 07 (Multilayer)
+[Citizen Lea Hoffmann] Registered as tenant at: Residential 07 (Multilayer)
+[Citizen Lea Hoffmann] Auto-found restaurant: Restaurant 03 (Services)
+[Citizen Lea Hoffmann] Employed at: Restaurant 03 (Services) | job=Kellner reqEdu=0/0 service=food workplace=Restaurant 03 (Services) wage=17 shift=09+8h worked=0min
+[Citizen Tom Klein] Auto-found home: Residential 06 (Multilayer)
+[Citizen Tom Klein] Registered as tenant at: Residential 06 (Multilayer)
+[Citizen Tom Klein] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 06 (Multilayer)).
+[Citizen Alex Schwarz] Auto-found home: Residential 05 (Multilayer)
+[Citizen Alex Schwarz] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen Alex Schwarz] No reachable open workplace found for Kellner (service=food, reqEdu=0, from=Residential 05 (Multilayer)).
+[Citizen Erik Fischer] Auto-found home: Residential 05 (Multi-building)
+[Citizen Erik Fischer] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Erik Fischer] Auto-found restaurant: Restaurant 03 (Services)
+[Citizen Erik Fischer] Employed at: Restaurant 03 (Services) | job=Baecker reqEdu=0/0 service=food workplace=Restaurant 03 (Services) wage=17 shift=08+8h worked=0min
+[Citizen Emma Wagner] Auto-found home: Residential 01 (Multi-building)
+[Citizen Emma Wagner] Registered as tenant at: Residential 01 (Multi-building)
+[Citizen Emma Wagner] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 01 (Multi-building)).
+[Citizen Max Weber] Auto-found home: Residential 04 (Multi-building)
+[Citizen Max Weber] Registered as tenant at: Residential 04 (Multi-building)
+[Citizen Max Weber] No reachable open workplace found for Mechaniker (service=production_goods, reqEdu=0, from=Residential 04 (Multi-building)).
+[Citizen Leon Krueger] Auto-found home: Residential 06 (Multilayer)
+[Citizen Leon Krueger] Registered as tenant at: Residential 06 (Multilayer)
+[Citizen Leon Krueger] Auto-found restaurant: Restaurant 03 (Services)
+[Citizen Leon Krueger] No reachable open workplace found for Doctor (service=governance, reqEdu=1, from=Residential 06 (Multilayer)).
+[Citizen Maria Mueller] Auto-found home: Residential 04 (Multi-building)
+[Citizen Maria Mueller] Registered as tenant at: Residential 04 (Multi-building)
+[Citizen Maria Mueller] No reachable open workplace found for Fahrer (service=production_goods, reqEdu=0, from=Residential 04 (Multi-building)).
+[Citizen David Becker] Auto-found home: Residential 05 (Multilayer)
+[Citizen David Becker] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen David Becker] Auto-found restaurant: Restaurant 03 (Services)
+[Citizen David Becker] No reachable open workplace found for Engineer (service=production_goods, reqEdu=1, from=Residential 05 (Multilayer)).
+[Citizen Nora Koch] Auto-found home: Residential 02 (Multilayer)
+[Citizen Nora Koch] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen Nora Koch] No reachable open workplace found for Engineer (service=production_goods, reqEdu=1, from=Residential 02 (Multilayer)).
+[Citizen Julia Richter] Auto-found home: Residential 01 (Multilayer)
+[Citizen Julia Richter] Registered as tenant at: Residential 01 (Multilayer)
+[Citizen Julia Richter] Auto-found restaurant: Restaurant 02 (Stores)
+[Citizen Julia Richter] Auto-found shop: Shop 06 (Stores)
+[Citizen Julia Richter] Auto-found cinema: Cinema 05 (Stores)
+[Citizen Julia Richter] Employed at: Cinema 05 (Stores) | job=Designer reqEdu=0/0 service=fun workplace=Cinema 05 (Stores) wage=18 shift=07+8h worked=0min
+[Citizen Jan Zimmermann] Auto-found home: Residential 01 (Multilayer)
+[Citizen Jan Zimmermann] Registered as tenant at: Residential 01 (Multilayer)
+[Citizen Jan Zimmermann] Auto-found restaurant: Restaurant 02 (Stores)
+[Citizen Jan Zimmermann] Auto-found shop: Shop 06 (Stores)
+[Citizen Jan Zimmermann] Auto-found cinema: Cinema 05 (Stores)
+[Citizen Jan Zimmermann] No reachable open workplace found for Mechaniker (service=production_goods, reqEdu=0, from=Residential 01 (Multilayer)).
+[Citizen Lena Braun] Auto-found home: Residential 06 (Multilayer)
+[Citizen Lena Braun] Registered as tenant at: Residential 06 (Multilayer)
+[Citizen Lena Braun] Auto-found restaurant: Restaurant 12 (Stores)
+[Citizen Lena Braun] Auto-found supermarket: Supermarket 03 (Commercial building)
+[Citizen Lena Braun] Auto-found shop: Shop 01 (Stores)
+[Citizen Lena Braun] No reachable open workplace found for Teacher (service=education, reqEdu=1, from=Residential 06 (Multilayer)).
+[Citizen Finn Hartmann] Auto-found home: Residential 06 (Multilayer)
+[Citizen Finn Hartmann] Registered as tenant at: Residential 06 (Multilayer)
+[Citizen Finn Hartmann] Auto-found restaurant: Restaurant 12 (Stores)
+[Citizen Finn Hartmann] Auto-found supermarket: Supermarket 03 (Commercial building)
+[Citizen Finn Hartmann] Auto-found shop: Shop 01 (Stores)
+[Citizen Finn Hartmann] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 06 (Multilayer)).
+[Citizen Mia Schulz] Auto-found home: Residential 04 (Multilayer)
+[Citizen Mia Schulz] Registered as tenant at: Residential 04 (Multilayer)
+[Citizen Mia Schulz] Auto-found restaurant: Restaurant 02 (Stores)
+[Citizen Mia Schulz] Auto-found shop: Shop 06 (Stores)
+[Citizen Mia Schulz] Auto-found cinema: Cinema 05 (Stores)
+[Citizen Mia Schulz] No reachable open workplace found for Doctor (service=governance, reqEdu=1, from=Residential 04 (Multilayer)).
+[Citizen Lisa Schroeder] Auto-found home: Residential 03 (Multilayer)
+[Citizen Lisa Schroeder] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Lisa Schroeder] Auto-found restaurant: Restaurant 12 (Stores)
+[Citizen Lisa Schroeder] Auto-found supermarket: Supermarket 08 (Stores)
+[Citizen Lisa Schroeder] Auto-found shop: Shop 01 (Stores)
+[Citizen Lisa Schroeder] Employed at: Restaurant 12 (Stores) | job=Baecker reqEdu=0/0 service=food workplace=Restaurant 12 (Stores) wage=15 shift=07+8h worked=0min
+[Citizen Paul Wolf] Auto-found home: Residential 03 (Multi-building)
+[Citizen Paul Wolf] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Paul Wolf] Auto-found restaurant: Restaurant 02 (Stores)
+[Citizen Paul Wolf] Auto-found shop: Shop 06 (Stores)
+[Citizen Paul Wolf] Auto-found cinema: Cinema 05 (Stores)
+[Citizen Paul Wolf] No reachable open workplace found for Mechaniker (service=production_goods, reqEdu=0, from=Residential 03 (Multi-building)).
+[Citizen Eva Meyer] Auto-found home: Residential 03 (Multi-building)
+[Citizen Eva Meyer] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Eva Meyer] Auto-found park: Park 01 (Park)
+[Citizen Eva Meyer] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 03 (Multi-building)).
+[Citizen Ben Schmidt] Auto-found home: Residential 05 (Multi-building)
+[Citizen Ben Schmidt] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Ben Schmidt] Auto-found restaurant: Restaurant 12 (Stores)
+[Citizen Ben Schmidt] Auto-found supermarket: Supermarket 08 (Stores)
+[Citizen Ben Schmidt] Auto-found shop: Shop 01 (Stores)
+[Citizen Ben Schmidt] Employed at: Restaurant 12 (Stores) | job=Baecker reqEdu=0/0 service=food workplace=Restaurant 12 (Stores) wage=16 shift=09+8h worked=0min
+[Citizen Sophie Neumann] Auto-found home: Residential 05 (Multi-building)
+[Citizen Sophie Neumann] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Sophie Neumann] Auto-found park: Park 01 (Park)
+[Citizen Sophie Neumann] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 05 (Multi-building)).
+[Citizen Hannah Hoffmann] Auto-found home: Residential 04 (Multi-building)
+[Citizen Hannah Hoffmann] Registered as tenant at: Residential 04 (Multi-building)
+[Citizen Hannah Hoffmann] Auto-found park: Park 01 (Park)
+[Citizen Hannah Hoffmann] No reachable open workplace found for Engineer (service=production_goods, reqEdu=1, from=Residential 04 (Multi-building)).
+[Citizen Luca Klein] Auto-found home: Residential 03 (Multi-building)
+[Citizen Luca Klein] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Luca Klein] Auto-found park: Park 01 (Park)
+[Citizen Luca Klein] No reachable open workplace found for Kellner (service=food, reqEdu=0, from=Residential 03 (Multi-building)).
+[Citizen Felix Schwarz] Auto-found home: Residential 03 (Multi-building)
+[Citizen Felix Schwarz] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Felix Schwarz] No reachable open workplace found for Baecker (service=food, reqEdu=0, from=Residential 03 (Multi-building)).
+[Citizen Anna Fischer] Auto-found home: Residential 03 (Multi-building)
+[Citizen Anna Fischer] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Anna Fischer] No reachable open workplace found for Fahrer (service=production_goods, reqEdu=0, from=Residential 03 (Multi-building)).
+[Citizen Simon Wagner] Auto-found home: Residential 03 (Multilayer)
+[Citizen Simon Wagner] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Simon Wagner] No reachable open workplace found for Engineer (service=production_goods, reqEdu=1, from=Residential 03 (Multilayer)).
+[Citizen Sara Weber] Auto-found home: Residential 04 (Multilayer)
+[Citizen Sara Weber] Registered as tenant at: Residential 04 (Multilayer)
+[Citizen Sara Weber] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 04 (Multilayer)).
+[Citizen Clara Krueger] Auto-found home: Residential 01 (Multilayer)
+[Citizen Clara Krueger] Registered as tenant at: Residential 01 (Multilayer)
+[Citizen Clara Krueger] No reachable open workplace found for Teacher (service=education, reqEdu=1, from=Residential 01 (Multilayer)).
+[Citizen Laura Mueller] Auto-found home: Residential 01 (Multilayer)
+[Citizen Laura Mueller] Registered as tenant at: Residential 01 (Multilayer)
+[Citizen Laura Mueller] No reachable open workplace found for Kellner (service=food, reqEdu=0, from=Residential 01 (Multilayer)).
+[Citizen Jonas Becker] Auto-found home: Residential 02 (Multilayer)
+[Citizen Jonas Becker] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen Jonas Becker] No reachable open workplace found for Engineer (service=production_goods, reqEdu=1, from=Residential 02 (Multilayer)).
+[Citizen Noah Koch] Auto-found home: Residential 05 (Multi-building)
+[Citizen Noah Koch] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Noah Koch] No reachable open workplace found for Mechaniker (service=production_goods, reqEdu=0, from=Residential 05 (Multi-building)).
+[Citizen Lea Richter] Auto-found home: Residential 05 (Multi-building)
+[Citizen Lea Richter] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Lea Richter] No reachable open workplace found for Mechaniker (service=production_goods, reqEdu=0, from=Residential 05 (Multi-building)).
+[Citizen Tom Zimmermann] Auto-found home: Residential 05 (Multilayer)
+[Citizen Tom Zimmermann] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen Tom Zimmermann] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Tom Zimmermann] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Tom Zimmermann] No reachable open workplace found for Teacher (service=education, reqEdu=1, from=Residential 05 (Multilayer)).
+[Citizen Alex Braun] Auto-found home: Residential 04 (Multilayer)
+[Citizen Alex Braun] Registered as tenant at: Residential 04 (Multilayer)
+[Citizen Alex Braun] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Alex Braun] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Alex Braun] No reachable open workplace found for Doctor (service=governance, reqEdu=1, from=Residential 04 (Multilayer)).
+[Citizen Erik Hartmann] Auto-found home: Residential 05 (Multilayer)
+[Citizen Erik Hartmann] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen Erik Hartmann] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Erik Hartmann] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Erik Hartmann] Employed at: Factory 02 (Garages) | job=Fahrer reqEdu=0/0 service=production_goods workplace=Factory 02 (Garages) wage=19 shift=08+8h worked=0min
+[Citizen Emma Schulz] Auto-found home: Residential 01 (Multilayer)
+[Citizen Emma Schulz] Registered as tenant at: Residential 01 (Multilayer)
+[Citizen Emma Schulz] Auto-found restaurant: Restaurant 17 (Stores)
+[Citizen Emma Schulz] Employed at: Restaurant 17 (Stores) | job=Baecker reqEdu=0/0 service=food workplace=Restaurant 17 (Stores) wage=15 shift=09+8h worked=0min
+[Citizen Max Schroeder] Auto-found home: Residential 04 (Multilayer)
+[Citizen Max Schroeder] Registered as tenant at: Residential 04 (Multilayer)
+[Citizen Max Schroeder] Auto-found supermarket: Supermarket 18 (Stores)
+[Citizen Max Schroeder] No reachable open workplace found for Verkaeufer (service=shopping, reqEdu=0, from=Residential 04 (Multilayer)).
+[Citizen Leon Wolf] Auto-found home: Residential 03 (Multilayer)
+[Citizen Leon Wolf] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Leon Wolf] Auto-found park: Park 01 (Park)
+[Citizen Leon Wolf] No reachable open workplace found for Kellner (service=food, reqEdu=0, from=Residential 03 (Multilayer)).
+[Citizen Maria Meyer] Auto-found home: Residential 03 (Multilayer)
+[Citizen Maria Meyer] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Maria Meyer] Auto-found park: Park 01 (Park)
+[Citizen Maria Meyer] No reachable open workplace found for Mechaniker (service=production_goods, reqEdu=0, from=Residential 03 (Multilayer)).
+[Citizen David Schmidt] Auto-found home: Residential 01 (Multi-building)
+[Citizen David Schmidt] Registered as tenant at: Residential 01 (Multi-building)
+[Citizen David Schmidt] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen David Schmidt] Auto-found cinema: Cinema 25 (Stores)
+[Citizen David Schmidt] Needs education level 1 for job Engineer (current 0). Candidate workplace: Factory 05 (Garages). No reachable university available right now.
+[Citizen Nora Neumann] Auto-found home: Residential 03 (Multi-building)
+[Citizen Nora Neumann] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Nora Neumann] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Nora Neumann] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Nora Neumann] Employed at: Restaurant 07 (Stores) | job=Kellner reqEdu=0/0 service=food workplace=Restaurant 07 (Stores) wage=14 shift=09+8h worked=0min
+[Citizen Julia Hoffmann] Auto-found home: Residential 02 (Multi-building)
+[Citizen Julia Hoffmann] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Julia Hoffmann] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Julia Hoffmann] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Julia Hoffmann] Employed at: Shop 04 (Commercial building) | job=Verkaeufer reqEdu=0/0 service=shopping workplace=Shop 04 (Commercial building) wage=18 shift=07+8h worked=0min
+[Citizen Jan Klein] Auto-found home: Residential 02 (Multilayer)
+[Citizen Jan Klein] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen Jan Klein] Auto-found restaurant: Restaurant 17 (Stores)
+[Citizen Jan Klein] No reachable open workplace found for Mechaniker (service=production_goods, reqEdu=0, from=Residential 02 (Multilayer)).
+[Citizen Lena Schwarz] Auto-found home: Residential 05 (Multilayer)
+[Citizen Lena Schwarz] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen Lena Schwarz] Auto-found supermarket: Supermarket 18 (Stores)
+[Citizen Lena Schwarz] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 05 (Multilayer)).
+[Citizen Finn Fischer] Auto-found home: Residential 03 (Multilayer)
+[Citizen Finn Fischer] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Finn Fischer] Auto-found restaurant: Restaurant 17 (Stores)
+[Citizen Finn Fischer] No reachable open workplace found for Doctor (service=governance, reqEdu=1, from=Residential 03 (Multilayer)).
+[Citizen Mia Wagner] Auto-found home: Residential 04 (Multilayer)
+[Citizen Mia Wagner] Registered as tenant at: Residential 04 (Multilayer)
+[Citizen Mia Wagner] Auto-found supermarket: Supermarket 18 (Stores)
+[Citizen Mia Wagner] No reachable open workplace found for Fahrer (service=production_goods, reqEdu=0, from=Residential 04 (Multilayer)).
+[Citizen Lisa Weber] Auto-found home: Residential 03 (Multilayer)
+[Citizen Lisa Weber] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Lisa Weber] Auto-found park: Park 01 (Park)
+[Citizen Lisa Weber] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 03 (Multilayer)).
+[Citizen Paul Krueger] Auto-found home: Residential 04 (Multilayer)
+[Citizen Paul Krueger] Registered as tenant at: Residential 04 (Multilayer)
+[Citizen Paul Krueger] Auto-found park: Park 01 (Park)
+[Citizen Paul Krueger] No reachable open workplace found for Teacher (service=education, reqEdu=1, from=Residential 04 (Multilayer)).
+[Citizen Eva Mueller] Auto-found home: Residential 02 (Multilayer)
+[Citizen Eva Mueller] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen Eva Mueller] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Eva Mueller] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Eva Mueller] Employed at: Cinema 25 (Stores) | job=Designer reqEdu=0/0 service=fun workplace=Cinema 25 (Stores) wage=11 shift=08+8h worked=0min
+[Citizen Ben Becker] Auto-found home: Residential 05 (Multilayer)
+[Citizen Ben Becker] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen Ben Becker] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Ben Becker] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Ben Becker] Needs education level 1 for job Engineer (current 0). Candidate workplace: Factory 05 (Garages). No reachable university available right now.
+[Citizen Sophie Koch] Auto-found home: Residential 01 (Multilayer)
+[Citizen Sophie Koch] Registered as tenant at: Residential 01 (Multilayer)
+[Citizen Sophie Koch] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Sophie Koch] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Sophie Koch] Employed at: Factory 02 (Garages) | job=Mechaniker reqEdu=0/0 service=production_goods workplace=Factory 02 (Garages) wage=12 shift=07+8h worked=0min
+[Citizen Hannah Richter] Auto-found home: Residential 07 (Multilayer)
+[Citizen Hannah Richter] Registered as tenant at: Residential 07 (Multilayer)
+[Citizen Hannah Richter] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Hannah Richter] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Hannah Richter] No reachable open workplace found for Verkaeufer (service=shopping, reqEdu=0, from=Residential 07 (Multilayer)).
+[Citizen Luca Zimmermann] Auto-found home: Residential 05 (Multi-building)
+[Citizen Luca Zimmermann] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Luca Zimmermann] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Luca Zimmermann] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Luca Zimmermann] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 05 (Multi-building)).
+[Citizen Felix Braun] Auto-found home: Residential 03 (Multilayer)
+[Citizen Felix Braun] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Felix Braun] Auto-found restaurant: Restaurant 17 (Stores)
+[Citizen Felix Braun] Employed at: Cafe 09 (Stores) | job=Kellner reqEdu=0/0 service=food workplace=Cafe 09 (Stores) wage=24 shift=08+8h worked=0min
+[Citizen Anna Hartmann] Auto-found home: Residential 05 (Multilayer)
+[Citizen Anna Hartmann] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen Anna Hartmann] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Anna Hartmann] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Anna Hartmann] Employed at: Factory 05 (Garages) | job=Fahrer reqEdu=0/0 service=production_goods workplace=Factory 05 (Garages) wage=19 shift=09+8h worked=0min
+[Citizen Simon Schulz] Auto-found home: Residential 02 (Multi-building)
+[Citizen Simon Schulz] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Simon Schulz] Auto-found supermarket: Supermarket 18 (Stores)
+[Citizen Simon Schulz] No reachable open workplace found for Doctor (service=governance, reqEdu=1, from=Residential 02 (Multi-building)).
+[Citizen Sara Schroeder] Auto-found home: Residential 05 (Multi-building)
+[Citizen Sara Schroeder] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Sara Schroeder] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Sara Schroeder] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Sara Schroeder] Employed at: Shop 04 (Commercial building) | job=Verkaeufer reqEdu=0/0 service=shopping workplace=Shop 04 (Commercial building) wage=16 shift=07+8h worked=0min
+[Citizen Clara Wolf] Auto-found home: Residential 03 (Multi-building)
+[Citizen Clara Wolf] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Clara Wolf] Auto-found restaurant: Restaurant 22 (Stores)
+[Citizen Clara Wolf] Auto-found supermarket: Supermarket 23 (Stores)
+[Citizen Clara Wolf] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 03 (Multi-building)).
+[Citizen Laura Meyer] Auto-found home: Residential 02 (Multi-building)
+[Citizen Laura Meyer] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Laura Meyer] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Laura Meyer] Employed at: Restaurant 07 (Stores) | job=Baecker reqEdu=0/0 service=food workplace=Restaurant 07 (Stores) wage=16 shift=09+8h worked=0min
+[Citizen Jonas Schmidt] Auto-found home: Residential 01 (Foundation)
+[Citizen Jonas Schmidt] Registered as tenant at: Residential 01 (Foundation)
+[Citizen Jonas Schmidt] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Jonas Schmidt] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Jonas Schmidt] No reachable open workplace found for Doctor (service=governance, reqEdu=1, from=Residential 01 (Foundation)).
+[Citizen Noah Neumann] Auto-found home: Residential 02 (Multilayer)
+[Citizen Noah Neumann] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen Noah Neumann] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Noah Neumann] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Noah Neumann] Employed at: Restaurant 07 (Stores) | job=Baecker reqEdu=0/0 service=food workplace=Restaurant 07 (Stores) wage=15 shift=09+8h worked=0min
+[Citizen Lea Hoffmann] Auto-found home: Residential 04 (Multilayer)
+[Citizen Lea Hoffmann] Registered as tenant at: Residential 04 (Multilayer)
+[Citizen Lea Hoffmann] Auto-found restaurant: Restaurant 27 (Stores)
+[Citizen Lea Hoffmann] Employed at: Restaurant 27 (Stores) | job=Baecker reqEdu=0/0 service=food workplace=Restaurant 27 (Stores) wage=16 shift=08+8h worked=0min
+[Citizen Tom Klein] Auto-found home: Residential 01 (Multi-building)
+[Citizen Tom Klein] Registered as tenant at: Residential 01 (Multi-building)
+[Citizen Tom Klein] Auto-found shop: Shop 26 (Stores)
+[Citizen Tom Klein] Employed at: Cafe 04 (Stores) | job=Kellner reqEdu=0/0 service=food workplace=Cafe 04 (Stores) wage=22 shift=09+8h worked=0min
+[Citizen Alex Schwarz] Auto-found home: Residential 07 (Multilayer)
+[Citizen Alex Schwarz] Registered as tenant at: Residential 07 (Multilayer)
+[Citizen Alex Schwarz] Auto-found restaurant: Restaurant 22 (Stores)
+[Citizen Alex Schwarz] Auto-found supermarket: Supermarket 23 (Stores)
+[Citizen Alex Schwarz] No reachable open workplace found for Fahrer (service=production_goods, reqEdu=0, from=Residential 07 (Multilayer)).
+[Citizen Erik Fischer] Auto-found home: Residential 07 (Multilayer)
+[Citizen Erik Fischer] Registered as tenant at: Residential 07 (Multilayer)
+[Citizen Erik Fischer] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Erik Fischer] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Erik Fischer] No reachable open workplace found for Verkaeufer (service=shopping, reqEdu=0, from=Residential 07 (Multilayer)).
+[Citizen Emma Wagner] Auto-found home: Residential 04 (Multi-building)
+[Citizen Emma Wagner] Registered as tenant at: Residential 04 (Multi-building)
+[Citizen Emma Wagner] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Emma Wagner] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Emma Wagner] No reachable open workplace found for Kellner (service=food, reqEdu=0, from=Residential 04 (Multi-building)).
+[Citizen Max Weber] Auto-found home: Residential 01 (Foundation)
+[Citizen Max Weber] Registered as tenant at: Residential 01 (Foundation)
+[Citizen Max Weber] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Max Weber] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Max Weber] Employed at: Shop 04 (Commercial building) | job=Verkaeufer reqEdu=0/0 service=shopping workplace=Shop 04 (Commercial building) wage=22 shift=09+8h worked=0min
+[Citizen Leon Krueger] Auto-found home: Residential 02 (Multi-building)
+[Citizen Leon Krueger] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Leon Krueger] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Leon Krueger] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Leon Krueger] Employed at: Shop 04 (Commercial building) | job=Verkaeufer reqEdu=0/0 service=shopping workplace=Shop 04 (Commercial building) wage=24 shift=09+8h worked=0min
+[Citizen Maria Mueller] Auto-found home: Residential 02 (Multi-building)
+[Citizen Maria Mueller] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Maria Mueller] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Maria Mueller] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Maria Mueller] Employed at: Restaurant 07 (Stores) | job=Baecker reqEdu=0/0 service=food workplace=Restaurant 07 (Stores) wage=18 shift=09+8h worked=0min
+[Citizen David Becker] Auto-found home: Residential 02 (Multilayer)
+[Citizen David Becker] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen David Becker] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen David Becker] Auto-found shop: Shop 04 (Commercial building)
+[Citizen David Becker] No reachable open workplace found for Baecker (service=food, reqEdu=0, from=Residential 02 (Multilayer)).
+[Citizen Nora Koch] Auto-found home: Residential 01 (Multilayer)
+[Citizen Nora Koch] Registered as tenant at: Residential 01 (Multilayer)
+[Citizen Nora Koch] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Nora Koch] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Nora Koch] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 01 (Multilayer)).
+[Citizen Julia Richter] Auto-found home: Residential 04 (Multi-building)
+[Citizen Julia Richter] Registered as tenant at: Residential 04 (Multi-building)
+[Citizen Julia Richter] Auto-found restaurant: Restaurant 27 (Stores)
+[Citizen Julia Richter] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 04 (Multi-building)).
+[Citizen Jan Zimmermann] Auto-found home: Residential 02 (Multi-building)
+[Citizen Jan Zimmermann] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Jan Zimmermann] Auto-found shop: Shop 26 (Stores)
+[Citizen Jan Zimmermann] No reachable open workplace found for Fahrer (service=production_goods, reqEdu=0, from=Residential 02 (Multi-building)).
+[Citizen Lena Braun] Auto-found home: Residential 01 (Foundation)
+[Citizen Lena Braun] Registered as tenant at: Residential 01 (Foundation)
+[Citizen Lena Braun] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Lena Braun] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Lena Braun] No reachable open workplace found for Kellner (service=food, reqEdu=0, from=Residential 01 (Foundation)).
+[Citizen Finn Hartmann] Auto-found home: Residential 01 (Multi-building)
+[Citizen Finn Hartmann] Registered as tenant at: Residential 01 (Multi-building)
+[Citizen Finn Hartmann] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Finn Hartmann] Employed at: Factory 04 (Garages) | job=Mechaniker reqEdu=0/0 service=production_goods workplace=Factory 04 (Garages) wage=17 shift=08+8h worked=0min
+[Citizen Mia Schulz] Auto-found home: Residential 05 (Multi-building)
+[Citizen Mia Schulz] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Mia Schulz] Auto-found restaurant: Restaurant 22 (Stores)
+[Citizen Mia Schulz] Auto-found supermarket: Supermarket 23 (Stores)
+[Citizen Mia Schulz] Employed at: Restaurant 22 (Stores) | job=Baecker reqEdu=0/0 service=food workplace=Restaurant 22 (Stores) wage=18 shift=09+8h worked=0min
+[Citizen Lisa Schroeder] Auto-found home: Residential 01 (Foundation)
+[Citizen Lisa Schroeder] Registered as tenant at: Residential 01 (Foundation)
+[Citizen Lisa Schroeder] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Lisa Schroeder] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Lisa Schroeder] No reachable open workplace found for Baecker (service=food, reqEdu=0, from=Residential 01 (Foundation)).
+[Citizen Paul Wolf] Auto-found home: Residential 01 (Foundation)
+[Citizen Paul Wolf] Registered as tenant at: Residential 01 (Foundation)
+[Citizen Paul Wolf] Auto-found cinema: Cinema 30 (Stores)
+[Citizen Paul Wolf] No reachable open workplace found for Engineer (service=production_goods, reqEdu=1, from=Residential 01 (Foundation)).
+[Citizen Eva Meyer] Auto-found home: Residential 03 (Multilayer)
+[Citizen Eva Meyer] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Eva Meyer] No reachable open workplace found for Doctor (service=governance, reqEdu=1, from=Residential 03 (Multilayer)).
+[Citizen Ben Schmidt] Auto-found home: Residential 06 (Multilayer)
+[Citizen Ben Schmidt] Registered as tenant at: Residential 06 (Multilayer)
+[Citizen Ben Schmidt] Auto-found restaurant: Restaurant 22 (Stores)
+[Citizen Ben Schmidt] Auto-found supermarket: Supermarket 23 (Stores)
+[Citizen Ben Schmidt] Employed at: Restaurant 22 (Stores) | job=Baecker reqEdu=0/0 service=food workplace=Restaurant 22 (Stores) wage=22 shift=08+8h worked=0min
+[Citizen Sophie Neumann] Auto-found home: Residential 01 (Multi-building)
+[Citizen Sophie Neumann] Registered as tenant at: Residential 01 (Multi-building)
+[Citizen Sophie Neumann] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Sophie Neumann] Needs education level 1 for job Engineer (current 0). Candidate workplace: Factory 04 (Garages). No reachable university available right now.
+[Citizen Hannah Hoffmann] Auto-found home: Residential 01 (Foundation)
+[Citizen Hannah Hoffmann] Registered as tenant at: Residential 01 (Foundation)
+[Citizen Hannah Hoffmann] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Hannah Hoffmann] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Hannah Hoffmann] No reachable open workplace found for Teacher (service=education, reqEdu=1, from=Residential 01 (Foundation)).
+[Citizen Luca Klein] Auto-found home: Residential 02 (Multilayer)
+[Citizen Luca Klein] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen Luca Klein] Auto-found restaurant: Restaurant 27 (Stores)
+[Citizen Luca Klein] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 02 (Multilayer)).
+[Citizen Felix Schwarz] Auto-found home: Residential 01 (Multilayer)
+[Citizen Felix Schwarz] Registered as tenant at: Residential 01 (Multilayer)
+[Citizen Felix Schwarz] Auto-found shop: Shop 26 (Stores)
+[Citizen Felix Schwarz] No reachable open workplace found for Teacher (service=education, reqEdu=1, from=Residential 01 (Multilayer)).
+[Citizen Anna Fischer] Auto-found home: Residential 01 (Multi-building)
+[Citizen Anna Fischer] Registered as tenant at: Residential 01 (Multi-building)
+[Citizen Anna Fischer] Auto-found restaurant: Restaurant 27 (Stores)
+[Citizen Anna Fischer] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 01 (Multi-building)).
+[Citizen Simon Wagner] Auto-found home: Residential 01 (Foundation)
+[Citizen Simon Wagner] Registered as tenant at: Residential 01 (Foundation)
+[Citizen Simon Wagner] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Simon Wagner] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Simon Wagner] Needs education level 1 for job Engineer (current 0). Candidate workplace: Factory 02 (Garages). No reachable university available right now.
+[Citizen Sara Weber] Auto-found home: Residential 03 (Multilayer)
+[Citizen Sara Weber] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Sara Weber] Auto-found supermarket: Supermarket 28 (Stores)
+[Citizen Sara Weber] No reachable open workplace found for Mechaniker (service=production_goods, reqEdu=0, from=Residential 03 (Multilayer)).
+[Citizen Clara Krueger] Auto-found home: Residential 04 (Multi-building)
+[Citizen Clara Krueger] Registered as tenant at: Residential 04 (Multi-building)
+[Citizen Clara Krueger] Auto-found supermarket: Supermarket 28 (Stores)
+[Citizen Clara Krueger] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 04 (Multi-building)).
+[Citizen Laura Mueller] Auto-found home: Residential 03 (Multilayer)
+[Citizen Laura Mueller] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Laura Mueller] No reachable open workplace found for Baecker (service=food, reqEdu=0, from=Residential 03 (Multilayer)).
+[Citizen Jonas Becker] Auto-found home: Residential 03 (Multi-building)
+[Citizen Jonas Becker] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Jonas Becker] No reachable open workplace found for Baecker (service=food, reqEdu=0, from=Residential 03 (Multi-building)).
+[Citizen Noah Koch] Auto-found home: Residential 01 (Foundation)
+[Citizen Noah Koch] Registered as tenant at: Residential 01 (Foundation)
+[Citizen Noah Koch] Auto-found cinema: Cinema 30 (Stores)
+[Citizen Noah Koch] No reachable open workplace found for Doctor (service=governance, reqEdu=1, from=Residential 01 (Foundation)).
+[Citizen Lea Richter] Auto-found home: Residential 04 (Multilayer)
+[Citizen Lea Richter] Registered as tenant at: Residential 04 (Multilayer)
+[Citizen Lea Richter] Auto-found supermarket: Supermarket 28 (Stores)
+[Citizen Lea Richter] Employed at: Cafe 29 (Stores) | job=Baecker reqEdu=0/0 service=food workplace=Cafe 29 (Stores) wage=26 shift=08+8h worked=0min
+[Citizen Tom Zimmermann] Auto-found home: Residential 01 (Multi-building)
+[Citizen Tom Zimmermann] Registered as tenant at: Residential 01 (Multi-building)
+[Citizen Tom Zimmermann] Auto-found supermarket: Supermarket 28 (Stores)
+[Citizen Tom Zimmermann] Employed at: Cafe 29 (Stores) | job=Baecker reqEdu=0/0 service=food workplace=Cafe 29 (Stores) wage=16 shift=08+8h worked=0min
+[Citizen Alex Braun] Auto-found home: Residential 05 (Multi-building)
+[Citizen Alex Braun] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Alex Braun] Auto-found supermarket: Supermarket 28 (Stores)
+[Citizen Alex Braun] Employed at: Cafe 29 (Stores) | job=Baecker reqEdu=0/0 service=food workplace=Cafe 29 (Stores) wage=17 shift=08+8h worked=0min
+[Citizen Erik Hartmann] Auto-found home: Residential 02 (Multi-building)
+[Citizen Erik Hartmann] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Erik Hartmann] Auto-found supermarket: Supermarket 28 (Stores)
+[Citizen Erik Hartmann] No reachable open workplace found for Verkaeufer (service=shopping, reqEdu=0, from=Residential 02 (Multi-building)).
+[Citizen Emma Schulz] Auto-found home: Residential 05 (Multi-building)
+[Citizen Emma Schulz] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Emma Schulz] Auto-found supermarket: Supermarket 28 (Stores)
+[Citizen Emma Schulz] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 05 (Multi-building)).
+[Citizen Max Schroeder] Auto-found home: Residential 02 (Multilayer)
+[Citizen Max Schroeder] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen Max Schroeder] Auto-found supermarket: Supermarket 28 (Stores)
+[Citizen Max Schroeder] No reachable open workplace found for Baecker (service=food, reqEdu=0, from=Residential 02 (Multilayer)).
+[Citizen Leon Wolf] Auto-found home: Residential 03 (Multi-building)
+[Citizen Leon Wolf] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Leon Wolf] Auto-found supermarket: Supermarket 28 (Stores)
+[Citizen Leon Wolf] No reachable open workplace found for Fahrer (service=production_goods, reqEdu=0, from=Residential 03 (Multi-building)).
+[Citizen Maria Meyer] Auto-found home: Residential 06 (Multilayer)
+[Citizen Maria Meyer] Registered as tenant at: Residential 06 (Multilayer)
+[Citizen Maria Meyer] Auto-found supermarket: Supermarket 28 (Stores)
+[Citizen Maria Meyer] No reachable open workplace found for Verkaeufer (service=shopping, reqEdu=0, from=Residential 06 (Multilayer)).
+[Citizen David Schmidt] Auto-found home: Residential 05 (Multilayer)
+[Citizen David Schmidt] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen David Schmidt] Auto-found supermarket: Supermarket 28 (Stores)
+[Citizen David Schmidt] No reachable open workplace found for Teacher (service=education, reqEdu=1, from=Residential 05 (Multilayer)).
+[Citizen Nora Neumann] Auto-found home: Residential 02 (Multi-building)
+[Citizen Nora Neumann] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Nora Neumann] Auto-found supermarket: Supermarket 28 (Stores)
+[Citizen Nora Neumann] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 02 (Multi-building)).
+[Citizen Julia Hoffmann] Auto-found home: Residential 02 (Multi-building)
+[Citizen Julia Hoffmann] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Julia Hoffmann] Auto-found supermarket: Supermarket 28 (Stores)
+[Citizen Julia Hoffmann] No reachable open workplace found for Verkaeufer (service=shopping, reqEdu=0, from=Residential 02 (Multi-building)).
+[Citizen Jan Klein] Auto-found home: Residential 01 (Multi-building)
+[Citizen Jan Klein] Registered as tenant at: Residential 01 (Multi-building)
+[Citizen Jan Klein] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Jan Klein] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Jan Klein] No reachable open workplace found for Doctor (service=governance, reqEdu=1, from=Residential 01 (Multi-building)).
+[Citizen Lena Schwarz] Auto-found home: Residential 03 (Multi-building)
+[Citizen Lena Schwarz] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Lena Schwarz] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Lena Schwarz] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Lena Schwarz] Employed at: Factory 01 (Garages) | job=Fahrer reqEdu=0/0 service=production_goods workplace=Factory 01 (Garages) wage=11 shift=07+8h worked=0min
+[Citizen Finn Fischer] Auto-found home: Residential 02 (Multilayer)
+[Citizen Finn Fischer] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen Finn Fischer] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Finn Fischer] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Finn Fischer] Employed at: Factory 01 (Garages) | job=Mechaniker reqEdu=0/0 service=production_goods workplace=Factory 01 (Garages) wage=20 shift=08+8h worked=0min
+[Citizen Mia Wagner] Auto-found home: Residential 03 (Multi-building)
+[Citizen Mia Wagner] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Mia Wagner] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Mia Wagner] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Mia Wagner] Needs education level 1 for job Teacher (current 0). Candidate workplace: University 02 (Services). Study option: University 02 (Services) (tuition 25 EUR).
+[Citizen Lisa Weber] Auto-found home: Residential 03 (Multilayer)
+[Citizen Lisa Weber] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Lisa Weber] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Lisa Weber] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Lisa Weber] Needs education level 1 for job Engineer (current 0). Candidate workplace: Factory 01 (Garages). Study option: University 02 (Services) (tuition 25 EUR).
+[Citizen Paul Krueger] Auto-found home: Residential 03 (Multilayer)
+[Citizen Paul Krueger] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Paul Krueger] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Paul Krueger] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Paul Krueger] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 03 (Multilayer)).
+[Citizen Eva Mueller] Auto-found home: Residential 04 (Multi-building)
+[Citizen Eva Mueller] Registered as tenant at: Residential 04 (Multi-building)
+[Citizen Eva Mueller] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Eva Mueller] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Eva Mueller] Needs education level 1 for job Teacher (current 0). Candidate workplace: University 02 (Services). Study option: University 02 (Services) (tuition 25 EUR).
+[Citizen Ben Becker] Auto-found home: Residential 03 (Multi-building)
+[Citizen Ben Becker] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Ben Becker] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Ben Becker] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Ben Becker] Employed at: Factory 01 (Garages) | job=Mechaniker reqEdu=0/0 service=production_goods workplace=Factory 01 (Garages) wage=16 shift=08+8h worked=0min
+[Citizen Sophie Koch] Auto-found home: Residential 02 (Multi-building)
+[Citizen Sophie Koch] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Sophie Koch] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Sophie Koch] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Sophie Koch] Employed at: Factory 01 (Garages) | job=Fahrer reqEdu=0/0 service=production_goods workplace=Factory 01 (Garages) wage=16 shift=08+8h worked=0min
+[Citizen Hannah Richter] Auto-found home: Residential 05 (Multilayer)
+[Citizen Hannah Richter] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen Hannah Richter] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Hannah Richter] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Hannah Richter] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 05 (Multilayer)).
+[Citizen Luca Zimmermann] Auto-found home: Residential 05 (Multi-building)
+[Citizen Luca Zimmermann] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Luca Zimmermann] Auto-found restaurant: Restaurant 02 (Commercial building)
+[Citizen Luca Zimmermann] Auto-found shop: Shop 01 (Commercial building)
+[Citizen Luca Zimmermann] No reachable open workplace found for Engineer (service=production_goods, reqEdu=1, from=Residential 05 (Multi-building)).
+[Citizen Felix Braun] Auto-found home: Residential 07 (Multilayer)
+[Citizen Felix Braun] Registered as tenant at: Residential 07 (Multilayer)
+[Citizen Felix Braun] Auto-found restaurant: Restaurant 03 (Services)
+[Citizen Felix Braun] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 07 (Multilayer)).
+[Citizen Anna Hartmann] Auto-found home: Residential 06 (Multilayer)
+[Citizen Anna Hartmann] Registered as tenant at: Residential 06 (Multilayer)
+[Citizen Anna Hartmann] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 06 (Multilayer)).
+[Citizen Simon Schulz] Auto-found home: Residential 05 (Multilayer)
+[Citizen Simon Schulz] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen Simon Schulz] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 05 (Multilayer)).
+[Citizen Sara Schroeder] Auto-found home: Residential 05 (Multi-building)
+[Citizen Sara Schroeder] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Sara Schroeder] Auto-found restaurant: Restaurant 03 (Services)
+[Citizen Sara Schroeder] No reachable open workplace found for Teacher (service=education, reqEdu=1, from=Residential 05 (Multi-building)).
+[Citizen Clara Wolf] Auto-found home: Residential 01 (Multi-building)
+[Citizen Clara Wolf] Registered as tenant at: Residential 01 (Multi-building)
+[Citizen Clara Wolf] No reachable open workplace found for Fahrer (service=production_goods, reqEdu=0, from=Residential 01 (Multi-building)).
+[Citizen Laura Meyer] Auto-found home: Residential 04 (Multi-building)
+[Citizen Laura Meyer] Registered as tenant at: Residential 04 (Multi-building)
+[Citizen Laura Meyer] No reachable open workplace found for Kellner (service=food, reqEdu=0, from=Residential 04 (Multi-building)).
+[Citizen Jonas Schmidt] Auto-found home: Residential 06 (Multilayer)
+[Citizen Jonas Schmidt] Registered as tenant at: Residential 06 (Multilayer)
+[Citizen Jonas Schmidt] Auto-found restaurant: Restaurant 03 (Services)
+[Citizen Jonas Schmidt] Employed at: Restaurant 03 (Services) | job=Baecker reqEdu=0/0 service=food workplace=Restaurant 03 (Services) wage=19 shift=09+8h worked=0min
+[Citizen Noah Neumann] Auto-found home: Residential 04 (Multi-building)
+[Citizen Noah Neumann] Registered as tenant at: Residential 04 (Multi-building)
+[Citizen Noah Neumann] No reachable open workplace found for Engineer (service=production_goods, reqEdu=1, from=Residential 04 (Multi-building)).
+[Citizen Lea Hoffmann] Auto-found home: Residential 05 (Multilayer)
+[Citizen Lea Hoffmann] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen Lea Hoffmann] Auto-found restaurant: Restaurant 03 (Services)
+[Citizen Lea Hoffmann] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 05 (Multilayer)).
+[Citizen Tom Klein] Auto-found home: Residential 02 (Multilayer)
+[Citizen Tom Klein] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen Tom Klein] No reachable open workplace found for Baecker (service=food, reqEdu=0, from=Residential 02 (Multilayer)).
+[Citizen Alex Schwarz] Auto-found home: Residential 01 (Multilayer)
+[Citizen Alex Schwarz] Registered as tenant at: Residential 01 (Multilayer)
+[Citizen Alex Schwarz] Auto-found restaurant: Restaurant 02 (Stores)
+[Citizen Alex Schwarz] Auto-found shop: Shop 06 (Stores)
+[Citizen Alex Schwarz] Auto-found cinema: Cinema 05 (Stores)
+[Citizen Alex Schwarz] Employed at: Restaurant 02 (Stores) | job=Kellner reqEdu=0/0 service=food workplace=Restaurant 02 (Stores) wage=15 shift=08+8h worked=0min
+[Citizen Erik Fischer] Auto-found home: Residential 01 (Multilayer)
+[Citizen Erik Fischer] Registered as tenant at: Residential 01 (Multilayer)
+[Citizen Erik Fischer] Auto-found restaurant: Restaurant 02 (Stores)
+[Citizen Erik Fischer] Auto-found shop: Shop 06 (Stores)
+[Citizen Erik Fischer] Auto-found cinema: Cinema 05 (Stores)
+[Citizen Erik Fischer] No reachable open workplace found for Mechaniker (service=production_goods, reqEdu=0, from=Residential 01 (Multilayer)).
+[Citizen Emma Wagner] Auto-found home: Residential 06 (Multilayer)
+[Citizen Emma Wagner] Registered as tenant at: Residential 06 (Multilayer)
+[Citizen Emma Wagner] Auto-found restaurant: Restaurant 12 (Stores)
+[Citizen Emma Wagner] Auto-found supermarket: Supermarket 03 (Commercial building)
+[Citizen Emma Wagner] Auto-found shop: Shop 01 (Stores)
+[Citizen Emma Wagner] No reachable open workplace found for Teacher (service=education, reqEdu=1, from=Residential 06 (Multilayer)).
+[Citizen Max Weber] Auto-found home: Residential 06 (Multilayer)
+[Citizen Max Weber] Registered as tenant at: Residential 06 (Multilayer)
+[Citizen Max Weber] Auto-found restaurant: Restaurant 12 (Stores)
+[Citizen Max Weber] Auto-found supermarket: Supermarket 03 (Commercial building)
+[Citizen Max Weber] Auto-found shop: Shop 01 (Stores)
+[Citizen Max Weber] No reachable open workplace found for Fahrer (service=production_goods, reqEdu=0, from=Residential 06 (Multilayer)).
+[Citizen Leon Krueger] Auto-found home: Residential 04 (Multilayer)
+[Citizen Leon Krueger] Registered as tenant at: Residential 04 (Multilayer)
+[Citizen Leon Krueger] Auto-found restaurant: Restaurant 02 (Stores)
+[Citizen Leon Krueger] Auto-found shop: Shop 06 (Stores)
+[Citizen Leon Krueger] Auto-found cinema: Cinema 05 (Stores)
+[Citizen Leon Krueger] Employed at: Cinema 05 (Stores) | job=Designer reqEdu=0/0 service=fun workplace=Cinema 05 (Stores) wage=22 shift=09+8h worked=0min
+[Citizen Maria Mueller] Auto-found home: Residential 03 (Multilayer)
+[Citizen Maria Mueller] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Maria Mueller] Auto-found restaurant: Restaurant 12 (Stores)
+[Citizen Maria Mueller] Auto-found supermarket: Supermarket 08 (Stores)
+[Citizen Maria Mueller] Auto-found shop: Shop 01 (Stores)
+[Citizen Maria Mueller] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 03 (Multilayer)).
+[Citizen David Becker] Auto-found home: Residential 03 (Multi-building)
+[Citizen David Becker] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen David Becker] Auto-found restaurant: Restaurant 02 (Stores)
+[Citizen David Becker] Auto-found shop: Shop 06 (Stores)
+[Citizen David Becker] Auto-found cinema: Cinema 05 (Stores)
+[Citizen David Becker] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 03 (Multi-building)).
+[Citizen Nora Koch] Auto-found home: Residential 03 (Multi-building)
+[Citizen Nora Koch] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Nora Koch] Auto-found park: Park 01 (Park)
+[Citizen Nora Koch] No reachable open workplace found for Fahrer (service=production_goods, reqEdu=0, from=Residential 03 (Multi-building)).
+[Citizen Julia Richter] Auto-found home: Residential 05 (Multi-building)
+[Citizen Julia Richter] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Julia Richter] Auto-found restaurant: Restaurant 12 (Stores)
+[Citizen Julia Richter] Auto-found supermarket: Supermarket 08 (Stores)
+[Citizen Julia Richter] Auto-found shop: Shop 01 (Stores)
+[Citizen Julia Richter] Employed at: Shop 01 (Stores) | job=Verkaeufer reqEdu=0/0 service=shopping workplace=Shop 01 (Stores) wage=16 shift=08+8h worked=0min
+[Citizen Jan Zimmermann] Auto-found home: Residential 05 (Multi-building)
+[Citizen Jan Zimmermann] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Jan Zimmermann] Auto-found park: Park 01 (Park)
+[Citizen Jan Zimmermann] No reachable open workplace found for Baecker (service=food, reqEdu=0, from=Residential 05 (Multi-building)).
+[Citizen Lena Braun] Auto-found home: Residential 04 (Multi-building)
+[Citizen Lena Braun] Registered as tenant at: Residential 04 (Multi-building)
+[Citizen Lena Braun] Auto-found park: Park 01 (Park)
+[Citizen Lena Braun] No reachable open workplace found for Mechaniker (service=production_goods, reqEdu=0, from=Residential 04 (Multi-building)).
+[Citizen Finn Hartmann] Auto-found home: Residential 03 (Multi-building)
+[Citizen Finn Hartmann] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Finn Hartmann] Auto-found park: Park 01 (Park)
+[Citizen Finn Hartmann] No reachable open workplace found for Engineer (service=production_goods, reqEdu=1, from=Residential 03 (Multi-building)).
+[Citizen Mia Schulz] Auto-found home: Residential 03 (Multi-building)
+[Citizen Mia Schulz] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Mia Schulz] No reachable open workplace found for Baecker (service=food, reqEdu=0, from=Residential 03 (Multi-building)).
+[Citizen Lisa Schroeder] Auto-found home: Residential 03 (Multi-building)
+[Citizen Lisa Schroeder] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Lisa Schroeder] No reachable open workplace found for Kellner (service=food, reqEdu=0, from=Residential 03 (Multi-building)).
+[Citizen Paul Wolf] Auto-found home: Residential 03 (Multilayer)
+[Citizen Paul Wolf] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Paul Wolf] No reachable open workplace found for Verkaeufer (service=shopping, reqEdu=0, from=Residential 03 (Multilayer)).
+[Citizen Eva Meyer] Auto-found home: Residential 04 (Multilayer)
+[Citizen Eva Meyer] Registered as tenant at: Residential 04 (Multilayer)
+[Citizen Eva Meyer] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 04 (Multilayer)).
+[Citizen Ben Schmidt] Auto-found home: Residential 01 (Multilayer)
+[Citizen Ben Schmidt] Registered as tenant at: Residential 01 (Multilayer)
+[Citizen Ben Schmidt] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 01 (Multilayer)).
+[Citizen Sophie Neumann] Auto-found home: Residential 01 (Multilayer)
+[Citizen Sophie Neumann] Registered as tenant at: Residential 01 (Multilayer)
+[Citizen Sophie Neumann] No reachable open workplace found for Verkaeufer (service=shopping, reqEdu=0, from=Residential 01 (Multilayer)).
+[Citizen Hannah Hoffmann] Auto-found home: Residential 02 (Multilayer)
+[Citizen Hannah Hoffmann] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen Hannah Hoffmann] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 02 (Multilayer)).
+[Citizen Luca Klein] Auto-found home: Residential 05 (Multi-building)
+[Citizen Luca Klein] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Luca Klein] No reachable open workplace found for Doctor (service=governance, reqEdu=1, from=Residential 05 (Multi-building)).
+[Citizen Felix Schwarz] Auto-found home: Residential 05 (Multi-building)
+[Citizen Felix Schwarz] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Felix Schwarz] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 05 (Multi-building)).
+[Citizen Anna Fischer] Auto-found home: Residential 05 (Multilayer)
+[Citizen Anna Fischer] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen Anna Fischer] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Anna Fischer] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Anna Fischer] No reachable open workplace found for Verkaeufer (service=shopping, reqEdu=0, from=Residential 05 (Multilayer)).
+[Citizen Simon Wagner] Auto-found home: Residential 04 (Multilayer)
+[Citizen Simon Wagner] Registered as tenant at: Residential 04 (Multilayer)
+[Citizen Simon Wagner] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Simon Wagner] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Simon Wagner] Employed at: Restaurant 07 (Stores) | job=Baecker reqEdu=0/0 service=food workplace=Restaurant 07 (Stores) wage=21 shift=08+8h worked=0min
+[Citizen Sara Weber] Auto-found home: Residential 05 (Multilayer)
+[Citizen Sara Weber] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen Sara Weber] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Sara Weber] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Sara Weber] Employed at: Factory 02 (Garages) | job=Fahrer reqEdu=0/0 service=production_goods workplace=Factory 02 (Garages) wage=25 shift=09+8h worked=0min
+[Citizen Clara Krueger] Auto-found home: Residential 01 (Multilayer)
+[Citizen Clara Krueger] Registered as tenant at: Residential 01 (Multilayer)
+[Citizen Clara Krueger] Auto-found restaurant: Restaurant 17 (Stores)
+[Citizen Clara Krueger] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 01 (Multilayer)).
+[Citizen Laura Mueller] Auto-found home: Residential 04 (Multilayer)
+[Citizen Laura Mueller] Registered as tenant at: Residential 04 (Multilayer)
+[Citizen Laura Mueller] Auto-found supermarket: Supermarket 18 (Stores)
+[Citizen Laura Mueller] No reachable open workplace found for Mechaniker (service=production_goods, reqEdu=0, from=Residential 04 (Multilayer)).
+[Citizen Jonas Becker] Auto-found home: Residential 03 (Multilayer)
+[Citizen Jonas Becker] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Jonas Becker] Auto-found park: Park 01 (Park)
+[Citizen Jonas Becker] No reachable open workplace found for Verkaeufer (service=shopping, reqEdu=0, from=Residential 03 (Multilayer)).
+[Citizen Noah Koch] Auto-found home: Residential 03 (Multilayer)
+[Citizen Noah Koch] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Noah Koch] Auto-found park: Park 01 (Park)
+[Citizen Noah Koch] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 03 (Multilayer)).
+[Citizen Lea Richter] Auto-found home: Residential 01 (Multi-building)
+[Citizen Lea Richter] Registered as tenant at: Residential 01 (Multi-building)
+[Citizen Lea Richter] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Lea Richter] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Lea Richter] Needs education level 1 for job Engineer (current 0). Candidate workplace: Factory 05 (Garages). No reachable university available right now.
+[Citizen Tom Zimmermann] Auto-found home: Residential 03 (Multi-building)
+[Citizen Tom Zimmermann] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Tom Zimmermann] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Tom Zimmermann] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Tom Zimmermann] Employed at: Factory 05 (Garages) | job=Fahrer reqEdu=0/0 service=production_goods workplace=Factory 05 (Garages) wage=16 shift=08+8h worked=0min
+[Citizen Alex Braun] Auto-found home: Residential 02 (Multi-building)
+[Citizen Alex Braun] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Alex Braun] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Alex Braun] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Alex Braun] Employed at: Factory 02 (Garages) | job=Mechaniker reqEdu=0/0 service=production_goods workplace=Factory 02 (Garages) wage=22 shift=07+8h worked=0min
+[Citizen Erik Hartmann] Auto-found home: Residential 02 (Multilayer)
+[Citizen Erik Hartmann] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen Erik Hartmann] Auto-found restaurant: Restaurant 17 (Stores)
+[Citizen Erik Hartmann] No reachable open workplace found for Engineer (service=production_goods, reqEdu=1, from=Residential 02 (Multilayer)).
+[Citizen Emma Schulz] Auto-found home: Residential 05 (Multilayer)
+[Citizen Emma Schulz] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen Emma Schulz] Auto-found supermarket: Supermarket 18 (Stores)
+[Citizen Emma Schulz] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 05 (Multilayer)).
+[Citizen Max Schroeder] Auto-found home: Residential 03 (Multilayer)
+[Citizen Max Schroeder] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Max Schroeder] Auto-found restaurant: Restaurant 17 (Stores)
+[Citizen Max Schroeder] No reachable open workplace found for Teacher (service=education, reqEdu=1, from=Residential 03 (Multilayer)).
+[Citizen Leon Wolf] Auto-found home: Residential 04 (Multilayer)
+[Citizen Leon Wolf] Registered as tenant at: Residential 04 (Multilayer)
+[Citizen Leon Wolf] Auto-found supermarket: Supermarket 18 (Stores)
+[Citizen Leon Wolf] No reachable open workplace found for Doctor (service=governance, reqEdu=1, from=Residential 04 (Multilayer)).
+[Citizen Maria Meyer] Auto-found home: Residential 03 (Multilayer)
+[Citizen Maria Meyer] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Maria Meyer] Auto-found park: Park 01 (Park)
+[Citizen Maria Meyer] No reachable open workplace found for Mechaniker (service=production_goods, reqEdu=0, from=Residential 03 (Multilayer)).
+[Citizen David Schmidt] Auto-found home: Residential 04 (Multilayer)
+[Citizen David Schmidt] Registered as tenant at: Residential 04 (Multilayer)
+[Citizen David Schmidt] Auto-found park: Park 01 (Park)
+[Citizen David Schmidt] No reachable open workplace found for Kellner (service=food, reqEdu=0, from=Residential 04 (Multilayer)).
+[Citizen Nora Neumann] Auto-found home: Residential 02 (Multilayer)
+[Citizen Nora Neumann] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen Nora Neumann] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Nora Neumann] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Nora Neumann] No reachable open workplace found for Verkaeufer (service=shopping, reqEdu=0, from=Residential 02 (Multilayer)).
+[Citizen Julia Hoffmann] Auto-found home: Residential 05 (Multilayer)
+[Citizen Julia Hoffmann] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen Julia Hoffmann] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Julia Hoffmann] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Julia Hoffmann] Needs education level 1 for job Engineer (current 0). Candidate workplace: Factory 05 (Garages). No reachable university available right now.
+[Citizen Jan Klein] Auto-found home: Residential 01 (Multilayer)
+[Citizen Jan Klein] Registered as tenant at: Residential 01 (Multilayer)
+[Citizen Jan Klein] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Jan Klein] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Jan Klein] No reachable open workplace found for Baecker (service=food, reqEdu=0, from=Residential 01 (Multilayer)).
+[Citizen Lena Schwarz] Auto-found home: Residential 07 (Multilayer)
+[Citizen Lena Schwarz] Registered as tenant at: Residential 07 (Multilayer)
+[Citizen Lena Schwarz] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Lena Schwarz] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Lena Schwarz] No reachable open workplace found for Verkaeufer (service=shopping, reqEdu=0, from=Residential 07 (Multilayer)).
+[Citizen Finn Fischer] Auto-found home: Residential 05 (Multi-building)
+[Citizen Finn Fischer] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Finn Fischer] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Finn Fischer] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Finn Fischer] No reachable open workplace found for Baecker (service=food, reqEdu=0, from=Residential 05 (Multi-building)).
+[Citizen Mia Wagner] Auto-found home: Residential 03 (Multilayer)
+[Citizen Mia Wagner] Registered as tenant at: Residential 03 (Multilayer)
+[Citizen Mia Wagner] Auto-found restaurant: Restaurant 17 (Stores)
+[Citizen Mia Wagner] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 03 (Multilayer)).
+[Citizen Lisa Weber] Auto-found home: Residential 05 (Multilayer)
+[Citizen Lisa Weber] Registered as tenant at: Residential 05 (Multilayer)
+[Citizen Lisa Weber] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Lisa Weber] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Lisa Weber] Needs education level 1 for job Engineer (current 0). Candidate workplace: Factory 05 (Garages). No reachable university available right now.
+[Citizen Paul Krueger] Auto-found home: Residential 02 (Multi-building)
+[Citizen Paul Krueger] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Paul Krueger] Auto-found supermarket: Supermarket 18 (Stores)
+[Citizen Paul Krueger] Employed at: Cafe 19 (Stores) | job=Kellner reqEdu=0/0 service=food workplace=Cafe 19 (Stores) wage=10 shift=07+8h worked=0min
+[Citizen Eva Mueller] Auto-found home: Residential 05 (Multi-building)
+[Citizen Eva Mueller] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Eva Mueller] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Eva Mueller] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Eva Mueller] No reachable open workplace found for Doctor (service=governance, reqEdu=1, from=Residential 05 (Multi-building)).
+[Citizen Ben Becker] Auto-found home: Residential 03 (Multi-building)
+[Citizen Ben Becker] Registered as tenant at: Residential 03 (Multi-building)
+[Citizen Ben Becker] Auto-found restaurant: Restaurant 22 (Stores)
+[Citizen Ben Becker] Auto-found supermarket: Supermarket 23 (Stores)
+[Citizen Ben Becker] No reachable open workplace found for Engineer (service=production_goods, reqEdu=1, from=Residential 03 (Multi-building)).
+[Citizen Sophie Koch] Auto-found home: Residential 02 (Multi-building)
+[Citizen Sophie Koch] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Sophie Koch] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Sophie Koch] No reachable open workplace found for Doctor (service=governance, reqEdu=1, from=Residential 02 (Multi-building)).
+[Citizen Hannah Richter] Auto-found home: Residential 01 (Foundation)
+[Citizen Hannah Richter] Registered as tenant at: Residential 01 (Foundation)
+[Citizen Hannah Richter] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Hannah Richter] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Hannah Richter] No reachable open workplace found for Kellner (service=food, reqEdu=0, from=Residential 01 (Foundation)).
+[Citizen Luca Zimmermann] Auto-found home: Residential 02 (Multilayer)
+[Citizen Luca Zimmermann] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen Luca Zimmermann] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Luca Zimmermann] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Luca Zimmermann] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 02 (Multilayer)).
+[Citizen Felix Braun] Auto-found home: Residential 04 (Multilayer)
+[Citizen Felix Braun] Registered as tenant at: Residential 04 (Multilayer)
+[Citizen Felix Braun] Auto-found restaurant: Restaurant 27 (Stores)
+[Citizen Felix Braun] No reachable open workplace found for Engineer (service=production_goods, reqEdu=1, from=Residential 04 (Multilayer)).
+[Citizen Anna Hartmann] Auto-found home: Residential 01 (Multi-building)
+[Citizen Anna Hartmann] Registered as tenant at: Residential 01 (Multi-building)
+[Citizen Anna Hartmann] Auto-found shop: Shop 26 (Stores)
+[Citizen Anna Hartmann] No reachable open workplace found for Mechaniker (service=production_goods, reqEdu=0, from=Residential 01 (Multi-building)).
+[Citizen Simon Schulz] Auto-found home: Residential 07 (Multilayer)
+[Citizen Simon Schulz] Registered as tenant at: Residential 07 (Multilayer)
+[Citizen Simon Schulz] Auto-found restaurant: Restaurant 22 (Stores)
+[Citizen Simon Schulz] Auto-found supermarket: Supermarket 23 (Stores)
+[Citizen Simon Schulz] No reachable open workplace found for Fahrer (service=production_goods, reqEdu=0, from=Residential 07 (Multilayer)).
+[Citizen Sara Schroeder] Auto-found home: Residential 07 (Multilayer)
+[Citizen Sara Schroeder] Registered as tenant at: Residential 07 (Multilayer)
+[Citizen Sara Schroeder] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Sara Schroeder] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Sara Schroeder] Employed at: Factory 05 (Garages) | job=Mechaniker reqEdu=0/0 service=production_goods workplace=Factory 05 (Garages) wage=26 shift=08+8h worked=0min
+[Citizen Clara Wolf] Auto-found home: Residential 04 (Multi-building)
+[Citizen Clara Wolf] Registered as tenant at: Residential 04 (Multi-building)
+[Citizen Clara Wolf] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Clara Wolf] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Clara Wolf] Needs education level 1 for job Engineer (current 0). Candidate workplace: Factory 02 (Garages). No reachable university available right now.
+[Citizen Laura Meyer] Auto-found home: Residential 01 (Foundation)
+[Citizen Laura Meyer] Registered as tenant at: Residential 01 (Foundation)
+[Citizen Laura Meyer] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Laura Meyer] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Laura Meyer] No reachable open workplace found for Kellner (service=food, reqEdu=0, from=Residential 01 (Foundation)).
+[Citizen Jonas Schmidt] Auto-found home: Residential 02 (Multi-building)
+[Citizen Jonas Schmidt] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Jonas Schmidt] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Jonas Schmidt] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Jonas Schmidt] No reachable open workplace found for Baecker (service=food, reqEdu=0, from=Residential 02 (Multi-building)).
+[Citizen Noah Neumann] Auto-found home: Residential 02 (Multi-building)
+[Citizen Noah Neumann] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Noah Neumann] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Noah Neumann] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Noah Neumann] Employed at: Cinema 25 (Stores) | job=Designer reqEdu=0/0 service=fun workplace=Cinema 25 (Stores) wage=21 shift=08+8h worked=0min
+[Citizen Lea Hoffmann] Auto-found home: Residential 02 (Multilayer)
+[Citizen Lea Hoffmann] Registered as tenant at: Residential 02 (Multilayer)
+[Citizen Lea Hoffmann] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Lea Hoffmann] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Lea Hoffmann] Employed at: Factory 02 (Garages) | job=Fahrer reqEdu=0/0 service=production_goods workplace=Factory 02 (Garages) wage=14 shift=08+8h worked=0min
+[Citizen Tom Klein] Auto-found home: Residential 01 (Multilayer)
+[Citizen Tom Klein] Registered as tenant at: Residential 01 (Multilayer)
+[Citizen Tom Klein] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Tom Klein] Auto-found cinema: Cinema 25 (Stores)
+[Citizen Tom Klein] No reachable open workplace found for Programmierer (service=governance, reqEdu=0, from=Residential 01 (Multilayer)).
+[Citizen Alex Schwarz] Auto-found home: Residential 04 (Multi-building)
+[Citizen Alex Schwarz] Registered as tenant at: Residential 04 (Multi-building)
+[Citizen Alex Schwarz] Auto-found restaurant: Restaurant 27 (Stores)
+[Citizen Alex Schwarz] Employed at: Restaurant 27 (Stores) | job=Kellner reqEdu=0/0 service=food workplace=Restaurant 27 (Stores) wage=24 shift=07+8h worked=0min
+[Citizen Erik Fischer] Auto-found home: Residential 02 (Multi-building)
+[Citizen Erik Fischer] Registered as tenant at: Residential 02 (Multi-building)
+[Citizen Erik Fischer] Auto-found shop: Shop 26 (Stores)
+[Citizen Erik Fischer] Employed at: Cafe 04 (Stores) | job=Baecker reqEdu=0/0 service=food workplace=Cafe 04 (Stores) wage=25 shift=09+8h worked=0min
+[Citizen Emma Wagner] Auto-found home: Residential 01 (Foundation)
+[Citizen Emma Wagner] Registered as tenant at: Residential 01 (Foundation)
+[Citizen Emma Wagner] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Emma Wagner] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Emma Wagner] No reachable open workplace found for Doctor (service=governance, reqEdu=1, from=Residential 01 (Foundation)).
+[Citizen Max Weber] Auto-found home: Residential 01 (Multi-building)
+[Citizen Max Weber] Registered as tenant at: Residential 01 (Multi-building)
+[Citizen Max Weber] Auto-found restaurant: Restaurant 07 (Stores)
+[Citizen Max Weber] No reachable open workplace found for Designer (service=fun, reqEdu=0, from=Residential 01 (Multi-building)).
+[Citizen Leon Krueger] Auto-found home: Residential 05 (Multi-building)
+[Citizen Leon Krueger] Registered as tenant at: Residential 05 (Multi-building)
+[Citizen Leon Krueger] Auto-found restaurant: Restaurant 22 (Stores)
+[Citizen Leon Krueger] Auto-found supermarket: Supermarket 23 (Stores)
+[Citizen Leon Krueger] No reachable open workplace found for Engineer (service=production_goods, reqEdu=1, from=Residential 05 (Multi-building)).
+[Citizen Maria Mueller] Auto-found home: Residential 01 (Foundation)
+[Citizen Maria Mueller] Registered as tenant at: Residential 01 (Foundation)
+[Citizen Maria Mueller] Auto-found supermarket: Supermarket 13 (Stores)
+[Citizen Maria Mueller] Auto-found shop: Shop 04 (Commercial building)
+[Citizen Maria Mueller] Employed at: Factory 02 (Garages) | job=Mechaniker reqEdu=0/0 service=production_goods workplace=Factory 02 (Garages) wage=19 shift=09+8h worked=0min
+[Citizen David Becker] Auto-found home: Residential 01 (Foundation)
+[Citizen David Becker] Registered as tenant at: Residential 01 (Foundation)
+[Citizen David Becker] Auto-found cinema: Cinema 30 (Stores)
+[Citizen David Becker] No reachable open workplace found for Kellner (service=food, reqEdu=0, from=Residential 01 (Foundation)).
+[Sophie Koch] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> Factory 01 (Garages)
+[Citizen Hannah Richter] Education plan: heading to University 02 (Services) for Doctor (education 0/1).
+[Hannah Richter] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Luca Zimmermann] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> Shop 01 (Commercial building)
+[Felix Braun] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Anna Hartmann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multilayer)
+[Simon Schulz] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multilayer)
+[Sara Schroeder] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multi-building)
+[Clara Wolf] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Laura Meyer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multi-building)
+[Citizen Jonas Schmidt] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Jonas Schmidt] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Noah Neumann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multi-building)
+[Lea Hoffmann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 07 (Multilayer)
+[Tom Klein] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 06 (Multilayer)
+[Alex Schwarz] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multilayer)
+[Erik Fischer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multi-building)
+[Emma Wagner] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multi-building)
+[Max Weber] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multi-building)
+[Citizen Leon Krueger] Education plan: heading to University 02 (Services) for Doctor (education 0/1).
+[Leon Krueger] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Maria Mueller] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multi-building)
+[Citizen David Becker] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[David Becker] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Citizen Nora Koch] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Nora Koch] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Julia Richter] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> Cinema 05 (Stores)
+[Jan Zimmermann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multilayer)
+[Citizen Lena Braun] Education plan: heading to University 02 (Services) for Teacher (education 0/1).
+[Lena Braun] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Finn Hartmann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 06 (Multilayer)
+[Citizen Mia Schulz] Education plan: heading to University 02 (Services) for Doctor (education 0/1).
+[Mia Schulz] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Lisa Schroeder] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> Restaurant 12 (Stores)
+[Paul Wolf] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Eva Meyer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Ben Schmidt] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multi-building)
+[Sophie Neumann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multi-building)
+[Citizen Hannah Hoffmann] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Hannah Hoffmann] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Luca Klein] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Felix Schwarz] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Anna Fischer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Citizen Simon Wagner] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Simon Wagner] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Sara Weber] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multilayer)
+[Citizen Clara Krueger] Education plan: heading to University 02 (Services) for Teacher (education 0/1).
+[Clara Krueger] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Laura Mueller] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multilayer)
+[Citizen Jonas Becker] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Jonas Becker] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Noah Koch] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multi-building)
+[Lea Richter] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multi-building)
+[Citizen Tom Zimmermann] Education plan: heading to University 02 (Services) for Teacher (education 0/1).
+[Tom Zimmermann] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Citizen Alex Braun] Education plan: heading to University 02 (Services) for Doctor (education 0/1).
+[Alex Braun] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Erik Hartmann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multilayer)
+[Emma Schulz] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multilayer)
+[Max Schroeder] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multilayer)
+[Leon Wolf] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multilayer)
+[Maria Meyer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multilayer)
+[Citizen David Schmidt] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[David Schmidt] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Nora Neumann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Julia Hoffmann] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> Shop 04 (Commercial building)
+[Jan Klein] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multilayer)
+[Lena Schwarz] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multilayer)
+[Citizen Finn Fischer] Education plan: heading to University 02 (Services) for Doctor (education 0/1).
+[Finn Fischer] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Mia Wagner] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multilayer)
+[Lisa Weber] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multilayer)
+[Citizen Paul Krueger] Education plan: heading to University 02 (Services) for Teacher (education 0/1).
+[Paul Krueger] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Eva Mueller] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multilayer)
+[Citizen Ben Becker] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Ben Becker] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Sophie Koch] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> Factory 02 (Garages)
+[Hannah Richter] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 07 (Multilayer)
+[Luca Zimmermann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multi-building)
+[Felix Braun] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multilayer)
+[Anna Hartmann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multilayer)
+[Citizen Simon Schulz] Education plan: heading to University 02 (Services) for Doctor (education 0/1).
+[Simon Schulz] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Sara Schroeder] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> Shop 04 (Commercial building)
+[Clara Wolf] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Laura Meyer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multi-building)
+[Citizen Jonas Schmidt] Education plan: heading to University 02 (Services) for Doctor (education 0/1).
+[Jonas Schmidt] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Noah Neumann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multilayer)
+[Lea Hoffmann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multilayer)
+[Tom Klein] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multi-building)
+[Alex Schwarz] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 07 (Multilayer)
+[Erik Fischer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 07 (Multilayer)
+[Emma Wagner] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multi-building)
+[Max Weber] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Foundation)
+[Leon Krueger] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multi-building)
+[Maria Mueller] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multi-building)
+[David Becker] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multilayer)
+[Nora Koch] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multilayer)
+[Julia Richter] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multi-building)
+[Jan Zimmermann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multi-building)
+[Lena Braun] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Foundation)
+[Finn Hartmann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multi-building)
+[Mia Schulz] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multi-building)
+[Lisa Schroeder] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Foundation)
+[Citizen Paul Wolf] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Paul Wolf] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Citizen Eva Meyer] Education plan: heading to University 02 (Services) for Doctor (education 0/1).
+[Eva Meyer] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Ben Schmidt] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 06 (Multilayer)
+[Citizen Sophie Neumann] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Sophie Neumann] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Citizen Hannah Hoffmann] Education plan: heading to University 02 (Services) for Teacher (education 0/1).
+[Hannah Hoffmann] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Luca Klein] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multilayer)
+[Citizen Felix Schwarz] Education plan: heading to University 02 (Services) for Teacher (education 0/1).
+[Felix Schwarz] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Anna Fischer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multi-building)
+[Citizen Simon Wagner] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Simon Wagner] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Sara Weber] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multilayer)
+[Clara Krueger] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multi-building)
+[Laura Mueller] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multilayer)
+[Jonas Becker] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Citizen Noah Koch] Education plan: heading to University 02 (Services) for Doctor (education 0/1).
+[Noah Koch] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Lea Richter] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multilayer)
+[Tom Zimmermann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multi-building)
+[Alex Braun] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multi-building)
+[Erik Hartmann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multi-building)
+[Emma Schulz] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multi-building)
+[Max Schroeder] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multilayer)
+[Leon Wolf] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Maria Meyer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 06 (Multilayer)
+[Citizen David Schmidt] Education plan: heading to University 02 (Services) for Teacher (education 0/1).
+[David Schmidt] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Nora Neumann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multi-building)
+[Julia Hoffmann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multi-building)
+[Citizen Jan Klein] Education plan: heading to University 02 (Services) for Doctor (education 0/1).
+[Jan Klein] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Lena Schwarz] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> Factory 01 (Garages)
+[Finn Fischer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multilayer)
+[Citizen Mia Wagner] Education plan: heading to University 02 (Services) for Teacher (education 0/1).
+[Mia Wagner] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Citizen Lisa Weber] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Lisa Weber] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Paul Krueger] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multilayer)
+[Citizen Eva Mueller] Education plan: heading to University 02 (Services) for Teacher (education 0/1).
+[Eva Mueller] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Ben Becker] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Sophie Koch] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multi-building)
+[Hannah Richter] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multilayer)
+[Citizen Luca Zimmermann] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Luca Zimmermann] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Felix Braun] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 07 (Multilayer)
+[Anna Hartmann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 06 (Multilayer)
+[Simon Schulz] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multilayer)
+[Citizen Sara Schroeder] Education plan: heading to University 02 (Services) for Teacher (education 0/1).
+[Sara Schroeder] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Clara Wolf] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multi-building)
+[Laura Meyer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multi-building)
+[Jonas Schmidt] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 06 (Multilayer)
+[Citizen Noah Neumann] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Noah Neumann] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Lea Hoffmann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multilayer)
+[Tom Klein] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multilayer)
+[Alex Schwarz] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multilayer)
+[Erik Fischer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multilayer)
+[Citizen Emma Wagner] Education plan: heading to University 02 (Services) for Teacher (education 0/1).
+[Emma Wagner] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Max Weber] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 06 (Multilayer)
+[Leon Krueger] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multilayer)
+[Maria Mueller] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multilayer)
+[David Becker] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Nora Koch] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Julia Richter] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multi-building)
+[Jan Zimmermann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multi-building)
+[Lena Braun] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multi-building)
+[Citizen Finn Hartmann] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Finn Hartmann] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Mia Schulz] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Lisa Schroeder] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multi-building)
+[Paul Wolf] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multilayer)
+[Eva Meyer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multilayer)
+[Ben Schmidt] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multilayer)
+[Sophie Neumann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multilayer)
+[Hannah Hoffmann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multilayer)
+[Citizen Luca Klein] Education plan: heading to University 02 (Services) for Doctor (education 0/1).
+[Luca Klein] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Felix Schwarz] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multi-building)
+[Anna Fischer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multilayer)
+[Simon Wagner] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multilayer)
+[Sara Weber] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multilayer)
+[Clara Krueger] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multilayer)
+[Laura Mueller] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multilayer)
+[Jonas Becker] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multilayer)
+[Noah Koch] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multilayer)
+[Citizen Lea Richter] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Lea Richter] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Tom Zimmermann] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> Factory 05 (Garages)
+[Alex Braun] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> Factory 02 (Garages)
+[Citizen Erik Hartmann] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Erik Hartmann] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Emma Schulz] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multilayer)
+[Citizen Max Schroeder] Education plan: heading to University 02 (Services) for Teacher (education 0/1).
+[Max Schroeder] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Citizen Leon Wolf] Education plan: heading to University 02 (Services) for Doctor (education 0/1).
+[Leon Wolf] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Maria Meyer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multilayer)
+[David Schmidt] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 04 (Multilayer)
+[Nora Neumann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multilayer)
+[Citizen Julia Hoffmann] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Julia Hoffmann] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Jan Klein] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multilayer)
+[Lena Schwarz] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 07 (Multilayer)
+[Finn Fischer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 05 (Multi-building)
+[Mia Wagner] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 03 (Multilayer)
+[Citizen Lisa Weber] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Lisa Weber] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Paul Krueger] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> Cafe 19 (Stores)
+[Citizen Eva Mueller] Education plan: heading to University 02 (Services) for Doctor (education 0/1).
+[Eva Mueller] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Citizen Ben Becker] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Ben Becker] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Citizen Sophie Koch] Education plan: heading to University 02 (Services) for Doctor (education 0/1).
+[Sophie Koch] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Hannah Richter] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Foundation)
+[Luca Zimmermann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multilayer)
+[Citizen Felix Braun] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Felix Braun] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Anna Hartmann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multi-building)
+[Simon Schulz] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 07 (Multilayer)
+[Sara Schroeder] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 07 (Multilayer)
+[Citizen Clara Wolf] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Clara Wolf] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Laura Meyer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Foundation)
+[Jonas Schmidt] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multi-building)
+[Noah Neumann] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> Cinema 25 (Stores)
+[Lea Hoffmann] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multilayer)
+[Tom Klein] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multilayer)
+[Alex Schwarz] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> Restaurant 27 (Stores)
+[Erik Fischer] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 02 (Multi-building)
+[Citizen Emma Wagner] Education plan: heading to University 02 (Services) for Doctor (education 0/1).
+[Emma Wagner] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Max Weber] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Multi-building)
+[Citizen Leon Krueger] Education plan: heading to University 02 (Services) for Engineer (education 0/1).
+[Leon Krueger] 07:10 (Mon) | GoTo       | H:1 E:99 F:70 HP:100 | $200 | at=-> University 02 (Services)
+[Maria Mueller] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Foundation)
+[David Becker] 07:10 (Mon) | Relax      | H:1 E:99 F:70 HP:100 | $200 | at=Residential 01 (Foundation)

@@ -2,7 +2,7 @@ extends Node3D
 
 @onready var world: World = $World
 
-const CITIZEN_COUNT := 10
+const CITIZEN_COUNT := 200
 const RoadBuilderScript = preload("res://Simulation/Bootstrap/RoadBuilder.gd")
 const ImportedCitySetupScript = preload("res://Simulation/Bootstrap/ImportedCitySetup.gd")
 const RestaurantScene = preload("res://Scenes/Restaurant.tscn")
@@ -347,7 +347,7 @@ func _build_hud() -> void:
 
 	_citizen_stats_label = Label.new()
 	_citizen_stats_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_citizen_stats_label.custom_minimum_size = Vector2(210, 34)
+	_citizen_stats_label.custom_minimum_size = Vector2(620, 34)
 	time_box.add_child(_citizen_stats_label)
 
 	var panel := PanelContainer.new()
@@ -425,9 +425,13 @@ func _refresh_time_hud() -> void:
 		return
 	_date_label.text = world.time.get_ui_date_string()
 	_clock_label.text = world.time.get_time_string()
-	_citizen_stats_label.text = "Citizens: %d | Unbeschaeftigt: %d" % [
+	_citizen_stats_label.text = "Citizens: %d | Unbeschaeftigt: %d | Wohnplaetze: %d/%d | Arbeitsplaetze: %d/%d" % [
 		_count_registered_citizens(),
-		_count_unemployed_citizens()
+		_count_unemployed_citizens(),
+		_count_used_housing_slots(),
+		_count_total_housing_slots(),
+		_count_filled_job_slots(),
+		_count_total_job_slots()
 	]
 
 func _count_registered_citizens() -> int:
@@ -449,3 +453,41 @@ func _count_unemployed_citizens() -> int:
 		if citizen.job == null or citizen.job.workplace == null:
 			unemployed += 1
 	return unemployed
+
+func _count_total_housing_slots() -> int:
+	if world == null:
+		return 0
+	var total := 0
+	for building in world.buildings:
+		if building is ResidentialBuilding:
+			total += maxi((building as ResidentialBuilding).capacity, 0)
+	return total
+
+func _count_used_housing_slots() -> int:
+	if world == null:
+		return 0
+	var used := 0
+	for building in world.buildings:
+		if building is ResidentialBuilding:
+			used += (building as ResidentialBuilding).tenants.size()
+	return used
+
+func _count_total_job_slots() -> int:
+	if world == null:
+		return 0
+	var total := 0
+	for building in world.buildings:
+		if building == null:
+			continue
+		total += maxi(building.job_capacity, 0)
+	return total
+
+func _count_filled_job_slots() -> int:
+	if world == null:
+		return 0
+	var filled := 0
+	for building in world.buildings:
+		if building == null:
+			continue
+		filled += building.workers.size()
+	return filled
