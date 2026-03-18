@@ -264,15 +264,36 @@ func find_city_hall() -> CityHall:
 			return building as CityHall
 	return null
 
-func find_first_residential_building() -> ResidentialBuilding:
+func find_available_residential_building(from_pos: Vector3 = Vector3.ZERO) -> ResidentialBuilding:
+	var best: ResidentialBuilding = null
+	var best_load := INF
+	var best_dist := INF
+
 	for building in buildings:
-		if building is ResidentialBuilding:
-			return building as ResidentialBuilding
-	return null
+		if building is not ResidentialBuilding:
+			continue
+		var residential := building as ResidentialBuilding
+		if not residential.has_free_slot():
+			continue
+
+		var load := float(residential.tenants.size()) / float(maxi(residential.capacity, 1))
+		var dist := from_pos.distance_to(residential.global_position)
+		if load < best_load or (is_equal_approx(load, best_load) and dist < best_dist):
+			best_load = load
+			best_dist = dist
+			best = residential
+
+	return best
+
+func find_first_residential_building() -> ResidentialBuilding:
+	return find_available_residential_building(Vector3.ZERO)
 
 func find_nearest_restaurant(from_pos: Vector3, require_open: bool = true) -> Restaurant:
+	return find_preferred_restaurant(from_pos, null, require_open)
+
+func find_preferred_restaurant(from_pos: Vector3, excluded_citizen: Citizen = null, require_open: bool = true) -> Restaurant:
 	var best: Restaurant = null
-	var best_dist := INF
+	var best_score := INF
 	for building in buildings:
 		if building is not Restaurant:
 			continue
@@ -281,9 +302,13 @@ func find_nearest_restaurant(from_pos: Vector3, require_open: bool = true) -> Re
 			continue
 		if not _is_building_pedestrian_reachable(from_pos, restaurant):
 			continue
-		var dist := from_pos.distance_to(restaurant.global_position)
-		if dist < best_dist:
-			best_dist = dist
+
+		var capacity := float(maxi(restaurant.capacity, 1))
+		var assigned_count := _count_citizen_building_preference("favorite_restaurant", restaurant, excluded_citizen)
+		var current_load := float(assigned_count + restaurant.visitors.size()) / capacity
+		var score := current_load * 1000.0 + from_pos.distance_to(restaurant.global_position)
+		if score < best_score:
+			best_score = score
 			best = restaurant
 	return best
 
@@ -474,3 +499,15 @@ func _is_navigation_map_ready() -> bool:
 	if not navigation_map.is_valid():
 		return false
 	return NavigationServer3D.map_get_iteration_id(navigation_map) > 0
+
+func _count_citizen_building_preference(property_name: String, building: Building, excluded_citizen: Citizen = null) -> int:
+	if building == null or property_name.is_empty():
+		return 0
+
+	var count := 0
+	for citizen in citizens:
+		if citizen == null or citizen == excluded_citizen:
+			continue
+		if citizen.get(property_name) == building:
+			count += 1
+	return count

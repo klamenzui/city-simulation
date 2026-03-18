@@ -379,7 +379,7 @@ func _auto_resolve_refs() -> void:
 		favorite_park = get_node_or_null(park_path) as Building
 
 	if home == null:
-		home = _find_first_residential_building()
+		home = _find_first_residential_building(global_position)
 		if home:
 			SimLogger.log("[Citizen %s] Auto-found home: %s" % [citizen_name, _building_label(home)])
 
@@ -388,7 +388,18 @@ func _auto_resolve_refs() -> void:
 		if added:
 			SimLogger.log("[Citizen %s] Registered as tenant at: %s" % [citizen_name, _building_label(home)])
 		else:
-			SimLogger.log("[Citizen %s] WARNING: Home %s is full, could not register as tenant!" % [citizen_name, _building_label(home)])
+			var full_home := home
+			home = _find_first_residential_building(global_position)
+			if home != null and home != full_home and home.add_tenant(self):
+				SimLogger.log("[Citizen %s] Home %s was full, reassigned to: %s" % [
+					citizen_name,
+					_building_label(full_home),
+					_building_label(home)
+				])
+				SimLogger.log("[Citizen %s] Registered as tenant at: %s" % [citizen_name, _building_label(home)])
+			else:
+				home = null
+				SimLogger.log("[Citizen %s] WARNING: No residential building with free tenant slot found." % citizen_name)
 
 	var origin := home.get_entrance_pos() if home else global_position
 	if home != null and _world_ref != null and _world_ref.has_method("get_pedestrian_access_point"):
@@ -620,18 +631,34 @@ func _get_fun_cash_reserve(world: World) -> int:
 		reserve += meal_price
 	return reserve
 
-func _find_first_residential_building() -> ResidentialBuilding:
+func _find_first_residential_building(from_pos: Vector3 = Vector3.ZERO) -> ResidentialBuilding:
 	if _world_ref != null:
+		if _world_ref.has_method("find_available_residential_building"):
+			return _world_ref.find_available_residential_building(from_pos)
 		return _world_ref.find_first_residential_building()
 
+	var best: ResidentialBuilding = null
+	var best_load := INF
+	var best_dist := INF
 	for node in get_tree().get_nodes_in_group("buildings"):
-		if node is ResidentialBuilding:
-			return node
-	return null
+		if node is not ResidentialBuilding:
+			continue
+		var residential := node as ResidentialBuilding
+		if not residential.has_free_slot():
+			continue
+		var load := float(residential.tenants.size()) / float(maxi(residential.capacity, 1))
+		var dist := from_pos.distance_to(residential.global_position)
+		if load < best_load or (is_equal_approx(load, best_load) and dist < best_dist):
+			best_load = load
+			best_dist = dist
+			best = residential
+	return best
 
 
 func _find_nearest_restaurant(from_pos: Vector3, require_open: bool = true) -> Restaurant:
 	if _world_ref != null:
+		if _world_ref.has_method("find_preferred_restaurant"):
+			return _world_ref.find_preferred_restaurant(from_pos, self, require_open)
 		return _world_ref.find_nearest_restaurant(from_pos, require_open)
 
 	var best: Restaurant = null
