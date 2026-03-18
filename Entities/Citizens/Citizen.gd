@@ -2,6 +2,7 @@ extends Node3D
 class_name Citizen
 
 const CitizenAgentScript = preload("res://Simulation/Citizens/CitizenAgent.gd")
+const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
 
 # Emittiert wenn der Spieler auf diesen Citizen klickt
 signal clicked
@@ -36,6 +37,8 @@ var _agent = CitizenAgentScript.new()
 var _last_job_requirement_notice_level: int = -1
 var _last_job_requirement_notice_title: String = ""
 var _last_workplace_full_notice_day: int = -1
+var _debug_once_day: int = -1
+var _debug_once_keys: Dictionary = {}
 
 # --- Movement / Navigation ---
 @export var move_speed_min: float = 1.6
@@ -65,6 +68,8 @@ var _walk_speed: float = 2.0
 var _current_speed: float = 0.0
 var _vertical_speed: float = 0.0
 var _ground_fallback_y: float = 0.0
+var _debug_last_travel_route: PackedVector3Array = PackedVector3Array()
+var _debug_last_travel_failed: bool = false
 # --- Variation / Personality ---
 @export var schedule_offset_min: int = -25
 @export var schedule_offset_max: int = 25
@@ -235,8 +240,8 @@ func _apply_grounding(pos: Vector3, delta: float) -> Vector3:
 func set_position_grounded(pos: Vector3) -> void:
 	_agent.locomotion.set_position_grounded(self, pos, _world_ref)
 
-func begin_travel_to(target_pos: Vector3, target_building: Building = null) -> void:
-	_agent.locomotion.begin_travel_to(self, target_pos, target_building, _world_ref)
+func begin_travel_to(target_pos: Vector3, target_building: Building = null) -> bool:
+	return _agent.locomotion.begin_travel_to(self, target_pos, target_building, _world_ref)
 
 func has_reached_travel_target() -> bool:
 	return _agent.locomotion.has_reached_travel_target(self)
@@ -261,6 +266,30 @@ func get_debug_travel_path() -> PackedVector3Array:
 			path.append(point)
 
 	return path
+
+func get_debug_travel_route_points() -> PackedVector3Array:
+	if _is_travelling:
+		return _travel_route
+	return _debug_last_travel_route
+
+func get_debug_travel_current_target() -> Vector3:
+	if _is_travelling:
+		return _travel_target
+	return Vector3.ZERO
+
+func get_debug_travel_route_index() -> int:
+	if _is_travelling:
+		return _travel_route_index
+	return -1
+
+func is_debug_travelling() -> bool:
+	return _is_travelling
+
+func has_debug_travel_route() -> bool:
+	return _is_travelling or _debug_last_travel_route.size() >= 2
+
+func did_debug_last_travel_fail() -> bool:
+	return _debug_last_travel_failed
 
 func _advance_travel_route() -> bool:
 	if _travel_route.is_empty():
@@ -352,14 +381,14 @@ func _auto_resolve_refs() -> void:
 	if home == null:
 		home = _find_first_residential_building()
 		if home:
-			print("[Citizen %s] Auto-found home: %s" % [citizen_name, _building_label(home)])
+			SimLogger.log("[Citizen %s] Auto-found home: %s" % [citizen_name, _building_label(home)])
 
 	if home != null:
 		var added := home.add_tenant(self)
 		if added:
-			print("[Citizen %s] Registered as tenant at: %s" % [citizen_name, _building_label(home)])
+			SimLogger.log("[Citizen %s] Registered as tenant at: %s" % [citizen_name, _building_label(home)])
 		else:
-			print("[Citizen %s] WARNING: Home %s is full, could not register as tenant!" % [citizen_name, _building_label(home)])
+			SimLogger.log("[Citizen %s] WARNING: Home %s is full, could not register as tenant!" % [citizen_name, _building_label(home)])
 
 	var origin := home.get_entrance_pos() if home else global_position
 	if home != null and _world_ref != null and _world_ref.has_method("get_pedestrian_access_point"):
@@ -368,27 +397,27 @@ func _auto_resolve_refs() -> void:
 	if favorite_restaurant == null:
 		favorite_restaurant = _find_nearest_restaurant(origin, false)
 		if favorite_restaurant:
-			print("[Citizen %s] Auto-found restaurant: %s" % [citizen_name, _building_label(favorite_restaurant)])
+			SimLogger.log("[Citizen %s] Auto-found restaurant: %s" % [citizen_name, _building_label(favorite_restaurant)])
 
 	if favorite_supermarket == null:
 		favorite_supermarket = _find_nearest_supermarket(origin, false)
 		if favorite_supermarket:
-			print("[Citizen %s] Auto-found supermarket: %s" % [citizen_name, _building_label(favorite_supermarket)])
+			SimLogger.log("[Citizen %s] Auto-found supermarket: %s" % [citizen_name, _building_label(favorite_supermarket)])
 
 	if favorite_shop == null:
 		favorite_shop = _find_nearest_shop(origin, false)
 		if favorite_shop:
-			print("[Citizen %s] Auto-found shop: %s" % [citizen_name, _building_label(favorite_shop)])
+			SimLogger.log("[Citizen %s] Auto-found shop: %s" % [citizen_name, _building_label(favorite_shop)])
 
 	if favorite_cinema == null:
 		favorite_cinema = _find_nearest_cinema(origin, false)
 		if favorite_cinema:
-			print("[Citizen %s] Auto-found cinema: %s" % [citizen_name, _building_label(favorite_cinema)])
+			SimLogger.log("[Citizen %s] Auto-found cinema: %s" % [citizen_name, _building_label(favorite_cinema)])
 
 	if favorite_park == null:
 		favorite_park = _find_nearest_park(origin)
 		if favorite_park:
-			print("[Citizen %s] Auto-found park: %s" % [citizen_name, _building_label(favorite_park)])
+			SimLogger.log("[Citizen %s] Auto-found park: %s" % [citizen_name, _building_label(favorite_park)])
 
 	_try_find_job_once()
 
@@ -405,28 +434,54 @@ func _try_find_job_once() -> void:
 	var from_pos := home.get_entrance_pos() if home else global_position
 	if home != null and _world_ref != null and _world_ref.has_method("get_pedestrian_access_point"):
 		from_pos = _world_ref.get_pedestrian_access_point(from_pos, home)
+	var found_reachable_workplace := false
 	if _world_ref != null:
 		job.workplace = _world_ref.find_nearest_open_workplace(from_pos, job.workplace_name, job.workplace_service_type)
+		found_reachable_workplace = job.workplace != null
 
-	if job.workplace == null:
+	if job.workplace == null and _world_ref == null:
 		var root := get_tree().current_scene
 		job.resolve_nearest(root, from_pos)
+		if job.workplace != null and not found_reachable_workplace:
+			debug_log_once_per_day(
+				"job_fallback_%s" % job.title,
+				"Fallback workplace selected without world reachability check: %s for %s (%s)." % [
+					_building_label(job.workplace),
+					job.title,
+					get_job_debug_summary()
+				]
+			)
 
 	if job.workplace == null:
+		debug_log_once_per_day(
+			"job_search_none_%s" % job.title,
+			"No reachable open workplace found for %s (service=%s, reqEdu=%d, from=%s)." % [
+				job.title,
+				job.workplace_service_type if job.workplace_service_type != "" else "any",
+				job.required_education_level,
+				_building_label(home)
+			]
+		)
 		return
 
 	if not job.meets_requirements(self):
-		_maybe_log_job_requirement_notice()
+		var blocked_workplace := job.workplace
+		_maybe_log_job_requirement_notice(blocked_workplace)
 		job.workplace = null
 		return
 
 	var hired := job.try_get_employed(self)
 	if hired:
 		_reset_job_notice_state()
-		print("[Citizen %s] Employed at: %s" % [citizen_name, _building_label(job.workplace)])
+		SimLogger.log("[Citizen %s] Employed at: %s | %s" % [
+			citizen_name,
+			_building_label(job.workplace),
+			get_job_debug_summary()
+		])
 	else:
+		var full_workplace := job.workplace
 		job.workplace = null
-		_maybe_log_workplace_full_notice()
+		_maybe_log_workplace_full_notice(full_workplace)
 
 func set_world_ref(world: World) -> void:
 	if world == null:
@@ -457,11 +512,28 @@ func _update_debug(world: World, h_delta: float) -> void:
 		if needs.energy <= 10.0:   reason += " [exhausted]"
 		if needs.fun <= 0.0:       reason += " [depressed]"
 		if h_delta > 0:            reason = " [recovering]"
-		print("[%s] Health %s%.1f -> %.1f%s" % [
+		SimLogger.log("[%s] Health %s%.1f -> %.1f%s" % [
 			citizen_name,
 			"+" if h_delta > 0 else "",
 			h_delta, needs.health, reason
 		])
+
+	var debug_route := get_debug_travel_route_points()
+	var travel_state := "idle"
+	var path_start := "-"
+	var path_end := "-"
+	if _is_travelling:
+		travel_state = "moving"
+	elif _debug_last_travel_failed and debug_route.size() >= 2:
+		travel_state = "route_failed"
+	elif debug_route.size() >= 2:
+		travel_state = "last_route"
+
+	if debug_route.size() >= 2:
+		var route_start: Vector3 = debug_route[0]
+		var route_end: Vector3 = debug_route[debug_route.size() - 1]
+		path_start = "%d, %d, %d" % [route_start.x, route_start.y, route_start.z]
+		path_end = "%d, %d, %d" % [route_end.x, route_end.y, route_end.z]
 
 	debug_panel.update_debug({
 		"Citizen"  : citizen_name,
@@ -485,6 +557,9 @@ func _update_debug(world: World, h_delta: float) -> void:
 		"Motivation": "%.2f" % work_motivation,
 		"ParkInterest": "%.2f" % park_interest,
 		"Position": "%d, %d, %d " % [global_position.x, global_position.y, global_position.z],
+		"TravelState": travel_state,
+		"PathStart": path_start,
+		"PathEnd": path_end,
 	})
 
 func _update_work_day(world: World) -> void:
@@ -648,6 +723,57 @@ func _find_nearest_park(from_pos: Vector3) -> Building:
 				best = b
 	return best
 
+func debug_log(message: String) -> void:
+	SimLogger.log("[Citizen %s] %s" % [citizen_name, message])
+
+func debug_log_once_per_day(key: String, message: String) -> void:
+	var today := _world_ref.world_day() if _world_ref != null else -1
+	if _debug_once_day != today:
+		_debug_once_day = today
+		_debug_once_keys.clear()
+	if _debug_once_keys.has(key):
+		return
+	_debug_once_keys[key] = true
+	debug_log(message)
+
+func get_job_debug_summary() -> String:
+	if job == null:
+		return "job=none"
+	var workplace_label := _building_label(job.workplace) if job.workplace != null else "none"
+	var service_type := job.workplace_service_type if job.workplace_service_type != "" else "any"
+	return "job=%s reqEdu=%d/%d service=%s workplace=%s wage=%d shift=%02d+%dh worked=%dmin" % [
+		job.title,
+		education_level,
+		job.required_education_level,
+		service_type,
+		workplace_label,
+		job.wage_per_hour,
+		job.start_hour,
+		job.shift_hours,
+		work_minutes_today
+	]
+
+func get_unemployment_debug_reason() -> String:
+	if job == null:
+		return "no assigned job"
+	if job.workplace == null and not job.meets_requirements(self):
+		return "education mismatch for %s (%d/%d)" % [
+			job.title,
+			education_level,
+			job.required_education_level
+		]
+	if job.workplace == null:
+		return "no workplace assigned for %s (service=%s)" % [
+			job.title,
+			job.workplace_service_type if job.workplace_service_type != "" else "any"
+		]
+	return "employment status unclear"
+
+func get_zero_pay_debug_reason() -> String:
+	var action_label := current_action.label if current_action != null else "idle"
+	var location_label := _building_label(current_location) if current_location != null else "travelling"
+	return "%s action=%s location=%s" % [get_job_debug_summary(), action_label, location_label]
+
 
 func start_action(a: Action, world: World) -> void:
 	_start_action(a, world)
@@ -670,7 +796,7 @@ func _start_action(a: Action, world: World) -> void:
 	if needs.health < 50.0:    health_icon = " [LOW]"
 	elif needs.health < 75.0:  health_icon = " [WARN]"
 
-	print("[%s] %02d:%02d (%s) | %-10s | H:%.0f E:%.0f F:%.0f HP:%.0f%s | $%d | at=%s" % [
+	SimLogger.log("[%s] %02d:%02d (%s) | %-10s | H:%.0f E:%.0f F:%.0f HP:%.0f%s | $%d | at=%s" % [
 		citizen_name, h, m, w,
 		a.label,
 		needs.hunger, needs.energy, needs.fun, needs.health, health_icon,
@@ -685,11 +811,11 @@ func pay_rent(world: World, landlord: ResidentialBuilding, amount: int) -> void:
 	var before := wallet.balance
 	var success := world.economy.transfer(wallet, landlord.account, amount)
 	if success:
-		print("[%s] Rent paid: %d EUR (balance: %d -> %d)" % [
+		SimLogger.log("[%s] Rent paid: %d EUR (balance: %d -> %d)" % [
 			citizen_name, amount, before, wallet.balance
 		])
 	else:
-		print("[%s] Could not pay rent! Need %d EUR, have %d EUR" % [
+		SimLogger.log("[%s] Could not pay rent! Need %d EUR, have %d EUR" % [
 			citizen_name, amount, wallet.balance
 		])
 
@@ -698,26 +824,43 @@ func _building_label(building: Building) -> String:
 		return "Unknown"
 	return building.get_display_name()
 
-func _maybe_log_job_requirement_notice() -> void:
+func _maybe_log_job_requirement_notice(blocked_workplace: Building = null) -> void:
 	if job == null:
 		return
 	if _last_job_requirement_notice_level == education_level and _last_job_requirement_notice_title == job.title:
 		return
 	_last_job_requirement_notice_level = education_level
 	_last_job_requirement_notice_title = job.title
-	print("[Citizen %s] Needs education level %d for job %s (current %d)." % [
-		citizen_name,
+	var study_origin := home.get_entrance_pos() if home else global_position
+	if home != null and _world_ref != null and _world_ref.has_method("get_pedestrian_access_point"):
+		study_origin = _world_ref.get_pedestrian_access_point(study_origin, home)
+	var nearest_uni := _find_nearest_university(study_origin, false)
+	var study_hint := " No reachable university available right now."
+	if nearest_uni != null:
+		study_hint = " Study option: %s (tuition %d EUR)." % [
+			nearest_uni.get_display_name(),
+			nearest_uni.tuition_fee
+		]
+	debug_log("Needs education level %d for job %s (current %d). Candidate workplace: %s.%s" % [
 		job.required_education_level,
 		job.title,
-		education_level
+		education_level,
+		_building_label(blocked_workplace),
+		study_hint
 	])
 
-func _maybe_log_workplace_full_notice() -> void:
+func _maybe_log_workplace_full_notice(workplace: Building = null) -> void:
 	var today := _world_ref.world_day() if _world_ref != null else -1
 	if _last_workplace_full_notice_day == today:
 		return
 	_last_workplace_full_notice_day = today
-	print("[Citizen %s] Workplace full, will retry later." % citizen_name)
+	var worker_count := workplace.workers.size() if workplace != null else 0
+	var capacity := workplace.job_capacity if workplace != null else 0
+	debug_log("Workplace full at %s (%d/%d workers), will retry later." % [
+		_building_label(workplace),
+		worker_count,
+		capacity
+	])
 
 func _reset_job_notice_state() -> void:
 	_last_job_requirement_notice_level = -1

@@ -20,6 +20,29 @@ func try_plan(world, citizen) -> bool:
 	if citizen.needs.energy <= citizen.low_energy_threshold:
 		return false
 
+	var from_pos = citizen.home.get_entrance_pos() if citizen.home else citizen.global_position
+	var uni: University = citizen._find_nearest_university(from_pos, true)
+	if uni == null:
+		citizen.debug_log_once_per_day(
+			"education_no_university_%s" % citizen.job.title,
+			"Education blocked for %s: no reachable open university. %s" % [
+				citizen.job.title,
+				citizen.get_job_debug_summary()
+			]
+		)
+		return false
+	if citizen.wallet.balance < uni.tuition_fee:
+		citizen.debug_log_once_per_day(
+			"education_funds_%s" % citizen.job.title,
+			"Education blocked for %s: tuition %d EUR at %s, balance %d EUR." % [
+				citizen.job.title,
+				uni.tuition_fee,
+				uni.get_display_name(),
+				citizen.wallet.balance
+			]
+		)
+		return false
+
 	var state = _build_state(world, citizen)
 	var goal = {"education_progress": true}
 	var actions = _build_actions()
@@ -67,12 +90,22 @@ func _execute_first_action(action, world, citizen) -> bool:
 			var uni: University = citizen._find_nearest_university(citizen.home.get_entrance_pos() if citizen.home else citizen.global_position, true)
 			if uni == null:
 				return false
+			citizen.debug_log("Education plan: heading to %s for %s (education %d/%d)." % [
+				uni.get_display_name(),
+				citizen.job.title,
+				citizen.education_level,
+				citizen.job.required_education_level
+			])
 			citizen.start_action(GoToBuildingActionScript.new(uni, 24), world)
 			return true
 		"study":
 			var uni2: University = citizen._find_nearest_university(citizen.home.get_entrance_pos() if citizen.home else citizen.global_position, true)
 			if uni2 == null:
 				return false
+			citizen.debug_log("Education plan: starting study at %s for %s." % [
+				uni2.get_display_name(),
+				citizen.job.title
+			])
 			citizen.start_action(StudyAtUniversityActionScript.new(uni2), world)
 			return true
 		_:

@@ -12,11 +12,13 @@ const EatAtRestaurantActionScript = preload("res://Actions/EatAtRestaurantAction
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
 const RelaxAtHomeActionScript = preload("res://Actions/RelaxAtHomeAction.gd")
 const SleepActionScript = preload("res://Actions/SleepAction.gd")
+const WorkActionScript = preload("res://Actions/WorkAction.gd")
 
 const CRITICAL_HUNGER := 80.0
 const CRITICAL_ENERGY := 10.0
 const LOW_HEALTH := 35.0
 const CRITICAL_HEALTH := 20.0
+const WORK_COMMUTE_BUFFER_MIN := 30
 
 var _hunger_goap = CitizenHungerGoapScript.new()
 var _fun_goap = CitizenFunGoapScript.new()
@@ -29,6 +31,9 @@ func plan_next_action(world, citizen) -> bool:
 		return false
 
 	if _try_survival_override(world, citizen):
+		return true
+
+	if _try_work_schedule(world, citizen):
 		return true
 
 	var candidates = _build_goal_candidates(world, citizen)
@@ -181,6 +186,58 @@ func _try_survival_override(world, citizen) -> bool:
 		return true
 
 	citizen.start_action(RelaxAtHomeActionScript.new(), world)
+	return true
+
+func _try_work_schedule(world, citizen) -> bool:
+	if citizen == null or citizen.job == null or citizen.job.workplace == null:
+		return false
+	if not citizen.job.meets_requirements(citizen):
+		return false
+	if world.time.is_weekend():
+		return false
+	if citizen.needs.health <= LOW_HEALTH:
+		return false
+
+	var shift_minutes: int = int(citizen.job.shift_hours * 60)
+	var remaining_work: int = maxi(0, shift_minutes - citizen.work_minutes_today)
+	if remaining_work <= 0:
+		return false
+
+	var now_total: int = world.time.get_hour() * 60 + world.time.get_minute()
+	var work_start: int = citizen.job.start_hour * 60 + citizen.schedule_offset
+	var work_end: int = work_start + shift_minutes
+	var in_commute_window: bool = now_total >= maxi(work_start - WORK_COMMUTE_BUFFER_MIN, 0) and now_total < work_start
+	var in_work_window: bool = now_total >= work_start and now_total < work_end
+	if not in_commute_window and not in_work_window:
+		return false
+
+	var work_fit: bool = citizen.needs.health > LOW_HEALTH \
+		and citizen.needs.energy > citizen.low_energy_threshold \
+		and citizen.needs.hunger < 75.0
+	if not work_fit:
+		var reason := "unknown blocker"
+		if citizen.needs.health <= LOW_HEALTH:
+			reason = "health %.0f <= %d" % [citizen.needs.health, LOW_HEALTH]
+		elif citizen.needs.energy <= citizen.low_energy_threshold:
+			reason = "energy %.0f <= %.0f" % [citizen.needs.energy, citizen.low_energy_threshold]
+		elif citizen.needs.hunger >= 75.0:
+			reason = "hunger %.0f >= 75" % citizen.needs.hunger
+		citizen.debug_log_once_per_day(
+			"work_blocked_%s" % citizen.job.title,
+			"Skipping work window for %s: %s. %s" % [
+				citizen.job.title,
+				reason,
+				citizen.get_job_debug_summary()
+			]
+		)
+		return false
+
+	if citizen.current_location == citizen.job.workplace:
+		if in_work_window:
+			citizen.start_action(WorkActionScript.new(citizen.job), world)
+		return true
+
+	citizen.start_action(GoToBuildingActionScript.new(citizen.job.workplace, 20), world)
 	return true
 
 func _can_eat_at_restaurant(world, citizen) -> bool:

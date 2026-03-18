@@ -1,6 +1,8 @@
 extends Action
 class_name EatAtRestaurantAction
 
+const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
+
 const HUNGER_REDUCE_PER_MIN := 1.15
 const ENERGY_RECOVER_PER_MIN := 0.22
 const MAX_MEAL_MIN := 80
@@ -35,7 +37,7 @@ func start(world, citizen) -> void:
 	if restaurant.has_method("get_meal_price"):
 		meal_price = int(restaurant.get_meal_price(world))
 	if citizen.wallet.balance < meal_price:
-		print("[Citizen %s] Can't afford meal (balance: %d, price: %d)." % [
+		SimLogger.log("[Citizen %s] Can't afford meal (balance: %d, price: %d)." % [
 			citizen.citizen_name, citizen.wallet.balance, meal_price
 		])
 		restaurant.leave(citizen)
