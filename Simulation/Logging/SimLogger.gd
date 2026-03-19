@@ -1,8 +1,8 @@
 extends RefCounted
 class_name SimLogger
 
-const PROJECT_LOG_PATH := "res://logs.txt"
-const FALLBACK_LOG_PATH := "user://logs.txt"
+const PROJECT_LOG_PATH := "res://logs.log"
+const FALLBACK_LOG_PATH := "user://logs.log"
 
 static var _log_path: String = PROJECT_LOG_PATH
 static var _mirror_to_stdout: bool = false
