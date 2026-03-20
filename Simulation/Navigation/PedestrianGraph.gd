@@ -95,7 +95,6 @@ func rebuild_from_scene(root: Node3D, _buildings: Array = []) -> void:
 	_build_boundary_nodes()
 	_initialize_neighbor_buckets()
 	_build_side_links()
-	_build_road_cross_links()
 	_build_corner_links()
 	_build_crosswalk_links()
 	_rebuild_components()
@@ -135,11 +134,61 @@ func find_path_points(start_pos: Vector3, end_pos: Vector3, start_building: Buil
 	_append_path_point(route, end_pos)
 	return _remove_close_duplicates(route)
 
-func get_access_point(pos: Vector3, _building: Building = null) -> Vector3:
-	var idx := get_nearest_node_index(pos, true)
+func get_access_point(pos: Vector3, building: Building = null) -> Vector3:
+	var idx := _get_access_node_index(pos, building)
 	if idx < 0:
 		return pos
 	return nodes[idx]
+
+func _get_access_node_index(pos: Vector3, building: Building = null) -> int:
+	if building != null:
+		var building_idx := _get_building_access_node_index(building)
+		if building_idx >= 0:
+			return building_idx
+	return get_nearest_node_index(pos, true)
+
+func _get_building_access_node_index(building: Building) -> int:
+	if building == null or _access_node_indices.is_empty():
+		return -1
+
+	var entrance_pos := building.get_entrance_pos()
+	var building_center := _get_building_world_center(building)
+	var outward_dir := entrance_pos - building_center
+	outward_dir.y = 0.0
+	var has_outward_dir := outward_dir.length_squared() > 0.0001
+	if has_outward_dir:
+		outward_dir = outward_dir.normalized()
+
+	var best_idx := -1
+	var best_score := INF
+	for raw_idx in _access_node_indices:
+		var idx := int(raw_idx)
+		var node_pos := nodes[idx]
+		var score := _xz_distance(node_pos, entrance_pos)
+		if has_outward_dir:
+			var node_dir := node_pos - entrance_pos
+			node_dir.y = 0.0
+			if node_dir.length_squared() > 0.0001:
+				var alignment := outward_dir.dot(node_dir.normalized())
+				if alignment < -0.15:
+					score += 5.0
+				elif alignment < 0.2:
+					score += 1.5
+				else:
+					score -= minf(alignment, 1.0) * 0.35
+		if score < best_score:
+			best_score = score
+			best_idx = idx
+
+	return best_idx
+
+func _get_building_world_center(building: Building) -> Vector3:
+	if building == null:
+		return Vector3.ZERO
+	if building.has_method("get_footprint_bounds"):
+		var bounds: AABB = building.get_footprint_bounds()
+		return building.to_global(bounds.position + bounds.size * 0.5)
+	return building.global_position
 
 func get_component_id_for_pos(pos: Vector3, building: Building = null) -> int:
 	var access_point := get_access_point(pos, building)
@@ -237,18 +286,6 @@ func _build_side_links() -> void:
 			var next_idx := int(_boundary_node_by_side.get(_side_key(next_road, side_id), -1))
 			if next_idx >= 0:
 				_connect_nodes(node_idx, next_idx)
-
-func _build_road_cross_links() -> void:
-	for node_indices_value in _boundary_nodes_by_road.values():
-		var node_indices := node_indices_value as Array
-		if node_indices.size() < 2:
-			continue
-
-		for i in range(node_indices.size()):
-			var a_idx := int(node_indices[i])
-			for j in range(i + 1, node_indices.size()):
-				var b_idx := int(node_indices[j])
-				_connect_nodes(a_idx, b_idx)
 
 func _build_corner_links() -> void:
 	for node_idx_value in _access_node_indices:

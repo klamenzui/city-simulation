@@ -152,4 +152,4 @@ transform = Transform3D(1, 0, -7.10543e-15, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 shape = SubResource("ConcavePolygonShape3D_0r0hh")
 
 [node name="Entrance" type="Node3D" parent="." unique_id=1635759490]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.11933684, 0.06, -0.07948685)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.7642612, 0.06, -0.07948685)

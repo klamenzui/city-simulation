@@ -5,7 +5,7 @@ const RoadGraphScript = preload("res://Simulation/Navigation/RoadGraph.gd")
 const PedestrianGraphScript = preload("res://Simulation/Navigation/PedestrianGraph.gd")
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
 
-@export var minutes_per_tick: int = 10
+@export var minutes_per_tick: int = 1
 @export var tick_interval_sec: float = 0.5
 
 var time: TimeSystem = TimeSystem.new()
@@ -21,7 +21,7 @@ var buildings: Array[Building] = []
 var jobs: Array[Job] = []
 
 var is_paused: bool = false
-var speed_multiplier: float = 1.0
+var speed_multiplier: float = 0.1
 
 signal paused_changed(paused: bool)
 signal speed_changed(multiplier: float)

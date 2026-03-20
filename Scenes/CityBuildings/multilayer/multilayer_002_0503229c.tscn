@@ -1,8 +1,8 @@
-[gd_scene load_steps=7 format=4]
+[gd_scene format=4 uid="uid://cda3uuqc2xst1"]
 
-[ext_resource type="Script" path="res://Entities/Buildings/ResidentialBuilding.gd" id="1_36hsu"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/buildings/building_D.gltf" id="2_2wot1"]
-[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/buildings/citybits_texture.png" id="3_5777l"]
+[ext_resource type="Script" uid="uid://bj48dr0vegu14" path="res://Entities/Buildings/ResidentialBuilding.gd" id="1_36hsu"]
+[ext_resource type="PackedScene" uid="uid://vqubpgncveuk" path="res://ImportedCitySource/assets/buildings/building_D.gltf" id="2_2wot1"]
+[ext_resource type="Texture2D" uid="uid://iykerheey3u6" path="res://ImportedCitySource/assets/buildings/citybits_texture.png" id="3_5777l"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2p3o5"]
 resource_name = "citybits_texture"
@@ -41,17 +41,17 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_ijw2f")
 
-[node name="multilayer_residential_02" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_multilayer", "residential"]]
+[node name="multilayer_residential_02" type="Node3D" unique_id=1043678918 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_multilayer", "residential"]]
 script = ExtResource("1_36hsu")
 building_name = "Residential 02 (Multilayer)"
 building_type = 1
 entrance = NodePath("Entrance")
 
-[node name="building_D2" type="Node3D" parent="." instance=ExtResource("2_2wot1")]
+[node name="building_D2" parent="." unique_id=179523625 instance=ExtResource("2_2wot1")]
 
-[node name="building_D_mesh" type="MeshInstance3D" parent="building_D2"]
+[node name="building_D_mesh" type="MeshInstance3D" parent="building_D2" unique_id=2029126177]
 mesh = SubResource("ArrayMesh_447vq")
 skeleton = NodePath("")
 
-[node name="Entrance" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0.010210514)
+[node name="Entrance" type="Node3D" parent="." unique_id=1831062389]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.68534243, 0.06, 0.5984367)

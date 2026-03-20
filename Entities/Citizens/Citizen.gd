@@ -1,4 +1,4 @@
-extends Node3D
+extends CharacterBody3D
 class_name Citizen
 
 const CitizenAgentScript = preload("res://Simulation/Citizens/CitizenAgent.gd")
@@ -57,12 +57,24 @@ var _debug_once_keys: Dictionary = {}
 @export var gravity_strength: float = 28.0
 @export var max_fall_speed: float = 35.0
 @export var ground_snap_rate: float = 18.0
+@export var obstacle_sensor_height: float = 0.9
+@export var obstacle_probe_length: float = 0.95
+@export var obstacle_side_probe_length: float = 0.9
+@export var obstacle_side_angle_deg: float = 35.0
+@export var obstacle_turn_weight: float = 1.1
+@export var obstacle_side_bias: float = 0.35
+@export var obstacle_stuck_timeout: float = 0.7
+@export var obstacle_stuck_distance: float = 0.02
+@export var entrance_contact_distance: float = 1.05
+@export var entrance_contact_alignment: float = 0.45
 
 var _nav_agent: NavigationAgent3D = null
 var _is_travelling: bool = false
 var _travel_target: Vector3 = Vector3.ZERO
+var _travel_target_building: Building = null
 var _travel_route: PackedVector3Array = PackedVector3Array()
 var _travel_route_index: int = -1
+var _arrived_via_entrance_contact: bool = false
 var _repath_time_left: float = 0.0
 var _walk_speed: float = 2.0
 var _current_speed: float = 0.0
@@ -70,6 +82,24 @@ var _vertical_speed: float = 0.0
 var _ground_fallback_y: float = 0.0
 var _debug_last_travel_route: PackedVector3Array = PackedVector3Array()
 var _debug_last_travel_failed: bool = false
+var _obstacle_sensor_pivot: Node3D = null
+var _obstacle_ray_forward: RayCast3D = null
+var _obstacle_ray_left: RayCast3D = null
+var _obstacle_ray_right: RayCast3D = null
+var _body_collision_shape: CollisionShape3D = null
+var _click_area: Area3D = null
+var _click_area_shape: CollisionShape3D = null
+var _saved_collision_layer: int = 0
+var _saved_collision_mask: int = 0
+var _inside_building: Building = null
+var _stuck_timer: float = 0.0
+var _last_move_position: Vector3 = Vector3.ZERO
+var _trace_last_decision_reason: String = "idle"
+var _trace_last_desired_dir: Vector3 = Vector3.ZERO
+var _trace_last_move_dir: Vector3 = Vector3.ZERO
+var _trace_last_forward_hit: String = "clear"
+var _trace_last_left_hit: String = "clear"
+var _trace_last_right_hit: String = "clear"
 # --- Variation / Personality ---
 @export var schedule_offset_min: int = -25
 @export var schedule_offset_max: int = 25
@@ -123,7 +153,12 @@ func _ready() -> void:
 
 	_setup_clickable()
 	_setup_highlight()
+	_setup_obstacle_sensors()
+	_body_collision_shape = get_node_or_null("CollisionShape3D") as CollisionShape3D
+	_saved_collision_layer = collision_layer
+	_saved_collision_mask = collision_mask
 	_agent.setup(self)
+	_last_move_position = global_position
 	call_deferred("_auto_resolve_refs")
 
 func _physics_process(delta: float) -> void:
@@ -131,18 +166,28 @@ func _physics_process(delta: float) -> void:
 
 # Click detection via Area3D
 func _setup_clickable() -> void:
-	var area := Area3D.new()
-	area.name = "ClickArea"
+	var area := get_node_or_null("ClickArea") as Area3D
+	if area == null:
+		area = Area3D.new()
+		area.name = "ClickArea"
+		add_child(area)
 	area.input_ray_pickable = true
 
-	var col := CollisionShape3D.new()
-	var shape := CapsuleShape3D.new()
+	var col := area.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if col == null:
+		col = CollisionShape3D.new()
+		col.name = "CollisionShape3D"
+		area.add_child(col)
+	var shape := col.shape as CapsuleShape3D
+	if shape == null:
+		shape = CapsuleShape3D.new()
+		col.shape = shape
 	shape.radius = 0.45
 	shape.height = 2.1
-	col.shape = shape
 	col.position = Vector3(0, 1.05, 0)  # Mitte der Kapsel-Figur
-	area.add_child(col)
-	add_child(area)
+
+	_click_area = area
+	_click_area_shape = col
 
 	area.input_event.connect(_on_area_input_event)
 
@@ -168,6 +213,32 @@ func _setup_highlight() -> void:
 	_highlight_material.emission_enabled = true
 	_highlight_material.emission = Color(0.6, 0.4, 0.0)
 
+func _setup_obstacle_sensors() -> void:
+	_obstacle_sensor_pivot = get_node_or_null("ObstacleSensorPivot") as Node3D
+	_obstacle_ray_forward = get_node_or_null("ObstacleSensorPivot/ObstacleRayCastForward") as RayCast3D
+	_obstacle_ray_left = get_node_or_null("ObstacleSensorPivot/ObstacleRayCastLeft") as RayCast3D
+	_obstacle_ray_right = get_node_or_null("ObstacleSensorPivot/ObstacleRayCastRight") as RayCast3D
+
+	if _obstacle_sensor_pivot != null:
+		_obstacle_sensor_pivot.position = Vector3(0.0, obstacle_sensor_height, 0.0)
+
+	var side_angle := deg_to_rad(obstacle_side_angle_deg)
+	var side_x := sin(side_angle) * obstacle_side_probe_length
+	var side_z := -cos(side_angle) * obstacle_side_probe_length
+
+	if _obstacle_ray_forward != null:
+		_obstacle_ray_forward.target_position = Vector3(0.0, 0.0, -obstacle_probe_length)
+		_obstacle_ray_forward.collision_mask = 9
+		_obstacle_ray_forward.enabled = true
+	if _obstacle_ray_left != null:
+		_obstacle_ray_left.target_position = Vector3(-side_x, 0.0, side_z)
+		_obstacle_ray_left.collision_mask = 9
+		_obstacle_ray_left.enabled = true
+	if _obstacle_ray_right != null:
+		_obstacle_ray_right.target_position = Vector3(side_x, 0.0, side_z)
+		_obstacle_ray_right.collision_mask = 9
+		_obstacle_ray_right.enabled = true
+
 func _setup_navigation() -> void:
 	_nav_agent = get_node_or_null("NavigationAgent3D") as NavigationAgent3D
 	if _nav_agent == null:
@@ -188,7 +259,7 @@ func _probe_ground_hit(pos: Vector3) -> Dictionary:
 
 	var from := pos + Vector3.UP * ground_probe_up
 	var to := pos + Vector3.DOWN * ground_probe_down
-	var exclude: Array[RID] = []
+	var exclude: Array[RID] = [get_rid()]
 	var attempts := maxi(max_ground_probe_skips, 1)
 
 	for _attempt in range(attempts):
@@ -249,6 +320,96 @@ func has_reached_travel_target() -> bool:
 func stop_travel() -> void:
 	_agent.locomotion.stop_travel(self)
 
+func is_inside_building() -> bool:
+	return _inside_building != null
+
+func enter_building(building: Building, world: World = null, emit_log: bool = true) -> void:
+	if building == null:
+		return
+	stop_travel()
+	current_location = building
+	_inside_building = building
+	_set_interior_presence(true)
+	if world != null:
+		_ground_fallback_y = world.get_ground_fallback_y()
+	_update_trace_navigation_state("entered_%s" % building.get_display_name(), Vector3.ZERO, Vector3.ZERO)
+	if emit_log:
+		SimLogger.log("[Citizen %s] Entered %s at %s | entry=%s access=%s" % [
+			citizen_name,
+			building.get_display_name(),
+			_trace_fmt_vec3(global_position),
+			_trace_fmt_vec3(building.get_entrance_pos()),
+			_trace_fmt_vec3(_get_building_access_pos(building, world))
+		])
+
+func exit_current_building(world: World = null) -> void:
+	if _inside_building == null:
+		return
+
+	var exit_building := _inside_building
+	var exit_pos := _get_building_exit_spawn_pos(exit_building, world)
+
+	_inside_building = null
+	_set_interior_presence(false)
+	set_position_grounded(exit_pos)
+	_update_trace_navigation_state("exited_%s" % exit_building.get_display_name(), Vector3.ZERO, Vector3.ZERO)
+	SimLogger.log("[Citizen %s] Exited %s at %s | exit=%s access=%s" % [
+		citizen_name,
+		exit_building.get_display_name(),
+		_trace_fmt_vec3(global_position),
+		_trace_fmt_vec3(exit_building.get_entrance_pos()),
+		_trace_fmt_vec3(exit_pos)
+	])
+
+func _set_interior_presence(hidden: bool) -> void:
+	if hidden:
+		hide()
+		velocity = Vector3.ZERO
+		collision_layer = 0
+		collision_mask = 0
+	else:
+		show()
+		collision_layer = _saved_collision_layer
+		collision_mask = _saved_collision_mask
+
+	if _body_collision_shape != null:
+		_body_collision_shape.disabled = hidden
+	if _click_area != null:
+		_click_area.input_ray_pickable = not hidden
+	if _click_area_shape != null:
+		_click_area_shape.disabled = hidden
+
+func _get_building_access_pos(building: Building, world: World = null) -> Vector3:
+	if building == null:
+		return global_position
+	var access_pos := building.get_entrance_pos()
+	if world != null and world.has_method("get_pedestrian_access_point"):
+		access_pos = world.get_pedestrian_access_point(access_pos, building)
+	return access_pos
+
+func _get_building_exit_spawn_pos(building: Building, world: World = null) -> Vector3:
+	var access_pos := _get_building_access_pos(building, world)
+	if building == null:
+		return access_pos
+
+	var entrance_pos := building.get_entrance_pos()
+	var outward := access_pos - entrance_pos
+	outward.y = 0.0
+	if outward.length_squared() <= 0.0001:
+		outward = access_pos - building.global_position
+		outward.y = 0.0
+	if outward.length_squared() <= 0.0001:
+		outward = Vector3.FORWARD
+	else:
+		outward = outward.normalized()
+
+	var lateral := Vector3(-outward.z, 0.0, outward.x)
+	var lane_slot := int(abs(citizen_name.hash())) % 5 - 2
+	var lane_offset := float(lane_slot) * 0.18
+	var spawn_pos := access_pos + lateral * lane_offset + outward * 0.18
+	spawn_pos.y = access_pos.y
+	return spawn_pos
+
 func get_debug_travel_path() -> PackedVector3Array:
 	var path := PackedVector3Array()
 	path.append(global_position)
@@ -307,20 +468,42 @@ func _advance_travel_route() -> bool:
 	return true
 
 func _move_along_path(delta: float) -> void:
+	if _arrived_via_entrance_contact:
+		_current_speed = move_toward(_current_speed, 0.0, move_deceleration * delta)
+		velocity.x = 0.0
+		velocity.z = 0.0
+		if is_on_floor():
+			if velocity.y < 0.0:
+				velocity.y = 0.0
+		else:
+			velocity.y = maxf(velocity.y - gravity_strength * delta, -max_fall_speed)
+		move_and_slide()
+		return
+
 	var to_target := _travel_target - global_position
 	to_target.y = 0.0
 	var distance_to_target := to_target.length()
 	var is_last_waypoint: bool = _travel_route_index >= _travel_route.size() - 1
 	var reach_distance: float = final_arrival_distance if is_last_waypoint else waypoint_reach_distance
+	if is_last_waypoint and _travel_target_building != null:
+		reach_distance = maxf(reach_distance, arrival_distance)
 
 	if distance_to_target <= reach_distance:
 		if _advance_travel_route():
+			return
+		if _travel_target_building != null:
+			_arrived_via_entrance_contact = true
+			_current_speed = 0.0
+			velocity.x = 0.0
+			velocity.z = 0.0
+			_update_trace_navigation_state("arrive_target_access", Vector3.ZERO, Vector3.ZERO)
 			return
 		stop_travel()
 		return
 
 	if distance_to_target <= 0.001:
 		_current_speed = move_toward(_current_speed, 0.0, move_deceleration * delta)
+		_update_trace_navigation_state("arriving", Vector3.ZERO, Vector3.ZERO)
 		return
 
 	var desired_speed: float = _walk_speed
@@ -332,18 +515,300 @@ func _move_along_path(delta: float) -> void:
 	else:
 		_current_speed = move_toward(_current_speed, desired_speed, move_deceleration * delta)
 
-	var dir: Vector3 = to_target / distance_to_target
-	var step: float = minf(_current_speed * delta, distance_to_target)
-	var next_pos: Vector3 = global_position + dir * step
-	global_position = _apply_grounding(next_pos, delta)
-	_update_facing(dir, delta)
+	var desired_dir: Vector3 = to_target / distance_to_target
+	var move_dir := _compute_move_direction(desired_dir)
+	_update_facing(move_dir, delta)
+
+	velocity.x = move_dir.x * _current_speed
+	velocity.z = move_dir.z * _current_speed
+	if is_on_floor():
+		if velocity.y < 0.0:
+			velocity.y = 0.0
+	else:
+		velocity.y = maxf(velocity.y - gravity_strength * delta, -max_fall_speed)
+
+	move_and_slide()
+	_update_stuck_state(delta)
 
 func _update_facing(move_dir: Vector3, delta: float) -> void:
 	if move_dir.length_squared() <= 0.0001:
 		return
 
-	var target_yaw := atan2(move_dir.x, move_dir.z)
+	var target_yaw := _yaw_from_move_direction(move_dir)
 	rotation.y = lerp_angle(rotation.y, target_yaw, clamp(turn_speed * delta, 0.0, 1.0))
+
+func _yaw_from_move_direction(move_dir: Vector3) -> float:
+	return atan2(-move_dir.x, -move_dir.z)
+
+func _compute_move_direction(desired_dir: Vector3) -> Vector3:
+	var planar_dir := desired_dir
+	planar_dir.y = 0.0
+	if planar_dir.length_squared() <= 0.0001:
+		_update_trace_navigation_state("idle", Vector3.ZERO, Vector3.ZERO)
+		return Vector3.ZERO
+	planar_dir = planar_dir.normalized()
+
+	_refresh_obstacle_sensors(planar_dir)
+	_update_trace_obstacle_hits()
+	if _try_mark_arrived_via_target_entrance(planar_dir):
+		_update_trace_navigation_state("arrive_target_entrance", planar_dir, Vector3.ZERO)
+		return Vector3.ZERO
+	if _stuck_timer >= obstacle_stuck_timeout:
+		var escape_dir := _compute_escape_direction(planar_dir)
+		_update_trace_navigation_state("stuck_escape_%s" % _trace_relative_label(escape_dir), planar_dir, escape_dir)
+		return escape_dir
+
+	var forward_blocked := _ray_is_blocked(_obstacle_ray_forward)
+	var left_blocked := _ray_is_blocked(_obstacle_ray_left)
+	var right_blocked := _ray_is_blocked(_obstacle_ray_right)
+
+	if forward_blocked:
+		var avoid_dir := _choose_turn_direction(planar_dir, left_blocked, right_blocked)
+		if avoid_dir != Vector3.ZERO:
+			var blended_avoid := _blend_move_direction(planar_dir, avoid_dir)
+			_update_trace_navigation_state("avoid_forward_%s" % _trace_relative_label(avoid_dir), planar_dir, blended_avoid)
+			return blended_avoid
+		var reverse_dir := -planar_dir
+		_update_trace_navigation_state("avoid_forward_back", planar_dir, reverse_dir)
+		return reverse_dir
+
+	if left_blocked != right_blocked:
+		var side_push := global_transform.basis.x if left_blocked else -global_transform.basis.x
+		side_push.y = 0.0
+		var nudged_dir := _blend_move_direction(planar_dir, side_push.normalized(), obstacle_side_bias)
+		_update_trace_navigation_state(
+			"nudge_%s_blocked" % ("left" if left_blocked else "right"),
+			planar_dir,
+			nudged_dir
+		)
+		return nudged_dir
+
+	_update_trace_navigation_state("path_follow", planar_dir, planar_dir)
+	return planar_dir
+
+func _refresh_obstacle_sensors(move_dir: Vector3) -> void:
+	if _obstacle_sensor_pivot == null:
+		return
+	var target_yaw := _yaw_from_move_direction(move_dir)
+	_obstacle_sensor_pivot.rotation.y = wrapf(target_yaw - rotation.y, -PI, PI)
+	if _obstacle_ray_forward != null:
+		_obstacle_ray_forward.force_raycast_update()
+	if _obstacle_ray_left != null:
+		_obstacle_ray_left.force_raycast_update()
+	if _obstacle_ray_right != null:
+		_obstacle_ray_right.force_raycast_update()
+
+func _ray_is_blocked(ray: RayCast3D) -> bool:
+	if ray == null or not ray.enabled:
+		return false
+	if not ray.is_colliding():
+		return false
+	var collider := ray.get_collider()
+	if collider is Node and _is_entrance_trigger_node(collider as Node):
+		return false
+	return collider != null and collider != self
+
+func _try_mark_arrived_via_target_entrance(preferred_dir: Vector3) -> bool:
+	if _travel_target_building == null:
+		return false
+	var access_delta := _travel_target - global_position
+	access_delta.y = 0.0
+	var access_distance := access_delta.length()
+	if _any_ray_hits_target_entrance_trigger() and access_distance <= maxf(arrival_distance, 0.8):
+		_arrived_via_entrance_contact = true
+		return true
+	if not _any_ray_hits_target_building():
+		return false
+	if access_distance <= arrival_distance:
+		_arrived_via_entrance_contact = true
+		return true
+
+	var to_entrance := _travel_target_building.get_entrance_pos() - global_position
+	to_entrance.y = 0.0
+	var entrance_distance := to_entrance.length()
+	if entrance_distance > entrance_contact_distance:
+		return false
+	if entrance_distance > 0.001:
+		var entrance_dir := to_entrance / entrance_distance
+		if preferred_dir.dot(entrance_dir) < entrance_contact_alignment:
+			return false
+
+	_arrived_via_entrance_contact = true
+	return true
+
+func _ray_hits_target_building(ray: RayCast3D) -> bool:
+	if ray == null or not ray.enabled or not ray.is_colliding():
+		return false
+	var collider := ray.get_collider()
+	if not (collider is Node):
+		return false
+	var node := collider as Node
+	if _is_target_entrance_trigger(node):
+		return true
+	if _travel_target_building != null and _travel_target_building.has_method("owns_navigation_node"):
+		return _travel_target_building.owns_navigation_node(node)
+	return false
+
+func _ray_hits_target_entrance_trigger(ray: RayCast3D) -> bool:
+	if ray == null or not ray.enabled or not ray.is_colliding():
+		return false
+	var collider := ray.get_collider()
+	if not (collider is Node):
+		return false
+	return _is_target_entrance_trigger(collider as Node)
+
+func _any_ray_hits_target_building() -> bool:
+	return _ray_hits_target_building(_obstacle_ray_forward) \
+		or _ray_hits_target_building(_obstacle_ray_left) \
+		or _ray_hits_target_building(_obstacle_ray_right)
+
+func _any_ray_hits_target_entrance_trigger() -> bool:
+	return _ray_hits_target_entrance_trigger(_obstacle_ray_forward) \
+		or _ray_hits_target_entrance_trigger(_obstacle_ray_left) \
+		or _ray_hits_target_entrance_trigger(_obstacle_ray_right)
+
+func _is_entrance_trigger_node(node: Node) -> bool:
+	var current := node
+	while current != null:
+		if current.name == "EntranceTrigger":
+			return true
+		current = current.get_parent()
+	return false
+
+func _is_target_entrance_trigger(node: Node) -> bool:
+	if _travel_target_building == null or node == null:
+		return false
+	if _travel_target_building.has_method("is_entrance_trigger_node"):
+		return _travel_target_building.is_entrance_trigger_node(node)
+	return false
+
+func _choose_turn_direction(preferred_dir: Vector3, left_blocked: bool, right_blocked: bool) -> Vector3:
+	var left_dir := _ray_move_direction(_obstacle_ray_left)
+	var right_dir := _ray_move_direction(_obstacle_ray_right)
+	var left_open := not left_blocked and left_dir != Vector3.ZERO
+	var right_open := not right_blocked and right_dir != Vector3.ZERO
+
+	if left_open and right_open:
+		return left_dir if _score_direction(left_dir) <= _score_direction(right_dir) else right_dir
+	if left_open:
+		return left_dir
+	if right_open:
+		return right_dir
+	return -preferred_dir
+
+func _compute_escape_direction(preferred_dir: Vector3) -> Vector3:
+	var left_dir := _ray_move_direction(_obstacle_ray_left)
+	var right_dir := _ray_move_direction(_obstacle_ray_right)
+	var left_open := not _ray_is_blocked(_obstacle_ray_left) and left_dir != Vector3.ZERO
+	var right_open := not _ray_is_blocked(_obstacle_ray_right) and right_dir != Vector3.ZERO
+
+	if left_open or right_open:
+		return _choose_turn_direction(preferred_dir, not left_open, not right_open)
+	return -preferred_dir
+
+func _ray_move_direction(ray: RayCast3D) -> Vector3:
+	if ray == null:
+		return Vector3.ZERO
+	var local_target := ray.target_position
+	var world_target := ray.to_global(local_target)
+	var dir := world_target - ray.global_position
+	dir.y = 0.0
+	if dir.length_squared() <= 0.0001:
+		return Vector3.ZERO
+	return dir.normalized()
+
+func _score_direction(dir: Vector3) -> float:
+	var projected := global_position + dir * obstacle_side_probe_length
+	projected.y = _travel_target.y
+	return projected.distance_to(_travel_target)
+
+func _blend_move_direction(preferred_dir: Vector3, avoid_dir: Vector3, weight: float = -1.0) -> Vector3:
+	var effective_weight := obstacle_turn_weight if weight < 0.0 else weight
+	var blended := preferred_dir + avoid_dir * effective_weight
+	blended.y = 0.0
+	if blended.length_squared() <= 0.0001:
+		return avoid_dir
+	return blended.normalized()
+
+func _update_stuck_state(delta: float) -> void:
+	var moved := global_position.distance_to(_last_move_position)
+	if _current_speed > 0.2 and moved <= obstacle_stuck_distance:
+		_stuck_timer += delta
+	else:
+		_stuck_timer = 0.0
+	_last_move_position = global_position
+
+func _update_trace_navigation_state(reason: String, desired_dir: Vector3, move_dir: Vector3) -> void:
+	_trace_last_decision_reason = reason
+	_trace_last_desired_dir = desired_dir
+	_trace_last_move_dir = move_dir
+
+func _update_trace_obstacle_hits() -> void:
+	_trace_last_forward_hit = _trace_describe_ray_hit(_obstacle_ray_forward)
+	_trace_last_left_hit = _trace_describe_ray_hit(_obstacle_ray_left)
+	_trace_last_right_hit = _trace_describe_ray_hit(_obstacle_ray_right)
+
+func _trace_describe_ray_hit(ray: RayCast3D) -> String:
+	if ray == null or not ray.enabled:
+		return "off"
+	if not ray.is_colliding():
+		return "clear"
+
+	var collider := ray.get_collider()
+	var collider_name := _trace_collider_label(collider)
+	var hit_pos := ray.get_collision_point()
+	var distance := ray.global_position.distance_to(hit_pos)
+	return "%s @ %s d=%.2f" % [collider_name, _trace_fmt_vec3(hit_pos), distance]
+
+func _trace_collider_label(collider: Variant) -> String:
+	if collider is Node:
+		var node := collider as Node
+		if node.is_inside_tree():
+			return str(node.get_path())
+		return node.name
+	return str(collider)
+
+func _trace_relative_label(direction: Vector3) -> String:
+	if direction.length_squared() <= 0.0001:
+		return "none"
+	var local_dir := global_transform.basis.inverse() * direction
+	if absf(local_dir.x) > absf(local_dir.z):
+		return "right" if local_dir.x > 0.0 else "left"
+	return "back" if local_dir.z > 0.0 else "forward"
+
+func _trace_fmt_vec3(value: Vector3) -> String:
+	return "(%.2f, %.2f, %.2f)" % [value.x, value.y, value.z]
+
+func get_trace_debug_summary() -> String:
+	var action_label := current_action.label if current_action != null else "idle"
+	var location_label := current_location.get_display_name() if current_location != null else "travelling"
+	var inside_label := _inside_building.get_display_name() if _inside_building != null else "-"
+	var travel_building_label := _travel_target_building.get_display_name() if _travel_target_building != null else "-"
+	var target_label := _trace_fmt_vec3(_travel_target) if _is_travelling else "-"
+	var waypoint_label := "-"
+	if _is_travelling and not _travel_route.is_empty():
+		waypoint_label = "%d/%d" % [_travel_route_index, _travel_route.size() - 1]
+
+	return "citizen=%s pos=%s vel=%s speed=%.2f action=%s location=%s inside=%s travel_to=%s on_floor=%s travelling=%s target=%s waypoint=%s decision=%s desired=%s move=%s seen[fwd=%s | left=%s | right=%s]" % [
+		citizen_name,
+		_trace_fmt_vec3(global_position),
+		_trace_fmt_vec3(velocity),
+		_current_speed,
+		action_label,
+		location_label,
+		inside_label,
+		travel_building_label,
+		str(is_on_floor()),
+		str(_is_travelling),
+		target_label,
+		waypoint_label,
+		_trace_last_decision_reason,
+		_trace_fmt_vec3(_trace_last_desired_dir),
+		_trace_fmt_vec3(_trace_last_move_dir),
+		_trace_last_forward_hit,
+		_trace_last_left_hit,
+		_trace_last_right_hit
+	]
 # Called from main.gd when selection/debug panel changes.
 func set_selected(selected: bool) -> void:
 	if _mesh_instance == null:
@@ -434,7 +899,8 @@ func _auto_resolve_refs() -> void:
 
 	if home:
 		current_location = home
-		set_position_grounded(home.get_entrance_pos())
+		set_position_grounded(origin)
+		enter_building(home, _world_ref, false)
 
 func _try_find_job_once() -> void:
 	if job == null:
@@ -806,6 +1272,9 @@ func start_action(a: Action, world: World) -> void:
 	_start_action(a, world)
 
 func _start_action(a: Action, world: World) -> void:
+	if a is GoToBuildingAction and is_inside_building():
+		exit_current_building(world)
+
 	current_action = a
 	current_action.start(world, self)
 

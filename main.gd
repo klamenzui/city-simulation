@@ -2,7 +2,11 @@ extends Node3D
 
 @onready var world: World = $World
 
-const CITIZEN_COUNT := 200
+const CITIZEN_COUNT := 10
+const SELECTED_CITIZEN_TRACE_INTERVAL_SEC := 1.0
+const ALL_CITIZEN_TRACE_INTERVAL_SEC := 0.5
+const ENABLE_ALL_CITIZEN_TRACE := true
+const ENABLE_MAP_SNAPSHOT_LOG := true
 const RoadBuilderScript = preload("res://Simulation/Bootstrap/RoadBuilder.gd")
 const ImportedCitySetupScript = preload("res://Simulation/Bootstrap/ImportedCitySetup.gd")
 const RestaurantScene = preload("res://Scenes/Restaurant.tscn")
@@ -25,6 +29,8 @@ var _selected_citizen: Citizen = null
 var _selected_building: Building = null
 var _entity_clicked_this_frame: bool = false
 var _building_panel_refresh_left: float = 0.0
+var _selected_citizen_trace_left: float = 0.0
+var _all_citizen_trace_left: float = 0.0
 var _citizen_path_debug: MeshInstance3D = null
 var _citizen_path_debug_mesh: ImmediateMesh = null
 var _citizen_path_line_material: StandardMaterial3D = null
@@ -43,10 +49,13 @@ func _ready() -> void:
 	_build_debug_panel()
 	_bind_building_clicks()
 	_spawn_citizens()
+	call_deferred("_log_initial_debug_snapshot")
 	_build_hud()
 
 func _process(delta: float) -> void:
 	_update_selected_citizen_path_debug()
+	_update_selected_citizen_trace(delta)
+	_update_all_citizen_trace(delta)
 
 	if _selected_building != null and _debug_panel != null and _debug_panel.visible:
 		_building_panel_refresh_left -= delta
@@ -177,6 +186,13 @@ func _spawn_citizens() -> void:
 		if not citizen.clicked.is_connected(cb):
 			citizen.clicked.connect(cb)
 
+func _log_initial_debug_snapshot() -> void:
+	if ENABLE_MAP_SNAPSHOT_LOG:
+		_log_map_snapshot()
+	if ENABLE_ALL_CITIZEN_TRACE:
+		_all_citizen_trace_left = 0.0
+		_log_all_citizen_traces("spawn")
+
 func _on_citizen_clicked(c: Citizen) -> void:
 	_entity_clicked_this_frame = true
 
@@ -189,12 +205,16 @@ func _on_citizen_clicked(c: Citizen) -> void:
 		_selected_building = null
 
 	if _selected_citizen != null:
+		_log_selected_citizen_trace("switch")
 		_selected_citizen.select(null)
+		_selected_citizen_trace_left = 0.0
 		_clear_selected_citizen_path_debug()
 
 	_selected_citizen = c
 	c.select(_debug_panel)
 	_debug_panel.visible = true
+	_selected_citizen_trace_left = 0.0
+	_log_selected_citizen_trace("selected")
 	_update_selected_citizen_path_debug()
 
 func _on_building_clicked(b: Building) -> void:
@@ -205,8 +225,10 @@ func _on_building_clicked(b: Building) -> void:
 		return
 
 	if _selected_citizen != null:
+		_log_selected_citizen_trace("deselected")
 		_selected_citizen.select(null)
 		_selected_citizen = null
+		_selected_citizen_trace_left = 0.0
 		_clear_selected_citizen_path_debug()
 
 	if _selected_building != null:
@@ -219,14 +241,162 @@ func _on_building_clicked(b: Building) -> void:
 
 func _deselect() -> void:
 	if _selected_citizen != null:
+		_log_selected_citizen_trace("deselected")
 		_selected_citizen.select(null)
 		_selected_citizen = null
+		_selected_citizen_trace_left = 0.0
 	if _selected_building != null:
 		_selected_building.select(null, world)
 		_selected_building = null
 	_clear_selected_citizen_path_debug()
 	if _debug_panel != null:
 		_debug_panel.visible = false
+
+func _update_selected_citizen_trace(delta: float) -> void:
+	if _selected_citizen == null or not is_instance_valid(_selected_citizen):
+		_selected_citizen_trace_left = 0.0
+		return
+
+	_selected_citizen_trace_left -= delta
+	if _selected_citizen_trace_left > 0.0:
+		return
+
+	_selected_citizen_trace_left = SELECTED_CITIZEN_TRACE_INTERVAL_SEC
+	_log_selected_citizen_trace("tick")
+
+func _log_selected_citizen_trace(event_name: String) -> void:
+	if _selected_citizen == null or not is_instance_valid(_selected_citizen):
+		return
+
+	var time_label := "day=? time=?"
+	if world != null and world.time != null:
+		time_label = "day=%d time=%s" % [world.time.day, world.time.get_time_string()]
+
+	SimLogger.log("[CitizenTrace %s] %s | %s" % [
+		event_name,
+		time_label,
+		_selected_citizen.get_trace_debug_summary()
+	])
+
+func _update_all_citizen_trace(delta: float) -> void:
+	if not ENABLE_ALL_CITIZEN_TRACE:
+		return
+	_all_citizen_trace_left -= delta
+	if _all_citizen_trace_left > 0.0:
+		return
+
+	_all_citizen_trace_left = ALL_CITIZEN_TRACE_INTERVAL_SEC
+	_log_all_citizen_traces("tick")
+
+func _log_all_citizen_traces(event_name: String) -> void:
+	var time_label := "day=? time=?"
+	if world != null and world.time != null:
+		time_label = "day=%d time=%s" % [world.time.day, world.time.get_time_string()]
+
+	for citizen in world.citizens:
+		if citizen == null or not is_instance_valid(citizen):
+			continue
+		SimLogger.log("[CitizenTraceAll %s] %s | %s" % [
+			event_name,
+			time_label,
+			citizen.get_trace_debug_summary()
+		])
+
+func _log_map_snapshot() -> void:
+	var road_nodes := _collect_debug_roads()
+	var crosswalk_nodes := _collect_debug_crosswalks()
+	var light_nodes := _collect_debug_lights(self)
+
+	SimLogger.log("[MapDump summary] buildings=%d citizens=%d roads=%d crosswalks=%d lights=%d" % [
+		world.buildings.size(),
+		world.citizens.size(),
+		road_nodes.size(),
+		crosswalk_nodes.size(),
+		light_nodes.size()
+	])
+
+	for building in world.buildings:
+		if building == null:
+			continue
+		SimLogger.log("[MapDump building] name=%s pos=%s %s" % [
+			building.get_display_name(),
+			_fmt_vec3(building.global_position),
+			building.get_navigation_debug_summary(world) if building.has_method("get_navigation_debug_summary") else ""
+		])
+
+	for citizen in world.citizens:
+		if citizen == null:
+			continue
+		SimLogger.log("[MapDump citizen] name=%s pos=%s home=%s location=%s inside=%s action=%s" % [
+			citizen.citizen_name,
+			_fmt_vec3(citizen.global_position),
+			citizen.home.get_display_name() if citizen.home != null else "-",
+			citizen.current_location.get_display_name() if citizen.current_location != null else "-",
+			citizen._inside_building.get_display_name() if citizen._inside_building != null else "-",
+			citizen.current_action.label if citizen.current_action != null else "idle"
+		])
+
+	for road in road_nodes:
+		SimLogger.log("[MapDump road] path=%s pos=%s" % [road.get_path(), _fmt_vec3(road.global_position)])
+
+	for crosswalk in crosswalk_nodes:
+		SimLogger.log("[MapDump crosswalk] path=%s pos=%s" % [crosswalk.get_path(), _fmt_vec3(crosswalk.global_position)])
+
+	for light in light_nodes:
+		SimLogger.log("[MapDump light] type=%s path=%s pos=%s" % [
+			light.get_class(),
+			light.get_path(),
+			_fmt_vec3(light.global_position)
+		])
+
+func _collect_debug_roads() -> Array[Node3D]:
+	var out: Array[Node3D] = []
+	_append_transport_segments_for_log(get_node_or_null("World/City/only_transport"), out)
+	_append_transport_segments_for_log(get_node_or_null("ImportedCity/only_transport"), out)
+	var generated := get_node_or_null("RoadNetwork")
+	if generated != null:
+		for child in generated.get_children():
+			if child is Node3D:
+				out.append(child as Node3D)
+	return out
+
+func _append_transport_segments_for_log(root: Node, out: Array[Node3D]) -> void:
+	if root == null:
+		return
+	for category in root.get_children():
+		if category is not Node3D:
+			continue
+		for segment in (category as Node3D).get_children():
+			if segment is Node3D:
+				out.append(segment as Node3D)
+
+func _collect_debug_crosswalks() -> Array[Node3D]:
+	var out: Array[Node3D] = []
+	_append_node3d_children_for_log(get_node_or_null("World/City/only_people_nav/only_people/Road_straight_crossing"), out)
+	_append_node3d_children_for_log(get_node_or_null("ImportedCity/only_people_nav/only_people/Road_straight_crossing"), out)
+	return out
+
+func _append_node3d_children_for_log(root: Node, out: Array[Node3D]) -> void:
+	if root == null:
+		return
+	for child in root.get_children():
+		if child is Node3D:
+			out.append(child as Node3D)
+
+func _collect_debug_lights(root: Node) -> Array[Light3D]:
+	var out: Array[Light3D] = []
+	_collect_debug_lights_recursive(root, out)
+	return out
+
+func _collect_debug_lights_recursive(node: Node, out: Array[Light3D]) -> void:
+	if node is Light3D:
+		out.append(node as Light3D)
+	for child in node.get_children():
+		if child is Node:
+			_collect_debug_lights_recursive(child as Node, out)
+
+func _fmt_vec3(value: Vector3) -> String:
+	return "(%.2f, %.2f, %.2f)" % [value.x, value.y, value.z]
 
 func _update_selected_citizen_path_debug() -> void:
 	if _citizen_path_debug == null or _citizen_path_debug_mesh == null:

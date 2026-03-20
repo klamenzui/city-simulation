@@ -1,13 +1,13 @@
-[gd_scene load_steps=24 format=4]
+[gd_scene format=4 uid="uid://0kse2l1oy6o2"]
 
-[ext_resource type="Script" path="res://Entities/Buildings/Restaurant.gd" id="1_lveob"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/city/base.gltf" id="2_nr3j8"]
-[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="3_atv5l"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/buildings_parts/building-steps-wide.glb" id="4_6rcav"]
-[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/buildings_parts/Textures/colormap.png" id="5_c7qw5"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/buildings_parts/building-window-large-left.glb" id="6_2j2dm"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/buildings_parts/building-windows-high-middle.glb" id="7_03nwk"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/buildings_parts/roof-flat-awning-b.glb" id="8_iedkf"]
+[ext_resource type="Script" uid="uid://fg3i5r23xtys" path="res://Entities/Buildings/Restaurant.gd" id="1_lveob"]
+[ext_resource type="PackedScene" uid="uid://dx57medmq3ji" path="res://ImportedCitySource/assets/city/base.gltf" id="2_nr3j8"]
+[ext_resource type="Texture2D" uid="uid://b3b5vu8lonkcv" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="3_atv5l"]
+[ext_resource type="PackedScene" uid="uid://nucip5b2rnmw" path="res://ImportedCitySource/assets/buildings_parts/building-steps-wide.glb" id="4_6rcav"]
+[ext_resource type="Texture2D" uid="uid://cfyaeitwbnd1e" path="res://ImportedCitySource/assets/buildings_parts/Textures/colormap.png" id="5_c7qw5"]
+[ext_resource type="PackedScene" uid="uid://mlhj6c43ylo0" path="res://ImportedCitySource/assets/buildings_parts/building-window-large-left.glb" id="6_2j2dm"]
+[ext_resource type="PackedScene" uid="uid://dl2ah5omx0c8c" path="res://ImportedCitySource/assets/buildings_parts/building-windows-high-middle.glb" id="7_03nwk"]
+[ext_resource type="PackedScene" uid="uid://bkq6smpac47af" path="res://ImportedCitySource/assets/buildings_parts/roof-flat-awning-b.glb" id="8_iedkf"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gdd5y"]
 resource_name = "citybits_texture"
@@ -200,44 +200,44 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_8ng3i")
 
-[node name="commercial_building_restaurant_02" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_commercial_building", "commercial", "work"]]
+[node name="commercial_building_restaurant_02" type="Node3D" unique_id=925306772 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_commercial_building", "commercial", "work"]]
 script = ExtResource("1_lveob")
 building_name = "Restaurant 02 (Commercial building)"
 building_type = 2
 entrance = NodePath("Entrance")
 
-[node name="base2" type="Node3D" parent="." instance=ExtResource("2_nr3j8")]
+[node name="base2" parent="." unique_id=641860325 instance=ExtResource("2_nr3j8")]
 
-[node name="base_mesh" type="MeshInstance3D" parent="base2"]
+[node name="base_mesh" type="MeshInstance3D" parent="base2" unique_id=73194130]
 mesh = SubResource("ArrayMesh_rw05s")
 skeleton = NodePath("")
 
-[node name="building-steps-wide2" type="Node3D" parent="." instance=ExtResource("4_6rcav")]
+[node name="building-steps-wide2" parent="." unique_id=653136544 instance=ExtResource("4_6rcav")]
 
-[node name="building-steps-wide_mesh" type="MeshInstance3D" parent="building-steps-wide2"]
+[node name="building-steps-wide_mesh" type="MeshInstance3D" parent="building-steps-wide2" unique_id=1333856610]
 mesh = SubResource("ArrayMesh_n7ybj")
 skeleton = NodePath("")
 
-[node name="building-window-large-left2" type="Node3D" parent="." instance=ExtResource("6_2j2dm")]
+[node name="building-window-large-left2" parent="." unique_id=992817361 instance=ExtResource("6_2j2dm")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.837, 0)
 
-[node name="building-window-large-left_mesh" type="MeshInstance3D" parent="building-window-large-left2"]
+[node name="building-window-large-left_mesh" type="MeshInstance3D" parent="building-window-large-left2" unique_id=440390495]
 mesh = SubResource("ArrayMesh_ktvgy")
 skeleton = NodePath("")
 
-[node name="building-windows-high-middle2" type="Node3D" parent="." instance=ExtResource("7_03nwk")]
+[node name="building-windows-high-middle2" parent="." unique_id=263084691 instance=ExtResource("7_03nwk")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.462, 0)
 
-[node name="building-windows-high-middle_mesh" type="MeshInstance3D" parent="building-windows-high-middle2"]
+[node name="building-windows-high-middle_mesh" type="MeshInstance3D" parent="building-windows-high-middle2" unique_id=2122674933]
 mesh = SubResource("ArrayMesh_o7xqt")
 skeleton = NodePath("")
 
-[node name="roof-flat-awning-b2" type="Node3D" parent="." instance=ExtResource("8_iedkf")]
+[node name="roof-flat-awning-b2" parent="." unique_id=1981656046 instance=ExtResource("8_iedkf")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.087, 0)
 
-[node name="roof-flat-awning-b_mesh" type="MeshInstance3D" parent="roof-flat-awning-b2"]
+[node name="roof-flat-awning-b_mesh" type="MeshInstance3D" parent="roof-flat-awning-b2" unique_id=440259627]
 mesh = SubResource("ArrayMesh_6ddc1")
 skeleton = NodePath("")
 
-[node name="Entrance" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
+[node name="Entrance" type="Node3D" parent="." unique_id=194448893]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0.52900076)
