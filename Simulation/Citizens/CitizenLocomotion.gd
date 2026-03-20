@@ -11,16 +11,29 @@ func physics_step(citizen, delta: float, world) -> void:
 		return
 	if world != null and world.is_paused:
 		return
+	if citizen.has_method("is_inside_building") and citizen.is_inside_building():
+		citizen.velocity = Vector3.ZERO
+		return
 	if citizen._is_travelling:
 		citizen._move_along_path(delta)
 	else:
-		citizen.global_position = citizen._apply_grounding(citizen.global_position, delta)
+		citizen.velocity.x = 0.0
+		citizen.velocity.z = 0.0
+		if citizen.is_on_floor():
+			if citizen.velocity.y < 0.0:
+				citizen.velocity.y = 0.0
+		else:
+			citizen.velocity.y = maxf(citizen.velocity.y - citizen.gravity_strength * delta, -citizen.max_fall_speed)
+		citizen.move_and_slide()
 
 func set_position_grounded(citizen, pos: Vector3, world) -> void:
 	if citizen == null:
 		return
 	citizen._vertical_speed = 0.0
+	citizen._stuck_timer = 0.0
+	citizen.velocity = Vector3.ZERO
 	citizen.global_position = citizen._project_to_ground(pos)
+	citizen._last_move_position = citizen.global_position
 	if world != null:
 		citizen._ground_fallback_y = world.get_ground_fallback_y()
 	else:
@@ -31,6 +44,8 @@ func begin_travel_to(citizen, target_pos: Vector3, target_building, world) -> bo
 		return false
 
 	citizen._setup_navigation()
+	citizen._travel_target_building = target_building
+	citizen._arrived_via_entrance_contact = false
 	if world != null:
 		citizen._ground_fallback_y = world.get_ground_fallback_y()
 
@@ -94,6 +109,8 @@ func begin_travel_to(citizen, target_pos: Vector3, target_building, world) -> bo
 func has_reached_travel_target(citizen) -> bool:
 	if citizen == null:
 		return true
+	if citizen._arrived_via_entrance_contact:
+		return true
 	if citizen._is_travelling and citizen._travel_route_index < citizen._travel_route.size() - 1:
 		return false
 	var to_target: Vector3 = citizen._travel_target - citizen.global_position
@@ -105,6 +122,11 @@ func stop_travel(citizen) -> void:
 		return
 	citizen._is_travelling = false
 	citizen._current_speed = 0.0
+	citizen._arrived_via_entrance_contact = false
+	citizen._travel_target_building = null
+	citizen._stuck_timer = 0.0
+	citizen._last_move_position = citizen.global_position
+	citizen.velocity = Vector3.ZERO
 	citizen._travel_route = PackedVector3Array()
 	citizen._travel_route_index = -1
 	if citizen._nav_agent != null:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=4 uid="uid://dan4o7cpbk0f0"]
+[gd_scene format=4 uid="uid://dan4o7cpbk0f0"]
 
 [ext_resource type="Script" uid="uid://bj48dr0vegu14" path="res://Entities/Buildings/ResidentialBuilding.gd" id="1_60mlg"]
 [ext_resource type="PackedScene" uid="uid://br7cxkiu1vf68" path="res://ImportedCitySource/assets/buildings/building_C.gltf" id="2_i0fb8"]
@@ -41,17 +41,17 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_id2vg")
 
-[node name="multilayer_residential_03" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_multilayer", "residential"]]
+[node name="multilayer_residential_03" type="Node3D" unique_id=1948134437 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_multilayer", "residential"]]
 script = ExtResource("1_60mlg")
 building_name = "Residential 03 (Multilayer)"
 building_type = 1
 entrance = NodePath("Entrance")
 
-[node name="building_C2" parent="." instance=ExtResource("2_i0fb8")]
+[node name="building_C2" parent="." unique_id=161900130 instance=ExtResource("2_i0fb8")]
 
-[node name="building_C2_mesh" type="MeshInstance3D" parent="building_C2"]
+[node name="building_C2_mesh" type="MeshInstance3D" parent="building_C2" unique_id=1548848466]
 mesh = SubResource("ArrayMesh_f581f")
 skeleton = NodePath("")
 
-[node name="Entrance" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
+[node name="Entrance" type="Node3D" parent="." unique_id=66157946]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.41293716, 0.06, 0.6617104)
