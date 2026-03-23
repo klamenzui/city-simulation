@@ -550,14 +550,44 @@ func get_entrance_node() -> Node3D:
 		return entrance
 	return get_node_or_null("Entrance") as Node3D
 
-func get_navigation_debug_summary(world = null) -> String:
+func get_navigation_points(world = null, lateral_lane_offset: float = 0.0) -> Dictionary:
 	var entrance_pos := get_entrance_pos()
 	var access_pos := entrance_pos
 	if world != null and world.has_method("get_pedestrian_access_point"):
 		access_pos = world.get_pedestrian_access_point(entrance_pos, self)
-	return "entrance=%s access=%s blocker_margin=%.2f clearance=(w=%.2f d=%.2f) trigger=(r=%.2f out=%.2f)" % [
-		_format_vec3(entrance_pos),
-		_format_vec3(access_pos),
+	return {
+		"entrance": entrance_pos,
+		"access": access_pos,
+		"spawn": _compute_navigation_spawn_point(entrance_pos, access_pos, lateral_lane_offset),
+	}
+
+func _compute_navigation_spawn_point(
+	entrance_pos: Vector3,
+	access_pos: Vector3,
+	lateral_lane_offset: float = 0.0
+) -> Vector3:
+	var outward := access_pos - entrance_pos
+	outward.y = 0.0
+	if outward.length_squared() <= 0.0001:
+		outward = access_pos - global_position
+		outward.y = 0.0
+	if outward.length_squared() <= 0.0001:
+		outward = Vector3.FORWARD
+	else:
+		outward = outward.normalized()
+
+	var lateral := Vector3(-outward.z, 0.0, outward.x)
+	var spawn_base := entrance_pos.lerp(access_pos, 0.55)
+	var spawn_pos := spawn_base + lateral * lateral_lane_offset + outward * 0.02
+	spawn_pos.y = spawn_base.y
+	return spawn_pos
+
+func get_navigation_debug_summary(world = null) -> String:
+	var nav_points := get_navigation_points(world, 0.0)
+	return "entrance=%s access=%s spawn=%s blocker_margin=%.2f clearance=(w=%.2f d=%.2f) trigger=(r=%.2f out=%.2f)" % [
+		_format_vec3(nav_points.get("entrance", get_entrance_pos())),
+		_format_vec3(nav_points.get("access", get_entrance_pos())),
+		_format_vec3(nav_points.get("spawn", get_entrance_pos())),
 		navigation_blocker_margin,
 		entrance_clearance_width,
 		entrance_clearance_depth,

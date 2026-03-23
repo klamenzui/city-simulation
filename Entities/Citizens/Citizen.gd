@@ -330,20 +330,25 @@ func is_inside_building() -> bool:
 func enter_building(building: Building, world: World = null, emit_log: bool = true) -> void:
 	if building == null:
 		return
+	var nav_points := _get_building_nav_points(building, world)
+	var entry_pos := global_position
 	stop_travel()
 	current_location = building
+	if nav_points.has("spawn"):
+		set_position_grounded(nav_points["spawn"])
 	_inside_building = building
 	_set_interior_presence(true)
 	if world != null:
 		_ground_fallback_y = world.get_ground_fallback_y()
 	_update_trace_navigation_state("entered_%s" % building.get_display_name(), Vector3.ZERO, Vector3.ZERO)
 	if emit_log:
-		SimLogger.log("[Citizen %s] Entered %s at %s | entry=%s access=%s" % [
+		SimLogger.log("[Citizen %s] Entered %s at %s | entrance=%s access=%s spawn=%s" % [
 			citizen_name,
 			building.get_display_name(),
-			_trace_fmt_vec3(global_position),
-			_trace_fmt_vec3(building.get_entrance_pos()),
-			_trace_fmt_vec3(_get_building_access_pos(building, world))
+			_trace_fmt_vec3(entry_pos),
+			_trace_fmt_vec3(nav_points.get("entrance", building.get_entrance_pos())),
+			_trace_fmt_vec3(nav_points.get("access", _get_building_access_pos(building, world))),
+			_trace_fmt_vec3(nav_points.get("spawn", global_position))
 		])
 
 func exit_current_building(world: World = null) -> void:
@@ -351,8 +356,9 @@ func exit_current_building(world: World = null) -> void:
 		return
 
 	var exit_building := _inside_building
-	var access_pos := _get_building_access_pos(exit_building, world)
-	var exit_pos := _get_building_exit_spawn_pos(exit_building, world)
+	var nav_points := _get_building_nav_points(exit_building, world)
+	var access_pos: Vector3 = nav_points.get("access", _get_building_access_pos(exit_building, world))
+	var exit_pos: Vector3 = nav_points.get("spawn", _get_building_exit_spawn_pos(exit_building, world))
 
 	_inside_building = null
 	_set_interior_presence(false)
@@ -367,7 +373,7 @@ func exit_current_building(world: World = null) -> void:
 		citizen_name,
 		exit_building.get_display_name(),
 		_trace_fmt_vec3(global_position),
-		_trace_fmt_vec3(exit_building.get_entrance_pos()),
+		_trace_fmt_vec3(nav_points.get("entrance", exit_building.get_entrance_pos())),
 		_trace_fmt_vec3(access_pos),
 		_trace_fmt_vec3(exit_pos)
 	])
@@ -391,19 +397,45 @@ func _set_interior_presence(hidden: bool) -> void:
 		_click_area_shape.disabled = hidden
 
 func _get_building_access_pos(building: Building, world: World = null) -> Vector3:
-	if building == null:
-		return global_position
-	var access_pos := building.get_entrance_pos()
-	if world != null and world.has_method("get_pedestrian_access_point"):
-		access_pos = world.get_pedestrian_access_point(access_pos, building)
-	return access_pos
+	var nav_points := _get_building_nav_points(building, world)
+	return nav_points.get("access", global_position)
 
 func _get_building_exit_spawn_pos(building: Building, world: World = null) -> Vector3:
-	var access_pos := _get_building_access_pos(building, world)
+	var nav_points := _get_building_nav_points(building, world)
+	return nav_points.get("spawn", global_position)
+
+func _get_building_nav_points(building: Building, world: World = null) -> Dictionary:
+	if building == null:
+		return {}
+
+	var lane_offset := _get_building_lane_offset()
+	if building.has_method("get_navigation_points"):
+		return building.get_navigation_points(world, lane_offset)
+
+	var entrance_pos := building.get_entrance_pos()
+	var access_pos := entrance_pos
+	if world != null and world.has_method("get_pedestrian_access_point"):
+		access_pos = world.get_pedestrian_access_point(entrance_pos, building)
+
+	return {
+		"entrance": entrance_pos,
+		"access": access_pos,
+		"spawn": _compute_building_exit_spawn_from_points(building, entrance_pos, access_pos, lane_offset),
+	}
+
+func _get_building_lane_offset() -> float:
+	var lane_slot := int(abs(citizen_name.hash())) % 3 - 1
+	return float(lane_slot) * 0.12
+
+func _compute_building_exit_spawn_from_points(
+	building: Building,
+	entrance_pos: Vector3,
+	access_pos: Vector3,
+	lane_offset: float = 0.0
+) -> Vector3:
 	if building == null:
 		return access_pos
 
-	var entrance_pos := building.get_entrance_pos()
 	var outward := access_pos - entrance_pos
 	outward.y = 0.0
 	if outward.length_squared() <= 0.0001:
@@ -415,10 +447,8 @@ func _get_building_exit_spawn_pos(building: Building, world: World = null) -> Ve
 		outward = outward.normalized()
 
 	var lateral := Vector3(-outward.z, 0.0, outward.x)
-	var lane_slot := int(abs(citizen_name.hash())) % 5 - 2
-	var lane_offset := float(lane_slot) * 0.18
-	var spawn_base := entrance_pos.lerp(access_pos, 0.28)
-	var spawn_pos := spawn_base + lateral * lane_offset + outward * 0.04
+	var spawn_base := entrance_pos.lerp(access_pos, 0.55)
+	var spawn_pos := spawn_base + lateral * lane_offset + outward * 0.02
 	spawn_pos.y = spawn_base.y
 	return spawn_pos
 
