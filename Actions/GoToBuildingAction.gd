@@ -29,11 +29,12 @@ func start(world: World, citizen: Citizen) -> void:
 	if world != null and world.has_method("get_pedestrian_access_point"):
 		_arrival_target = world.get_pedestrian_access_point(_arrival_target, target)
 	var source_building := citizen.current_location
+	var source_spawn := citizen.get_debug_exit_spawn_pos(source_building, world) if source_building != null and citizen.has_method("get_debug_exit_spawn_pos") else citizen.global_position
 	SimLogger.log("[Citizen %s] GoTo route start=%s start_pos=%s exit=%s -> target=%s entry=%s arrival=%s" % [
 		citizen.citizen_name,
 		_format_building_endpoint(source_building, world, citizen.global_position),
 		_format_point(citizen.global_position),
-		_format_exit_endpoint(source_building, world, citizen.global_position),
+		_format_exit_endpoint(source_building, world, citizen.global_position, source_spawn),
 		_format_building_endpoint(target, world, citizen.global_position),
 		_format_entry_endpoint(target, world),
 		_format_point(_arrival_target)
@@ -52,6 +53,12 @@ func start(world: World, citizen: Citizen) -> void:
 		])
 		finished = true
 		return
+
+	if world != null and world.has_method("describe_pedestrian_path"):
+		SimLogger.log("[Citizen %s] GoTo path %s" % [
+			citizen.citizen_name,
+			world.describe_pedestrian_path(citizen.get_debug_travel_route_points())
+		])
 
 	citizen.current_location = null
 
@@ -91,16 +98,17 @@ func _format_building_endpoint(building: Building, world: World, fallback_pos: V
 		return "%s %s" % [building.get_display_name(), building.get_navigation_debug_summary(world)]
 	return "%s entrance=%s" % [building.get_display_name(), _format_point(building.get_entrance_pos())]
 
-func _format_exit_endpoint(building: Building, world: World, fallback_pos: Vector3) -> String:
+func _format_exit_endpoint(building: Building, world: World, fallback_pos: Vector3, spawn_pos: Vector3) -> String:
 	if building == null:
 		return "outside pos=%s" % _format_point(fallback_pos)
 	var exit_access := building.get_entrance_pos()
 	if world != null and world.has_method("get_pedestrian_access_point"):
 		exit_access = world.get_pedestrian_access_point(building.get_entrance_pos(), building)
-	return "%s entrance=%s access=%s" % [
+	return "%s entrance=%s access=%s spawn=%s" % [
 		building.get_display_name(),
 		_format_point(building.get_entrance_pos()),
-		_format_point(exit_access)
+		_format_point(exit_access),
+		_format_point(spawn_pos)
 	]
 
 func _format_entry_endpoint(building: Building, world: World) -> String:

@@ -3,7 +3,6 @@ class_name PedestrianGraph
 
 const CELL_STEP := 2.0
 const HALF_ROAD_WIDTH := 1.0
-
 const SIDE_DEFS := [
 	{
 		"id": 0,
@@ -69,6 +68,7 @@ var _component_by_node: Dictionary = {}
 var _road_cells: Dictionary = {}
 var _crosswalk_cells: Dictionary = {}
 var _crosswalk_axes: Dictionary = {}
+var _crosswalk_meta: Dictionary = {}
 var _boundary_node_by_side: Dictionary = {}
 var _boundary_nodes_by_road: Dictionary = {}
 var _is_ready: bool = false
@@ -83,6 +83,7 @@ func rebuild_from_scene(root: Node3D, _buildings: Array = []) -> void:
 	_road_cells.clear()
 	_crosswalk_cells.clear()
 	_crosswalk_axes.clear()
+	_crosswalk_meta.clear()
 	_boundary_node_by_side.clear()
 	_boundary_nodes_by_road.clear()
 	_is_ready = false
@@ -96,6 +97,7 @@ func rebuild_from_scene(root: Node3D, _buildings: Array = []) -> void:
 	_initialize_neighbor_buckets()
 	_build_side_links()
 	_build_corner_links()
+	_build_corner_perimeter_links()
 	_build_crosswalk_links()
 	_rebuild_components()
 
@@ -223,6 +225,41 @@ func has_path_between(start_pos: Vector3, end_pos: Vector3, start_building: Buil
 	var end_component := int(_component_by_node.get(end_idx, 0))
 	return start_component != 0 and start_component == end_component
 
+func describe_path(points: PackedVector3Array) -> String:
+	if points.is_empty():
+		return "points=0 crosswalk_centers=0"
+
+	var crosswalk_centers := _collect_crosswalk_centers(points)
+	var centers_preview := "-"
+	if not crosswalk_centers.is_empty():
+		var limited := crosswalk_centers.slice(0, min(4, crosswalk_centers.size()))
+		centers_preview = ", ".join(limited)
+		if crosswalk_centers.size() > limited.size():
+			centers_preview += ", ..."
+
+	return "points=%d crosswalk_centers=%d [%s]" % [
+		points.size(),
+		crosswalk_centers.size(),
+		centers_preview
+	]
+
+func count_crosswalk_centers(points: PackedVector3Array) -> int:
+	return _collect_crosswalk_centers(points).size()
+
+func _collect_crosswalk_centers(points: PackedVector3Array) -> Array[String]:
+	var crosswalk_centers: Array[String] = []
+	for point in points:
+		var idx := int(_node_index_by_key.get(_grid_key(_snap_to_edge(point)), -1))
+		if idx < 0:
+			continue
+		var meta := _node_meta.get(idx, {}) as Dictionary
+		if str(meta.get("kind", "")) != "crosswalk":
+			continue
+		var point_label := _fmt_vec3(nodes[idx])
+		if not crosswalk_centers.has(point_label):
+			crosswalk_centers.append(point_label)
+	return crosswalk_centers
+
 func get_nearest_node_index(pos: Vector3, boundary_only: bool = false) -> int:
 	var search_indices: Array = _access_node_indices if boundary_only else range(nodes.size())
 	if search_indices.is_empty():
@@ -245,13 +282,71 @@ func _collect_road_cells(root: Node3D) -> void:
 
 func _collect_crosswalk_cells(root: Node3D) -> void:
 	for crosswalk in _iter_crosswalk_nodes(root):
-		var snapped := _snap_to_cell(crosswalk.global_position)
+		var geometry := _get_crosswalk_geometry(crosswalk)
+		var center := geometry.get("center", crosswalk.global_position) as Vector3
+		var snapped := _snap_to_cell(center)
 		var key := _grid_key(snapped)
+		_road_cells[key] = snapped
 		_crosswalk_cells[key] = snapped
+		_crosswalk_meta[key] = geometry
 
-		var basis_x := crosswalk.global_transform.basis.x
-		var axis := "x" if absf(basis_x.x) >= absf(basis_x.z) else "z"
-		_crosswalk_axes[key] = axis
+		var cross_dir := geometry.get("cross_dir", Vector3.FORWARD) as Vector3
+		_crosswalk_axes[key] = "x" if absf(cross_dir.x) >= absf(cross_dir.z) else "z"
+
+func _get_crosswalk_geometry(crosswalk: Node3D) -> Dictionary:
+	if crosswalk == null:
+		return {}
+
+	var mesh_instance := _find_first_mesh_instance(crosswalk)
+	if mesh_instance == null or mesh_instance.mesh == null:
+		return {
+			"center": crosswalk.global_position,
+			"cross_dir": _crosswalk_direction_from_basis(crosswalk.global_transform.basis),
+			"half_span": HALF_ROAD_WIDTH,
+		}
+
+	var local_aabb := mesh_instance.get_aabb()
+	var local_center := local_aabb.position + local_aabb.size * 0.5
+	var local_half_cross := local_aabb.size.z * 0.5
+	var world_center := mesh_instance.to_global(local_center)
+	var world_entry := mesh_instance.to_global(local_center - Vector3(0.0, 0.0, local_half_cross))
+	var world_exit := mesh_instance.to_global(local_center + Vector3(0.0, 0.0, local_half_cross))
+	world_center.y = 0.0
+	world_entry.y = 0.0
+	world_exit.y = 0.0
+
+	var cross_dir := world_exit - world_entry
+	cross_dir.y = 0.0
+	if cross_dir.length_squared() <= 0.0001:
+		cross_dir = _crosswalk_direction_from_basis(crosswalk.global_transform.basis)
+	else:
+		cross_dir = cross_dir.normalized()
+
+	# Use the visual mesh only to detect center/orientation. For navigation we want
+	# the crossing to start/end at the road edges, otherwise the perimeter around
+	# the tile can become as cheap as the intended center crossing.
+	var half_span := HALF_ROAD_WIDTH
+	return {
+		"center": world_center,
+		"cross_dir": cross_dir,
+		"half_span": half_span,
+	}
+
+func _crosswalk_direction_from_basis(basis: Basis) -> Vector3:
+	var cross_dir := basis.z
+	cross_dir.y = 0.0
+	if cross_dir.length_squared() <= 0.0001:
+		return Vector3.FORWARD
+	return cross_dir.normalized()
+
+func _find_first_mesh_instance(node: Node) -> MeshInstance3D:
+	if node is MeshInstance3D:
+		return node as MeshInstance3D
+	for child in node.get_children():
+		var mesh_instance := _find_first_mesh_instance(child)
+		if mesh_instance != null:
+			return mesh_instance
+	return null
 
 func _build_boundary_nodes() -> void:
 	for road_pos in _road_cells.values():
@@ -314,32 +409,74 @@ func _build_corner_links() -> void:
 			var corner_idx := _append_corner_node(corner_pos)
 			_connect_nodes(node_idx, corner_idx)
 
+func _build_corner_perimeter_links() -> void:
+	for road_pos in _crosswalk_cells.values():
+		var road := road_pos as Vector3
+		var north_west := _append_corner_node(road + Vector3(-HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH))
+		var north_east := _append_corner_node(road + Vector3(HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH))
+		var south_west := _append_corner_node(road + Vector3(-HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH))
+		var south_east := _append_corner_node(road + Vector3(HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH))
+
+		_connect_nodes(north_west, north_east)
+		_connect_nodes(south_west, south_east)
+		_connect_nodes(north_west, south_west)
+		_connect_nodes(north_east, south_east)
+
 func _build_crosswalk_links() -> void:
 	for key in _crosswalk_cells.keys():
 		var road := _crosswalk_cells[key] as Vector3
 		var axis: String = str(_crosswalk_axes.get(key, "x"))
-		var a: Vector3
-		var b: Vector3
-		if axis == "x":
-			a = road + Vector3(-HALF_ROAD_WIDTH, 0.0, 0.0)
-			b = road + Vector3(HALF_ROAD_WIDTH, 0.0, 0.0)
+		var cross_meta := _crosswalk_meta.get(key, {}) as Dictionary
+		var center := cross_meta.get("center", road) as Vector3
+		var cross_dir := cross_meta.get("cross_dir", Vector3.RIGHT if axis == "x" else Vector3.FORWARD) as Vector3
+		var half_span := float(cross_meta.get("half_span", HALF_ROAD_WIDTH))
+		cross_dir.y = 0.0
+		if cross_dir.length_squared() <= 0.0001:
+			cross_dir = Vector3.RIGHT if axis == "x" else Vector3.FORWARD
 		else:
-			a = road + Vector3(0.0, 0.0, -HALF_ROAD_WIDTH)
-			b = road + Vector3(0.0, 0.0, HALF_ROAD_WIDTH)
+			cross_dir = cross_dir.normalized()
 
-		var a_idx := int(_node_index_by_key.get(_grid_key(a), -1))
-		var b_idx := int(_node_index_by_key.get(_grid_key(b), -1))
-		if a_idx < 0 or b_idx < 0:
+		var entry_point := center - cross_dir * half_span
+		var exit_point := center + cross_dir * half_span
+		entry_point.y = 0.0
+		exit_point.y = 0.0
+
+		var entry_anchor_idx := get_nearest_node_index(entry_point, true)
+		var exit_anchor_idx := get_nearest_node_index(exit_point, true)
+		if entry_anchor_idx < 0 or exit_anchor_idx < 0:
 			continue
+		cross_meta["entry_point"] = entry_point
+		cross_meta["exit_point"] = exit_point
+		cross_meta["entry_anchor"] = nodes[entry_anchor_idx]
+		cross_meta["exit_anchor"] = nodes[exit_anchor_idx]
+		_crosswalk_meta[key] = cross_meta
 
-		var center_idx := _append_unique_node(road)
+		var center_idx := _append_unique_node(center, false)
+		var entry_idx := _append_unique_node(entry_point, false)
+		var exit_idx := _append_unique_node(exit_point, false)
 		_node_meta[center_idx] = {
 			"kind": "crosswalk",
 			"road": road,
 			"axis": axis,
+			"center": center,
+			"half_span": half_span,
 		}
-		_connect_nodes(a_idx, center_idx)
-		_connect_nodes(center_idx, b_idx)
+		if not _node_meta.has(entry_idx):
+			_node_meta[entry_idx] = {
+				"kind": "crosswalk_entry",
+				"road": road,
+				"axis": axis,
+			}
+		if not _node_meta.has(exit_idx):
+			_node_meta[exit_idx] = {
+				"kind": "crosswalk_exit",
+				"road": road,
+				"axis": axis,
+			}
+		_connect_nodes(entry_anchor_idx, entry_idx)
+		_connect_nodes(entry_idx, center_idx)
+		_connect_nodes(center_idx, exit_idx)
+		_connect_nodes(exit_idx, exit_anchor_idx)
 
 func _iter_road_nodes(root: Node3D) -> Array[Node3D]:
 	var out: Array[Node3D] = []
@@ -405,8 +542,12 @@ func _append_corner_node(pos: Vector3) -> int:
 		}
 	return idx
 
-func _append_unique_node(pos: Vector3) -> int:
-	var snapped := _snap_to_edge(pos)
+func _append_unique_node(pos: Vector3, snap_to_grid: bool = true) -> int:
+	var snapped := _snap_to_edge(pos) if snap_to_grid else Vector3(
+		round(pos.x * 100.0) / 100.0,
+		0.0,
+		round(pos.z * 100.0) / 100.0
+	)
 	var key := _grid_key(snapped)
 	if _node_index_by_key.has(key):
 		return int(_node_index_by_key[key])
@@ -446,7 +587,7 @@ func _a_star(start_idx: int, end_idx: int) -> Array:
 
 		for neighbor in neighbors.get(current, []):
 			var neighbor_idx := int(neighbor)
-			var tentative := float(g_score.get(current, INF)) + _heuristic(current, neighbor_idx)
+			var tentative := float(g_score.get(current, INF)) + _edge_cost(current, neighbor_idx)
 			if tentative >= float(g_score.get(neighbor_idx, INF)):
 				continue
 
@@ -516,6 +657,9 @@ func _reconstruct_path(came_from: Dictionary, current) -> Array:
 func _heuristic(a_idx: int, b_idx: int) -> float:
 	return _xz_distance(nodes[a_idx], nodes[b_idx])
 
+func _edge_cost(a_idx: int, b_idx: int) -> float:
+	return _heuristic(a_idx, b_idx)
+
 func _append_path_point(path: PackedVector3Array, point: Vector3, min_dist: float = 0.05) -> void:
 	if path.is_empty() or path[path.size() - 1].distance_to(point) >= min_dist:
 		path.append(point)
@@ -551,6 +695,9 @@ func _grid_key(pos: Vector3) -> String:
 
 func _side_key(road: Vector3, side_id: int) -> String:
 	return "%s|%d" % [_grid_key(road), side_id]
+
+func _fmt_vec3(value: Vector3) -> String:
+	return "(%.2f, %.2f, %.2f)" % [value.x, value.y, value.z]
 
 func _xz_distance(a: Vector3, b: Vector3) -> float:
 	var dx := a.x - b.x

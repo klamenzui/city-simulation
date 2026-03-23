@@ -222,6 +222,16 @@ func get_pedestrian_access_point(pos: Vector3, building: Building = null) -> Vec
 		return pedestrian_graph.get_access_point(pos, building)
 	return _get_navigation_closest_point(pos)
 
+func describe_pedestrian_path(points: PackedVector3Array) -> String:
+	if pedestrian_graph != null and pedestrian_graph.has_method("describe_path"):
+		return pedestrian_graph.describe_path(points)
+	return "points=%d" % points.size()
+
+func count_pedestrian_path_crosswalk_centers(points: PackedVector3Array) -> int:
+	if pedestrian_graph != null and pedestrian_graph.has_method("count_crosswalk_centers"):
+		return pedestrian_graph.count_crosswalk_centers(points)
+	return 0
+
 func has_pedestrian_route(start_pos: Vector3, end_pos: Vector3, start_building: Building = null, end_building: Building = null) -> bool:
 	if pedestrian_graph != null and pedestrian_graph.has_graph():
 		if pedestrian_graph.has_path_between(start_pos, end_pos, start_building, end_building):

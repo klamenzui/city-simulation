@@ -561,11 +561,10 @@ func _draw_selected_building_nav_debug(building: Building) -> bool:
 	if building == null:
 		return false
 
-	var entrance := building.get_entrance_pos()
-	var access := entrance
-	if world != null and world.has_method("get_pedestrian_access_point"):
-		access = world.get_pedestrian_access_point(entrance, building)
-	var preview_spawn := _compute_building_spawn_preview(entrance, access)
+	var nav_points: Dictionary = building.get_navigation_points(world, 0.0) if building.has_method("get_navigation_points") else {}
+	var entrance: Vector3 = nav_points.get("entrance", building.get_entrance_pos())
+	var access: Vector3 = nav_points.get("access", entrance)
+	var preview_spawn: Vector3 = nav_points.get("spawn", _compute_building_spawn_preview(entrance, access))
 	_draw_building_nav_triplet(
 		entrance,
 		access,
@@ -585,8 +584,8 @@ func _compute_building_spawn_preview(entrance_pos: Vector3, access_pos: Vector3)
 	else:
 		outward = outward.normalized()
 
-	var spawn_base := entrance_pos.lerp(access_pos, 0.28)
-	var spawn_pos := spawn_base + outward * 0.04
+	var spawn_base := entrance_pos.lerp(access_pos, 0.55)
+	var spawn_pos := spawn_base + outward * 0.02
 	spawn_pos.y = spawn_base.y
 	return spawn_pos
 
