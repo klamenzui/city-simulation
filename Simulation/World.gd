@@ -21,7 +21,7 @@ var buildings: Array[Building] = []
 var jobs: Array[Job] = []
 
 var is_paused: bool = false
-var speed_multiplier: float = 0.1
+var speed_multiplier: float = 1
 
 signal paused_changed(paused: bool)
 signal speed_changed(multiplier: float)
@@ -40,7 +40,8 @@ func _ready() -> void:
 	_register_existing_scene_nodes(get_tree())
 
 	_timer = Timer.new()
-	_timer.wait_time = tick_interval_sec
+	speed_multiplier = maxf(speed_multiplier, 0.1)
+	_timer.wait_time = tick_interval_sec / speed_multiplier
 	_timer.autostart = true
 	_timer.timeout.connect(_on_tick)
 	add_child(_timer)

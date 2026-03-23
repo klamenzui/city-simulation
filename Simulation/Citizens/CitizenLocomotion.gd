@@ -1,6 +1,8 @@
 extends RefCounted
 class_name CitizenLocomotion
 
+const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
+
 func setup(citizen) -> void:
 	if citizen == null:
 		return
@@ -106,6 +108,52 @@ func begin_travel_to(citizen, target_pos: Vector3, target_building, world) -> bo
 
 	return true
 
+func repath_current_travel(citizen, world) -> bool:
+	if citizen == null or not citizen._is_travelling:
+		return false
+	if citizen._repath_time_left > 0.0:
+		return false
+
+	var final_target: Vector3 = citizen._travel_target
+	if not citizen._travel_route.is_empty():
+		final_target = citizen._travel_route[citizen._travel_route.size() - 1]
+
+	var old_is_travelling: bool = citizen._is_travelling
+	var old_route: PackedVector3Array = citizen._travel_route
+	var old_route_index: int = citizen._travel_route_index
+	var old_target: Vector3 = citizen._travel_target
+	var old_debug_route: PackedVector3Array = citizen._debug_last_travel_route
+	var old_debug_failed: bool = citizen._debug_last_travel_failed
+	var old_current_speed: float = citizen._current_speed
+	var old_arrived: bool = citizen._arrived_via_entrance_contact
+	var old_target_building = citizen._travel_target_building
+
+	if not begin_travel_to(citizen, final_target, old_target_building, world):
+		citizen._is_travelling = old_is_travelling
+		citizen._travel_route = old_route
+		citizen._travel_route_index = old_route_index
+		citizen._travel_target = old_target
+		citizen._debug_last_travel_route = old_debug_route
+		citizen._debug_last_travel_failed = old_debug_failed
+		citizen._current_speed = old_current_speed
+		citizen._arrived_via_entrance_contact = old_arrived
+		citizen._travel_target_building = old_target_building
+		citizen._repath_time_left = citizen.repath_interval_sec
+		if citizen._nav_agent != null:
+			citizen._nav_agent.target_position = old_target
+		return false
+
+	citizen._stuck_timer = 0.0
+	citizen._last_move_position = citizen.global_position
+	citizen._repath_time_left = citizen.repath_interval_sec
+	citizen._current_speed = minf(citizen._current_speed, citizen._walk_speed * 0.5)
+	SimLogger.log("[Citizen %s] Repath current travel from %s to %s" % [
+		citizen.citizen_name,
+		citizen._trace_fmt_vec3(citizen.global_position),
+		citizen._trace_fmt_vec3(final_target)
+	])
+	return true
+
 func has_reached_travel_target(citizen) -> bool:
 	if citizen == null:
 		return true
@@ -129,5 +177,6 @@ func stop_travel(citizen) -> void:
 	citizen.velocity = Vector3.ZERO
 	citizen._travel_route = PackedVector3Array()
 	citizen._travel_route_index = -1
+	citizen._repath_time_left = 0.0
 	if citizen._nav_agent != null:
 		citizen._nav_agent.target_position = citizen.global_position
