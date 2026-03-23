@@ -65,6 +65,8 @@ var _debug_once_keys: Dictionary = {}
 @export var obstacle_side_bias: float = 0.35
 @export var obstacle_stuck_timeout: float = 0.7
 @export var obstacle_stuck_distance: float = 0.02
+@export var obstacle_repath_timeout: float = 1.6
+@export var obstacle_slide_hold_sec: float = 0.4
 @export var entrance_contact_distance: float = 1.05
 @export var entrance_contact_alignment: float = 0.45
 
@@ -100,6 +102,8 @@ var _trace_last_move_dir: Vector3 = Vector3.ZERO
 var _trace_last_forward_hit: String = "clear"
 var _trace_last_left_hit: String = "clear"
 var _trace_last_right_hit: String = "clear"
+var _stuck_slide_hold_dir: Vector3 = Vector3.ZERO
+var _stuck_slide_hold_left: float = 0.0
 # --- Variation / Personality ---
 @export var schedule_offset_min: int = -25
 @export var schedule_offset_max: int = 25
@@ -347,17 +351,24 @@ func exit_current_building(world: World = null) -> void:
 		return
 
 	var exit_building := _inside_building
+	var access_pos := _get_building_access_pos(exit_building, world)
 	var exit_pos := _get_building_exit_spawn_pos(exit_building, world)
 
 	_inside_building = null
 	_set_interior_presence(false)
 	set_position_grounded(exit_pos)
+	if absf(global_position.y - exit_pos.y) > 0.45:
+		global_position = exit_pos
+		_vertical_speed = 0.0
+		velocity = Vector3.ZERO
+		_last_move_position = global_position
 	_update_trace_navigation_state("exited_%s" % exit_building.get_display_name(), Vector3.ZERO, Vector3.ZERO)
-	SimLogger.log("[Citizen %s] Exited %s at %s | exit=%s access=%s" % [
+	SimLogger.log("[Citizen %s] Exited %s at %s | entrance=%s access=%s spawn=%s" % [
 		citizen_name,
 		exit_building.get_display_name(),
 		_trace_fmt_vec3(global_position),
 		_trace_fmt_vec3(exit_building.get_entrance_pos()),
+		_trace_fmt_vec3(access_pos),
 		_trace_fmt_vec3(exit_pos)
 	])
 
@@ -406,8 +417,9 @@ func _get_building_exit_spawn_pos(building: Building, world: World = null) -> Ve
 	var lateral := Vector3(-outward.z, 0.0, outward.x)
 	var lane_slot := int(abs(citizen_name.hash())) % 5 - 2
 	var lane_offset := float(lane_slot) * 0.18
-	var spawn_pos := access_pos + lateral * lane_offset + outward * 0.18
-	spawn_pos.y = access_pos.y
+	var spawn_base := entrance_pos.lerp(access_pos, 0.28)
+	var spawn_pos := spawn_base + lateral * lane_offset + outward * 0.04
+	spawn_pos.y = spawn_base.y
 	return spawn_pos
 
 func get_debug_travel_path() -> PackedVector3Array:
@@ -427,6 +439,22 @@ func get_debug_travel_path() -> PackedVector3Array:
 			path.append(point)
 
 	return path
+
+func get_debug_source_building() -> Building:
+	if _inside_building != null:
+		return _inside_building
+	if current_location != null:
+		return current_location
+	return home
+
+func get_debug_travel_target_building() -> Building:
+	return _travel_target_building
+
+func get_debug_access_pos(building: Building, world: World = null) -> Vector3:
+	return _get_building_access_pos(building, world)
+
+func get_debug_exit_spawn_pos(building: Building, world: World = null) -> Vector3:
+	return _get_building_exit_spawn_pos(building, world)
 
 func get_debug_travel_route_points() -> PackedVector3Array:
 	if _is_travelling:
@@ -468,6 +496,9 @@ func _advance_travel_route() -> bool:
 	return true
 
 func _move_along_path(delta: float) -> void:
+	if _repath_time_left > 0.0:
+		_repath_time_left = maxf(_repath_time_left - delta, 0.0)
+
 	if _arrived_via_entrance_contact:
 		_current_speed = move_toward(_current_speed, 0.0, move_deceleration * delta)
 		velocity.x = 0.0
@@ -554,6 +585,14 @@ func _compute_move_direction(desired_dir: Vector3) -> Vector3:
 		_update_trace_navigation_state("arrive_target_entrance", planar_dir, Vector3.ZERO)
 		return Vector3.ZERO
 	if _stuck_timer >= obstacle_stuck_timeout:
+		if _stuck_timer >= obstacle_repath_timeout:
+			if _agent != null and _agent.locomotion != null and _agent.locomotion.repath_current_travel(self, _world_ref):
+				_update_trace_navigation_state("repath_stuck", planar_dir, Vector3.ZERO)
+				return Vector3.ZERO
+		var slide_escape := _get_stuck_slide_direction(planar_dir)
+		if slide_escape != Vector3.ZERO:
+			_update_trace_navigation_state("stuck_slide_%s" % _trace_relative_label(slide_escape), planar_dir, slide_escape)
+			return slide_escape
 		var escape_dir := _compute_escape_direction(planar_dir)
 		_update_trace_navigation_state("stuck_escape_%s" % _trace_relative_label(escape_dir), planar_dir, escape_dir)
 		return escape_dir
@@ -706,6 +745,47 @@ func _compute_escape_direction(preferred_dir: Vector3) -> Vector3:
 		return _choose_turn_direction(preferred_dir, not left_open, not right_open)
 	return -preferred_dir
 
+func _get_stuck_slide_direction(preferred_dir: Vector3) -> Vector3:
+	if _stuck_slide_hold_left > 0.0 and _stuck_slide_hold_dir != Vector3.ZERO:
+		return _stuck_slide_hold_dir
+
+	var slide_dir := _compute_slide_escape_direction(preferred_dir)
+	if slide_dir != Vector3.ZERO:
+		_stuck_slide_hold_dir = slide_dir
+		_stuck_slide_hold_left = obstacle_slide_hold_sec
+	return slide_dir
+
+func _compute_slide_escape_direction(preferred_dir: Vector3) -> Vector3:
+	var collision_count := get_slide_collision_count()
+	if collision_count <= 0:
+		return Vector3.ZERO
+
+	var best_dir := Vector3.ZERO
+	var best_score := INF
+	for i in range(collision_count):
+		var collision := get_slide_collision(i)
+		if collision == null:
+			continue
+		var normal := collision.get_normal()
+		normal.y = 0.0
+		if normal.length_squared() <= 0.0001:
+			continue
+		normal = normal.normalized()
+
+		var tangent_a := Vector3(-normal.z, 0.0, normal.x)
+		var tangent_b := -tangent_a
+		for candidate in [tangent_a, tangent_b]:
+			if candidate.length_squared() <= 0.0001:
+				continue
+			var score := _score_direction(candidate)
+			if candidate.dot(preferred_dir) < -0.35:
+				score += 2.5
+			if score < best_score:
+				best_score = score
+				best_dir = candidate
+
+	return best_dir.normalized() if best_dir != Vector3.ZERO else Vector3.ZERO
+
 func _ray_move_direction(ray: RayCast3D) -> Vector3:
 	if ray == null:
 		return Vector3.ZERO
@@ -731,11 +811,17 @@ func _blend_move_direction(preferred_dir: Vector3, avoid_dir: Vector3, weight: f
 	return blended.normalized()
 
 func _update_stuck_state(delta: float) -> void:
+	if _stuck_slide_hold_left > 0.0:
+		_stuck_slide_hold_left = maxf(_stuck_slide_hold_left - delta, 0.0)
+		if _stuck_slide_hold_left <= 0.0:
+			_stuck_slide_hold_dir = Vector3.ZERO
 	var moved := global_position.distance_to(_last_move_position)
 	if _current_speed > 0.2 and moved <= obstacle_stuck_distance:
 		_stuck_timer += delta
 	else:
 		_stuck_timer = 0.0
+		_stuck_slide_hold_dir = Vector3.ZERO
+		_stuck_slide_hold_left = 0.0
 	_last_move_position = global_position
 
 func _update_trace_navigation_state(reason: String, desired_dir: Vector3, move_dir: Vector3) -> void:

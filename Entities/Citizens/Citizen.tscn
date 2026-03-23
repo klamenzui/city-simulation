@@ -3,8 +3,8 @@
 [ext_resource type="Script" uid="uid://bf6j1j6o17q7i" path="res://Entities/Citizens/Citizen.gd" id="1_qc8p4"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_0gsqa"]
-radius = 0.5107422
-height = 2.0069823
+radius = 0.34521484
+height = 1.2989013
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_cbg8l"]
 
@@ -12,17 +12,17 @@ height = 2.0069823
 script = ExtResource("1_qc8p4")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=719777068]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0.30847418, 0)
+transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0.20226203, 0)
 shape = SubResource("CapsuleShape3D_0gsqa")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=1702579198]
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=2025689120]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0.3, 0)
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0.2, 0)
 mesh = SubResource("CapsuleMesh_cbg8l")
 
 [node name="ObstacleSensorPivot" type="Node3D" parent="." unique_id=804207808]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5047189, 0)
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0.31758282, 0)
 
 [node name="ObstacleRayCastForward" type="RayCast3D" parent="ObstacleSensorPivot" unique_id=293945390]
 target_position = Vector3(0, 0, -0.95)

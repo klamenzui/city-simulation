@@ -39,6 +39,14 @@ var _citizen_path_start_material: StandardMaterial3D = null
 var _citizen_path_waypoint_material: StandardMaterial3D = null
 var _citizen_path_end_material: StandardMaterial3D = null
 var _citizen_path_failed_material: StandardMaterial3D = null
+var _building_nav_debug: MeshInstance3D = null
+var _building_nav_debug_mesh: ImmediateMesh = null
+var _building_nav_link_material: StandardMaterial3D = null
+var _building_nav_source_entrance_material: StandardMaterial3D = null
+var _building_nav_source_access_material: StandardMaterial3D = null
+var _building_nav_source_spawn_material: StandardMaterial3D = null
+var _building_nav_target_entrance_material: StandardMaterial3D = null
+var _building_nav_target_access_material: StandardMaterial3D = null
 
 func _ready() -> void:
 	SimLogger.start_new_session(false)
@@ -46,6 +54,7 @@ func _ready() -> void:
 
 	_setup_world_systems()
 	_setup_citizen_path_debug()
+	_setup_building_nav_debug()
 	_build_debug_panel()
 	_bind_building_clicks()
 	_spawn_citizens()
@@ -54,6 +63,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_selected_citizen_path_debug()
+	_update_selected_building_nav_debug()
 	_update_selected_citizen_trace(delta)
 	_update_all_citizen_trace(delta)
 
@@ -162,6 +172,25 @@ func _setup_citizen_path_debug() -> void:
 	_citizen_path_failed_material = _create_path_debug_material(Color(1.0, 0.35, 0.10, 1.0))
 
 	add_child(_citizen_path_debug)
+
+func _setup_building_nav_debug() -> void:
+	_building_nav_debug = MeshInstance3D.new()
+	_building_nav_debug.name = "SelectedBuildingNavDebug"
+	_building_nav_debug.top_level = true
+	_building_nav_debug.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_building_nav_debug.visible = false
+
+	_building_nav_debug_mesh = ImmediateMesh.new()
+	_building_nav_debug.mesh = _building_nav_debug_mesh
+
+	_building_nav_link_material = _create_path_debug_material(Color(1.0, 1.0, 1.0, 0.95))
+	_building_nav_source_entrance_material = _create_path_debug_material(Color(1.0, 0.30, 0.20, 1.0))
+	_building_nav_source_access_material = _create_path_debug_material(Color(0.10, 0.85, 1.0, 1.0))
+	_building_nav_source_spawn_material = _create_path_debug_material(Color(1.0, 0.88, 0.15, 1.0))
+	_building_nav_target_entrance_material = _create_path_debug_material(Color(1.0, 0.25, 0.75, 1.0))
+	_building_nav_target_access_material = _create_path_debug_material(Color(0.20, 1.0, 0.35, 1.0))
+
+	add_child(_building_nav_debug)
 
 func _create_path_debug_material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
@@ -456,22 +485,152 @@ func _update_selected_citizen_path_debug() -> void:
 	_citizen_path_debug_mesh.surface_end()
 
 func _add_path_debug_marker(center: Vector3, radius: float, height: float) -> void:
-	_citizen_path_debug_mesh.surface_add_vertex(center)
-	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3.UP * height)
-	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(-radius, 0.0, 0.0))
-	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(radius, 0.0, 0.0))
-	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(0.0, 0.0, -radius))
-	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(0.0, 0.0, radius))
-	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(-radius * 0.75, 0.0, -radius * 0.75))
-	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(radius * 0.75, 0.0, radius * 0.75))
-	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(-radius * 0.75, 0.0, radius * 0.75))
-	_citizen_path_debug_mesh.surface_add_vertex(center + Vector3(radius * 0.75, 0.0, -radius * 0.75))
+	_add_debug_marker(_citizen_path_debug_mesh, center, radius, height)
+
+func _add_debug_marker(mesh: ImmediateMesh, center: Vector3, radius: float, height: float) -> void:
+	if mesh == null:
+		return
+	mesh.surface_add_vertex(center)
+	mesh.surface_add_vertex(center + Vector3.UP * height)
+	mesh.surface_add_vertex(center + Vector3(-radius, 0.0, 0.0))
+	mesh.surface_add_vertex(center + Vector3(radius, 0.0, 0.0))
+	mesh.surface_add_vertex(center + Vector3(0.0, 0.0, -radius))
+	mesh.surface_add_vertex(center + Vector3(0.0, 0.0, radius))
+	mesh.surface_add_vertex(center + Vector3(-radius * 0.75, 0.0, -radius * 0.75))
+	mesh.surface_add_vertex(center + Vector3(radius * 0.75, 0.0, radius * 0.75))
+	mesh.surface_add_vertex(center + Vector3(-radius * 0.75, 0.0, radius * 0.75))
+	mesh.surface_add_vertex(center + Vector3(radius * 0.75, 0.0, -radius * 0.75))
 
 func _clear_selected_citizen_path_debug() -> void:
 	if _citizen_path_debug_mesh != null:
 		_citizen_path_debug_mesh.clear_surfaces()
 	if _citizen_path_debug != null:
 		_citizen_path_debug.visible = false
+
+func _update_selected_building_nav_debug() -> void:
+	if _building_nav_debug == null or _building_nav_debug_mesh == null:
+		return
+
+	_building_nav_debug_mesh.clear_surfaces()
+	_building_nav_debug.visible = false
+
+	var has_debug := false
+	if _selected_citizen != null and is_instance_valid(_selected_citizen):
+		has_debug = _draw_selected_citizen_nav_debug(_selected_citizen)
+	elif _selected_building != null and is_instance_valid(_selected_building):
+		has_debug = _draw_selected_building_nav_debug(_selected_building)
+
+	if has_debug:
+		_building_nav_debug.visible = true
+		_building_nav_debug.global_transform = Transform3D.IDENTITY
+
+func _draw_selected_citizen_nav_debug(citizen: Citizen) -> bool:
+	var has_debug := false
+	var source_building: Building = citizen.get_debug_source_building() if citizen.has_method("get_debug_source_building") else citizen.current_location
+	if source_building != null:
+		var source_entrance := source_building.get_entrance_pos()
+		var source_access := citizen.get_debug_access_pos(source_building, world) if citizen.has_method("get_debug_access_pos") else source_entrance
+		var source_spawn := citizen.get_debug_exit_spawn_pos(source_building, world) if citizen.has_method("get_debug_exit_spawn_pos") else source_access
+		_draw_building_nav_triplet(
+			source_entrance,
+			source_access,
+			source_spawn,
+			_building_nav_source_entrance_material,
+			_building_nav_source_access_material,
+			_building_nav_source_spawn_material,
+			Vector3.UP * 0.10
+		)
+		has_debug = true
+
+	var target_building: Building = citizen.get_debug_travel_target_building() if citizen.has_method("get_debug_travel_target_building") else null
+	if target_building != null:
+		var target_entrance := target_building.get_entrance_pos()
+		var target_access := citizen.get_debug_access_pos(target_building, world) if citizen.has_method("get_debug_access_pos") else target_entrance
+		_draw_building_nav_pair(
+			target_entrance,
+			target_access,
+			_building_nav_target_entrance_material,
+			_building_nav_target_access_material,
+			Vector3.UP * 0.28
+		)
+		has_debug = true
+
+	return has_debug
+
+func _draw_selected_building_nav_debug(building: Building) -> bool:
+	if building == null:
+		return false
+
+	var entrance := building.get_entrance_pos()
+	var access := entrance
+	if world != null and world.has_method("get_pedestrian_access_point"):
+		access = world.get_pedestrian_access_point(entrance, building)
+	var preview_spawn := _compute_building_spawn_preview(entrance, access)
+	_draw_building_nav_triplet(
+		entrance,
+		access,
+		preview_spawn,
+		_building_nav_source_entrance_material,
+		_building_nav_source_access_material,
+		_building_nav_source_spawn_material,
+		Vector3.UP * 0.10
+	)
+	return true
+
+func _compute_building_spawn_preview(entrance_pos: Vector3, access_pos: Vector3) -> Vector3:
+	var outward := access_pos - entrance_pos
+	outward.y = 0.0
+	if outward.length_squared() <= 0.0001:
+		outward = Vector3.FORWARD
+	else:
+		outward = outward.normalized()
+
+	var spawn_base := entrance_pos.lerp(access_pos, 0.28)
+	var spawn_pos := spawn_base + outward * 0.04
+	spawn_pos.y = spawn_base.y
+	return spawn_pos
+
+func _draw_building_nav_triplet(
+	entrance: Vector3,
+	access: Vector3,
+	spawn: Vector3,
+	entrance_material: StandardMaterial3D,
+	access_material: StandardMaterial3D,
+	spawn_material: StandardMaterial3D,
+	offset: Vector3
+) -> void:
+	_building_nav_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _building_nav_link_material)
+	_building_nav_debug_mesh.surface_add_vertex(entrance + offset)
+	_building_nav_debug_mesh.surface_add_vertex(access + offset)
+	_building_nav_debug_mesh.surface_add_vertex(entrance + offset)
+	_building_nav_debug_mesh.surface_add_vertex(spawn + offset)
+	_building_nav_debug_mesh.surface_add_vertex(access + offset)
+	_building_nav_debug_mesh.surface_add_vertex(spawn + offset)
+	_building_nav_debug_mesh.surface_end()
+
+	_draw_building_nav_marker(entrance + offset, entrance_material, 0.18, 0.42)
+	_draw_building_nav_marker(access + offset, access_material, 0.18, 0.42)
+	_draw_building_nav_marker(spawn + offset, spawn_material, 0.22, 0.52)
+
+func _draw_building_nav_pair(
+	entrance: Vector3,
+	access: Vector3,
+	entrance_material: StandardMaterial3D,
+	access_material: StandardMaterial3D,
+	offset: Vector3
+) -> void:
+	_building_nav_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _building_nav_link_material)
+	_building_nav_debug_mesh.surface_add_vertex(entrance + offset)
+	_building_nav_debug_mesh.surface_add_vertex(access + offset)
+	_building_nav_debug_mesh.surface_end()
+
+	_draw_building_nav_marker(entrance + offset, entrance_material, 0.16, 0.38)
+	_draw_building_nav_marker(access + offset, access_material, 0.16, 0.38)
+
+func _draw_building_nav_marker(center: Vector3, material: StandardMaterial3D, radius: float, height: float) -> void:
+	_building_nav_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, material)
+	_add_debug_marker(_building_nav_debug_mesh, center, radius, height)
+	_building_nav_debug_mesh.surface_end()
 
 func _build_hud() -> void:
 	var canvas := CanvasLayer.new()
@@ -549,7 +708,7 @@ func _build_hud() -> void:
 	hbox.add_child(hint)
 
 	_speed_label = Label.new()
-	_speed_label.text = "1.0x"
+	_speed_label.text = "%.1fx" % world.speed_multiplier
 	_speed_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_speed_label.custom_minimum_size = Vector2(42, 36)
 	hbox.add_child(_speed_label)

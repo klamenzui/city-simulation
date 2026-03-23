@@ -138,7 +138,10 @@ func get_access_point(pos: Vector3, building: Building = null) -> Vector3:
 	var idx := _get_access_node_index(pos, building)
 	if idx < 0:
 		return pos
-	return nodes[idx]
+	var access_point := nodes[idx]
+	if building != null:
+		return _refine_building_access_point(building, access_point)
+	return access_point
 
 func _get_access_node_index(pos: Vector3, building: Building = null) -> int:
 	if building != null:
@@ -181,6 +184,15 @@ func _get_building_access_node_index(building: Building) -> int:
 			best_idx = idx
 
 	return best_idx
+
+func _refine_building_access_point(building: Building, boundary_point: Vector3) -> Vector3:
+	if building == null:
+		return boundary_point
+
+	var entrance_pos := building.get_entrance_pos()
+	var refined := entrance_pos.lerp(boundary_point, 0.58)
+	refined.y = boundary_point.y
+	return refined
 
 func _get_building_world_center(building: Building) -> Vector3:
 	if building == null:
@@ -319,7 +331,15 @@ func _build_crosswalk_links() -> void:
 		var b_idx := int(_node_index_by_key.get(_grid_key(b), -1))
 		if a_idx < 0 or b_idx < 0:
 			continue
-		_connect_nodes(a_idx, b_idx)
+
+		var center_idx := _append_unique_node(road)
+		_node_meta[center_idx] = {
+			"kind": "crosswalk",
+			"road": road,
+			"axis": axis,
+		}
+		_connect_nodes(a_idx, center_idx)
+		_connect_nodes(center_idx, b_idx)
 
 func _iter_road_nodes(root: Node3D) -> Array[Node3D]:
 	var out: Array[Node3D] = []
