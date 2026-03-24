@@ -137,6 +137,10 @@ func find_path_points(start_pos: Vector3, end_pos: Vector3, start_building: Buil
 	return _remove_close_duplicates(route)
 
 func get_access_point(pos: Vector3, building: Building = null) -> Vector3:
+	if building == null:
+		var direct_idx := find_node_index_for_path_point(pos)
+		if direct_idx >= 0:
+			return nodes[direct_idx]
 	var idx := _get_access_node_index(pos, building)
 	if idx < 0:
 		return pos
@@ -249,7 +253,7 @@ func count_crosswalk_centers(points: PackedVector3Array) -> int:
 func _collect_crosswalk_centers(points: PackedVector3Array) -> Array[String]:
 	var crosswalk_centers: Array[String] = []
 	for point in points:
-		var idx := int(_node_index_by_key.get(_grid_key(_snap_to_edge(point)), -1))
+		var idx := find_node_index_for_path_point(point)
 		if idx < 0:
 			continue
 		var meta := _node_meta.get(idx, {}) as Dictionary
@@ -274,6 +278,26 @@ func get_nearest_node_index(pos: Vector3, boundary_only: bool = false) -> int:
 			best_dist = dist
 			best_idx = i
 	return best_idx
+
+func find_node_index_for_path_point(point: Vector3, max_dist: float = 0.35) -> int:
+	var precise := Vector3(
+		round(point.x * 100.0) / 100.0,
+		0.0,
+		round(point.z * 100.0) / 100.0
+	)
+	var precise_idx := int(_node_index_by_key.get(_grid_key(precise), -1))
+	if precise_idx >= 0:
+		return precise_idx
+
+	var edge_idx := int(_node_index_by_key.get(_grid_key(_snap_to_edge(point)), -1))
+	if edge_idx >= 0 and _xz_distance(nodes[edge_idx], point) <= max_dist:
+		return edge_idx
+
+	var nearest_idx := get_nearest_node_index(point)
+	if nearest_idx >= 0 and _xz_distance(nodes[nearest_idx], point) <= max_dist:
+		return nearest_idx
+
+	return -1
 
 func _collect_road_cells(root: Node3D) -> void:
 	for road in _iter_road_nodes(root):
@@ -410,17 +434,20 @@ func _build_corner_links() -> void:
 			_connect_nodes(node_idx, corner_idx)
 
 func _build_corner_perimeter_links() -> void:
-	for road_pos in _crosswalk_cells.values():
-		var road := road_pos as Vector3
+	for key in _crosswalk_cells.keys():
+		var road := _crosswalk_cells[key] as Vector3
+		var axis := str(_crosswalk_axes.get(key, "x"))
 		var north_west := _append_corner_node(road + Vector3(-HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH))
 		var north_east := _append_corner_node(road + Vector3(HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH))
 		var south_west := _append_corner_node(road + Vector3(-HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH))
 		var south_east := _append_corner_node(road + Vector3(HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH))
 
-		_connect_nodes(north_west, north_east)
-		_connect_nodes(south_west, south_east)
-		_connect_nodes(north_west, south_west)
-		_connect_nodes(north_east, south_east)
+		if axis == "x":
+			_connect_nodes(north_west, south_west)
+			_connect_nodes(north_east, south_east)
+		else:
+			_connect_nodes(north_west, north_east)
+			_connect_nodes(south_west, south_east)
 
 func _build_crosswalk_links() -> void:
 	for key in _crosswalk_cells.keys():
@@ -441,8 +468,8 @@ func _build_crosswalk_links() -> void:
 		entry_point.y = 0.0
 		exit_point.y = 0.0
 
-		var entry_anchor_idx := get_nearest_node_index(entry_point, true)
-		var exit_anchor_idx := get_nearest_node_index(exit_point, true)
+		var entry_anchor_idx := _resolve_crosswalk_anchor_index(road, center, cross_dir, false, entry_point)
+		var exit_anchor_idx := _resolve_crosswalk_anchor_index(road, center, cross_dir, true, exit_point)
 		if entry_anchor_idx < 0 or exit_anchor_idx < 0:
 			continue
 		cross_meta["entry_point"] = entry_point
@@ -473,10 +500,74 @@ func _build_crosswalk_links() -> void:
 				"road": road,
 				"axis": axis,
 			}
+		for corner_idx in _get_crosswalk_side_corner_indices(road, cross_dir, false):
+			_connect_nodes(entry_idx, corner_idx)
+		for corner_idx in _get_crosswalk_side_corner_indices(road, cross_dir, true):
+			_connect_nodes(exit_idx, corner_idx)
 		_connect_nodes(entry_anchor_idx, entry_idx)
 		_connect_nodes(entry_idx, center_idx)
 		_connect_nodes(center_idx, exit_idx)
 		_connect_nodes(exit_idx, exit_anchor_idx)
+
+func _resolve_crosswalk_anchor_index(road: Vector3, center: Vector3, cross_dir: Vector3, forward_side: bool, fallback_point: Vector3) -> int:
+	var exact_side_idx := _get_crosswalk_side_boundary_index(road, cross_dir, forward_side)
+	if exact_side_idx >= 0:
+		return exact_side_idx
+
+	var road_nodes := _boundary_nodes_by_road.get(_grid_key(road), []) as Array
+	if not road_nodes.is_empty():
+		var desired_dir := cross_dir if forward_side else -cross_dir
+		var best_idx := -1
+		var best_score := -INF
+		for raw_idx in road_nodes:
+			var idx := int(raw_idx)
+			var offset := nodes[idx] - center
+			offset.y = 0.0
+			if offset.length_squared() <= 0.0001:
+				continue
+			var alignment := desired_dir.dot(offset.normalized())
+			var score := alignment * 10.0 - offset.length()
+			if score > best_score:
+				best_score = score
+				best_idx = idx
+		if best_idx >= 0:
+			return best_idx
+
+	return get_nearest_node_index(fallback_point, true)
+
+func _get_crosswalk_side_boundary_index(road: Vector3, cross_dir: Vector3, forward_side: bool) -> int:
+	var side_id := -1
+	if absf(cross_dir.x) >= absf(cross_dir.z):
+		if forward_side:
+			side_id = 1 if cross_dir.x >= 0.0 else 0
+		else:
+			side_id = 0 if cross_dir.x >= 0.0 else 1
+	else:
+		if forward_side:
+			side_id = 3 if cross_dir.z >= 0.0 else 2
+		else:
+			side_id = 2 if cross_dir.z >= 0.0 else 3
+	return int(_boundary_node_by_side.get(_side_key(road, side_id), -1))
+
+func _get_crosswalk_side_corner_indices(road: Vector3, cross_dir: Vector3, forward_side: bool) -> Array[int]:
+	var corners: Array[int] = []
+	if absf(cross_dir.x) >= absf(cross_dir.z):
+		var use_east_side := (cross_dir.x >= 0.0) if forward_side else (cross_dir.x < 0.0)
+		if use_east_side:
+			corners.append(_append_corner_node(road + Vector3(HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH)))
+			corners.append(_append_corner_node(road + Vector3(HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH)))
+		else:
+			corners.append(_append_corner_node(road + Vector3(-HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH)))
+			corners.append(_append_corner_node(road + Vector3(-HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH)))
+	else:
+		var use_south_side := (cross_dir.z >= 0.0) if forward_side else (cross_dir.z < 0.0)
+		if use_south_side:
+			corners.append(_append_corner_node(road + Vector3(-HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH)))
+			corners.append(_append_corner_node(road + Vector3(HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH)))
+		else:
+			corners.append(_append_corner_node(road + Vector3(-HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH)))
+			corners.append(_append_corner_node(road + Vector3(HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH)))
+	return corners
 
 func _iter_road_nodes(root: Node3D) -> Array[Node3D]:
 	var out: Array[Node3D] = []

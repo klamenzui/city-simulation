@@ -99,8 +99,8 @@ func _update_pan(delta: float) -> void:
 	if Input.is_key_pressed(KEY_SHIFT):
 		speed *= fast_pan_multiplier
 
-	var forward := Vector3(-sin(_target_yaw), 0.0, -cos(_target_yaw)).normalized()
-	var right := Vector3(forward.z, 0.0, -forward.x).normalized()
+	var forward := Vector3.FORWARD.rotated(Vector3.UP, _target_yaw).normalized()
+	var right := Vector3.RIGHT.rotated(Vector3.UP, _target_yaw).normalized()
 	var delta_move := (right * move.x + forward * move.y) * speed * delta
 	_target_center += delta_move
 
@@ -203,15 +203,15 @@ func _resolve_bounds() -> void:
 
 	if not has_points:
 		var root := get_parent()
-		var world_box: CSGBox3D = null
+		var world_node: Node = null
 		if root != null:
-			world_box = root.get_node_or_null("World") as CSGBox3D
-		if world_box != null:
-			var scaled_size: Vector3 = world_box.size * world_box.scale.abs()
-			min_x = world_box.global_position.x - scaled_size.x * 0.5
-			max_x = world_box.global_position.x + scaled_size.x * 0.5
-			min_z = world_box.global_position.z - scaled_size.z * 0.5
-			max_z = world_box.global_position.z + scaled_size.z * 0.5
+			world_node = root.get_node_or_null("World")
+		if world_node != null and world_node.has_method("get_world_bounds"):
+			var bounds: AABB = world_node.call("get_world_bounds")
+			min_x = bounds.position.x
+			max_x = bounds.position.x + bounds.size.x
+			min_z = bounds.position.z
+			max_z = bounds.position.z + bounds.size.z
 			has_points = true
 
 	if not has_points:

@@ -6,8 +6,13 @@ const RESOURCES := [
 	"res://Entities/Buildings/Building.gd",
 	"res://Entities/Citizens/Citizen.gd",
 	"res://Actions/GoToBuildingAction.gd",
+	"res://Simulation/World.gd",
+	"res://Simulation/Bootstrap/NavigationSetup.gd",
+	"res://Simulation/Camera/CityBuilderCamera.gd",
 	"res://Simulation/Citizens/CitizenLocomotion.gd",
 	"res://Simulation/Navigation/PedestrianGraph.gd",
+	"res://environment/sky/Cycle.tscn",
+	"res://environment/sky/simulation_sky_bridge.gd",
 ]
 
 func _initialize() -> void:

@@ -166,8 +166,6 @@ func _setup_highlight() -> void:
 func _setup_navigation_blocker() -> void:
 	if not navigation_blocker_enabled:
 		return
-	if building_type == BuildingType.PARK:
-		return
 	if get_node_or_null("NavigationBlocker") != null:
 		return
 	if _has_physics_body(self):

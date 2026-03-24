@@ -1,6 +1,6 @@
-[gd_resource type="ShaderMaterial" load_steps=6 format=3]
+[gd_resource type="ShaderMaterial" format=3 uid="uid://cxapliitbuoy7"]
 
-[ext_resource type="Shader" path="res://environment/sky/stylized-sky.gdshader" id="1_rvtj8"]
+[ext_resource type="Shader" uid="uid://bckg0sdevicre" path="res://environment/sky/stylized-sky.gdshader" id="1_rvtj8"]
 
 [sub_resource type="Curve" id="Curve_oaatt"]
 _data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.124717, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.738665), 0.0, 0.0, 0, 0]
@@ -13,8 +13,8 @@ curve = SubResource("Curve_oaatt")
 noise_type = 2
 
 [sub_resource type="NoiseTexture2D" id="NoiseTexture2D_vneii"]
-seamless = true
 noise = SubResource("FastNoiseLite_c3xcl")
+seamless = true
 
 [resource]
 shader = ExtResource("1_rvtj8")
@@ -33,6 +33,8 @@ shader_parameter/high_clouds_density = 0.2
 shader_parameter/top_color = Color(0.34902, 0.588235, 1, 1)
 shader_parameter/bottom_color = Color(0, 0.329412, 0.968627, 1)
 shader_parameter/sun_scatter = Color(0.298039, 0.298039, 0.298039, 1)
+shader_parameter/sun_visible = true
+shader_parameter/sun_direction = Vector3(0, 0.3, -1)
 shader_parameter/sun_color = Color(1, 0.9, 0.85, 1)
 shader_parameter/sun_size = 3.0
 shader_parameter/sun_intensity = 2.0
@@ -60,4 +62,3 @@ shader_parameter/stars_tint = Color(1, 1, 1, 1)
 shader_parameter/stars_scintillation = 0.5
 shader_parameter/shooting_stars_intensity = 0.0
 shader_parameter/shooting_star_tint = Color(0, 0, 0, 1)
-
