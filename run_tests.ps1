@@ -1,0 +1,154 @@
+param(
+	[string]$GodotExe = "",
+	[string[]]$Only = @(),
+	[switch]$IncludeSky,
+	[switch]$VerboseGodot
+)
+
+$ErrorActionPreference = "Stop"
+if ($null -ne (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue)) {
+	$PSNativeCommandUseErrorActionPreference = $false
+}
+
+function Resolve-GodotConsoleExe {
+	param([string]$RequestedPath)
+
+	if ($RequestedPath -and (Test-Path $RequestedPath)) {
+		return (Resolve-Path $RequestedPath).Path
+	}
+
+	if ($env:GODOT_CONSOLE_EXE -and (Test-Path $env:GODOT_CONSOLE_EXE)) {
+		return (Resolve-Path $env:GODOT_CONSOLE_EXE).Path
+	}
+
+	$candidates = @(
+		"C:\dev\projects\Godot\Godot_v4.6.1-stable_win64\Godot_v4.6.1-stable_win64_console.exe",
+		"C:\dev\projects\Godot\Godot_v4.6.1-stable_win64.exe\Godot_v4.6.1-stable_win64_console.exe"
+	)
+
+	foreach ($candidate in $candidates) {
+		if (Test-Path $candidate) {
+			return (Resolve-Path $candidate).Path
+		}
+	}
+
+	$found = Get-ChildItem -Path "C:\dev\projects\Godot" -Filter "Godot*_console.exe" -Recurse -ErrorAction SilentlyContinue |
+		Sort-Object LastWriteTime -Descending |
+		Select-Object -First 1
+
+	if ($null -ne $found) {
+		return $found.FullName
+	}
+
+	throw "Godot console executable not found. Pass -GodotExe or set GODOT_CONSOLE_EXE."
+}
+
+function Invoke-GodotScript {
+	param(
+		[string]$Executable,
+		[string]$ProjectPath,
+		[string]$ScriptPath,
+		[bool]$UseVerbose
+	)
+
+	$args = @("--headless")
+	if ($UseVerbose) {
+		$args += "--verbose"
+	}
+	$args += @("--path", $ProjectPath, "--script", $ScriptPath)
+
+	$output = & $Executable @args 2>&1
+	$exitCode = $LASTEXITCODE
+	return [pscustomobject]@{
+		Output = @($output)
+		ExitCode = $exitCode
+	}
+}
+
+$projectPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+$godotConsole = Resolve-GodotConsoleExe -RequestedPath $GodotExe
+
+$availableTests = @(
+	[pscustomobject]@{
+		Key = "parse"
+		Label = "Parse Check"
+		Script = "res://tools/codex_parse_check.gd"
+	}
+	[pscustomobject]@{
+		Key = "economy"
+		Label = "Economy Test"
+		Script = "res://tools/codex_economy_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "occupancy"
+		Label = "Building Occupancy Test"
+		Script = "res://tools/codex_building_occupancy_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "route"
+		Label = "Route Probe"
+		Script = "res://tools/codex_route_probe.gd"
+	}
+	[pscustomobject]@{
+		Key = "crosswalk"
+		Label = "Crosswalk Audit"
+		Script = "res://tools/codex_crosswalk_audit.gd"
+	}
+	[pscustomobject]@{
+		Key = "sky"
+		Label = "Sky Probe"
+		Script = "res://tools/codex_sky_probe.gd"
+		Optional = $true
+	}
+)
+
+$selectedTests = $availableTests | Where-Object {
+	if ($Only.Count -gt 0) {
+		return $Only -contains $_.Key
+	}
+	if ($_.Key -eq "sky") {
+		return $IncludeSky.IsPresent
+	}
+	return $true
+}
+
+if ($selectedTests.Count -eq 0) {
+	throw "No tests selected. Use -Only parse,economy,occupancy,... or omit -Only."
+}
+
+Write-Host "Godot:   $godotConsole"
+Write-Host "Project: $projectPath"
+Write-Host ""
+
+$results = New-Object System.Collections.Generic.List[object]
+
+foreach ($test in $selectedTests) {
+	Write-Host "==> $($test.Label) [$($test.Key)]"
+	$result = Invoke-GodotScript -Executable $godotConsole -ProjectPath $projectPath -ScriptPath $test.Script -UseVerbose:$VerboseGodot.IsPresent
+	$ok = ($result.ExitCode -eq 0)
+	$results.Add([pscustomobject]@{
+		Key = $test.Key
+		Label = $test.Label
+		ExitCode = $result.ExitCode
+		Passed = $ok
+		Output = $result.Output
+	})
+
+	$result.Output | ForEach-Object { Write-Host $_ }
+	Write-Host ""
+}
+
+$failed = @($results | Where-Object { -not $_.Passed })
+
+Write-Host "Summary"
+Write-Host "-------"
+foreach ($result in $results) {
+	$status = if ($result.Passed) { "PASS" } else { "FAIL" }
+	Write-Host ("{0,-8} {1}" -f $status, $result.Label)
+}
+
+if ($failed.Count -gt 0) {
+	exit 1
+}
+
+exit 0

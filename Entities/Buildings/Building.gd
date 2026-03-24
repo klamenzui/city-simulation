@@ -520,6 +520,20 @@ func try_add_visitor(c: Citizen) -> bool:
 func remove_visitor(c: Citizen) -> void:
 	visitors.erase(c)
 
+func on_citizen_entered(c: Citizen) -> void:
+	if c == null:
+		return
+	if self is ResidentialBuilding or building_type == BuildingType.RESIDENTIAL:
+		return
+	if c.job != null and c.job.workplace == self:
+		return
+	try_add_visitor(c)
+
+func on_citizen_exited(c: Citizen) -> void:
+	if c == null:
+		return
+	remove_visitor(c)
+
 func record_income(amount: int) -> void:
 	if amount <= 0:
 		return

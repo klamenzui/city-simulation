@@ -13,6 +13,9 @@ const RESOURCES := [
 	"res://Simulation/Navigation/PedestrianGraph.gd",
 	"res://environment/sky/Cycle.tscn",
 	"res://environment/sky/simulation_sky_bridge.gd",
+	"res://ImportedCitySource/scenes/trafficlight_c_active.gd",
+	"res://tools/codex_economy_test.gd",
+	"res://tools/codex_building_occupancy_test.gd",
 ]
 
 func _initialize() -> void:

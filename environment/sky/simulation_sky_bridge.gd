@@ -24,6 +24,7 @@ func _ready() -> void:
 	_disable_legacy_sky_ui()
 	_connect_world_signals()
 	_sync_sky_rate()
+	_apply_cozy_environment_style()
 	call_deferred("_sync_from_world_time", true)
 
 func _disable_legacy_sky_ui() -> void:
@@ -95,6 +96,8 @@ func _refresh_sky_visuals() -> void:
 		if celestial_bodies.clouds_visible:
 			celestial_bodies.update_clouds()
 
+	_apply_cozy_environment_style()
+
 func _get_world_time_hours() -> float:
 	if world == null or world.time == null:
 		return 8.0
@@ -109,3 +112,61 @@ func _get_sim_seconds_per_real_second() -> float:
 		return 0.0
 
 	return float(world.minutes_per_tick) * 60.0 / real_seconds_per_tick
+
+func _apply_cozy_environment_style() -> void:
+	if world_environment == null or world_environment.environment == null:
+		return
+
+	var env := world_environment.environment
+	var hour := _get_world_time_hours()
+	var night_t := _night_factor(hour)
+	var golden_t := _golden_hour_factor(hour)
+
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.adjustment_enabled = false
+	env.adjustment_brightness = lerpf(1.04, 0.97, night_t)
+	env.adjustment_contrast = lerpf(1.08, 1.02, night_t)
+	env.adjustment_saturation = lerpf(1.07, 0.92, night_t)
+	env.glow_enabled = false
+	env.glow_intensity = lerpf(0.78, 0.45, night_t)
+	env.glow_bloom = lerpf(0.16 + golden_t * 0.08, 0.08, night_t)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.98, 0.92, 0.82).lerp(Color(0.21, 0.25, 0.36), night_t)
+	env.ambient_light_energy = lerpf(1.15 + golden_t * 0.12, 0.35, night_t)
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	env.fog_enabled = false
+	env.fog_density = lerpf(0.0032 + golden_t * 0.0008, 0.0048, night_t)
+	env.fog_light_color = Color(1.0, 0.78, 0.62).lerp(Color(0.30, 0.37, 0.53), night_t)
+	env.fog_light_energy = lerpf(0.6 + golden_t * 0.2, 0.24, night_t)
+	env.fog_sky_affect = 0.32
+	env.fog_aerial_perspective = 0.2
+
+	if directional_light != null:
+		var day_color := Color(1.0, 0.95, 0.86)
+		var sunset_color := Color(1.0, 0.74, 0.56)
+		var night_color := Color(0.48, 0.54, 0.68)
+		directional_light.light_color = day_color.lerp(sunset_color, golden_t).lerp(night_color, night_t)
+		directional_light.light_angular_distance = 1.3
+		directional_light.light_energy *= lerpf(0.96, 0.82, golden_t)
+
+func _golden_hour_factor(hour: float) -> float:
+	var sunrise := _window_factor(hour, 5.5, 8.0)
+	var sunset := _window_factor(hour, 16.5, 19.5)
+	return maxf(sunrise, sunset)
+
+func _night_factor(hour: float) -> float:
+	if hour >= 20.0 or hour < 5.0:
+		return 1.0
+	if hour < 7.0:
+		return inverse_lerp(7.0, 5.0, hour)
+	if hour > 18.5:
+		return inverse_lerp(18.5, 20.0, hour)
+	return 0.0
+
+func _window_factor(hour: float, start_hour: float, end_hour: float) -> float:
+	if hour <= start_hour or hour >= end_hour:
+		return 0.0
+	var mid := (start_hour + end_hour) * 0.5
+	if hour <= mid:
+		return inverse_lerp(start_hour, mid, hour)
+	return inverse_lerp(end_hour, mid, hour)

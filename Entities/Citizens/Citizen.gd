@@ -337,6 +337,8 @@ func enter_building(building: Building, world: World = null, emit_log: bool = tr
 	if nav_points.has("spawn"):
 		set_position_grounded(nav_points["spawn"])
 	_inside_building = building
+	if building.has_method("on_citizen_entered"):
+		building.on_citizen_entered(self)
 	_set_interior_presence(true)
 	if world != null:
 		_ground_fallback_y = world.get_ground_fallback_y()
@@ -361,6 +363,8 @@ func exit_current_building(world: World = null) -> void:
 	var exit_pos: Vector3 = nav_points.get("spawn", _get_building_exit_spawn_pos(exit_building, world))
 
 	_inside_building = null
+	if exit_building.has_method("on_citizen_exited"):
+		exit_building.on_citizen_exited(self)
 	_set_interior_presence(false)
 	set_position_grounded(exit_pos)
 	if absf(global_position.y - exit_pos.y) > 0.45:
