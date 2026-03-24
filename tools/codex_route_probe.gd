@@ -111,6 +111,8 @@ func _init() -> void:
 		)
 		if world.has_method("describe_pedestrian_path"):
 			print("GRAPH_CROSSWALK_SUMMARY ", world.describe_pedestrian_path(graph_route))
+		for point in graph_route:
+			print("GRAPH_CROSSWALK_POINT ", _fmt_vec3(point))
 
 	if not world.citizens.is_empty():
 		var citizen: Citizen = world.citizens[0] as Citizen

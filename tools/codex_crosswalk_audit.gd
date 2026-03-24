@@ -110,7 +110,9 @@ func _audit_route_segments(graph, route: PackedVector3Array) -> Array[Dictionary
 	var mapped_indices: Array[int] = []
 	var mapped_points: Array[Vector3] = []
 	for point in route:
-		var idx := int(graph._node_index_by_key.get(graph._grid_key(graph._snap_to_edge(point)), -1))
+		var idx := -1
+		if graph.has_method("find_node_index_for_path_point"):
+			idx = int(graph.find_node_index_for_path_point(point))
 		if idx < 0:
 			continue
 		if not mapped_indices.is_empty() and mapped_indices[mapped_indices.size() - 1] == idx:

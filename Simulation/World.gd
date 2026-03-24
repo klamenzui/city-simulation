@@ -1,4 +1,4 @@
-extends CSGBox3D
+extends MeshInstance3D
 class_name World
 
 const RoadGraphScript = preload("res://Simulation/Navigation/RoadGraph.gd")
@@ -7,6 +7,7 @@ const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
 
 @export var minutes_per_tick: int = 1
 @export var tick_interval_sec: float = 0.5
+@export_range(0.1, 20.0, 0.1) var speed_multiplier: float = 1.0
 
 var time: TimeSystem = TimeSystem.new()
 var economy: EconomySystem = EconomySystem.new()
@@ -21,7 +22,6 @@ var buildings: Array[Building] = []
 var jobs: Array[Job] = []
 
 var is_paused: bool = false
-var speed_multiplier: float = 1
 
 signal paused_changed(paused: bool)
 signal speed_changed(multiplier: float)
@@ -29,7 +29,7 @@ signal speed_changed(multiplier: float)
 var _timer: Timer
 
 func _ready() -> void:
-	use_collision = true
+	#use_collision = true
 
 	add_child(time)
 	add_child(economy)
@@ -41,10 +41,10 @@ func _ready() -> void:
 
 	_timer = Timer.new()
 	speed_multiplier = maxf(speed_multiplier, 0.1)
-	_timer.wait_time = tick_interval_sec / speed_multiplier
 	_timer.autostart = true
 	_timer.timeout.connect(_on_tick)
 	add_child(_timer)
+	_refresh_timer_wait_time()
 
 	time.payday.connect(_on_payday)
 	time.day_changed.connect(_on_day_changed)
@@ -188,8 +188,13 @@ func toggle_pause() -> void:
 
 func set_speed(multiplier: float) -> void:
 	speed_multiplier = maxf(multiplier, 0.1)
-	_timer.wait_time = tick_interval_sec / speed_multiplier
+	_refresh_timer_wait_time()
 	speed_changed.emit(speed_multiplier)
+
+func _refresh_timer_wait_time() -> void:
+	if _timer == null:
+		return
+	_timer.wait_time = tick_interval_sec / maxf(speed_multiplier, 0.1)
 
 func world_day() -> int:
 	return time.day
@@ -245,9 +250,22 @@ func get_pedestrian_component_id(pos: Vector3, building: Building = null) -> int
 		return 0
 	return pedestrian_graph.get_component_id_for_pos(pos, building)
 
+func get_world_bounds() -> AABB:
+	if mesh != null:
+		return _transform_aabb_to_world(mesh.get_aabb())
+	return AABB(global_position - Vector3(40.0, 1.0, 40.0), Vector3(80.0, 2.0, 80.0))
+
+func get_world_center() -> Vector3:
+	var bounds := get_world_bounds()
+	return bounds.position + bounds.size * 0.5
+
 func get_ground_fallback_y() -> float:
-	var world_height := size.y * absf(scale.y)
-	return global_position.y + (world_height * 0.5) + 0.01
+	var ground_y := _get_registered_ground_y()
+	if ground_y != INF:
+		return ground_y + 0.02
+
+	var bounds := get_world_bounds()
+	return bounds.position.y + bounds.size.y * 0.5
 
 func register_citizen(citizen: Citizen) -> void:
 	if citizen == null or citizens.has(citizen):
@@ -522,3 +540,42 @@ func _count_citizen_building_preference(property_name: String, building: Buildin
 		if citizen.get(property_name) == building:
 			count += 1
 	return count
+
+func _get_registered_ground_y() -> float:
+	var best_y := INF
+	for building in buildings:
+		if building == null:
+			continue
+		best_y = minf(best_y, building.global_position.y)
+	if best_y != INF:
+		return best_y
+
+	for road in get_tree().get_nodes_in_group("road_group"):
+		if road is Node3D:
+			best_y = minf(best_y, (road as Node3D).global_position.y)
+	return best_y
+
+func _transform_aabb_to_world(local_bounds: AABB) -> AABB:
+	var corners := [
+		local_bounds.position,
+		local_bounds.position + Vector3(local_bounds.size.x, 0.0, 0.0),
+		local_bounds.position + Vector3(0.0, local_bounds.size.y, 0.0),
+		local_bounds.position + Vector3(0.0, 0.0, local_bounds.size.z),
+		local_bounds.position + Vector3(local_bounds.size.x, local_bounds.size.y, 0.0),
+		local_bounds.position + Vector3(local_bounds.size.x, 0.0, local_bounds.size.z),
+		local_bounds.position + Vector3(0.0, local_bounds.size.y, local_bounds.size.z),
+		local_bounds.position + local_bounds.size,
+	]
+
+	var min_corner := Vector3(INF, INF, INF)
+	var max_corner := Vector3(-INF, -INF, -INF)
+	for corner in corners:
+		var world_corner := to_global(corner)
+		min_corner.x = minf(min_corner.x, world_corner.x)
+		min_corner.y = minf(min_corner.y, world_corner.y)
+		min_corner.z = minf(min_corner.z, world_corner.z)
+		max_corner.x = maxf(max_corner.x, world_corner.x)
+		max_corner.y = maxf(max_corner.y, world_corner.y)
+		max_corner.z = maxf(max_corner.z, world_corner.z)
+
+	return AABB(min_corner, max_corner - min_corner)

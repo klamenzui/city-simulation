@@ -2,7 +2,7 @@ extends Node3D
 
 @onready var world: World = $World
 
-const CITIZEN_COUNT := 10
+const CITIZEN_COUNT := 15
 const SELECTED_CITIZEN_TRACE_INTERVAL_SEC := 1.0
 const ALL_CITIZEN_TRACE_INTERVAL_SEC := 0.5
 const ENABLE_ALL_CITIZEN_TRACE := true
@@ -18,6 +18,7 @@ const CityHallScene = preload("res://Scenes/CityHall.tscn")
 const FarmScene = preload("res://Scenes/Farm.tscn")
 const FactoryScene = preload("res://Scenes/Factory.tscn")
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
+const OCEAN_NODE_NAME := "Ocean"
 
 var _pause_btn: Button
 var _speed_label: Label
@@ -87,6 +88,48 @@ func _setup_world_systems() -> void:
 
 	world.rebuild_road_graph(self)
 	world.rebuild_pedestrian_graph(self)
+	_ensure_ocean()
+
+func _ensure_ocean() -> void:
+	if world == null or not world.has_method("get_world_bounds"):
+		return
+
+	var ocean := world.get_node_or_null(OCEAN_NODE_NAME) as MeshInstance3D
+	if ocean == null:
+		ocean = MeshInstance3D.new()
+		ocean.name = OCEAN_NODE_NAME
+		ocean.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		world.add_child(ocean)
+
+	var bounds: AABB = world.get_world_bounds()
+	var span := maxf(maxf(bounds.size.x, bounds.size.z), 120.0)
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(span * 2.4, span * 2.4)
+	plane.subdivide_width = 24
+	plane.subdivide_depth = 24
+	ocean.mesh = plane
+	ocean.material_override = _build_ocean_material()
+	ocean.position = world.to_local(_get_ocean_world_position(bounds))
+
+func _get_ocean_world_position(bounds: AABB) -> Vector3:
+	var center := bounds.position + bounds.size * 0.5
+	var water_y := bounds.position.y + clampf(bounds.size.y * 0.08, 0.18, 0.75)
+	if world != null and world.has_method("get_ground_fallback_y"):
+		water_y = minf(water_y, world.get_ground_fallback_y() - 0.35)
+	return Vector3(center.x, water_y, center.z)
+
+func _build_ocean_material() -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_color = Color(0.08, 0.33, 0.45, 0.74)
+	material.roughness = 0.08
+	material.metallic = 0.04
+	material.metallic_specular = 0.82
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.emission_enabled = true
+	material.emission = Color(0.03, 0.14, 0.18, 1.0)
+	material.emission_energy_multiplier = 0.35
+	return material
 
 func _spawn_missing_core_buildings() -> void:
 	if not _has_building_type("restaurant"):

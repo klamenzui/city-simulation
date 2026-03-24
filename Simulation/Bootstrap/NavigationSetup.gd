@@ -9,11 +9,11 @@ static func ensure_region(root: Node3D, world: World, region_name: String = "Nav
 	if root.get_node_or_null(region_name) != null:
 		return
 
-	var scale_abs := Vector3(absf(world.scale.x), absf(world.scale.y), absf(world.scale.z))
-	var world_size := world.size * scale_abs
-	var half_x: float = maxf(world_size.x * 0.5 - 1.0, 6.0)
-	var half_z: float = maxf(world_size.z * 0.5 - 1.0, 6.0)
-	var nav_y: float = world.global_position.y + world_size.y * 0.5 + 0.02
+	var bounds := world.get_world_bounds()
+	var center := bounds.position + bounds.size * 0.5
+	var half_x: float = maxf(bounds.size.x * 0.5 - 1.0, 6.0)
+	var half_z: float = maxf(bounds.size.z * 0.5 - 1.0, 6.0)
+	var nav_y: float = world.get_ground_fallback_y() + 0.02
 
 	var nav_mesh := NavigationMesh.new()
 	nav_mesh.agent_height = 1.8
@@ -21,10 +21,10 @@ static func ensure_region(root: Node3D, world: World, region_name: String = "Nav
 	nav_mesh.cell_size = 0.25
 	nav_mesh.cell_height = 0.25
 	nav_mesh.vertices = PackedVector3Array([
-		Vector3(-half_x, nav_y, -half_z),
-		Vector3(half_x, nav_y, -half_z),
-		Vector3(half_x, nav_y, half_z),
-		Vector3(-half_x, nav_y, half_z)
+		Vector3(center.x - half_x, nav_y, center.z - half_z),
+		Vector3(center.x + half_x, nav_y, center.z - half_z),
+		Vector3(center.x + half_x, nav_y, center.z + half_z),
+		Vector3(center.x - half_x, nav_y, center.z + half_z)
 	])
 	nav_mesh.add_polygon(PackedInt32Array([0, 1, 2, 3]))
 
