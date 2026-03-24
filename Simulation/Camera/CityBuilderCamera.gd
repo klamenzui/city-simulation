@@ -252,3 +252,7 @@ func _initialize_from_transform() -> void:
 	_distance = _target_distance
 	_clamp_targets()
 	_apply_camera_transform()
+
+func focus_on_world_position(pos: Vector3) -> void:
+	_target_center = Vector3(pos.x, _ground_y, pos.z)
+	_clamp_targets()

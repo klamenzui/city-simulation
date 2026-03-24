@@ -237,6 +237,11 @@ func count_pedestrian_path_crosswalk_centers(points: PackedVector3Array) -> int:
 		return pedestrian_graph.count_crosswalk_centers(points)
 	return 0
 
+func get_pedestrian_path_point_kind(point: Vector3) -> String:
+	if pedestrian_graph != null and pedestrian_graph.has_method("get_path_point_kind"):
+		return pedestrian_graph.get_path_point_kind(point)
+	return ""
+
 func has_pedestrian_route(start_pos: Vector3, end_pos: Vector3, start_building: Building = null, end_building: Building = null) -> bool:
 	if pedestrian_graph != null and pedestrian_graph.has_graph():
 		if pedestrian_graph.has_path_between(start_pos, end_pos, start_building, end_building):

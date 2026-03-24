@@ -49,6 +49,7 @@ var _debug_once_keys: Dictionary = {}
 @export var waypoint_reach_distance: float = 0.35
 @export var arrival_distance: float = 0.65
 @export var final_arrival_distance: float = 0.18
+@export var floor_snap_distance: float = 0.35
 @export var ground_probe_up: float = 4.0
 @export var ground_probe_down: float = 12.0
 @export var max_ground_step_up: float = 0.85
@@ -67,6 +68,10 @@ var _debug_once_keys: Dictionary = {}
 @export var obstacle_stuck_distance: float = 0.02
 @export var obstacle_repath_timeout: float = 1.6
 @export var obstacle_slide_hold_sec: float = 0.4
+@export var crowded_waypoint_skip_distance: float = 1.0
+@export var crowded_waypoint_neighbor_radius: float = 0.55
+@export var crowded_waypoint_shared_target_radius: float = 0.45
+@export var crowded_waypoint_neighbor_count: int = 2
 @export var entrance_contact_distance: float = 1.05
 @export var entrance_contact_alignment: float = 0.45
 
@@ -161,6 +166,7 @@ func _ready() -> void:
 	_body_collision_shape = get_node_or_null("CollisionShape3D") as CollisionShape3D
 	_saved_collision_layer = collision_layer
 	_saved_collision_mask = collision_mask
+	floor_snap_length = floor_snap_distance
 	_agent.setup(self)
 	_last_move_position = global_position
 	call_deferred("_auto_resolve_refs")
@@ -428,8 +434,9 @@ func _get_building_nav_points(building: Building, world: World = null) -> Dictio
 	}
 
 func _get_building_lane_offset() -> float:
-	var lane_slot := int(abs(citizen_name.hash())) % 3 - 1
-	return float(lane_slot) * 0.12
+	var lane_offsets := [-0.18, -0.06, 0.06, 0.18]
+	var lane_slot := int(abs(citizen_name.hash())) % lane_offsets.size()
+	return float(lane_offsets[lane_slot])
 
 func _compute_building_exit_spawn_from_points(
 	building: Building,
@@ -455,6 +462,86 @@ func _compute_building_exit_spawn_from_points(
 	var spawn_pos := spawn_base + lateral * lane_offset + outward * 0.02
 	spawn_pos.y = spawn_base.y
 	return spawn_pos
+
+func _get_waypoint_move_target() -> Vector3:
+	if _travel_route_index <= 0 or _travel_route_index >= _travel_route.size() - 1:
+		return _travel_target
+	if _is_crosswalk_waypoint(_travel_target):
+		return _travel_target
+
+	var prev_point := _travel_route[_travel_route_index - 1]
+	var next_point := _travel_route[_travel_route_index + 1]
+	var axis := next_point - prev_point
+	axis.y = 0.0
+	if axis.length_squared() <= 0.0001:
+		axis = _travel_target - prev_point
+		axis.y = 0.0
+	if axis.length_squared() <= 0.0001:
+		return _travel_target
+
+	var lateral := Vector3(-axis.z, 0.0, axis.x).normalized()
+	var adjusted_target := _travel_target + lateral * _get_building_lane_offset()
+	adjusted_target.y = _travel_target.y
+	return adjusted_target
+
+func _should_skip_crowded_waypoint(distance_to_target: float, is_last_waypoint: bool) -> bool:
+	if is_last_waypoint:
+		return false
+	if _travel_route_index <= 0 or _travel_route_index >= _travel_route.size() - 1:
+		return false
+	if _is_crosswalk_waypoint(_travel_target):
+		return false
+	if distance_to_target > crowded_waypoint_skip_distance:
+		return false
+	if _stuck_timer < obstacle_stuck_timeout:
+		return false
+	return _count_waypoint_conflicts() >= crowded_waypoint_neighbor_count
+
+func _count_waypoint_conflicts() -> int:
+	if _world_ref == null:
+		return 0
+
+	var conflicts := 0
+	for other in _world_ref.citizens:
+		if other == null or other == self:
+			continue
+		if not is_instance_valid(other):
+			continue
+		if other.has_method("is_inside_building") and other.is_inside_building():
+			continue
+		if global_position.distance_to(other.global_position) > crowded_waypoint_neighbor_radius:
+			continue
+
+		var shares_target := false
+		if other is Citizen:
+			var other_citizen := other as Citizen
+			if other_citizen._is_travelling and other_citizen._travel_target.distance_to(_travel_target) <= crowded_waypoint_shared_target_radius:
+				shares_target = true
+		if not shares_target and other.global_position.distance_to(_travel_target) > crowded_waypoint_skip_distance:
+			continue
+		conflicts += 1
+
+	return conflicts
+
+func _is_crosswalk_waypoint(point: Vector3) -> bool:
+	if _world_ref == null or not _world_ref.has_method("get_pedestrian_path_point_kind"):
+		return false
+	var kind := str(_world_ref.get_pedestrian_path_point_kind(point))
+	return kind.begins_with("crosswalk")
+
+func _recover_floor_contact() -> void:
+	if is_on_floor():
+		return
+	var hit := _probe_ground_hit(global_position)
+	if hit.is_empty():
+		return
+	var floor_pos := hit["position"] as Vector3
+	var floor_gap := global_position.y - floor_pos.y
+	if floor_gap < -0.05 or floor_gap > maxf(floor_snap_distance + 0.1, 0.55):
+		return
+	global_position.y = floor_pos.y
+	velocity.y = 0.0
+	_vertical_speed = 0.0
 
 func get_debug_travel_path() -> PackedVector3Array:
 	var path := PackedVector3Array()
@@ -543,6 +630,7 @@ func _move_along_path(delta: float) -> void:
 		else:
 			velocity.y = maxf(velocity.y - gravity_strength * delta, -max_fall_speed)
 		move_and_slide()
+		_recover_floor_contact()
 		return
 
 	var to_target := _travel_target - global_position
@@ -566,7 +654,17 @@ func _move_along_path(delta: float) -> void:
 		stop_travel()
 		return
 
-	if distance_to_target <= 0.001:
+	if _should_skip_crowded_waypoint(distance_to_target, is_last_waypoint):
+		if _advance_travel_route():
+			_update_trace_navigation_state("skip_crowded_waypoint", Vector3.ZERO, Vector3.ZERO)
+			return
+
+	var move_target := _get_waypoint_move_target()
+	var move_delta := move_target - global_position
+	move_delta.y = 0.0
+	var move_distance := move_delta.length()
+
+	if move_distance <= 0.001:
 		_current_speed = move_toward(_current_speed, 0.0, move_deceleration * delta)
 		_update_trace_navigation_state("arriving", Vector3.ZERO, Vector3.ZERO)
 		return
@@ -580,7 +678,7 @@ func _move_along_path(delta: float) -> void:
 	else:
 		_current_speed = move_toward(_current_speed, desired_speed, move_deceleration * delta)
 
-	var desired_dir: Vector3 = to_target / distance_to_target
+	var desired_dir: Vector3 = move_delta / move_distance
 	var move_dir := _compute_move_direction(desired_dir)
 	_update_facing(move_dir, delta)
 
@@ -593,6 +691,7 @@ func _move_along_path(delta: float) -> void:
 		velocity.y = maxf(velocity.y - gravity_strength * delta, -max_fall_speed)
 
 	move_and_slide()
+	_recover_floor_contact()
 	_update_stuck_state(delta)
 
 func _update_facing(move_dir: Vector3, delta: float) -> void:
