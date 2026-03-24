@@ -1,12 +1,14 @@
 extends Node3D
 
 @onready var world: World = $World
+@onready var _city_camera: CityBuilderCamera = $Camera3D as CityBuilderCamera
 
 const CITIZEN_COUNT := 15
 const SELECTED_CITIZEN_TRACE_INTERVAL_SEC := 1.0
 const ALL_CITIZEN_TRACE_INTERVAL_SEC := 0.5
 const ENABLE_ALL_CITIZEN_TRACE := true
 const ENABLE_MAP_SNAPSHOT_LOG := true
+const SEARCH_RESULT_LIMIT := 12
 const RoadBuilderScript = preload("res://Simulation/Bootstrap/RoadBuilder.gd")
 const ImportedCitySetupScript = preload("res://Simulation/Bootstrap/ImportedCitySetup.gd")
 const RestaurantScene = preload("res://Scenes/Restaurant.tscn")
@@ -28,6 +30,9 @@ var _speed_label: Label
 var _date_label: Label
 var _clock_label: Label
 var _citizen_stats_label: Label
+var _search_input: LineEdit
+var _search_results_list: ItemList
+var _search_results: Array[Dictionary] = []
 var _debug_panel: DebugPanel
 var _selected_citizen: Citizen = null
 var _selected_building: Building = null
@@ -833,14 +838,52 @@ func _build_hud() -> void:
 	_speed_label.custom_minimum_size = Vector2(42, 36)
 	hbox.add_child(_speed_label)
 
+	var search_margin := MarginContainer.new()
+	search_margin.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	search_margin.offset_left = -360
+	search_margin.offset_top = 10
+	search_margin.offset_right = -10
+	search_margin.offset_bottom = 236
+	canvas.add_child(search_margin)
+
+	var search_panel := PanelContainer.new()
+	search_margin.add_child(search_panel)
+
+	var search_vbox := VBoxContainer.new()
+	search_vbox.add_theme_constant_override("separation", 6)
+	search_panel.add_child(search_vbox)
+
+	_search_input = LineEdit.new()
+	_search_input.placeholder_text = "Search citizen or building..."
+	_search_input.clear_button_enabled = true
+	_search_input.custom_minimum_size = Vector2(320, 36)
+	_search_input.text_changed.connect(_on_search_text_changed)
+	_search_input.text_submitted.connect(_on_search_text_submitted)
+	_search_input.gui_input.connect(_on_search_ui_input)
+	search_vbox.add_child(_search_input)
+
+	_search_results_list = ItemList.new()
+	_search_results_list.custom_minimum_size = Vector2(320, 168)
+	_search_results_list.select_mode = ItemList.SELECT_SINGLE
+	_search_results_list.visible = false
+	_search_results_list.item_selected.connect(_on_search_result_selected)
+	_search_results_list.item_activated.connect(_on_search_result_activated)
+	_search_results_list.gui_input.connect(_on_search_ui_input)
+	search_vbox.add_child(_search_results_list)
+
 	world.paused_changed.connect(_on_world_paused)
 	world.speed_changed.connect(_on_world_speed_changed)
 	world.time.time_advanced.connect(_on_time_advanced)
 	_refresh_time_hud()
 
 func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_accept"):
+	if event.is_action_pressed("ui_accept") and (_search_input == null or not _search_input.has_focus()):
 		_on_pause_pressed()
+
+	if event.is_action_pressed("ui_cancel") and _search_results_list != null and _search_results_list.visible:
+		_search_results_list.visible = false
+		get_viewport().set_input_as_handled()
+		return
 
 	if event is InputEventMouseButton \
 		and event.button_index == MOUSE_BUTTON_LEFT \
@@ -865,6 +908,144 @@ func _on_world_paused(paused: bool) -> void:
 
 func _on_world_speed_changed(multiplier: float) -> void:
 	_speed_label.text = "%.1fx" % multiplier
+
+func _on_search_text_changed(new_text: String) -> void:
+	_refresh_search_results(new_text)
+
+func _on_search_text_submitted(submitted_text: String) -> void:
+	_refresh_search_results(submitted_text)
+	if _search_results.is_empty():
+		return
+	_apply_search_result(0)
+
+func _on_search_result_selected(index: int) -> void:
+	_apply_search_result(index)
+
+func _on_search_result_activated(index: int) -> void:
+	_apply_search_result(index)
+
+func _on_search_ui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed:
+		_entity_clicked_this_frame = true
+
+func _refresh_search_results(raw_query: String) -> void:
+	_search_results.clear()
+	if _search_results_list == null:
+		return
+
+	_search_results_list.clear()
+	var query := raw_query.strip_edges().to_lower()
+	if query.is_empty():
+		_search_results_list.visible = false
+		return
+
+	var matches := _collect_search_matches(query)
+	for entry in matches:
+		_search_results.append(entry)
+		_search_results_list.add_item(str(entry.get("label", "")))
+
+	_search_results_list.visible = not _search_results.is_empty()
+
+func _collect_search_matches(query: String) -> Array[Dictionary]:
+	var matches: Array[Dictionary] = []
+	if world == null:
+		return matches
+
+	for citizen in world.citizens:
+		if citizen == null or not is_instance_valid(citizen):
+			continue
+		var citizen_name := citizen.citizen_name.strip_edges()
+		var location_name := citizen.current_location.get_display_name() if citizen.current_location != null else "travelling"
+		var searchable := ("%s %s citizen person" % [citizen_name, location_name]).to_lower()
+		var score := _compute_search_score(query, citizen_name.to_lower(), searchable)
+		if score < 0:
+			continue
+		matches.append({
+			"score": score,
+			"sort_name": citizen_name.to_lower(),
+			"name": citizen_name,
+			"label": "Citizen | %s | %s" % [citizen_name, location_name],
+			"entity": citizen,
+		})
+
+	for building in world.buildings:
+		if building == null or not is_instance_valid(building):
+			continue
+		var building_name := building.get_display_name().strip_edges()
+		var searchable := ("%s %s building house" % [building_name, building.get_service_type()]).to_lower()
+		var score := _compute_search_score(query, building_name.to_lower(), searchable)
+		if score < 0:
+			continue
+		matches.append({
+			"score": score,
+			"sort_name": building_name.to_lower(),
+			"name": building_name,
+			"label": "Building | %s | %s" % [building_name, building.get_service_type()],
+			"entity": building,
+		})
+
+	matches.sort_custom(_sort_search_matches)
+	if matches.size() > SEARCH_RESULT_LIMIT:
+		matches.resize(SEARCH_RESULT_LIMIT)
+	return matches
+
+func _compute_search_score(query: String, primary_name: String, searchable: String) -> int:
+	if primary_name == query:
+		return 0
+	if primary_name.begins_with(query):
+		return 1
+	if searchable.contains(" " + query):
+		return 2
+	if searchable.contains(query):
+		return 3
+	return -1
+
+func _sort_search_matches(a: Dictionary, b: Dictionary) -> bool:
+	var score_a := int(a.get("score", 99))
+	var score_b := int(b.get("score", 99))
+	if score_a != score_b:
+		return score_a < score_b
+	return str(a.get("sort_name", "")) < str(b.get("sort_name", ""))
+
+func _apply_search_result(index: int) -> void:
+	if index < 0 or index >= _search_results.size():
+		return
+
+	_entity_clicked_this_frame = true
+	var entry := _search_results[index]
+	var entity = entry.get("entity", null)
+
+	if entity is Citizen:
+		_on_citizen_clicked(entity as Citizen)
+	elif entity is Building:
+		_on_building_clicked(entity as Building)
+	else:
+		return
+
+	if _search_input != null:
+		_search_input.text = str(entry.get("name", _search_input.text))
+	if _search_results_list != null:
+		_search_results_list.visible = false
+
+	_focus_camera_on_search_entity(entity)
+
+func _focus_camera_on_search_entity(entity) -> void:
+	if _city_camera == null:
+		return
+
+	var focus_pos := Vector3.ZERO
+	if entity is Citizen:
+		var citizen := entity as Citizen
+		if citizen.is_inside_building() and citizen.current_location != null:
+			focus_pos = citizen.current_location.global_position
+		else:
+			focus_pos = citizen.global_position
+	elif entity is Building:
+		focus_pos = (entity as Building).global_position
+	else:
+		return
+
+	_city_camera.focus_on_world_position(focus_pos)
 
 func _on_time_advanced(_day: int, _hour: int, _minute: int) -> void:
 	_refresh_time_hud()

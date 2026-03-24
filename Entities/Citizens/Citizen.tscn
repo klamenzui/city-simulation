@@ -25,6 +25,7 @@ mesh = SubResource("CapsuleMesh_cbg8l")
 transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0.31758282, 0)
 
 [node name="ObstacleRayCastForward" type="RayCast3D" parent="ObstacleSensorPivot" unique_id=293945390]
+transform = Transform3D(1, 0, 0, 0, 0.9807308, 0.1953642, 0, -0.1953642, 0.9807308, 0, 0, 0)
 target_position = Vector3(0, 0, -0.95)
 
 [node name="ObstacleRayCastLeft" type="RayCast3D" parent="ObstacleSensorPivot" unique_id=1515096413]

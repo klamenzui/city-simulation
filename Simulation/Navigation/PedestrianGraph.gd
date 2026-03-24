@@ -250,6 +250,13 @@ func describe_path(points: PackedVector3Array) -> String:
 func count_crosswalk_centers(points: PackedVector3Array) -> int:
 	return _collect_crosswalk_centers(points).size()
 
+func get_path_point_kind(point: Vector3) -> String:
+	var idx := find_node_index_for_path_point(point)
+	if idx < 0:
+		return ""
+	var meta := _node_meta.get(idx, {}) as Dictionary
+	return str(meta.get("kind", ""))
+
 func _collect_crosswalk_centers(points: PackedVector3Array) -> Array[String]:
 	var crosswalk_centers: Array[String] = []
 	for point in points:
