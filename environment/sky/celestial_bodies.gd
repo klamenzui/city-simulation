@@ -19,8 +19,8 @@ var time_manager: SkyTimeManager
 @export_group("Sun Settings")
 @export var sun_size: float = 4.0 # scale factor for sun size
 @export var sun_intensity: float = 3.0 # brightness multiplier
-@export var sun_bloom: float = 1.2 # Amount of glow around the sun
-@export var sun_color: Color = Color(1.0, 0.9, 0.7) # Warm sun color
+@export var sun_bloom: float = 1.35 # Amount of glow around the sun
+@export var sun_color: Color = Color(1.0, 0.87, 0.68) # Warm sun color
 
 # Moon settings
 @export_group("Moon Settings")
@@ -28,7 +28,7 @@ var time_manager: SkyTimeManager
 @export var moon_phase_offset: float = 0.0 # 0.0-1.0 to adjust initial phase
 @export var moon_size: float = 5.0 # scale factor for moon size
 @export var moon_brightness: float = 1.5 # brightness multiplier
-@export var moon_tint: Color = Color(0.95, 0.95, 1.0) # Slight blue tint for the moon
+@export var moon_tint: Color = Color(0.92, 0.94, 1.0) # Slight blue tint for the moon
 
 # NEW: Moon rise/set timing adjustments 
 @export var moon_rise_hour_offset: float = 18.0 # Hour when moon rises (default: sunset)
@@ -38,8 +38,8 @@ var time_manager: SkyTimeManager
 
 # Stars settings
 @export_group("Stars Settings") 
-@export var stars_intensity: float = 5.0
-@export var stars_tint: Color = Color(1.0, 1.0, 1.0)
+@export var stars_intensity: float = 4.0
+@export var stars_tint: Color = Color(1.0, 0.97, 0.92)
 @export var stars_scintillation: float = 0.5 # How much stars twinkle
 
 # Planets settings
@@ -51,8 +51,8 @@ var time_manager: SkyTimeManager
 
 # Clouds settings
 @export_group("Clouds Settings")
-@export var clouds_density: float = 0.4
-@export var high_clouds_density: float = 0.2
+@export var clouds_density: float = 0.46
+@export var high_clouds_density: float = 0.24
 
 # Resources
 var moon_texture: Texture2D

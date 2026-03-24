@@ -25,45 +25,45 @@ const OBLIQUITY = 23.439 # Earth's axial tilt in degrees
 
 # Color presets for different times of day
 var dawn_colors = {
-	"top_color": Color(0.243, 0.271, 0.559),
-	"bottom_color": Color(0.894, 0.541, 0.337),
-	"sun_scatter": Color(0.976, 0.6, 0.361),
-	"clouds_light_color": Color(0.984, 0.78, 0.639)
+	"top_color": Color(0.294, 0.255, 0.451),
+	"bottom_color": Color(0.945, 0.592, 0.408),
+	"sun_scatter": Color(0.988, 0.655, 0.42),
+	"clouds_light_color": Color(0.992, 0.816, 0.682)
 }
 
 var sunrise_colors = {
-	"top_color": Color(0.337, 0.467, 0.855),
-	"bottom_color": Color(0.949, 0.608, 0.355),
-	"sun_scatter": Color(0.988, 0.671, 0.373),
-	"clouds_light_color": Color(0.992, 0.855, 0.689)
+	"top_color": Color(0.447, 0.525, 0.812),
+	"bottom_color": Color(0.984, 0.725, 0.474),
+	"sun_scatter": Color(1.0, 0.737, 0.443),
+	"clouds_light_color": Color(0.996, 0.882, 0.741)
 }
 
 var day_colors = {
-	"top_color": Color(0.5, 0.7, 0.9),
-	"bottom_color": Color(0.7, 0.8, 0.95),
-	"sun_scatter": Color(0.298, 0.298, 0.298),
-	"clouds_light_color": Color(1.0, 1.0, 1.0)
+	"top_color": Color(0.569, 0.686, 0.859),
+	"bottom_color": Color(0.937, 0.886, 0.769),
+	"sun_scatter": Color(0.467, 0.412, 0.361),
+	"clouds_light_color": Color(1.0, 0.965, 0.925)
 }
 
 var sunset_colors = {
-	"top_color": Color(0.337, 0.467, 0.855),
-	"bottom_color": Color(0.949, 0.553, 0.275),
-	"sun_scatter": Color(0.976, 0.537, 0.2),
-	"clouds_light_color": Color(0.992, 0.671, 0.475)
+	"top_color": Color(0.424, 0.451, 0.761),
+	"bottom_color": Color(0.988, 0.569, 0.329),
+	"sun_scatter": Color(0.992, 0.553, 0.286),
+	"clouds_light_color": Color(1.0, 0.737, 0.541)
 }
 
 var dusk_colors = {
-	"top_color": Color(0.243, 0.271, 0.559),
-	"bottom_color": Color(0.592, 0.275, 0.337),
-	"sun_scatter": Color(0.765, 0.341, 0.325),
-	"clouds_light_color": Color(0.824, 0.498, 0.439)
+	"top_color": Color(0.208, 0.227, 0.482),
+	"bottom_color": Color(0.663, 0.341, 0.388),
+	"sun_scatter": Color(0.816, 0.408, 0.357),
+	"clouds_light_color": Color(0.847, 0.569, 0.486)
 }
 
 var night_colors = {
-	"top_color": Color(0.027, 0.102, 0.251),
-	"bottom_color": Color(0.027, 0.102, 0.251),
-	"sun_scatter": Color(0.125, 0.086, 0.373),
-	"clouds_light_color": Color(0.227, 0.447, 1.0)
+	"top_color": Color(0.043, 0.082, 0.188),
+	"bottom_color": Color(0.063, 0.098, 0.184),
+	"sun_scatter": Color(0.149, 0.118, 0.282),
+	"clouds_light_color": Color(0.278, 0.341, 0.584)
 }
 
 func _ready():

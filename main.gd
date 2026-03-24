@@ -19,6 +19,9 @@ const FarmScene = preload("res://Scenes/Farm.tscn")
 const FactoryScene = preload("res://Scenes/Factory.tscn")
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
 const OCEAN_NODE_NAME := "Ocean"
+const MATTE_ROUGHNESS_FLOOR := 0.9
+const MATTE_METALLIC_CAP := 0.02
+const MATTE_SPECULAR_CAP := 0.18
 
 var _pause_btn: Button
 var _speed_label: Label
@@ -85,10 +88,85 @@ func _setup_world_systems() -> void:
 	WorldSetup.configure_scene_buildings(get_tree(), world)
 	if not has_scene_city and imported_city == null:
 		RoadBuilderScript.build_simple_roads(self, world)
+	_apply_matte_city_materials()
 
 	world.rebuild_road_graph(self)
 	world.rebuild_pedestrian_graph(self)
 	_ensure_ocean()
+
+func _apply_matte_city_materials() -> void:
+	var processed_roots: Dictionary = {}
+	var matte_cache: Dictionary = {}
+	for path in ["World/City", "ImportedCity"]:
+		var root := get_node_or_null(path)
+		if root == null:
+			continue
+		processed_roots[root.get_instance_id()] = true
+		_apply_matte_materials_recursive(root, matte_cache)
+
+	for building_node in get_tree().get_nodes_in_group("buildings"):
+		if building_node == null:
+			continue
+		var root_id := building_node.get_instance_id()
+		if processed_roots.has(root_id):
+			continue
+		_apply_matte_materials_recursive(building_node, matte_cache)
+
+func _apply_matte_materials_recursive(node: Node, matte_cache: Dictionary) -> void:
+	if node is MeshInstance3D:
+		_apply_matte_materials_to_mesh(node as MeshInstance3D, matte_cache)
+	for child in node.get_children():
+		_apply_matte_materials_recursive(child, matte_cache)
+
+func _apply_matte_materials_to_mesh(mesh_instance: MeshInstance3D, matte_cache: Dictionary) -> void:
+	if mesh_instance == null or mesh_instance.mesh == null:
+		return
+	if mesh_instance.name == OCEAN_NODE_NAME:
+		return
+
+	if mesh_instance.material_override is StandardMaterial3D:
+		mesh_instance.material_override = _get_or_create_matte_material(
+			mesh_instance.material_override as StandardMaterial3D,
+			matte_cache
+		)
+
+	for surface_idx in range(mesh_instance.mesh.get_surface_count()):
+		var override_material := mesh_instance.get_surface_override_material(surface_idx)
+		if override_material is StandardMaterial3D:
+			mesh_instance.set_surface_override_material(
+				surface_idx,
+				_get_or_create_matte_material(override_material as StandardMaterial3D, matte_cache)
+			)
+			continue
+
+		var surface_material := mesh_instance.mesh.surface_get_material(surface_idx)
+		if surface_material is StandardMaterial3D:
+			mesh_instance.set_surface_override_material(
+				surface_idx,
+				_get_or_create_matte_material(surface_material as StandardMaterial3D, matte_cache)
+			)
+
+func _get_or_create_matte_material(material: StandardMaterial3D, matte_cache: Dictionary) -> StandardMaterial3D:
+	if material == null:
+		return null
+
+	var material_id := material.get_instance_id()
+	if matte_cache.has(material_id):
+		return matte_cache[material_id] as StandardMaterial3D
+
+	if material.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
+		matte_cache[material_id] = material
+		return material
+	if material.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED:
+		matte_cache[material_id] = material
+		return material
+
+	var matte := material.duplicate() as StandardMaterial3D
+	matte.roughness = maxf(matte.roughness, MATTE_ROUGHNESS_FLOOR)
+	matte.metallic = minf(matte.metallic, MATTE_METALLIC_CAP)
+	matte.metallic_specular = minf(matte.metallic_specular, MATTE_SPECULAR_CAP)
+	matte_cache[material_id] = matte
+	return matte
 
 func _ensure_ocean() -> void:
 	if world == null or not world.has_method("get_world_bounds"):
