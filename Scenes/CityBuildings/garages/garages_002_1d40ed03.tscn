@@ -1,8 +1,12 @@
-[gd_scene load_steps=11 format=4]
+[gd_scene format=4 uid="uid://cu4dqnf76c0g0"]
 
-[ext_resource type="Script" path="res://Entities/Buildings/Factory.gd" id="1_hutjn"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/city/base.gltf" id="2_8jj6r"]
-[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="3_3a113"]
+[ext_resource type="Script" uid="uid://dvsd5fyiyr523" path="res://Entities/Buildings/Factory.gd" id="1_hutjn"]
+[ext_resource type="Texture2D" uid="uid://ye42hefb8vkq" path="res://ImportedCitySource/assets/KayKit_City_Builder_Bits_1.0_EXTRA/Assets/texture/citybits_texture.png" id="2_3a113"]
+[ext_resource type="PackedScene" uid="uid://dx57medmq3ji" path="res://ImportedCitySource/assets/city/base.gltf" id="2_8jj6r"]
+[ext_resource type="Texture2D" uid="uid://b3b5vu8lonkcv" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="3_3a113"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_3fqu3"]
+albedo_texture = ExtResource("2_3a113")
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bu65g"]
 resource_name = "Material"
@@ -112,23 +116,24 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_ht4oy")
 
-[node name="garages_factory_02" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_garages", "work"]]
+[node name="garages_factory_02" type="Node3D" unique_id=638072608 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_garages", "work"]]
 script = ExtResource("1_hutjn")
 building_name = "Factory 02 (Garages)"
 building_type = 11
 entrance = NodePath("Entrance")
 
-[node name="Garage" type="MeshInstance3D" parent="."]
+[node name="Garage" type="MeshInstance3D" parent="." unique_id=1095733775]
 transform = Transform3D(100, 0, 0, 0, 100, -1.62921e-05, 0, 1.62921e-05, 100, 0, 0, 0)
+material_override = SubResource("StandardMaterial3D_3fqu3")
 mesh = SubResource("ArrayMesh_46nbx")
 skeleton = NodePath("")
 
-[node name="base1" type="Node3D" parent="." instance=ExtResource("2_8jj6r")]
+[node name="base1" parent="." unique_id=775522241 instance=ExtResource("2_8jj6r")]
 transform = Transform3D(-1.09278e-07, 0, -3.09694, 0, 2.5, 0, 2.5, 0, -1.35371e-07, 0.0555325, -0.231301, 0.000274658)
 
-[node name="base_mesh" type="MeshInstance3D" parent="base1"]
+[node name="base_mesh" type="MeshInstance3D" parent="base1" unique_id=2009100611]
 mesh = SubResource("ArrayMesh_rw05s")
 skeleton = NodePath("")
 
-[node name="Entrance" type="Node3D" parent="."]
+[node name="Entrance" type="Node3D" parent="." unique_id=2014064111]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.11136484, 0.06, 0.0002746582)

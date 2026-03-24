@@ -1,7 +1,10 @@
-[gd_scene load_steps=12 format=4]
+[gd_scene format=4 uid="uid://tmijvs5i73a8"]
 
-[ext_resource type="Script" path="res://Entities/Buildings/Factory.gd" id="1_6dqkn"]
-[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="2_37krr"]
+[ext_resource type="Script" uid="uid://dvsd5fyiyr523" path="res://Entities/Buildings/Factory.gd" id="1_6dqkn"]
+[ext_resource type="Texture2D" uid="uid://b3b5vu8lonkcv" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="2_37krr"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6dqkn"]
+albedo_texture = ExtResource("2_37krr")
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xl6ks"]
 resource_name = "Material"
@@ -117,35 +120,36 @@ shadow_mesh = SubResource("ArrayMesh_q8sic")
 [sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_f50xb"]
 data = PackedVector3Array(-1, 0, -0.9, -1, 0.1, -1, -1, 0.1, -0.9, -1, 0, -0.9, -1, 0, -1, -1, 0.1, -1, 0.9, 0, -1, 1, 0.1, -1, 0.9, 0.1, -1, 0.9, 0, -1, 1, 0, -1, 1, 0.1, -1, 1, 0, 0.9, 1, 0.1, 1, 1, 0.1, 0.9, 1, 0, 0.9, 1, 0, 1, 1, 0.1, 1, -0.9, 0, 1, -1, 0.1, 1, -0.9, 0.1, 1, -0.9, 0, 1, -1, 0, 1, -1, 0.1, 1, 0.9, 0, 0.9, 1, 0, 1, 1, 0, 0.9, 0.9, 0, 0.9, 0.9, 0, 1, 1, 0, 1, 0.9, 0, 0.9, -0.9, 0, 1, 0.9, 0, 1, 0.9, 0, -0.9, 0.9, 0, 0.9, 1, 0, 0.9, 0.9, 0, -0.9, 1, 0, 0.9, 1, 0, -0.9, 0.9, 0, 0.9, -0.9, 0, 0.9, -0.9, 0, 1, 0.9, 0, -0.9, -0.9, 0, 0.9, 0.9, 0, 0.9, -1, 0, 0.9, -0.9, 0, 1, -0.9, 0, 0.9, -1, 0, 0.9, -1, 0, 1, -0.9, 0, 1, -0.9, 0, -0.9, -1, 0, 0.9, -0.9, 0, 0.9, 0.9, 0, -0.9, -0.9, 0, -0.9, -0.9, 0, 0.9, -0.9, 0, -0.9, -1, 0, -0.9, -1, 0, 0.9, -1, 0, -1, -1, 0, -0.9, -0.9, 0, -0.9, -1, 0, -1, -0.9, 0, -0.9, -0.9, 0, -1, 0.9, 0, -1, -0.9, 0, -1, -0.9, 0, -0.9, 0.9, 0, -1, -0.9, 0, -0.9, 0.9, 0, -0.9, 0.9, 0, -1, 0.9, 0, -0.9, 1, 0, -0.9, 0.9, 0, -1, 1, 0, -0.9, 1, 0, -1, -0.9, 0.1, 0.9, -1, 0.1, 1, -1, 0.1, 0.9, -0.9, 0.1, 0.9, -0.9, 0.1, 1, -1, 0.1, 1, 1, 0.1, 0.9, 0.9, 0.1, 1, 0.9, 0.1, 0.9, 1, 0.1, 0.9, 1, 0.1, 1, 0.9, 0.1, 1, 0.9, 0.1, 1, -0.9, 0, 1, -0.9, 0.1, 1, 0.9, 0.1, 1, 0.9, 0, 1, -0.9, 0, 1, 1, 0, 1, 0.9, 0.1, 1, 1, 0.1, 1, 1, 0, 1, 0.9, 0, 1, 0.9, 0.1, 1, -0.9, 0.1, -1, 0.9, 0, -1, 0.9, 0.1, -1, -0.9, 0.1, -1, -0.9, 0, -1, 0.9, 0, -1, 0.9, 0.1, -1, -0.9, 0.1, -0.9, -0.9, 0.1, -1, 0.9, 0.1, -1, 0.9, 0.1, -0.9, -0.9, 0.1, -0.9, 0.9, 0.1, -0.9, 1, 0.1, -0.9, 1, 0.1, 0.9, 0.9, 0.1, -0.9, 1, 0.1, 0.9, 0.9, 0.1, 0.9, -0.9, 0.1, -0.9, -1, 0.1, 0.9, -1, 0.1, -0.9, -0.9, 0.1, -0.9, -0.9, 0.1, 0.9, -1, 0.1, 0.9, 0.9, 0.1, 1, -0.9, 0.1, 0.9, 0.9, 0.1, 0.9, 0.9, 0.1, 1, -0.9, 0.1, 1, -0.9, 0.1, 0.9, -1, 0, -1, -0.9, 0.1, -1, -1, 0.1, -1, -1, 0, -1, -0.9, 0, -1, -0.9, 0.1, -1, -0.9, 0.1, -0.9, 0.9, 0.1, 0.9, -0.9, 0.1, 0.9, -0.9, 0.1, -0.9, 0.9, 0.1, -0.9, 0.9, 0.1, 0.9, 1, 0.1, -1, 0.9, 0.1, -0.9, 0.9, 0.1, -1, 1, 0.1, -1, 1, 0.1, -0.9, 0.9, 0.1, -0.9, -0.9, 0.1, -1, -1, 0.1, -0.9, -1, 0.1, -1, -0.9, 0.1, -1, -0.9, 0.1, -0.9, -1, 0.1, -0.9, 1, 0, -1, 1, 0.1, -0.9, 1, 0.1, -1, 1, 0, -1, 1, 0, -0.9, 1, 0.1, -0.9, 1, 0.1, -0.9, 1, 0, 0.9, 1, 0.1, 0.9, 1, 0.1, -0.9, 1, 0, -0.9, 1, 0, 0.9, -1, 0, 1, -1, 0.1, 0.9, -1, 0.1, 1, -1, 0, 1, -1, 0, 0.9, -1, 0.1, 0.9, -1, 0.1, 0.9, -1, 0, -0.9, -1, 0.1, -0.9, -1, 0.1, 0.9, -1, 0, 0.9, -1, 0, -0.9)
 
-[node name="garages_factory_01" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_garages", "work"]]
+[node name="garages_factory_01" type="Node3D" unique_id=153285777 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_garages", "work"]]
 script = ExtResource("1_6dqkn")
 building_name = "Factory 01 (Garages)"
 building_type = 11
 entrance = NodePath("Entrance")
 
-[node name="Garage" type="MeshInstance3D" parent="."]
+[node name="Garage" type="MeshInstance3D" parent="." unique_id=1067079678]
 transform = Transform3D(100, 0, 0, 0, 100, -1.62921e-05, 0, 1.62921e-05, 100, 0, 0, 0)
+material_override = SubResource("StandardMaterial3D_6dqkn")
 mesh = SubResource("ArrayMesh_exgok")
 skeleton = NodePath("")
 
-[node name="StaticBody3D" type="StaticBody3D" parent="Garage"]
+[node name="StaticBody3D" type="StaticBody3D" parent="Garage" unique_id=935534166]
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Garage/StaticBody3D"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Garage/StaticBody3D" unique_id=1577646624]
 transform = Transform3D(1, 0, 0, 0, 1, 1.42109e-14, 0, -1.42109e-14, 1, 0, 0, 0)
 shape = SubResource("ConcavePolygonShape3D_gnlqp")
 
-[node name="base1" type="Node3D" parent="."]
+[node name="base1" type="Node3D" parent="." unique_id=618569938]
 transform = Transform3D(3.21018, 0, -5.13091e-07, 0, 3.32974, 0, 4.90494e-07, 0, 2.511, 0.292018, -0.296526, 0.109921)
 
-[node name="base" type="MeshInstance3D" parent="base1"]
+[node name="base" type="MeshInstance3D" parent="base1" unique_id=1000226855]
 mesh = SubResource("ArrayMesh_iry5v")
 skeleton = NodePath("")
 
-[node name="StaticBody3D" type="StaticBody3D" parent="base1/base"]
+[node name="StaticBody3D" type="StaticBody3D" parent="base1/base" unique_id=1394863940]
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="base1/base/StaticBody3D"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="base1/base/StaticBody3D" unique_id=2056175429]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 7.10543e-15, 0, 1, 0, 0, 0)
 shape = SubResource("ConcavePolygonShape3D_f50xb")
 
-[node name="Entrance" type="Node3D" parent="."]
+[node name="Entrance" type="Node3D" parent="." unique_id=256796590]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.22158432, 0.06, 0.10992098)
