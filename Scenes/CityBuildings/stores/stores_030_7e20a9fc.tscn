@@ -1,8 +1,12 @@
-[gd_scene load_steps=10 format=4]
+[gd_scene format=4 uid="uid://cgsngrw1cl8rt"]
 
-[ext_resource type="Script" path="res://Entities/Buildings/Cinema.gd" id="1_0q78f"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/city/base.gltf" id="2_x7auv"]
-[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="3_eb8bn"]
+[ext_resource type="Script" uid="uid://h17gt441ry1c" path="res://Entities/Buildings/Cinema.gd" id="1_0q78f"]
+[ext_resource type="Texture2D" uid="uid://dufq5j5fkcyeg" path="res://ImportedCitySource/assets/LowPolyStore/Texture.png" id="2_eb8bn"]
+[ext_resource type="PackedScene" uid="uid://dx57medmq3ji" path="res://ImportedCitySource/assets/city/base.gltf" id="2_x7auv"]
+[ext_resource type="Texture2D" uid="uid://b3b5vu8lonkcv" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="3_eb8bn"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1uytv"]
+albedo_texture = ExtResource("2_eb8bn")
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vmkfq"]
 resource_name = "Material.001"
@@ -82,29 +86,30 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_ht4oy")
 
-[node name="stores_cinema_30" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_stores", "commercial", "work"]]
+[node name="stores_cinema_30" type="Node3D" unique_id=913654013 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_stores", "commercial", "work"]]
 script = ExtResource("1_0q78f")
 building_name = "Cinema 30 (Stores)"
 building_type = 8
 entrance = NodePath("Entrance")
 
-[node name="Cube" type="MeshInstance3D" parent="."]
+[node name="Cube" type="MeshInstance3D" parent="." unique_id=1293968611]
+material_override = SubResource("StandardMaterial3D_1uytv")
 mesh = SubResource("ArrayMesh_14uxn")
 skeleton = NodePath("")
 
-[node name="base10" type="Node3D" parent="." instance=ExtResource("2_x7auv")]
+[node name="base10" parent="." unique_id=1243853283 instance=ExtResource("2_x7auv")]
 transform = Transform3D(-2.39253, 0, 6.74296e-06, 0, 2.95386, 0, -4.97157e-06, 0, -1.76401, -0.00248337, -0.183485, -3.24954)
 
-[node name="base_mesh" type="MeshInstance3D" parent="base10"]
+[node name="base_mesh" type="MeshInstance3D" parent="base10" unique_id=1736481590]
 mesh = SubResource("ArrayMesh_rw05s")
 skeleton = NodePath("")
 
-[node name="base18" type="Node3D" parent="." instance=ExtResource("2_x7auv")]
+[node name="base18" parent="." unique_id=367995654 instance=ExtResource("2_x7auv")]
 transform = Transform3D(-2.39253, 0, 6.74296e-06, 0, 2.95386, 0, -4.97157e-06, 0, -1.76401, -0.010376, -0.183485, 0.282692)
 
-[node name="base_mesh" type="MeshInstance3D" parent="base18"]
+[node name="base_mesh" type="MeshInstance3D" parent="base18" unique_id=1016751014]
 mesh = SubResource("ArrayMesh_rw05s")
 skeleton = NodePath("")
 
-[node name="Entrance" type="Node3D" parent="."]
+[node name="Entrance" type="Node3D" parent="." unique_id=1509863872]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0064296722, 0.06, -1.4834242)

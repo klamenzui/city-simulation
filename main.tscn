@@ -9,15 +9,15 @@
 [ext_resource type="Texture2D" uid="uid://c07jlgiwvm37r" path="res://ImportedCitySource/assets/roads/citybits_texture.png" id="5_t7kw1"]
 [ext_resource type="PackedScene" uid="uid://22i7vcfbhwl4" path="res://ImportedCitySource/assets/roads/road_straight.gltf" id="6_1nwvn"]
 [ext_resource type="PackedScene" uid="uid://be8wm5bigk0dh" path="res://ImportedCitySource/assets/roads/road_tsplit.gltf" id="7_dfq0k"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/services/services_001_bf24cdee.tscn" id="9_elw4l"]
+[ext_resource type="PackedScene" uid="uid://bj5iflrv1q80d" path="res://Scenes/CityBuildings/services/services_001_bf24cdee.tscn" id="9_elw4l"]
 [ext_resource type="PackedScene" uid="uid://c6aq6481iy1ul" path="res://Scenes/CityBuildings/services/services_002_16fa335f.tscn" id="12_05tku"]
 [ext_resource type="PackedScene" uid="uid://d1w6v6f36ay88" path="res://Scenes/CityBuildings/services/services_003_bb6f7293.tscn" id="15_6ibml"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/services/services_004_b6d7b717.tscn" id="17_xnuy3"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/garages/garages_001_59117338.tscn" id="19_hoo0a"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/garages/garages_002_1d40ed03.tscn" id="21_6qke2"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/garages/garages_003_4e747945.tscn" id="23_8um1n"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/garages/garages_004_926a0961.tscn" id="24_myh4s"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/garages/garages_005_99fe1588.tscn" id="25_5qs2s"]
+[ext_resource type="PackedScene" uid="uid://bby4h5xvcfpkj" path="res://Scenes/CityBuildings/services/services_004_b6d7b717.tscn" id="17_xnuy3"]
+[ext_resource type="PackedScene" uid="uid://tmijvs5i73a8" path="res://Scenes/CityBuildings/garages/garages_001_59117338.tscn" id="19_hoo0a"]
+[ext_resource type="PackedScene" uid="uid://cu4dqnf76c0g0" path="res://Scenes/CityBuildings/garages/garages_002_1d40ed03.tscn" id="21_6qke2"]
+[ext_resource type="PackedScene" uid="uid://cvxa1q31crm40" path="res://Scenes/CityBuildings/garages/garages_003_4e747945.tscn" id="23_8um1n"]
+[ext_resource type="PackedScene" uid="uid://cy7ejlinvbnv3" path="res://Scenes/CityBuildings/garages/garages_004_926a0961.tscn" id="24_myh4s"]
+[ext_resource type="PackedScene" uid="uid://crqki0w8ha4l8" path="res://Scenes/CityBuildings/garages/garages_005_99fe1588.tscn" id="25_5qs2s"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_001_c4333f73.tscn" id="26_s2bl2"]
 [ext_resource type="PackedScene" uid="uid://cmi0qw7pthtc4" path="res://Scenes/CityBuildings/stores/stores_002_812a0f2a.tscn" id="31_ncbpu"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_003_d67cc4f3.tscn" id="35_xnps6"]
@@ -60,10 +60,13 @@
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_027_7a4a6478.tscn" id="83_vlhcu"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_028_6657dffd.tscn" id="86_1tqe6"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_029_44ee7201.tscn" id="87_6jwup"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_030_7e20a9fc.tscn" id="88_glic8"]
+[ext_resource type="PackedScene" uid="uid://cgsngrw1cl8rt" path="res://Scenes/CityBuildings/stores/stores_030_7e20a9fc.tscn" id="88_glic8"]
 [ext_resource type="PackedScene" uid="uid://cwjkrh53hrvjp" path="res://Scenes/CityBuildings/multilayer/multilayer_001_c5dad3d6.tscn" id="89_183p3"]
 [ext_resource type="PackedScene" uid="uid://cda3uuqc2xst1" path="res://Scenes/CityBuildings/multilayer/multilayer_002_0503229c.tscn" id="93_mr67e"]
 [ext_resource type="PackedScene" uid="uid://dan4o7cpbk0f0" path="res://Scenes/CityBuildings/multilayer/multilayer_003_ff38843c.tscn" id="96_6gvty"]
+[ext_resource type="PackedScene" uid="uid://b5kkdojdg8h7r" path="res://ImportedCitySource/assets/plants/flowers01.gltf" id="96_cxcit"]
+[ext_resource type="PackedScene" uid="uid://baht0juqj6hl2" path="res://ImportedCitySource/assets/plants/flowers02.gltf" id="97_b1va2"]
+[ext_resource type="PackedScene" uid="uid://b62bl36jcrod4" path="res://ImportedCitySource/assets/plants/flowers04.gltf" id="98_8gn08"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/multilayer/multilayer_004_d588520f.tscn" id="98_xlpjy"]
 [ext_resource type="PackedScene" uid="uid://c2sjyx3wuxudg" path="res://environment/sky/Cycle.tscn" id="99_deygs"]
 [ext_resource type="PackedScene" uid="uid://cib1b468oy5er" path="res://Scenes/CityBuildings/multilayer/multilayer_005_ae5226aa.tscn" id="100_inxc5"]
@@ -99,7 +102,7 @@
 [ext_resource type="PackedScene" path="res://ImportedCitySource/scenes/streetlight_active.tscn" id="156_6vb1k"]
 [ext_resource type="PackedScene" uid="uid://btysdbo6rqmmu" path="res://ImportedCitySource/scenes/trafficlight_c_active.tscn" id="158_jjbne"]
 [ext_resource type="Script" uid="uid://bvbbkwfa8hqcf" path="res://Simulation/Camera/CityBuilderCamera.gd" id="400_camctl"]
-[ext_resource type="Script" path="res://environment/sky/simulation_sky_bridge.gd" id="401_skybr"]
+[ext_resource type="Script" uid="uid://c6yi1cvdganj0" path="res://environment/sky/simulation_sky_bridge.gd" id="401_skybr"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1xkvu"]
 resource_name = "citybits_texture"
@@ -667,12 +670,7 @@ script = ExtResource("400_camctl")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1273117, 0.06279755, -0.13723373)
 mesh = ExtResource("4_deygs")
 script = ExtResource("2_0xm2m")
-minutes_per_tick = 1
-tick_interval_sec = 0.5
 speed_multiplier = 0.1
-
-[node name="SkyBridge" type="Node" parent="."]
-script = ExtResource("401_skybr")
 
 [node name="City" type="Node3D" parent="World" unique_id=1024212022]
 transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1, 0, 0, 0)
@@ -724,6 +722,9 @@ transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0, 
 [node name="road_corner_curved2" type="MeshInstance3D" parent="World/City/only_transport/Road_curved/_Node3D_263" unique_id=209357229]
 mesh = SubResource("ArrayMesh_0k6hs")
 skeleton = NodePath("")
+
+[node name="bush02" parent="World/City/only_transport/Road_curved/_Node3D_263" unique_id=539184299 instance=ExtResource("78_aon1w")]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 0.9999999, 0, 1, 0, -4.37114e-08, 5.202837, 0.007294625, 4.8183913)
 
 [node name="_Node3D_266" parent="World/City/only_transport/Road_curved" unique_id=892047279 instance=ExtResource("5_5y3io")]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 30, 0, 0)
@@ -2384,6 +2385,17 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.002319038, 0)
 mesh = SubResource("ArrayMesh_x64xn")
 skeleton = NodePath("")
 
+[node name="Flowers" type="Node3D" parent="World/City/CityPlants" unique_id=318631568]
+
+[node name="flowers01" parent="World/City/CityPlants/Flowers" unique_id=2000363743 instance=ExtResource("96_cxcit")]
+transform = Transform3D(1, 0, 0, 0, 0.9999999, 0, 0, 0, 1, 4.2203627, 0.025637, 25.527597)
+
+[node name="flowers02" parent="World/City/CityPlants/Flowers" unique_id=1495229604 instance=ExtResource("97_b1va2")]
+transform = Transform3D(1, 0, 0, 0, 0.9999999, 0, 0, 0, 1, 4.3071637, 0.05996882, 25.479595)
+
+[node name="flowers04" parent="World/City/CityPlants/Flowers" unique_id=982676594 instance=ExtResource("98_8gn08")]
+transform = Transform3D(1, 0, 0, 0, 0.9999999, 0, 0, 0, 1, 3.7223535, 0.05424524, 25.277521)
+
 [node name="Streetlight" parent="World/City" unique_id=1517694615 instance=ExtResource("80_alj7c")]
 
 [node name="streetlight55" parent="World/City/Streetlight" unique_id=403725428 instance=ExtResource("156_6vb1k")]
@@ -2699,3 +2711,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -84.91101, -1.2723389, -6.922
 [node name="CollisionShape3D" type="CollisionShape3D" parent="World/StaticBody3D" unique_id=525917828]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 84.91101, 1.2723389, 6.9225693)
 shape = SubResource("ConcavePolygonShape3D_deygs")
+
+[node name="SkyBridge" type="Node" parent="." unique_id=1781400]
+script = ExtResource("401_skybr")
