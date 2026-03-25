@@ -14,5 +14,8 @@ layout_mode = 0
 offset_right = 242.0
 offset_bottom = 377.0
 
-[node name="Label" type="Label" parent="Panel/VBoxContainer"]
+[node name="Label" type="RichTextLabel" parent="Panel/VBoxContainer"]
 layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false

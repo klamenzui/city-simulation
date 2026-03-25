@@ -1,6 +1,7 @@
 ﻿extends RefCounted
 class_name CitizenFactory
 
+const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const CITIZEN_SCENE_PATH := "res://Entities/Citizens/Citizen.tscn"
 
 const FIRST_NAMES := [
@@ -20,12 +21,6 @@ const JOB_TITLES := [
 	"Baecker", "Kellner", "Programmierer", "Fahrer", "Mechaniker",
 	"Verkaeufer", "Designer", "Doctor", "Teacher", "Engineer"
 ]
-
-const EDUCATION_JOBS := {
-	"Doctor": 1,
-	"Teacher": 1,
-	"Engineer": 1,
-}
 
 const JOB_SERVICE_TYPES := {
 	"Baecker": "food",
@@ -79,12 +74,17 @@ static func spawn_citizens(parent: Node, world: World, count: int) -> Array[Citi
 static func _create_random_job() -> Job:
 	var job := Job.new()
 	job.title = _random_job_title()
-	job.wage_per_hour = randi_range(10, 26)
+	var wage_min := BalanceConfig.get_int("economy.jobs.wage_per_hour_min", 10)
+	var wage_max := BalanceConfig.get_int("economy.jobs.wage_per_hour_max", 26)
+	job.wage_per_hour = randi_range(mini(wage_min, wage_max), maxi(wage_min, wage_max))
 	job.start_hour = randi_range(7, 9)
 	job.shift_hours = 8
-	job.required_education_level = int(EDUCATION_JOBS.get(job.title, 0))
+	job.required_education_level = get_required_education_for_job_title(job.title)
 	job.workplace_service_type = str(JOB_SERVICE_TYPES.get(job.title, ""))
 	return job
+
+static func get_required_education_for_job_title(job_title: String) -> int:
+	return BalanceConfig.get_int("economy.jobs.required_education.%s" % job_title, 0)
 
 static func _random_job_title() -> String:
 	var idx: int = randi() % JOB_TITLES.size()

@@ -1,26 +1,35 @@
 extends Action
 class_name EatAtRestaurantAction
 
+const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
-
-const HUNGER_REDUCE_PER_MIN := 1.15
-const ENERGY_RECOVER_PER_MIN := 0.22
-const MAX_MEAL_MIN := 80
 
 var restaurant: Restaurant
 var _paid := false
 var _can_eat := true
+var _max_meal_min: int = 80
+var _needs_modifier: Dictionary = Action.DEFAULT_NEEDS_MOD.duplicate(true)
 
 func _init(_restaurant: Restaurant) -> void:
 	super()
 	label = "Eat"
 	restaurant = _restaurant
+	var config: Dictionary = BalanceConfig.get_section("actions.eat_restaurant")
+	_max_meal_min = int(config.get("max_minutes", 80))
+	_needs_modifier = {
+		"hunger_mul": float(config.get("hunger_mul", 0.15)),
+		"energy_mul": float(config.get("energy_mul", 0.35)),
+		"fun_mul": float(config.get("fun_mul", 0.55)),
+		"hunger_add": float(config.get("hunger_add", -1.15)),
+		"energy_add": float(config.get("energy_add", 0.22)),
+		"fun_add": float(config.get("fun_add", 0.08)),
+	}
 
 func start(world, citizen) -> void:
 	super.start(world, citizen)
 	_paid = false
 	_can_eat = true
-	remaining_minutes = MAX_MEAL_MIN
+	remaining_minutes = _max_meal_min
 
 	if restaurant == null:
 		finished = true
@@ -54,15 +63,7 @@ func start(world, citizen) -> void:
 func get_needs_modifier(world, citizen) -> Dictionary:
 	if not _can_eat or not _paid:
 		return Action.DEFAULT_NEEDS_MOD
-
-	return {
-		"hunger_mul": 0.15,
-		"energy_mul": 0.35,
-		"fun_mul": 0.55,
-		"hunger_add": -HUNGER_REDUCE_PER_MIN,
-		"energy_add": ENERGY_RECOVER_PER_MIN,
-		"fun_add": 0.08,
-	}
+	return _needs_modifier
 
 func tick(world, citizen, dt: int) -> void:
 	super.tick(world, citizen, dt)

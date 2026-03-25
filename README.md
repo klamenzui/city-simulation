@@ -73,6 +73,33 @@ Die Logdatei enthaelt unter anderem:
 
 Die Session wird mit `sid=... pid=...` markiert, damit mehrere Laeufe unterscheidbar bleiben.
 
+## Balancing
+
+Die meisten Gameplay-/Balance-Werte liegen jetzt zentral in `config/balance.json`.
+Das ist die Hauptdatei fuer Feintuning von:
+
+- Simulationstempo (`simulation`, `world`, `schedule`)
+- Economy und Jobs (`economy`)
+- Citizen-Startwerte, Needs und Schwellen (`citizen`)
+- Action-Dauern und Action-Effekte (`actions`)
+- Planner-/GOAP-Schwellen, Prioritaeten und Reisekosten (`planner`, `goap`)
+- Gebaeudeparameter wie Oeffnungszeiten, Capacity, Job-Capacity, Preise und Produktion (`buildings`)
+
+Wichtige Beispiele:
+
+- `world.minutes_per_tick`, `world.tick_interval_sec`, `world.speed_multiplier`
+- `citizen.needs.*`
+- `actions.work.*`, `actions.sleep.*`, `actions.eat_restaurant.*`
+- `planner.*` fuer Prioritaeten und kritische Schwellen
+- `goap.*` fuer Entscheidungsgrenzen, Action-Kosten und Ziel-Reisezeiten
+- `buildings.university.*`, `buildings.restaurant.*`, `buildings.park.*`
+
+Hinweise:
+
+- Die JSON wird beim Projektstart geladen. Nach Aenderungen am Balancing am besten die Szene bzw. das Spiel neu starten.
+- Falls `config/balance.json` unvollstaendig ist, fallen fehlende Werte automatisch auf Default-Werte aus `Simulation/Config/BalanceConfig.gd` zurueck.
+- Wenn du neue Balance-Felder einfuehrst, sollten sie sowohl in `config/balance.json` als auch in `Simulation/Config/BalanceConfig.gd` gepflegt werden.
+
 ## Tests
 
 Fuer Headless-Checks gibt es drei kleine PowerShell-Wrapper:

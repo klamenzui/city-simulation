@@ -1,10 +1,17 @@
 extends RefCounted
 class_name CitizenWorkGoap
 
+const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const GoapActionScript = preload("res://Simulation/GOAP/GoapAction.gd")
 const GoapPlannerScript = preload("res://Simulation/GOAP/GoapPlanner.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
 const WorkActionScript = preload("res://Actions/WorkAction.gd")
+
+var _health_min: float = BalanceConfig.get_float("goap.work.health_min", 35.0)
+var _hunger_max: float = BalanceConfig.get_float("goap.work.hunger_max", 75.0)
+var _go_work_cost: float = BalanceConfig.get_float("goap.work.go_work_cost", 0.65)
+var _work_shift_cost: float = BalanceConfig.get_float("goap.work.work_shift_cost", 0.5)
+var _travel_minutes: int = BalanceConfig.get_int("goap.work.travel_minutes", 20)
 
 func try_plan(world, citizen) -> bool:
 	if world == null or citizen == null:
@@ -41,7 +48,7 @@ func _build_state(world, citizen) -> Dictionary:
 	state["at_workplace"] = citizen.current_location == citizen.job.workplace
 	state["in_work_window"] = in_work_window
 	state["work_remaining"] = remaining_work > 0
-	state["work_fit"] = citizen.needs.health > 35.0 and citizen.needs.energy > citizen.low_energy_threshold and citizen.needs.hunger < 75.0
+	state["work_fit"] = citizen.needs.health > _health_min and citizen.needs.energy > citizen.low_energy_threshold and citizen.needs.hunger < _hunger_max
 	state["work_progress"] = false
 	return state
 
@@ -49,13 +56,13 @@ func _build_actions() -> Array:
 	var actions: Array = []
 	actions.append(GoapActionScript.new(
 		"go_work",
-		0.65,
+		_go_work_cost,
 		{"at_workplace": false, "in_work_window": true, "work_remaining": true, "work_fit": true},
 		{"at_workplace": true}
 	))
 	actions.append(GoapActionScript.new(
 		"work_shift",
-		0.5,
+		_work_shift_cost,
 		{"at_workplace": true, "in_work_window": true, "work_remaining": true, "work_fit": true},
 		{"work_progress": true}
 	))
@@ -67,7 +74,7 @@ func _execute_first_action(action, world, citizen) -> bool:
 
 	match action.action_id:
 		"go_work":
-			citizen.start_action(GoToBuildingActionScript.new(citizen.job.workplace, 20), world)
+			citizen.start_action(GoToBuildingActionScript.new(citizen.job.workplace, _travel_minutes), world)
 			return true
 		"work_shift":
 			citizen.start_action(WorkActionScript.new(citizen.job), world)

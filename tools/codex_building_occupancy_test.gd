@@ -19,7 +19,7 @@ func _run_all_tests() -> void:
 	var failed: Array[String] = []
 	for test_name in [
 		"building_entry_updates_visitors",
-		"study_action_keeps_university_occupancy_consistent",
+		"university_requires_worker_for_study",
 		"worker_count_lifecycle",
 	]:
 		var error := _run_test(test_name)
@@ -44,8 +44,8 @@ func _run_test(test_name: String) -> String:
 	match test_name:
 		"building_entry_updates_visitors":
 			return _test_building_entry_updates_visitors()
-		"study_action_keeps_university_occupancy_consistent":
-			return _test_study_action_keeps_university_occupancy_consistent()
+		"university_requires_worker_for_study":
+			return _test_university_requires_worker_for_study()
 		"worker_count_lifecycle":
 			return _test_worker_count_lifecycle()
 		_:
@@ -67,19 +67,36 @@ func _test_building_entry_updates_visitors() -> String:
 	_expect_eq(university.visitors.size(), 0, "leaving the building should remove the visitor")
 	return _current_error
 
-func _test_study_action_keeps_university_occupancy_consistent() -> String:
+func _test_university_requires_worker_for_study() -> String:
 	var university: University = _new_university("Study Uni")
 	var citizen: Citizen = _new_citizen("Student One")
+	var teacher: Citizen = _new_citizen("Teacher One")
 	var world: World = _new_world()
+	citizen.wallet.balance = max(citizen.wallet.balance, university.tuition_fee + 40)
+	var wallet_before: int = citizen.wallet.balance
+
+	_expect(not university.is_open(world.time.get_hour()), "university should be unavailable without at least one worker")
+	_expect(not university.can_study(citizen), "student should not be able to study when no worker is present")
 
 	citizen.enter_building(university, null, false)
 	_expect_eq(university.visitors.size(), 1, "entering the university should count as one visitor before study starts")
 
 	var action: StudyAtUniversityAction = StudyAtUniversityActionScript.new(university, 90)
 	action.start(world, citizen)
+	_expect(action.finished, "study action should stop immediately when the university has no worker")
+	_expect_eq(university.account.balance, 0, "university should not receive tuition while it has no worker")
+	_expect_eq(citizen.education_level, 0, "study should not progress while university is unstaffed")
+
+	_expect(university.try_hire(teacher), "university should accept its first worker")
+	_expect(university.is_open(world.time.get_hour()), "university should open once at least one worker is hired")
+	_expect(university.can_study(citizen), "student should be allowed to study once the university is staffed")
+
+	action = StudyAtUniversityActionScript.new(university, 90)
+	action.start(world, citizen)
 	_expect_eq(university.visitors.size(), 1, "study start should not double-count an already entered visitor")
 	_expect_eq(citizen.education_level, 1, "study start should grant education progress")
 	_expect_eq(university.account.balance, university.tuition_fee, "university should receive tuition during study start")
+	_expect_eq(citizen.wallet.balance, wallet_before - university.tuition_fee, "tuition should move money out of the student wallet")
 
 	action.finish(world, citizen)
 	_expect_eq(university.visitors.size(), 0, "study finish should clear the university visitor again")

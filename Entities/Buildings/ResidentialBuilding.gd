@@ -7,8 +7,8 @@ var tenants: Array[Citizen] = []
 func _ready() -> void:
 	super._ready()
 	building_type = BuildingType.RESIDENTIAL
-	if capacity <= 0:
-		capacity = 10
+	var settings := apply_balance_settings("residential")
+	rent_per_day = int(settings.get("rent_per_day", rent_per_day))
 
 func get_service_type() -> String:
 	return "housing"

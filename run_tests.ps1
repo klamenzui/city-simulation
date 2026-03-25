@@ -57,8 +57,34 @@ function Invoke-GodotScript {
 	}
 	$args += @("--path", $ProjectPath, "--script", $ScriptPath)
 
-	$output = & $Executable @args 2>&1
-	$exitCode = $LASTEXITCODE
+	$stdoutPath = [System.IO.Path]::GetTempFileName()
+	$stderrPath = [System.IO.Path]::GetTempFileName()
+	try {
+		$process = Start-Process -FilePath $Executable `
+			-ArgumentList $args `
+			-NoNewWindow `
+			-Wait `
+			-PassThru `
+			-RedirectStandardOutput $stdoutPath `
+			-RedirectStandardError $stderrPath
+
+		$output = @()
+		if (Test-Path $stdoutPath) {
+			$output += Get-Content -Path $stdoutPath
+		}
+		if (Test-Path $stderrPath) {
+			$output += Get-Content -Path $stderrPath
+		}
+		$exitCode = $process.ExitCode
+	}
+	finally {
+		if (Test-Path $stdoutPath) {
+			Remove-Item -Path $stdoutPath -Force -ErrorAction SilentlyContinue
+		}
+		if (Test-Path $stderrPath) {
+			Remove-Item -Path $stderrPath -Force -ErrorAction SilentlyContinue
+		}
+	}
 	return [pscustomobject]@{
 		Output = @($output)
 		ExitCode = $exitCode

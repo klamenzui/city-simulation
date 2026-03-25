@@ -8,13 +8,18 @@ class_name Supermarket
 func _ready() -> void:
 	super._ready()
 	building_type = BuildingType.SUPERMARKET
-	if capacity <= 0:
-		capacity = 30
-	if job_capacity <= 0:
-		job_capacity = 6
-	open_hour = 7
-	close_hour = 22
-	define_stock_item("grocery_bundle", 60, grocery_price, 90, 35, "food")
+	var settings := apply_balance_settings("supermarket")
+	grocery_price = int(settings.get("grocery_price", grocery_price))
+	groceries_per_purchase = int(settings.get("groceries_per_purchase", groceries_per_purchase))
+	clothing_price = int(settings.get("clothing_price", clothing_price))
+	define_stock_item(
+		"grocery_bundle",
+		int(settings.get("grocery_start_stock", 60)),
+		grocery_price,
+		int(settings.get("grocery_restock_target", 90)),
+		int(settings.get("grocery_restock_batch", 35)),
+		"food"
+	)
 	set_item_base_price("clothing", clothing_price)
 
 func get_service_type() -> String:
