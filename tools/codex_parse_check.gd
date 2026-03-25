@@ -7,6 +7,7 @@ const RESOURCES := [
 	"res://Entities/Citizens/Citizen.gd",
 	"res://Actions/GoToBuildingAction.gd",
 	"res://Simulation/World.gd",
+	"res://Simulation/Config/BalanceConfig.gd",
 	"res://Simulation/Bootstrap/NavigationSetup.gd",
 	"res://Simulation/Camera/CityBuilderCamera.gd",
 	"res://Simulation/Citizens/CitizenLocomotion.gd",
@@ -25,6 +26,15 @@ func _initialize() -> void:
 		if resource == null:
 			push_error("Failed to load %s" % path)
 			failed.append(path)
+	var config_text := FileAccess.get_file_as_string("res://config/balance.json")
+	if config_text.is_empty():
+		push_error("Failed to read res://config/balance.json")
+		failed.append("res://config/balance.json")
+	else:
+		var parsed: Variant = JSON.parse_string(config_text)
+		if parsed is not Dictionary:
+			push_error("Invalid JSON in res://config/balance.json")
+			failed.append("res://config/balance.json")
 	if failed.is_empty():
 		print("Parse check OK (%d resources)." % RESOURCES.size())
 		quit(0)

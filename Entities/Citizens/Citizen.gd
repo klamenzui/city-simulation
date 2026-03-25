@@ -3,6 +3,7 @@ class_name Citizen
 
 const CitizenAgentScript = preload("res://Simulation/Citizens/CitizenAgent.gd")
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
+const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 
 # Emittiert wenn der Spieler auf diesen Citizen klickt
 signal clicked
@@ -148,8 +149,11 @@ var _original_material: Material = null
 var _highlight_material: StandardMaterial3D = null
 
 func _ready() -> void:
+	_apply_balance_config()
 	wallet.owner_name = citizen_name
-	wallet.balance = 200
+	wallet.balance = BalanceConfig.get_int("citizen.wallet_start_balance", wallet.balance)
+	home_food_stock = BalanceConfig.get_int("citizen.home_food_stock_start", home_food_stock)
+	education_level = BalanceConfig.get_int("citizen.education_level_start", education_level)
 
 	schedule_offset = randi_range(schedule_offset_min, schedule_offset_max)
 	hunger_threshold = hunger_threshold_base + randf_range(-hunger_threshold_jitter, hunger_threshold_jitter)
@@ -170,6 +174,19 @@ func _ready() -> void:
 	_agent.setup(self)
 	_last_move_position = global_position
 	call_deferred("_auto_resolve_refs")
+
+func _apply_balance_config() -> void:
+	var threshold_settings := BalanceConfig.get_section("citizen.thresholds")
+	hunger_threshold_base = float(threshold_settings.get("hunger_threshold_base", hunger_threshold_base))
+	hunger_threshold_jitter = float(threshold_settings.get("hunger_threshold_jitter", hunger_threshold_jitter))
+	low_energy_threshold_base = float(threshold_settings.get("low_energy_threshold_base", low_energy_threshold_base))
+	low_energy_threshold_jitter = float(threshold_settings.get("low_energy_threshold_jitter", low_energy_threshold_jitter))
+	work_motivation_base = float(threshold_settings.get("work_motivation_base", work_motivation_base))
+	work_motivation_jitter = float(threshold_settings.get("work_motivation_jitter", work_motivation_jitter))
+	park_interest_base = float(threshold_settings.get("park_interest_base", park_interest_base))
+	park_interest_jitter = float(threshold_settings.get("park_interest_jitter", park_interest_jitter))
+	fun_target_base = float(threshold_settings.get("fun_target_base", fun_target_base))
+	fun_target_jitter = float(threshold_settings.get("fun_target_jitter", fun_target_jitter))
 
 func _physics_process(delta: float) -> void:
 	_agent.physics_step(self, delta, _world_ref)

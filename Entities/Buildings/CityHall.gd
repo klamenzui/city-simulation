@@ -11,11 +11,11 @@ var tax_collected_today: int = 0
 func _ready() -> void:
 	super._ready()
 	building_type = BuildingType.CITY_HALL
-	open_hour = 6
-	close_hour = 19
-	capacity = max(capacity, 15)
-	if job_capacity <= 0:
-		job_capacity = 5
+	apply_balance_settings("city_hall")
+	business_tax_rate = BalanceConfig.get_float("economy.city_hall.business_tax_rate", business_tax_rate)
+	citizen_tax_rate = BalanceConfig.get_float("economy.city_hall.citizen_tax_rate", citizen_tax_rate)
+	infrastructure_cost_per_day = BalanceConfig.get_int("economy.city_hall.infrastructure_cost_per_day", infrastructure_cost_per_day)
+	unemployment_support = BalanceConfig.get_int("economy.city_hall.unemployment_support", unemployment_support)
 	add_to_group("work")
 
 func get_service_type() -> String:

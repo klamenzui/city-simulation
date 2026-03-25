@@ -6,13 +6,16 @@ class_name Restaurant
 func _ready() -> void:
 	super._ready()
 	building_type = BuildingType.RESTAURANT
-	if capacity <= 0:
-		capacity = 20
-	if job_capacity <= 0:
-		job_capacity = 5
-	open_hour = 8
-	close_hour = 22
-	define_stock_item("meal", 48, meal_price, 70, 30, "food")
+	var settings := apply_balance_settings("restaurant")
+	meal_price = int(settings.get("meal_price", meal_price))
+	define_stock_item(
+		"meal",
+		int(settings.get("meal_start_stock", 48)),
+		meal_price,
+		int(settings.get("meal_restock_target", 70)),
+		int(settings.get("meal_restock_batch", 30)),
+		"food"
+	)
 
 func get_service_type() -> String:
 	return "food"

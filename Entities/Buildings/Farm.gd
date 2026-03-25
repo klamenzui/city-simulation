@@ -9,11 +9,9 @@ var output_today: int = 0
 func _ready() -> void:
 	super._ready()
 	building_type = BuildingType.FARM
-	open_hour = 5
-	close_hour = 19
-	capacity = max(capacity, 8)
-	if job_capacity <= 0:
-		job_capacity = 6
+	var settings := apply_balance_settings("farm")
+	base_food_output_per_day = int(settings.get("base_food_output_per_day", base_food_output_per_day))
+	production_cost_per_unit = int(settings.get("production_cost_per_unit", production_cost_per_unit))
 	restock_enabled = false
 
 func get_service_type() -> String:

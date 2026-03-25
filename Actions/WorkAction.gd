@@ -1,15 +1,41 @@
 extends Action
 class_name WorkAction
 
+const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
+
 var job
 var worked_net := 0
 var current_day := -1
 var _finish_reason: String = ""
+var _lunch_start_minute: int = 11 * 60 + 30
+var _lunch_end_minute: int = 13 * 60 + 30
+var _needs_modifier: Dictionary = Action.DEFAULT_NEEDS_MOD.duplicate(true)
+var _extra_energy_drain_per_min: float = 0.05
+var _extra_hunger_gain_per_min: float = 0.08
+var _extra_fun_drain_per_min: float = 0.03
+var _stop_health_threshold: float = 35.0
+var _stop_hunger_threshold: float = 70.0
 
 func _init(_job) -> void:
 	super()
 	label = "Work"
 	job = _job
+	var config: Dictionary = BalanceConfig.get_section("actions.work")
+	_lunch_start_minute = int(config.get("lunch_start_minute", 11 * 60 + 30))
+	_lunch_end_minute = int(config.get("lunch_end_minute", 13 * 60 + 30))
+	_needs_modifier = {
+		"hunger_mul": float(config.get("needs_hunger_mul", 1.8)),
+		"energy_mul": float(config.get("needs_energy_mul", 1.625)),
+		"fun_mul": float(config.get("needs_fun_mul", 2.0)),
+		"hunger_add": float(config.get("needs_hunger_add", 0.0)),
+		"energy_add": float(config.get("needs_energy_add", 0.0)),
+		"fun_add": float(config.get("needs_fun_add", 0.0)),
+	}
+	_extra_energy_drain_per_min = float(config.get("extra_energy_drain_per_min", 0.05))
+	_extra_hunger_gain_per_min = float(config.get("extra_hunger_gain_per_min", 0.08))
+	_extra_fun_drain_per_min = float(config.get("extra_fun_drain_per_min", 0.03))
+	_stop_health_threshold = float(config.get("stop_health_threshold", 35.0))
+	_stop_hunger_threshold = float(config.get("stop_hunger_threshold", 70.0))
 
 func start(world, citizen) -> void:
 	super.start(world, citizen)
@@ -25,24 +51,11 @@ func start(world, citizen) -> void:
 		job.wage_per_hour if job != null else 0
 	])
 
-# English comment: Work increases need drain compared to idle.
-# Base (per minute): hunger +0.10, energy -0.08, fun -0.03.
-# Target totals at work (not lunch): hunger +0.18, energy -0.13, fun -0.06.
 func get_needs_modifier(world, citizen) -> Dictionary:
-	var now_total = world.time.get_hour() * 60 + world.time.get_minute()
-	var is_lunch = (now_total >= 11 * 60 + 30 and now_total <= 13 * 60 + 30)
-	if is_lunch:
+	if _is_lunch_break(world.time.get_hour(), world.time.get_minute()):
 		return Action.DEFAULT_NEEDS_MOD
+	return _needs_modifier
 
-	return {
-		"hunger_mul": 1.8,      # 0.10 * 1.8 = 0.18
-		"energy_mul": 1.625,    # 0.08 * 1.625 = 0.13
-		"fun_mul": 2.0,         # 0.03 * 2.0 = 0.06
-		"hunger_add": 0.0,
-		"energy_add": 0.0,
-		"fun_add": 0.0,
-	}
-	
 func tick(world, citizen, dt: int) -> void:
 	super.tick(world, citizen, dt)
 
@@ -51,54 +64,38 @@ func tick(world, citizen, dt: int) -> void:
 		current_day = day_id
 		worked_net = 0
 
-	var now_total = world.time.get_hour() * 60 + world.time.get_minute()
-	var is_lunch = (now_total >= 11 * 60 + 30 and now_total <= 13 * 60 + 30)
+	var hour: int = world.time.get_hour()
+	var minute: int = world.time.get_minute()
+	var now_total: int = hour * 60 + minute
+	var is_lunch: bool = _is_lunch_break(hour, minute)
 
 	if not is_lunch:
 		worked_net += dt
 		citizen.work_minutes_today += dt
 
-	# BUG FIX: Previously the work drain STACKED on top of the passive drain in Needs.advance().
-	# This meant during work: energy drains 0.08 (passive) + 0.15 (work) = 0.23/min
-	# and hunger drains 0.15 (passive) + 0.30 (work) = 0.45/min.
-	# Over 8h: energy lost = 110 → impossible to finish a shift. Hunger gained = 216 → always starving.
-	#
-	# Fix: work drain values are now NET extras on top of passive.
-	# Energy: +0.05/min extra (total 0.13/min). 8h shift → ~62 energy lost. Realistic. ✓
-	# Hunger: +0.08/min extra (total 0.23/min). 8h → ~111 hunger. Needs ~2 meals/day. ✓
-	# Fun:    +0.03/min extra (total 0.06/min). Work is slightly less fun than sitting home. ✓
-	citizen.needs.energy -= 0.05 * float(dt)
-	citizen.needs.hunger += 0.08 * float(dt)
-	citizen.needs.fun    -= 0.03 * float(dt)
+	citizen.needs.energy -= _extra_energy_drain_per_min * float(dt)
+	citizen.needs.hunger += _extra_hunger_gain_per_min * float(dt)
+	citizen.needs.fun -= _extra_fun_drain_per_min * float(dt)
 
 	var shift_minutes := int(job.shift_hours * 60)
 
-	# IMPROVEMENT: Self-interrupt when the citizen needs a break, so plan_next_action
-	# can handle eating/resting. Without this, WorkAction runs for the entire shift
-	# with no pauses → hunger=100 and energy=0 by end of day.
-	#
-	# Interrupt conditions (priority order):
-	if citizen.needs.health <= 35.0:
-		_finish_reason = "health %.0f <= 35" % citizen.needs.health
+	if citizen.needs.health <= _stop_health_threshold:
+		_finish_reason = "health %.0f <= %.0f" % [citizen.needs.health, _stop_health_threshold]
 		finished = true
 		return
 
 	if citizen.needs.energy <= citizen.low_energy_threshold:
-		# Too tired to work safely → go home.
 		_finish_reason = "energy %.0f <= %.0f" % [citizen.needs.energy, citizen.low_energy_threshold]
 		finished = true
 		return
 
-	if citizen.needs.hunger >= 70.0:
-		# Hungry enough to warrant a meal break. plan_next_action will handle eating,
-		# then re-check work window and return to work if shift is not yet complete.
-		_finish_reason = "hunger %.0f >= 70" % citizen.needs.hunger
+	if citizen.needs.hunger >= _stop_hunger_threshold:
+		_finish_reason = "hunger %.0f >= %.0f" % [citizen.needs.hunger, _stop_hunger_threshold]
 		finished = true
 		return
 
-	if is_lunch and now_total == (11 * 60 + 30):
-		# Start of lunch window → break. Only trigger once (at the boundary minute).
-		_finish_reason = "lunch break at 11:30"
+	if is_lunch and now_total == _lunch_start_minute:
+		_finish_reason = "lunch break at %s" % _format_clock(_lunch_start_minute)
 		finished = true
 		return
 
@@ -115,3 +112,12 @@ func finish(world, citizen) -> void:
 			citizen.work_minutes_today,
 			int(job.shift_hours * 60) if job != null else 0
 		])
+
+func _is_lunch_break(hour: int, minute: int) -> bool:
+	var now_total: int = hour * 60 + minute
+	return now_total >= _lunch_start_minute and now_total <= _lunch_end_minute
+
+func _format_clock(total_minutes: int) -> String:
+	var hour: int = int(total_minutes / 60) % 24
+	var minute: int = total_minutes % 60
+	return "%02d:%02d" % [hour, minute]

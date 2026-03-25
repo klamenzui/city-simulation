@@ -1,10 +1,19 @@
 extends RefCounted
 class_name CitizenEducationGoap
 
+const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const GoapActionScript = preload("res://Simulation/GOAP/GoapAction.gd")
 const GoapPlannerScript = preload("res://Simulation/GOAP/GoapPlanner.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
 const StudyAtUniversityActionScript = preload("res://Actions/StudyAtUniversityAction.gd")
+
+var _health_min: float = BalanceConfig.get_float("goap.education.health_min", 35.0)
+var _hunger_max: float = BalanceConfig.get_float("goap.education.hunger_max", 70.0)
+var _go_university_cost: float = BalanceConfig.get_float("goap.education.go_university_cost", 1.0)
+var _study_cost: float = BalanceConfig.get_float("goap.education.study_cost", 0.65)
+var _travel_minutes: int = BalanceConfig.get_int("goap.education.travel_minutes", 24)
+var _night_start_hour: int = BalanceConfig.get_int("schedule.night_start_hour", 22)
+var _day_start_hour: int = BalanceConfig.get_int("schedule.day_start_hour", 6)
 
 func try_plan(world, citizen) -> bool:
 	if world == null or citizen == null:
@@ -13,9 +22,9 @@ func try_plan(world, citizen) -> bool:
 		return false
 	if citizen.job.meets_requirements(citizen):
 		return false
-	if citizen.needs.health <= 35.0:
+	if citizen.needs.health <= _health_min:
 		return false
-	if citizen.needs.hunger >= 70.0:
+	if citizen.needs.hunger >= _hunger_max:
 		return false
 	if citizen.needs.energy <= citizen.low_energy_threshold:
 		return false
@@ -55,8 +64,9 @@ func try_plan(world, citizen) -> bool:
 func _build_state(world, citizen) -> Dictionary:
 	var state = {}
 	var hour: int = world.time.get_hour()
-	var is_night: bool = hour >= 22 or hour < 6
-	var uni: University = citizen._find_nearest_university(citizen.home.get_entrance_pos() if citizen.home else citizen.global_position, true)
+	var is_night: bool = _is_night(hour)
+	var anchor = citizen.home.get_entrance_pos() if citizen.home else citizen.global_position
+	var uni: University = citizen._find_nearest_university(anchor, true)
 
 	state["has_university"] = uni != null
 	state["at_university"] = uni != null and citizen.current_location == uni
@@ -69,13 +79,13 @@ func _build_actions() -> Array:
 	var actions: Array = []
 	actions.append(GoapActionScript.new(
 		"go_university",
-		1.0,
+		_go_university_cost,
 		{"has_university": true, "at_university": false, "is_night": false},
 		{"at_university": true}
 	))
 	actions.append(GoapActionScript.new(
 		"study",
-		0.65,
+		_study_cost,
 		{"at_university": true, "can_afford_study": true},
 		{"education_progress": true}
 	))
@@ -87,7 +97,8 @@ func _execute_first_action(action, world, citizen) -> bool:
 
 	match action.action_id:
 		"go_university":
-			var uni: University = citizen._find_nearest_university(citizen.home.get_entrance_pos() if citizen.home else citizen.global_position, true)
+			var anchor = citizen.home.get_entrance_pos() if citizen.home else citizen.global_position
+			var uni: University = citizen._find_nearest_university(anchor, true)
 			if uni == null:
 				return false
 			citizen.debug_log("Education plan: heading to %s for %s (education %d/%d)." % [
@@ -96,10 +107,11 @@ func _execute_first_action(action, world, citizen) -> bool:
 				citizen.education_level,
 				citizen.job.required_education_level
 			])
-			citizen.start_action(GoToBuildingActionScript.new(uni, 24), world)
+			citizen.start_action(GoToBuildingActionScript.new(uni, _travel_minutes), world)
 			return true
 		"study":
-			var uni2: University = citizen._find_nearest_university(citizen.home.get_entrance_pos() if citizen.home else citizen.global_position, true)
+			var anchor2 = citizen.home.get_entrance_pos() if citizen.home else citizen.global_position
+			var uni2: University = citizen._find_nearest_university(anchor2, true)
 			if uni2 == null:
 				return false
 			citizen.debug_log("Education plan: starting study at %s for %s." % [
@@ -110,3 +122,6 @@ func _execute_first_action(action, world, citizen) -> bool:
 			return true
 		_:
 			return false
+
+func _is_night(hour: int) -> bool:
+	return hour >= _night_start_hour or hour < _day_start_hour

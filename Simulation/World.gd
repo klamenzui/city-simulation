@@ -4,6 +4,7 @@ class_name World
 const RoadGraphScript = preload("res://Simulation/Navigation/RoadGraph.gd")
 const PedestrianGraphScript = preload("res://Simulation/Navigation/PedestrianGraph.gd")
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
+const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 
 @export var minutes_per_tick: int = 1
 @export var tick_interval_sec: float = 0.5
@@ -30,12 +31,15 @@ var _timer: Timer
 
 func _ready() -> void:
 	#use_collision = true
+	minutes_per_tick = BalanceConfig.get_int("world.minutes_per_tick", minutes_per_tick)
+	tick_interval_sec = BalanceConfig.get_float("world.tick_interval_sec", tick_interval_sec)
+	speed_multiplier = BalanceConfig.get_float("world.speed_multiplier", speed_multiplier)
 
 	add_child(time)
 	add_child(economy)
 
 	city_account.owner_name = "CityReserve"
-	city_account.balance = 18000
+	city_account.balance = BalanceConfig.get_int("world.city_reserve_start_balance", 18000)
 
 	_register_existing_scene_nodes(get_tree())
 

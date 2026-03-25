@@ -7,6 +7,7 @@ const JobScript = preload("res://Entities/Job.gd")
 const BuildingScript = preload("res://Entities/Buildings/Building.gd")
 const CityHallScript = preload("res://Entities/Buildings/CityHall.gd")
 const CitizenScript = preload("res://Entities/Citizens/Citizen.gd")
+const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
 
 var _checks_run: int = 0
 var _current_error: String = ""
@@ -20,6 +21,7 @@ func _initialize() -> void:
 		"price_and_daily_reset",
 		"open_jobs",
 		"salary_sources",
+		"teacher_jobs_need_no_degree",
 		"tax_and_welfare",
 	]:
 		var error := _run_test(test_name)
@@ -49,6 +51,8 @@ func _run_test(test_name: String) -> String:
 			return _test_open_jobs()
 		"salary_sources":
 			return _test_salary_sources()
+		"teacher_jobs_need_no_degree":
+			return _test_teacher_jobs_need_no_degree()
 		"tax_and_welfare":
 			return _test_tax_and_welfare()
 		_:
@@ -189,6 +193,27 @@ func _test_salary_sources() -> String:
 	_free_node(workplace)
 	_free_node(city_hall)
 	_free_world(world)
+	return _current_error
+
+func _test_teacher_jobs_need_no_degree() -> String:
+	_expect_eq(
+		CitizenFactoryScript.get_required_education_for_job_title("Teacher"),
+		0,
+		"teacher jobs should not require prior university education"
+	)
+	_expect_eq(
+		CitizenFactoryScript.get_required_education_for_job_title("Doctor"),
+		1,
+		"doctor jobs should keep their education requirement"
+	)
+
+	var teacher_job = JobScript.new()
+	teacher_job.title = "Teacher"
+	teacher_job.required_education_level = CitizenFactoryScript.get_required_education_for_job_title("Teacher")
+
+	var applicant = CitizenScript.new()
+	_expect(teacher_job.meets_requirements(applicant), "citizen without education should qualify for teacher jobs in this project")
+	_free_node(applicant)
 	return _current_error
 
 func _test_tax_and_welfare() -> String:

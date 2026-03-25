@@ -11,11 +11,10 @@ var output_entertainment_today: int = 0
 func _ready() -> void:
 	super._ready()
 	building_type = BuildingType.FACTORY
-	open_hour = 6
-	close_hour = 21
-	capacity = max(capacity, 10)
-	if job_capacity <= 0:
-		job_capacity = 8
+	var settings := apply_balance_settings("factory")
+	clothes_output_per_day = int(settings.get("clothes_output_per_day", clothes_output_per_day))
+	entertainment_output_per_day = int(settings.get("entertainment_output_per_day", entertainment_output_per_day))
+	production_cost_per_unit = int(settings.get("production_cost_per_unit", production_cost_per_unit))
 	restock_enabled = false
 
 func get_service_type() -> String:

@@ -1,6 +1,8 @@
 extends Node
 class_name EconomySystem
 
+const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
+
 var jobs: Array[Job] = []
 var market_account: Account = Account.new()
 
@@ -13,11 +15,26 @@ var commodity_price_history: Dictionary = {}
 
 func _ready() -> void:
 	market_account.owner_name = "RegionalMarket"
-	market_account.balance = 250000
+	market_account.balance = BalanceConfig.get_int("economy.market_account_balance", 250000)
 
-	_define_commodity("food", 900, 1200, 4)
-	_define_commodity("clothes", 480, 700, 7)
-	_define_commodity("entertainment", 2000, 2500, 2)
+	var commodity_settings := BalanceConfig.get_section("economy.commodities")
+	for key in commodity_settings.keys():
+		var commodity_key := str(key)
+		var config_value: Variant = commodity_settings.get(commodity_key, {})
+		if config_value is not Dictionary:
+			continue
+		var commodity_config := config_value as Dictionary
+		_define_commodity(
+			commodity_key,
+			int(commodity_config.get("stock", 400)),
+			int(commodity_config.get("target_stock", 600)),
+			int(commodity_config.get("base_price", 5))
+		)
+
+	if commodity_stock.is_empty():
+		_define_commodity("food", 900, 1200, 4)
+		_define_commodity("clothes", 480, 700, 7)
+		_define_commodity("entertainment", 2000, 2500, 2)
 
 func _define_commodity(key: String, stock: int, target_stock: int, base_price: int) -> void:
 	commodity_stock[key] = maxi(stock, 0)

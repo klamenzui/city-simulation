@@ -1,6 +1,8 @@
 extends Node3D
 class_name Building
 
+const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
+
 signal clicked(building: Building)
 
 enum BuildingType {
@@ -419,6 +421,7 @@ func get_info(world = null) -> Dictionary:
 	var hour := -1
 	if world != null and world.time != null:
 		hour = world.time.get_hour()
+	var open_status_display := get_open_status_display_label(hour)
 
 	var info: Dictionary = {
 		"Building": building_name,
@@ -426,10 +429,11 @@ func get_info(world = null) -> Dictionary:
 		"Service": get_service_type(),
 		"Workers": "%d / %d" % [workers.size(), max(job_capacity, 0)],
 		"Visitors": "%d / %d" % [visitors.size(), max(capacity, 0)],
+		"Status": open_status_display,
 		"Open": "%02d:00 - %02d:00 (%s)" % [
 			open_hour,
 			close_hour,
-			"OPEN" if is_open(hour) else "CLOSED"
+			open_status_display
 		],
 		"Income today": "%d EUR" % income_today,
 		"Expenses today": "%d EUR" % expenses_today,
@@ -473,18 +477,75 @@ func get_building_type_name() -> String:
 		_:
 			return "Generic"
 
-func is_open(hour: int = -1) -> bool:
-	if hour < 0:
+func apply_balance_settings(type_key: String) -> Dictionary:
+	var settings := BalanceConfig.get_section("buildings.%s" % type_key)
+	if settings.is_empty():
+		return settings
+
+	if settings.has("capacity"):
+		capacity = int(settings.get("capacity", capacity))
+	if settings.has("job_capacity"):
+		job_capacity = int(settings.get("job_capacity", job_capacity))
+	if settings.has("open_hour"):
+		open_hour = int(settings.get("open_hour", open_hour))
+	if settings.has("close_hour"):
+		close_hour = int(settings.get("close_hour", close_hour))
+	if settings.has("navigation_blocker_margin"):
+		navigation_blocker_margin = float(settings.get("navigation_blocker_margin", navigation_blocker_margin))
+	if settings.has("entrance_clearance_width"):
+		entrance_clearance_width = float(settings.get("entrance_clearance_width", entrance_clearance_width))
+	if settings.has("entrance_clearance_depth"):
+		entrance_clearance_depth = float(settings.get("entrance_clearance_depth", entrance_clearance_depth))
+	if settings.has("entrance_trigger_radius"):
+		entrance_trigger_radius = float(settings.get("entrance_trigger_radius", entrance_trigger_radius))
+	if settings.has("entrance_trigger_outset"):
+		entrance_trigger_outset = float(settings.get("entrance_trigger_outset", entrance_trigger_outset))
+
+	return settings
+
+func requires_staff_to_operate() -> bool:
+	if job_capacity <= 0:
+		return false
+	match building_type:
+		BuildingType.RESIDENTIAL, BuildingType.PARK:
+			return false
+		_:
+			return true
+
+func has_required_staff() -> bool:
+	if not requires_staff_to_operate():
 		return true
+	return workers.size() > 0
+
+func get_open_status_label(hour: int = -1) -> String:
+	if not has_required_staff():
+		return "UNSTAFFED"
+
+	if hour < 0:
+		return "OPEN"
 
 	if open_hour == close_hour:
-		return true
+		return "OPEN"
 
 	if close_hour > open_hour:
-		return hour >= open_hour and hour < close_hour
+		return "OPEN" if hour >= open_hour and hour < close_hour else "CLOSED"
 
 	# Overnight schedule, e.g. 20:00 - 04:00
-	return hour >= open_hour or hour < close_hour
+	return "OPEN" if hour >= open_hour or hour < close_hour else "CLOSED"
+
+func get_open_status_display_label(hour: int = -1) -> String:
+	match get_open_status_label(hour):
+		"UNSTAFFED":
+			return "Geschlossen: kein Personal"
+		"CLOSED":
+			return "Geschlossen"
+		"OPEN":
+			return "Offen"
+		_:
+			return get_open_status_label(hour)
+
+func is_open(hour: int = -1) -> bool:
+	return get_open_status_label(hour) == "OPEN"
 
 func get_service_type() -> String:
 	return "generic"

@@ -11,6 +11,7 @@ const ENABLE_MAP_SNAPSHOT_LOG := true
 const SEARCH_RESULT_LIMIT := 12
 const RoadBuilderScript = preload("res://Simulation/Bootstrap/RoadBuilder.gd")
 const ImportedCitySetupScript = preload("res://Simulation/Bootstrap/ImportedCitySetup.gd")
+const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const RestaurantScene = preload("res://Scenes/Restaurant.tscn")
 const SupermarketScene = preload("res://Scenes/Supermarket.tscn")
 const ShopScene = preload("res://Scenes/Shop.tscn")
@@ -24,6 +25,11 @@ const OCEAN_NODE_NAME := "Ocean"
 const MATTE_ROUGHNESS_FLOOR := 0.9
 const MATTE_METALLIC_CAP := 0.02
 const MATTE_SPECULAR_CAP := 0.18
+const BUILDING_STATUS_OPEN_COLOR := Color(0.46, 0.78, 0.56, 1.0)
+const BUILDING_STATUS_CLOSED_COLOR := Color(0.86, 0.65, 0.35, 1.0)
+const BUILDING_STATUS_UNSTAFFED_COLOR := Color(0.86, 0.36, 0.36, 1.0)
+const BUILDING_STATUS_UNSTAFFED_PULSE_SPEED := 5.0
+const BUILDING_STATUS_UNSTAFFED_PULSE_MIN_ALPHA := 0.72
 
 var _pause_btn: Button
 var _speed_label: Label
@@ -56,6 +62,10 @@ var _building_nav_source_access_material: StandardMaterial3D = null
 var _building_nav_source_spawn_material: StandardMaterial3D = null
 var _building_nav_target_entrance_material: StandardMaterial3D = null
 var _building_nav_target_access_material: StandardMaterial3D = null
+var _building_status_badge_layer: CanvasLayer = null
+var _building_status_badge_panel: PanelContainer = null
+var _building_status_badge_label: Label = null
+var _building_status_badge_style: StyleBoxFlat = null
 
 func _ready() -> void:
 	SimLogger.start_new_session(false)
@@ -64,6 +74,7 @@ func _ready() -> void:
 	_setup_world_systems()
 	_setup_citizen_path_debug()
 	_setup_building_nav_debug()
+	_setup_building_status_badge()
 	_build_debug_panel()
 	_bind_building_clicks()
 	_spawn_citizens()
@@ -73,6 +84,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_update_selected_citizen_path_debug()
 	_update_selected_building_nav_debug()
+	_update_selected_building_status_badge()
 	_update_selected_citizen_trace(delta)
 	_update_all_citizen_trace(delta)
 
@@ -318,6 +330,35 @@ func _setup_building_nav_debug() -> void:
 
 	add_child(_building_nav_debug)
 
+func _setup_building_status_badge() -> void:
+	_building_status_badge_layer = CanvasLayer.new()
+	_building_status_badge_layer.name = "SelectedBuildingStatusBadge"
+	add_child(_building_status_badge_layer)
+
+	_building_status_badge_panel = PanelContainer.new()
+	_building_status_badge_panel.visible = false
+	_building_status_badge_layer.add_child(_building_status_badge_panel)
+
+	_building_status_badge_style = StyleBoxFlat.new()
+	_building_status_badge_style.bg_color = Color(0.11, 0.12, 0.16, 0.92)
+	_building_status_badge_style.border_color = BUILDING_STATUS_OPEN_COLOR
+	_building_status_badge_style.set_border_width_all(2)
+	_building_status_badge_style.corner_radius_top_left = 10
+	_building_status_badge_style.corner_radius_top_right = 10
+	_building_status_badge_style.corner_radius_bottom_right = 10
+	_building_status_badge_style.corner_radius_bottom_left = 10
+	_building_status_badge_style.content_margin_left = 10
+	_building_status_badge_style.content_margin_right = 10
+	_building_status_badge_style.content_margin_top = 6
+	_building_status_badge_style.content_margin_bottom = 6
+	_building_status_badge_panel.add_theme_stylebox_override("panel", _building_status_badge_style)
+
+	_building_status_badge_label = Label.new()
+	_building_status_badge_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_building_status_badge_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_building_status_badge_label.add_theme_font_size_override("font_size", 15)
+	_building_status_badge_panel.add_child(_building_status_badge_label)
+
 func _create_path_debug_material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -335,7 +376,8 @@ func _bind_building_clicks() -> void:
 			building.clicked.connect(_on_building_clicked)
 
 func _spawn_citizens() -> void:
-	var spawned := CitizenFactory.spawn_citizens(self, world, CITIZEN_COUNT)
+	var citizen_count := BalanceConfig.get_int("simulation.initial_citizen_count", CITIZEN_COUNT)
+	var spawned := CitizenFactory.spawn_citizens(self, world, citizen_count)
 	for citizen in spawned:
 		var cb := _on_citizen_clicked.bind(citizen)
 		if not citizen.clicked.is_connected(cb):
@@ -358,6 +400,7 @@ func _on_citizen_clicked(c: Citizen) -> void:
 	if _selected_building != null:
 		_selected_building.select(null, world)
 		_selected_building = null
+		_hide_selected_building_status_badge()
 
 	if _selected_citizen != null:
 		_log_selected_citizen_trace("switch")
@@ -393,6 +436,7 @@ func _on_building_clicked(b: Building) -> void:
 	b.select(_debug_panel, world)
 	_debug_panel.visible = true
 	_building_panel_refresh_left = 0.0
+	_update_selected_building_status_badge()
 
 func _deselect() -> void:
 	if _selected_citizen != null:
@@ -403,6 +447,7 @@ func _deselect() -> void:
 	if _selected_building != null:
 		_selected_building.select(null, world)
 		_selected_building = null
+	_hide_selected_building_status_badge()
 	_clear_selected_citizen_path_debug()
 	if _debug_panel != null:
 		_debug_panel.visible = false
@@ -649,6 +694,80 @@ func _update_selected_building_nav_debug() -> void:
 	if has_debug:
 		_building_nav_debug.visible = true
 		_building_nav_debug.global_transform = Transform3D.IDENTITY
+
+func _update_selected_building_status_badge() -> void:
+	if _building_status_badge_panel == null or _building_status_badge_label == null or _city_camera == null:
+		return
+	if _selected_building == null or not is_instance_valid(_selected_building):
+		_hide_selected_building_status_badge()
+		return
+
+	var badge_world_pos := _get_selected_building_badge_world_position(_selected_building)
+	if _city_camera.is_position_behind(badge_world_pos):
+		_hide_selected_building_status_badge()
+		return
+
+	var screen_pos := _city_camera.unproject_position(badge_world_pos)
+	var viewport_rect := get_viewport().get_visible_rect()
+	if screen_pos.x < -40.0 or screen_pos.x > viewport_rect.size.x + 40.0 or screen_pos.y < -40.0 or screen_pos.y > viewport_rect.size.y + 40.0:
+		_hide_selected_building_status_badge()
+		return
+
+	var status_key := _selected_building.get_open_status_label(world.time.get_hour()) if world != null and world.time != null else _selected_building.get_open_status_label()
+	var status_text := _selected_building.get_open_status_display_label(world.time.get_hour()) if world != null and world.time != null else _selected_building.get_open_status_display_label()
+	var badge_color := _get_selected_building_status_badge_color(status_key)
+	var status_icon := _get_selected_building_status_badge_icon(status_key)
+
+	_building_status_badge_label.text = "%s\n%s %s" % [_selected_building.get_display_name(), status_icon, status_text]
+	_building_status_badge_label.add_theme_color_override("font_color", badge_color)
+	_building_status_badge_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.55))
+	_building_status_badge_label.add_theme_constant_override("shadow_offset_x", 1)
+	_building_status_badge_label.add_theme_constant_override("shadow_offset_y", 1)
+	_building_status_badge_style.border_color = badge_color
+	_building_status_badge_style.bg_color = _get_selected_building_status_badge_background(status_key)
+
+	var panel_size := _building_status_badge_panel.get_combined_minimum_size()
+	_building_status_badge_panel.size = panel_size
+	_building_status_badge_panel.position = Vector2(
+		screen_pos.x - panel_size.x * 0.5,
+		screen_pos.y - panel_size.y
+	)
+	_building_status_badge_panel.visible = true
+
+func _hide_selected_building_status_badge() -> void:
+	if _building_status_badge_panel != null:
+		_building_status_badge_panel.visible = false
+
+func _get_selected_building_badge_world_position(building: Building) -> Vector3:
+	var bounds := building.get_footprint_bounds()
+	var local_badge_pos := bounds.position + Vector3(bounds.size.x * 0.5, bounds.size.y + 1.15, bounds.size.z * 0.5)
+	return building.to_global(local_badge_pos)
+
+func _get_selected_building_status_badge_color(status_key: String) -> Color:
+	match status_key:
+		"UNSTAFFED":
+			return BUILDING_STATUS_UNSTAFFED_COLOR
+		"CLOSED":
+			return BUILDING_STATUS_CLOSED_COLOR
+		_:
+			return BUILDING_STATUS_OPEN_COLOR
+
+func _get_selected_building_status_badge_background(status_key: String) -> Color:
+	if status_key != "UNSTAFFED":
+		return Color(0.10, 0.11, 0.15, 0.92)
+
+	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.001 * BUILDING_STATUS_UNSTAFFED_PULSE_SPEED)
+	var alpha := lerpf(BUILDING_STATUS_UNSTAFFED_PULSE_MIN_ALPHA, 0.98, pulse)
+	return Color(0.24, 0.08, 0.09, alpha)
+
+func _get_selected_building_status_badge_icon(status_key: String) -> String:
+	match status_key:
+		"UNSTAFFED":
+			return "[!]"
+		"CLOSED":
+			return "[-]"
+		_:
+			return "[+]"
 
 func _draw_selected_citizen_nav_debug(citizen: Citizen) -> bool:
 	var has_debug := false

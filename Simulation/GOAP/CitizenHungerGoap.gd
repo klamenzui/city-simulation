@@ -1,12 +1,25 @@
 extends RefCounted
 class_name CitizenHungerGoap
 
+const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const GoapActionScript = preload("res://Simulation/GOAP/GoapAction.gd")
 const GoapPlannerScript = preload("res://Simulation/GOAP/GoapPlanner.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
 const EatAtHomeActionScript = preload("res://Actions/EatAtHomeAction.gd")
 const EatAtRestaurantActionScript = preload("res://Actions/EatAtRestaurantAction.gd")
 const BuyGroceriesActionScript = preload("res://Actions/BuyGroceriesAction.gd")
+
+var _go_home_cost: float = BalanceConfig.get_float("goap.hunger.go_home_cost", 1.3)
+var _go_restaurant_cost: float = BalanceConfig.get_float("goap.hunger.go_restaurant_cost", 1.0)
+var _go_supermarket_cost: float = BalanceConfig.get_float("goap.hunger.go_supermarket_cost", 1.1)
+var _buy_groceries_cost: float = BalanceConfig.get_float("goap.hunger.buy_groceries_cost", 0.8)
+var _eat_home_cost: float = BalanceConfig.get_float("goap.hunger.eat_home_cost", 0.9)
+var _eat_restaurant_cost: float = BalanceConfig.get_float("goap.hunger.eat_restaurant_cost", 0.8)
+var _home_travel_minutes: int = BalanceConfig.get_int("goap.hunger.home_travel_minutes", 20)
+var _restaurant_travel_minutes: int = BalanceConfig.get_int("goap.hunger.restaurant_travel_minutes", 15)
+var _supermarket_travel_minutes: int = BalanceConfig.get_int("goap.hunger.supermarket_travel_minutes", 18)
+var _night_start_hour: int = BalanceConfig.get_int("schedule.night_start_hour", 22)
+var _day_start_hour: int = BalanceConfig.get_int("schedule.day_start_hour", 6)
 
 func try_plan(world, citizen) -> bool:
 	if world == null or citizen == null:
@@ -39,44 +52,44 @@ func _build_state(world, citizen) -> Dictionary:
 	state["can_afford_groceries"] = citizen.can_afford_groceries(world)
 	state["has_home_food"] = citizen.home_food_stock > 0
 	state["hunger_satisfied"] = citizen.needs.hunger <= citizen.needs.TARGET_HUNGER_MAX
-	state["is_night"] = world.time.get_hour() >= 22 or world.time.get_hour() < 6
+	state["is_night"] = _is_night(world.time.get_hour())
 	return state
 
 func _build_actions() -> Array:
 	var actions: Array = []
 	actions.append(GoapActionScript.new(
 		"go_home",
-		1.3,
+		_go_home_cost,
 		{"has_home": true, "at_home": false},
 		{"at_home": true, "at_restaurant": false, "at_supermarket": false}
 	))
 	actions.append(GoapActionScript.new(
 		"go_restaurant",
-		1.0,
+		_go_restaurant_cost,
 		{"has_restaurant": true, "restaurant_open": true, "restaurant_has_meal": true, "can_afford_restaurant": true, "at_restaurant": false, "is_night": false},
 		{"at_restaurant": true, "at_home": false, "at_supermarket": false}
 	))
 	actions.append(GoapActionScript.new(
 		"go_supermarket",
-		1.1,
+		_go_supermarket_cost,
 		{"has_supermarket": true, "supermarket_open": true, "supermarket_has_groceries": true, "can_afford_groceries": true, "at_supermarket": false},
 		{"at_supermarket": true, "at_home": false, "at_restaurant": false}
 	))
 	actions.append(GoapActionScript.new(
 		"buy_groceries",
-		0.8,
+		_buy_groceries_cost,
 		{"at_supermarket": true, "supermarket_has_groceries": true, "can_afford_groceries": true},
 		{"has_home_food": true}
 	))
 	actions.append(GoapActionScript.new(
 		"eat_home",
-		0.9,
+		_eat_home_cost,
 		{"at_home": true, "has_home_food": true},
 		{"hunger_satisfied": true}
 	))
 	actions.append(GoapActionScript.new(
 		"eat_restaurant",
-		0.8,
+		_eat_restaurant_cost,
 		{"at_restaurant": true, "restaurant_has_meal": true, "can_afford_restaurant": true},
 		{"hunger_satisfied": true}
 	))
@@ -90,17 +103,17 @@ func _execute_first_action(action, world, citizen) -> bool:
 		"go_home":
 			if citizen.home == null:
 				return false
-			citizen.start_action(GoToBuildingActionScript.new(citizen.home, 20), world)
+			citizen.start_action(GoToBuildingActionScript.new(citizen.home, _home_travel_minutes), world)
 			return true
 		"go_restaurant":
 			if citizen.favorite_restaurant == null:
 				return false
-			citizen.start_action(GoToBuildingActionScript.new(citizen.favorite_restaurant, 15), world)
+			citizen.start_action(GoToBuildingActionScript.new(citizen.favorite_restaurant, _restaurant_travel_minutes), world)
 			return true
 		"go_supermarket":
 			if citizen.favorite_supermarket == null:
 				return false
-			citizen.start_action(GoToBuildingActionScript.new(citizen.favorite_supermarket, 18), world)
+			citizen.start_action(GoToBuildingActionScript.new(citizen.favorite_supermarket, _supermarket_travel_minutes), world)
 			return true
 		"buy_groceries":
 			if citizen.favorite_supermarket == null:
@@ -117,3 +130,6 @@ func _execute_first_action(action, world, citizen) -> bool:
 			return true
 		_:
 			return false
+
+func _is_night(hour: int) -> bool:
+	return hour >= _night_start_hour or hour < _day_start_hour

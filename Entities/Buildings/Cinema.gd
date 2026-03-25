@@ -6,11 +6,8 @@ class_name Cinema
 func _ready() -> void:
 	super._ready()
 	building_type = BuildingType.CINEMA
-	open_hour = 12
-	close_hour = 23
-	capacity = max(capacity, 35)
-	if job_capacity <= 0:
-		job_capacity = 5
+	var settings := apply_balance_settings("cinema")
+	ticket_price = int(settings.get("ticket_price", ticket_price))
 	add_to_group("work")
 
 func get_service_type() -> String:
