@@ -26,7 +26,13 @@ func _init(max_minutes: int = -1) -> void:
 	_stop_health_threshold = float(config.get("stop_health_threshold", 35.0))
 
 func get_needs_modifier(world, citizen) -> Dictionary:
-	return _needs_modifier
+	var modifier := _needs_modifier.duplicate(true)
+	if citizen != null and citizen.current_location is Park:
+		var park := citizen.current_location as Park
+		var service_mul := park.get_service_multiplier()
+		modifier["energy_add"] = float(modifier.get("energy_add", 0.0)) * service_mul
+		modifier["fun_add"] = float(modifier.get("fun_add", 0.0)) * service_mul
+	return modifier
 
 func tick(world, citizen, dt: int) -> void:
 	super.tick(world, citizen, dt)

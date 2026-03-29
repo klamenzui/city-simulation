@@ -15,6 +15,9 @@ class_name CityBuilderCamera
 @export var key_rotate_speed: float = 1.7
 @export var min_pitch_deg: float = 28.0
 @export var max_pitch_deg: float = 78.0
+@export var follow_distance: float = 4.8
+@export var follow_pitch_deg: float = 20.0
+@export var follow_focus_height: float = 1.25
 
 @export var smoothing: float = 12.0
 @export var world_padding: float = 8.0
@@ -35,6 +38,8 @@ var _bounds_min: Vector2 = Vector2(-40.0, -40.0)
 var _bounds_max: Vector2 = Vector2(40.0, 40.0)
 var _ground_y: float = 0.0
 var _rotating: bool = false
+var _follow_mode: bool = false
+var _follow_target: Node3D = null
 
 func _ready() -> void:
 	current = true
@@ -43,6 +48,10 @@ func _ready() -> void:
 	_initialize_from_transform()
 
 func _process(delta: float) -> void:
+	if _follow_mode:
+		_update_follow_targets(delta)
+		return
+
 	_update_pan(delta)
 	_update_key_rotation(delta)
 	_clamp_targets()
@@ -157,6 +166,24 @@ func _apply_camera_transform() -> void:
 	global_position = _center + offset
 	look_at(_center, Vector3.UP)
 
+func _update_follow_targets(delta: float) -> void:
+	if _follow_target == null or not is_instance_valid(_follow_target):
+		clear_follow_target()
+		return
+
+	_update_key_rotation(delta)
+	_target_pitch = clampf(follow_pitch_deg, min_pitch_deg, max_pitch_deg)
+	_target_distance = clampf(follow_distance, min_distance, max_distance)
+	_target_center = _follow_target.global_position + Vector3.UP * follow_focus_height
+
+	var t: float = 1.0 - exp(-smoothing * delta)
+	_center = _center.lerp(_target_center, t)
+	_yaw = lerp_angle(_yaw, _target_yaw, t)
+	_pitch = lerpf(_pitch, _target_pitch, t)
+	_distance = lerpf(_distance, _target_distance, t)
+
+	_apply_camera_transform()
+
 func _resolve_ground_height() -> void:
 	_ground_y = 0.0
 	var root := get_parent()
@@ -254,5 +281,38 @@ func _initialize_from_transform() -> void:
 	_apply_camera_transform()
 
 func focus_on_world_position(pos: Vector3) -> void:
+	clear_follow_target()
 	_target_center = Vector3(pos.x, _ground_y, pos.z)
 	_clamp_targets()
+
+func set_follow_target(target: Node3D) -> void:
+	_follow_target = target
+	_follow_mode = target != null
+	if not _follow_mode:
+		return
+	var focus := target.global_position + Vector3.UP * follow_focus_height
+	_target_center = focus
+	_center = focus
+	_target_pitch = clampf(follow_pitch_deg, min_pitch_deg, max_pitch_deg)
+	_pitch = _target_pitch
+	_target_distance = clampf(follow_distance, min_distance, max_distance)
+	_distance = _target_distance
+	var target_forward := -target.global_transform.basis.z
+	target_forward.y = 0.0
+	if target_forward.length_squared() <= 0.0001:
+		target_forward = Vector3.FORWARD
+	else:
+		target_forward = target_forward.normalized()
+	var behind_dir := -target_forward
+	_target_yaw = atan2(behind_dir.x, behind_dir.z)
+	_yaw = _target_yaw
+	_apply_camera_transform()
+
+func clear_follow_target() -> void:
+	_follow_mode = false
+	_follow_target = null
+	_resolve_ground_height()
+	_clamp_targets()
+
+func is_follow_mode() -> bool:
+	return _follow_mode

@@ -69,6 +69,15 @@ var _debug_once_keys: Dictionary = {}
 @export var obstacle_stuck_distance: float = 0.02
 @export var obstacle_repath_timeout: float = 1.6
 @export var obstacle_slide_hold_sec: float = 0.4
+@export var obstacle_jump_stuck_timeout: float = 2.2
+@export var obstacle_jump_velocity: float = 5.2
+@export var obstacle_jump_cooldown_sec: float = 1.35
+@export var obstacle_jump_floor_snap_suppress_sec: float = 0.28
+@export var obstacle_jump_forward_hold_sec: float = 0.22
+@export var obstacle_jump_forward_speed_multiplier: float = 1.2
+@export var unreachable_target_retry_limit: int = 3
+@export var unreachable_target_no_progress_minutes: int = 18
+@export var unreachable_target_cooldown_minutes: int = 180
 @export var crowded_waypoint_skip_distance: float = 1.0
 @export var crowded_waypoint_neighbor_radius: float = 0.55
 @export var crowded_waypoint_shared_target_radius: float = 0.45
@@ -110,6 +119,16 @@ var _trace_last_left_hit: String = "clear"
 var _trace_last_right_hit: String = "clear"
 var _stuck_slide_hold_dir: Vector3 = Vector3.ZERO
 var _stuck_slide_hold_left: float = 0.0
+var _stuck_jump_cooldown_left: float = 0.0
+var _floor_snap_suppress_left: float = 0.0
+var _stuck_jump_hold_dir: Vector3 = Vector3.ZERO
+var _stuck_jump_hold_left: float = 0.0
+var _temporarily_unreachable_targets: Dictionary = {}
+# TODO: Keep local crowd-deadlock diagnosis separate from economy stabilization fixes.
+var _debug_repath_count: int = 0
+var _debug_stuck_slide_count: int = 0
+var _debug_stuck_jump_count: int = 0
+var _debug_last_blocking_area: String = "-"
 # --- Variation / Personality ---
 @export var schedule_offset_min: int = -25
 @export var schedule_offset_max: int = 25
@@ -138,6 +157,9 @@ var park_interest: float = 0.35
 @export var fun_target_base: float = 65.0
 @export var fun_target_jitter: float = 15.0
 var fun_target: float = 65.0
+@export var manual_control_move_speed: float = 3.6
+@export var manual_control_turn_speed: float = 10.0
+@export var manual_control_jump_velocity: float = 5.6
 
 # --- Work tracking ---
 var work_minutes_today: int = 0
@@ -147,6 +169,8 @@ var _work_day_key: int = -1
 var _mesh_instance: MeshInstance3D = null
 var _original_material: Material = null
 var _highlight_material: StandardMaterial3D = null
+var _manual_control_enabled: bool = false
+var _manual_jump_was_pressed: bool = false
 
 func _ready() -> void:
 	_apply_balance_config()
@@ -168,6 +192,8 @@ func _ready() -> void:
 	_setup_highlight()
 	_setup_obstacle_sensors()
 	_body_collision_shape = get_node_or_null("CollisionShape3D") as CollisionShape3D
+	# Entrance triggers are debug/contact helpers, not physical blockers for walking.
+	collision_mask &= ~8
 	_saved_collision_layer = collision_layer
 	_saved_collision_mask = collision_mask
 	floor_snap_length = floor_snap_distance
@@ -189,7 +215,95 @@ func _apply_balance_config() -> void:
 	fun_target_jitter = float(threshold_settings.get("fun_target_jitter", fun_target_jitter))
 
 func _physics_process(delta: float) -> void:
+	if _manual_control_enabled:
+		_manual_control_physics(delta)
+		return
 	_agent.physics_step(self, delta, _world_ref)
+
+func set_manual_control_enabled(enabled: bool, world: World = null) -> void:
+	if _manual_control_enabled == enabled:
+		return
+	_manual_control_enabled = enabled
+	if enabled:
+		if is_inside_building():
+			exit_current_building(world)
+		elif current_location != null:
+			leave_current_location(world)
+		stop_travel()
+		current_action = null
+		decision_cooldown_left = 0
+		_current_speed = 0.0
+		_vertical_speed = 0.0
+		velocity = Vector3.ZERO
+		_manual_jump_was_pressed = false
+		_update_trace_navigation_state("manual_control", Vector3.ZERO, Vector3.ZERO)
+	else:
+		stop_travel()
+		decision_cooldown_left = 0
+		_current_speed = 0.0
+		_vertical_speed = 0.0
+		velocity = Vector3.ZERO
+		_manual_jump_was_pressed = false
+		_update_trace_navigation_state("manual_control_exit", Vector3.ZERO, Vector3.ZERO)
+
+func is_manual_control_enabled() -> bool:
+	return _manual_control_enabled
+
+func _manual_control_physics(delta: float) -> void:
+	var input_vec := Vector2.ZERO
+	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+		input_vec.x -= 1.0
+	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+		input_vec.x += 1.0
+	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+		input_vec.y += 1.0
+	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+		input_vec.y -= 1.0
+
+	var move_dir := Vector3.ZERO
+	if input_vec.length_squared() > 0.0001:
+		input_vec = input_vec.normalized()
+		var camera := get_viewport().get_camera_3d()
+		var forward := Vector3.FORWARD
+		var right := Vector3.RIGHT
+		if camera != null:
+			forward = -camera.global_transform.basis.z
+			right = camera.global_transform.basis.x
+			forward.y = 0.0
+			right.y = 0.0
+			if forward.length_squared() > 0.0001:
+				forward = forward.normalized()
+			else:
+				forward = Vector3.FORWARD
+			if right.length_squared() > 0.0001:
+				right = right.normalized()
+			else:
+				right = Vector3.RIGHT
+		move_dir = (right * input_vec.x + forward * input_vec.y).normalized()
+		_update_facing(move_dir, delta * (manual_control_turn_speed / maxf(turn_speed, 0.001)))
+		_current_speed = move_toward(_current_speed, manual_control_move_speed, move_acceleration * delta)
+	else:
+		_current_speed = move_toward(_current_speed, 0.0, move_deceleration * delta)
+
+	var jump_pressed := Input.is_key_pressed(KEY_SPACE)
+	if jump_pressed and not _manual_jump_was_pressed and is_on_floor():
+		velocity.y = maxf(velocity.y, manual_control_jump_velocity)
+		_floor_snap_suppress_left = maxf(_floor_snap_suppress_left, obstacle_jump_floor_snap_suppress_sec)
+		floor_snap_length = 0.0
+	_update_stuck_state(delta)
+	_manual_jump_was_pressed = jump_pressed
+
+	velocity.x = move_dir.x * _current_speed
+	velocity.z = move_dir.z * _current_speed
+	if is_on_floor():
+		if velocity.y < 0.0:
+			velocity.y = 0.0
+	else:
+		velocity.y = maxf(velocity.y - gravity_strength * delta, -max_fall_speed)
+	move_and_slide()
+	_recover_floor_contact()
+	_last_move_position = global_position
+	_update_trace_navigation_state("manual_control", move_dir, move_dir)
 
 # Click detection via Area3D
 func _setup_clickable() -> void:
@@ -205,18 +319,26 @@ func _setup_clickable() -> void:
 		col = CollisionShape3D.new()
 		col.name = "CollisionShape3D"
 		area.add_child(col)
+	var body_col := get_node_or_null("CollisionShape3D") as CollisionShape3D
+	var body_shape := body_col.shape as CapsuleShape3D if body_col != null else null
 	var shape := col.shape as CapsuleShape3D
 	if shape == null:
 		shape = CapsuleShape3D.new()
 		col.shape = shape
-	shape.radius = 0.45
-	shape.height = 2.1
-	col.position = Vector3(0, 1.05, 0)  # Mitte der Kapsel-Figur
+	if body_shape != null:
+		shape.radius = body_shape.radius
+		shape.height = body_shape.height
+		col.transform = body_col.transform
+	else:
+		shape.radius = 0.45
+		shape.height = 2.1
+		col.position = Vector3(0, 1.05, 0)  # Mitte der Kapsel-Figur
 
 	_click_area = area
 	_click_area_shape = col
 
-	area.input_event.connect(_on_area_input_event)
+	if not area.input_event.is_connected(_on_area_input_event):
+		area.input_event.connect(_on_area_input_event)
 
 
 func _on_area_input_event(_camera: Camera3D, event: InputEvent,
@@ -247,7 +369,10 @@ func _setup_obstacle_sensors() -> void:
 	_obstacle_ray_right = get_node_or_null("ObstacleSensorPivot/ObstacleRayCastRight") as RayCast3D
 
 	if _obstacle_sensor_pivot != null:
-		_obstacle_sensor_pivot.position = Vector3(0.0, obstacle_sensor_height, 0.0)
+		# Preserve the scene-authored pivot height. Only fall back to the exported
+		# value when the pivot has not been positioned in the scene yet.
+		if _obstacle_sensor_pivot.position.is_zero_approx():
+			_obstacle_sensor_pivot.position = Vector3(0.0, obstacle_sensor_height, 0.0)
 
 	var side_angle := deg_to_rad(obstacle_side_angle_deg)
 	var side_x := sin(side_angle) * obstacle_side_probe_length
@@ -291,6 +416,7 @@ func _probe_ground_hit(pos: Vector3) -> Dictionary:
 
 	for _attempt in range(attempts):
 		var query := PhysicsRayQueryParameters3D.create(from, to)
+		query.collision_mask = 1
 		query.collide_with_areas = false
 		query.exclude = exclude
 
@@ -357,23 +483,56 @@ func enter_building(building: Building, world: World = null, emit_log: bool = tr
 	var entry_pos := global_position
 	stop_travel()
 	current_location = building
-	if nav_points.has("spawn"):
-		set_position_grounded(nav_points["spawn"])
-	_inside_building = building
+	var is_outdoor := building.has_method("is_outdoor_destination") and building.is_outdoor_destination()
+	if is_outdoor:
+		set_position_grounded(global_position)
+		_inside_building = null
+	else:
+		if nav_points.has("spawn"):
+			set_position_grounded(nav_points["spawn"])
+		_inside_building = building
 	if building.has_method("on_citizen_entered"):
 		building.on_citizen_entered(self)
-	_set_interior_presence(true)
+	_set_interior_presence(not is_outdoor)
 	if world != null:
 		_ground_fallback_y = world.get_ground_fallback_y()
 	_update_trace_navigation_state("entered_%s" % building.get_display_name(), Vector3.ZERO, Vector3.ZERO)
 	if emit_log:
-		SimLogger.log("[Citizen %s] Entered %s at %s | entrance=%s access=%s spawn=%s" % [
+		SimLogger.log("[Citizen %s] Entered %s at %s | entrance=%s access=%s visit=%s spawn=%s" % [
 			citizen_name,
 			building.get_display_name(),
 			_trace_fmt_vec3(entry_pos),
 			_trace_fmt_vec3(nav_points.get("entrance", building.get_entrance_pos())),
 			_trace_fmt_vec3(nav_points.get("access", _get_building_access_pos(building, world))),
+			_trace_fmt_vec3(nav_points.get("visit", global_position)),
 			_trace_fmt_vec3(nav_points.get("spawn", global_position))
+		])
+
+func leave_current_location(world: World = null, emit_log: bool = true) -> void:
+	if is_inside_building():
+		exit_current_building(world)
+		return
+	if current_location == null:
+		return
+
+	var exit_building := current_location
+	var nav_points := _get_building_nav_points(exit_building, world)
+	var is_outdoor := exit_building.has_method("is_outdoor_destination") and exit_building.is_outdoor_destination()
+	var exit_pos: Vector3 = nav_points.get("spawn", nav_points.get("access", global_position))
+	if is_outdoor:
+		set_position_grounded(exit_pos)
+	current_location = null
+	if exit_building.has_method("on_citizen_exited"):
+		exit_building.on_citizen_exited(self)
+	_update_trace_navigation_state("left_%s" % exit_building.get_display_name(), Vector3.ZERO, Vector3.ZERO)
+	if emit_log:
+		SimLogger.log("[Citizen %s] Left %s at %s | entrance=%s access=%s visit=%s" % [
+			citizen_name,
+			exit_building.get_display_name(),
+			_trace_fmt_vec3(global_position),
+			_trace_fmt_vec3(nav_points.get("entrance", exit_building.get_entrance_pos())),
+			_trace_fmt_vec3(nav_points.get("access", _get_building_access_pos(exit_building, world))),
+			_trace_fmt_vec3(nav_points.get("visit", global_position))
 		])
 
 func exit_current_building(world: World = null) -> void:
@@ -427,6 +586,9 @@ func _get_building_access_pos(building: Building, world: World = null) -> Vector
 	var nav_points := _get_building_nav_points(building, world)
 	return nav_points.get("access", global_position)
 
+func get_navigation_points_for_building(building: Building, world: World = null) -> Dictionary:
+	return _get_building_nav_points(building, world)
+
 func _get_building_exit_spawn_pos(building: Building, world: World = null) -> Vector3:
 	var nav_points := _get_building_nav_points(building, world)
 	return nav_points.get("spawn", global_position)
@@ -437,7 +599,7 @@ func _get_building_nav_points(building: Building, world: World = null) -> Dictio
 
 	var lane_offset := _get_building_lane_offset()
 	if building.has_method("get_navigation_points"):
-		return building.get_navigation_points(world, lane_offset)
+		return building.get_navigation_points(world, lane_offset, global_position)
 
 	var entrance_pos := building.get_entrance_pos()
 	var access_pos := entrance_pos
@@ -547,6 +709,8 @@ func _is_crosswalk_waypoint(point: Vector3) -> bool:
 	return kind.begins_with("crosswalk")
 
 func _recover_floor_contact() -> void:
+	if _floor_snap_suppress_left > 0.0:
+		return
 	if is_on_floor():
 		return
 	var hit := _probe_ground_hit(global_position)
@@ -661,14 +825,17 @@ func _move_along_path(delta: float) -> void:
 	if distance_to_target <= reach_distance:
 		if _advance_travel_route():
 			return
-		if _travel_target_building != null:
+		if _travel_target_building != null and _should_use_entrance_contact_arrival():
 			_arrived_via_entrance_contact = true
 			_current_speed = 0.0
 			velocity.x = 0.0
 			velocity.z = 0.0
 			_update_trace_navigation_state("arrive_target_access", Vector3.ZERO, Vector3.ZERO)
 			return
+		if _travel_target_building != null and _travel_target_building.has_method("is_outdoor_destination") and _travel_target_building.is_outdoor_destination():
+			set_position_grounded(_travel_target)
 		stop_travel()
+		_update_trace_navigation_state("arrive_target_path_end", Vector3.ZERO, Vector3.ZERO)
 		return
 
 	if _should_skip_crowded_waypoint(distance_to_target, is_last_waypoint):
@@ -697,6 +864,8 @@ func _move_along_path(delta: float) -> void:
 
 	var desired_dir: Vector3 = move_delta / move_distance
 	var move_dir := _compute_move_direction(desired_dir)
+	if _stuck_jump_hold_left > 0.0 and _stuck_jump_hold_dir != Vector3.ZERO:
+		_current_speed = maxf(_current_speed, _walk_speed * obstacle_jump_forward_speed_multiplier)
 	_update_facing(move_dir, delta)
 
 	velocity.x = move_dir.x * _current_speed
@@ -729,20 +898,35 @@ func _compute_move_direction(desired_dir: Vector3) -> Vector3:
 		return Vector3.ZERO
 	planar_dir = planar_dir.normalized()
 
+	if _stuck_jump_hold_left > 0.0 and _stuck_jump_hold_dir != Vector3.ZERO:
+		var jump_dir := _stuck_jump_hold_dir.normalized()
+		_update_trace_navigation_state("jump_carry", planar_dir, jump_dir)
+		return jump_dir
+
 	_refresh_obstacle_sensors(planar_dir)
 	_update_trace_obstacle_hits()
 	if _try_mark_arrived_via_target_entrance(planar_dir):
 		_update_trace_navigation_state("arrive_target_entrance", planar_dir, Vector3.ZERO)
 		return Vector3.ZERO
 	if _stuck_timer >= obstacle_stuck_timeout:
-		if _stuck_timer >= obstacle_repath_timeout:
-			if _agent != null and _agent.locomotion != null and _agent.locomotion.repath_current_travel(self, _world_ref):
-				_update_trace_navigation_state("repath_stuck", planar_dir, Vector3.ZERO)
-				return Vector3.ZERO
+		var repath_timeout := maxf(obstacle_repath_timeout, obstacle_jump_stuck_timeout + 0.35)
+		if _stuck_timer >= obstacle_jump_stuck_timeout and _try_stuck_jump(planar_dir):
+			_debug_stuck_jump_count += 1
+			_update_congestion_debug_label()
+			_update_trace_navigation_state("stuck_jump", planar_dir, planar_dir)
+			return planar_dir
 		var slide_escape := _get_stuck_slide_direction(planar_dir)
 		if slide_escape != Vector3.ZERO:
+			_debug_stuck_slide_count += 1
+			_update_congestion_debug_label()
 			_update_trace_navigation_state("stuck_slide_%s" % _trace_relative_label(slide_escape), planar_dir, slide_escape)
 			return slide_escape
+		if _stuck_timer >= repath_timeout:
+			if _agent != null and _agent.locomotion != null and _agent.locomotion.repath_current_travel(self, _world_ref):
+				_debug_repath_count += 1
+				_update_congestion_debug_label()
+				_update_trace_navigation_state("repath_stuck", planar_dir, Vector3.ZERO)
+				return Vector3.ZERO
 		var escape_dir := _compute_escape_direction(planar_dir)
 		_update_trace_navigation_state("stuck_escape_%s" % _trace_relative_label(escape_dir), planar_dir, escape_dir)
 		return escape_dir
@@ -800,6 +984,8 @@ func _ray_is_blocked(ray: RayCast3D) -> bool:
 func _try_mark_arrived_via_target_entrance(preferred_dir: Vector3) -> bool:
 	if _travel_target_building == null:
 		return false
+	if not _should_use_entrance_contact_arrival():
+		return false
 	var access_delta := _travel_target - global_position
 	access_delta.y = 0.0
 	var access_distance := access_delta.length()
@@ -824,6 +1010,14 @@ func _try_mark_arrived_via_target_entrance(preferred_dir: Vector3) -> bool:
 
 	_arrived_via_entrance_contact = true
 	return true
+
+func _should_use_entrance_contact_arrival() -> bool:
+	if _travel_target_building == null:
+		return false
+	return not (
+		_travel_target_building.has_method("is_outdoor_destination")
+		and _travel_target_building.is_outdoor_destination()
+	)
 
 func _ray_hits_target_building(ray: RayCast3D) -> bool:
 	if ray == null or not ray.enabled or not ray.is_colliding():
@@ -859,7 +1053,7 @@ func _any_ray_hits_target_entrance_trigger() -> bool:
 func _is_entrance_trigger_node(node: Node) -> bool:
 	var current := node
 	while current != null:
-		if current.name == "EntranceTrigger":
+		if current.name.begins_with("EntranceTrigger"):
 			return true
 		current = current.get_parent()
 	return false
@@ -904,6 +1098,46 @@ func _get_stuck_slide_direction(preferred_dir: Vector3) -> Vector3:
 		_stuck_slide_hold_dir = slide_dir
 		_stuck_slide_hold_left = obstacle_slide_hold_sec
 	return slide_dir
+
+func _try_stuck_jump(forward_dir: Vector3) -> bool:
+	if _stuck_jump_cooldown_left > 0.0:
+		return false
+	if not _ensure_ground_contact_for_stuck_jump():
+		return false
+	if forward_dir.length_squared() <= 0.0001:
+		return false
+
+	velocity.y = maxf(velocity.y, obstacle_jump_velocity)
+	_vertical_speed = velocity.y
+	_stuck_jump_hold_dir = forward_dir.normalized()
+	_stuck_jump_hold_left = obstacle_jump_forward_hold_sec
+	_current_speed = maxf(_current_speed, _walk_speed * obstacle_jump_forward_speed_multiplier)
+	_stuck_jump_cooldown_left = obstacle_jump_cooldown_sec
+	_floor_snap_suppress_left = obstacle_jump_floor_snap_suppress_sec
+	floor_snap_length = 0.0
+	_stuck_timer = 0.0
+	_stuck_slide_hold_dir = Vector3.ZERO
+	_stuck_slide_hold_left = 0.0
+	return true
+
+func _ensure_ground_contact_for_stuck_jump() -> bool:
+	if is_on_floor():
+		return true
+
+	var hit := _probe_ground_hit(global_position)
+	if hit.is_empty():
+		return false
+
+	var floor_pos := hit["position"] as Vector3
+	var floor_gap := global_position.y - floor_pos.y
+	var max_jump_ground_gap := maxf(floor_snap_distance * 0.6, 0.18)
+	if floor_gap < -0.05 or floor_gap > max_jump_ground_gap:
+		return false
+
+	global_position.y = floor_pos.y
+	velocity.y = 0.0
+	_vertical_speed = 0.0
+	return true
 
 func _compute_slide_escape_direction(preferred_dir: Vector3) -> Vector3:
 	var collision_count := get_slide_collision_count()
@@ -965,6 +1199,17 @@ func _update_stuck_state(delta: float) -> void:
 		_stuck_slide_hold_left = maxf(_stuck_slide_hold_left - delta, 0.0)
 		if _stuck_slide_hold_left <= 0.0:
 			_stuck_slide_hold_dir = Vector3.ZERO
+	if _stuck_jump_cooldown_left > 0.0:
+		_stuck_jump_cooldown_left = maxf(_stuck_jump_cooldown_left - delta, 0.0)
+	if _stuck_jump_hold_left > 0.0:
+		_stuck_jump_hold_left = maxf(_stuck_jump_hold_left - delta, 0.0)
+		if _stuck_jump_hold_left <= 0.0:
+			_stuck_jump_hold_dir = Vector3.ZERO
+	if _floor_snap_suppress_left > 0.0:
+		_floor_snap_suppress_left = maxf(_floor_snap_suppress_left - delta, 0.0)
+		floor_snap_length = 0.0
+	else:
+		floor_snap_length = floor_snap_distance
 	var moved := global_position.distance_to(_last_move_position)
 	if _current_speed > 0.2 and moved <= obstacle_stuck_distance:
 		_stuck_timer += delta
@@ -972,6 +1217,9 @@ func _update_stuck_state(delta: float) -> void:
 		_stuck_timer = 0.0
 		_stuck_slide_hold_dir = Vector3.ZERO
 		_stuck_slide_hold_left = 0.0
+		if is_on_floor():
+			_stuck_jump_hold_dir = Vector3.ZERO
+			_stuck_jump_hold_left = 0.0
 	_last_move_position = global_position
 
 func _update_trace_navigation_state(reason: String, desired_dir: Vector3, move_dir: Vector3) -> void:
@@ -983,6 +1231,13 @@ func _update_trace_obstacle_hits() -> void:
 	_trace_last_forward_hit = _trace_describe_ray_hit(_obstacle_ray_forward)
 	_trace_last_left_hit = _trace_describe_ray_hit(_obstacle_ray_left)
 	_trace_last_right_hit = _trace_describe_ray_hit(_obstacle_ray_right)
+	_update_congestion_debug_label()
+
+func _update_congestion_debug_label() -> void:
+	for candidate in [_trace_last_forward_hit, _trace_last_left_hit, _trace_last_right_hit]:
+		if candidate != "clear" and candidate != "off":
+			_debug_last_blocking_area = candidate
+			return
 
 func _trace_describe_ray_hit(ray: RayCast3D) -> String:
 	if ray == null or not ray.enabled:
@@ -1025,7 +1280,7 @@ func get_trace_debug_summary() -> String:
 	if _is_travelling and not _travel_route.is_empty():
 		waypoint_label = "%d/%d" % [_travel_route_index, _travel_route.size() - 1]
 
-	return "citizen=%s pos=%s vel=%s speed=%.2f action=%s location=%s inside=%s travel_to=%s on_floor=%s travelling=%s target=%s waypoint=%s decision=%s desired=%s move=%s seen[fwd=%s | left=%s | right=%s]" % [
+	return "citizen=%s pos=%s vel=%s speed=%.2f action=%s location=%s inside=%s travel_to=%s on_floor=%s travelling=%s target=%s waypoint=%s decision=%s desired=%s move=%s seen[fwd=%s | left=%s | right=%s] crowd[repath=%d stuck_slide=%d jump=%d hotspot=%s]" % [
 		citizen_name,
 		_trace_fmt_vec3(global_position),
 		_trace_fmt_vec3(velocity),
@@ -1043,7 +1298,11 @@ func get_trace_debug_summary() -> String:
 		_trace_fmt_vec3(_trace_last_move_dir),
 		_trace_last_forward_hit,
 		_trace_last_left_hit,
-		_trace_last_right_hit
+		_trace_last_right_hit,
+		_debug_repath_count,
+		_debug_stuck_slide_count,
+		_debug_stuck_jump_count,
+		_debug_last_blocking_area
 	]
 # Called from main.gd when selection/debug panel changes.
 func set_selected(selected: bool) -> void:
@@ -1139,17 +1398,19 @@ func _auto_resolve_refs() -> void:
 		enter_building(home, _world_ref, false)
 
 func _try_find_job_once() -> void:
+	var from_pos := _get_job_search_origin()
 	if job == null:
-		return
-	if job.workplace != null:
-		return
+		_try_retarget_job_to_city_need(from_pos)
+		if job == null:
+			return
+	elif job.workplace == null:
+		_try_retarget_job_to_city_need(from_pos)
 
-	var from_pos := home.get_entrance_pos() if home else global_position
-	if home != null and _world_ref != null and _world_ref.has_method("get_pedestrian_access_point"):
-		from_pos = _world_ref.get_pedestrian_access_point(from_pos, home)
+	if job == null or job.workplace != null:
+		return
 	var found_reachable_workplace := false
 	if _world_ref != null:
-		job.workplace = _world_ref.find_nearest_open_workplace(from_pos, job.workplace_name, job.workplace_service_type)
+		job.workplace = _world_ref.find_best_workplace_for_job(from_pos, job, self)
 		found_reachable_workplace = job.workplace != null
 
 	if job.workplace == null and _world_ref == null:
@@ -1213,6 +1474,17 @@ func _connect_time_signals(world: World) -> void:
 func _on_hour_changed(new_hour: int) -> void:
 	if new_hour < 6 or new_hour > 20:
 		return
+	_try_find_job_once()
+
+func notify_job_lost(closed_building: Building = null, reason: String = "") -> void:
+	if job == null or job.workplace != null:
+		return
+	_reset_job_notice_state()
+	if reason != "":
+		debug_log("Searching for a new job after losing %s (%s)." % [
+			_building_label(closed_building),
+			reason
+		])
 	_try_find_job_once()
 
 func _update_debug(world: World, h_delta: float) -> void:
@@ -1360,8 +1632,8 @@ func _find_first_residential_building(from_pos: Vector3 = Vector3.ZERO) -> Resid
 func _find_nearest_restaurant(from_pos: Vector3, require_open: bool = true) -> Restaurant:
 	if _world_ref != null:
 		if _world_ref.has_method("find_preferred_restaurant"):
-			return _world_ref.find_preferred_restaurant(from_pos, self, require_open)
-		return _world_ref.find_nearest_restaurant(from_pos, require_open)
+			return _world_ref.find_preferred_restaurant(from_pos, self, require_open, self)
+		return _world_ref.find_nearest_restaurant(from_pos, require_open, self)
 
 	var best: Restaurant = null
 	var best_dist := INF
@@ -1377,7 +1649,7 @@ func _find_nearest_restaurant(from_pos: Vector3, require_open: bool = true) -> R
 
 func _find_nearest_supermarket(from_pos: Vector3, require_open: bool = true) -> Supermarket:
 	if _world_ref != null:
-		return _world_ref.find_nearest_supermarket(from_pos, require_open)
+		return _world_ref.find_nearest_supermarket(from_pos, require_open, self)
 
 	var best: Supermarket = null
 	var best_dist := INF
@@ -1393,7 +1665,7 @@ func _find_nearest_supermarket(from_pos: Vector3, require_open: bool = true) -> 
 
 func _find_nearest_shop(from_pos: Vector3, require_open: bool = true) -> Shop:
 	if _world_ref != null:
-		return _world_ref.find_nearest_shop(from_pos, require_open)
+		return _world_ref.find_nearest_shop(from_pos, require_open, self)
 
 	var best: Shop = null
 	var best_dist := INF
@@ -1409,7 +1681,7 @@ func _find_nearest_shop(from_pos: Vector3, require_open: bool = true) -> Shop:
 
 func _find_nearest_cinema(from_pos: Vector3, require_open: bool = true) -> Cinema:
 	if _world_ref != null:
-		return _world_ref.find_nearest_cinema(from_pos, require_open)
+		return _world_ref.find_nearest_cinema(from_pos, require_open, self)
 
 	var best: Cinema = null
 	var best_dist := INF
@@ -1424,7 +1696,7 @@ func _find_nearest_cinema(from_pos: Vector3, require_open: bool = true) -> Cinem
 
 func _find_nearest_university(from_pos: Vector3, require_open: bool = true) -> University:
 	if _world_ref != null:
-		return _world_ref.find_nearest_university(from_pos, require_open)
+		return _world_ref.find_nearest_university(from_pos, require_open, self)
 
 	var best: University = null
 	var best_dist := INF
@@ -1439,7 +1711,7 @@ func _find_nearest_university(from_pos: Vector3, require_open: bool = true) -> U
 
 func _find_nearest_park(from_pos: Vector3) -> Building:
 	if _world_ref != null:
-		return _world_ref.find_nearest_park(from_pos)
+		return _world_ref.find_nearest_park(from_pos, self)
 
 	var best: Building = null
 	var best_dist := INF
@@ -1468,7 +1740,11 @@ func debug_log_once_per_day(key: String, message: String) -> void:
 func get_job_debug_summary() -> String:
 	if job == null:
 		return "job=none"
-	var workplace_label := _building_label(job.workplace) if job.workplace != null else "none"
+	var workplace_label := "none"
+	if job.workplace != null:
+		workplace_label = _building_label(job.workplace)
+	elif job.preferred_workplace != null:
+		workplace_label = "target:%s" % _building_label(job.preferred_workplace)
 	var service_type := job.workplace_service_type if job.workplace_service_type != "" else "any"
 	return "job=%s reqEdu=%d/%d service=%s workplace=%s wage=%d shift=%02d+%dh worked=%dmin" % [
 		job.title,
@@ -1486,22 +1762,207 @@ func get_unemployment_debug_reason() -> String:
 	if job == null:
 		return "no assigned job"
 	if job.workplace == null and not job.meets_requirements(self):
-		return "education mismatch for %s (%d/%d)" % [
+		var target_label := _building_label(job.preferred_workplace) if job.preferred_workplace != null else "no target workplace"
+		return "education mismatch for %s (%d/%d) target=%s" % [
 			job.title,
+			education_level,
+			job.required_education_level,
+			target_label
+		]
+	if job.workplace == null:
+		var preferred_label := _building_label(job.preferred_workplace) if job.preferred_workplace != null else "none"
+		return "no workplace assigned for %s (service=%s target=%s)" % [
+			job.title,
+			job.workplace_service_type if job.workplace_service_type != "" else "any",
+			preferred_label
+		]
+	return "employment status unclear"
+
+func _get_job_search_origin() -> Vector3:
+	var from_pos := home.get_entrance_pos() if home else (global_position if is_inside_tree() else position)
+	if home != null and _world_ref != null and _world_ref.has_method("get_pedestrian_access_point"):
+		from_pos = _world_ref.get_pedestrian_access_point(from_pos, home)
+	return from_pos
+
+func _try_retarget_job_to_city_need(from_pos: Vector3) -> bool:
+	if _world_ref == null or not _world_ref.has_method("find_best_job_offer_for_citizen"):
+		return false
+	var allow_training := _find_nearest_university(from_pos, true) != null
+	var offer: Dictionary = _world_ref.find_best_job_offer_for_citizen(from_pos, self, allow_training)
+	if offer.is_empty():
+		return false
+	return _apply_job_offer(offer)
+
+func _apply_job_offer(offer: Dictionary) -> bool:
+	var building := offer.get("building", null) as Building
+	var job_title := str(offer.get("title", ""))
+	if building == null or job_title.is_empty():
+		return false
+	if job != null \
+		and job.title == job_title \
+		and job.preferred_workplace == building \
+		and job.required_education_level == int(offer.get("required_education_level", job.required_education_level)):
+		return false
+
+	if job == null:
+		job = Job.new()
+		if _world_ref != null and _world_ref.has_method("register_job"):
+			_world_ref.register_job(job)
+
+	job.title = job_title
+	job.wage_per_hour = int(offer.get("wage_per_hour", job.wage_per_hour))
+	job.required_education_level = int(offer.get("required_education_level", job.required_education_level))
+	job.workplace_service_type = ""
+	job.workplace_name = ""
+	var allowed_types_variant: Variant = offer.get("allowed_building_types", [])
+	job.allowed_building_types = (allowed_types_variant as Array).duplicate() if allowed_types_variant is Array else []
+	job.preferred_workplace = building
+	job.workplace = null
+	_reset_job_notice_state()
+
+	var mode := "training" if education_level < job.required_education_level else "direct placement"
+	debug_log_once_per_day(
+		"job_retarget_%s_%s" % [job.title, building.get_display_name()],
+		"Retargeted to %s at %s (%s, edu %d/%d)." % [
+			job.title,
+			building.get_display_name(),
+			mode,
 			education_level,
 			job.required_education_level
 		]
-	if job.workplace == null:
-		return "no workplace assigned for %s (service=%s)" % [
-			job.title,
-			job.workplace_service_type if job.workplace_service_type != "" else "any"
-		]
-	return "employment status unclear"
+	)
+	return true
 
 func get_zero_pay_debug_reason() -> String:
 	var action_label := current_action.label if current_action != null else "idle"
 	var location_label := _building_label(current_location) if current_location != null else "travelling"
 	return "%s action=%s location=%s" % [get_job_debug_summary(), action_label, location_label]
+
+func is_building_temporarily_unreachable(building: Building, world: World = null) -> bool:
+	if building == null:
+		return false
+	var active_world := world if world != null else _world_ref
+	if active_world == null or active_world.time == null:
+		return false
+	var key := building.get_instance_id()
+	if not _temporarily_unreachable_targets.has(key):
+		return false
+	var blocked_until := int(_temporarily_unreachable_targets.get(key, 0))
+	if blocked_until <= _get_sim_total_minutes(active_world):
+		_temporarily_unreachable_targets.erase(key)
+		return false
+	return true
+
+func prepare_go_to_target(target: Building, world: World) -> Building:
+	if target == null:
+		return null
+	if not is_building_temporarily_unreachable(target, world):
+		return target
+	return handle_unreachable_target(target, world, "target already on cooldown")
+
+func handle_unreachable_target(target: Building, world: World, reason: String = "") -> Building:
+	if target == null:
+		return null
+	_mark_building_temporarily_unreachable(target, world, reason)
+	var replacement := _find_alternative_for_building(target, world)
+	if replacement != null and replacement != target:
+		_apply_building_target_replacement(target, replacement)
+		debug_log("Retargeting from unreachable %s to %s (%s)." % [
+			_building_label(target),
+			_building_label(replacement),
+			reason if reason != "" else "stuck"
+		])
+		return replacement
+	debug_log("Aborting unreachable target %s (%s)." % [
+		_building_label(target),
+		reason if reason != "" else "stuck"
+	])
+	return null
+
+func _mark_building_temporarily_unreachable(target: Building, world: World, reason: String = "") -> void:
+	if target == null:
+		return
+	var active_world := world if world != null else _world_ref
+	if active_world == null or active_world.time == null:
+		return
+	var until_minute := _get_sim_total_minutes(active_world) + maxi(unreachable_target_cooldown_minutes, 1)
+	_temporarily_unreachable_targets[target.get_instance_id()] = until_minute
+	debug_log("Marked %s as temporarily unreachable for %d sim-min (%s)." % [
+		_building_label(target),
+		unreachable_target_cooldown_minutes,
+		reason if reason != "" else "navigation failure"
+	])
+
+func _get_sim_total_minutes(world: World = null) -> int:
+	var active_world := world if world != null else _world_ref
+	if active_world == null or active_world.time == null:
+		return 0
+	return maxi(active_world.time.day - 1, 0) * 24 * 60 + active_world.time.minutes_total
+
+func _get_retarget_origin(world: World) -> Vector3:
+	if current_location != null:
+		var origin := current_location.get_entrance_pos()
+		if world != null and world.has_method("get_pedestrian_access_point"):
+			return world.get_pedestrian_access_point(origin, current_location)
+		return origin
+	if _inside_building != null:
+		return _get_building_access_pos(_inside_building, world)
+	return global_position if is_inside_tree() else position
+
+func _find_alternative_for_building(target: Building, world: World) -> Building:
+	var from_pos := _get_retarget_origin(world)
+	if target == null:
+		return null
+	if target == home:
+		var alt_home := _find_first_residential_building(from_pos)
+		return alt_home if alt_home != target else null
+	if target == favorite_restaurant or target is Restaurant:
+		var alt_restaurant := _find_nearest_restaurant(from_pos, true)
+		return alt_restaurant if alt_restaurant != target else null
+	if target == favorite_supermarket or target is Supermarket:
+		var alt_market := _find_nearest_supermarket(from_pos, true)
+		return alt_market if alt_market != target else null
+	if target == favorite_shop or (target is Shop and target is not Supermarket):
+		var alt_shop := _find_nearest_shop(from_pos, true)
+		return alt_shop if alt_shop != target else null
+	if target == favorite_cinema or target is Cinema:
+		var alt_cinema := _find_nearest_cinema(from_pos, true)
+		return alt_cinema if alt_cinema != target else null
+	if target == favorite_park or target.is_in_group("parks"):
+		var alt_park := _find_nearest_park(from_pos)
+		return alt_park if alt_park != target else null
+	if target is University:
+		var alt_uni := _find_nearest_university(from_pos, true)
+		return alt_uni if alt_uni != target else null
+	if job != null and job.workplace == target:
+		job.workplace = null
+		_try_find_job_once()
+		return job.workplace if job != null and job.workplace != target else null
+	if world != null and world.has_method("find_nearest_building_with_service"):
+		var alt_service := world.find_nearest_building_with_service(from_pos, target.get_service_type(), true, self)
+		return alt_service if alt_service != target else null
+	return null
+
+func _apply_building_target_replacement(original: Building, replacement: Building) -> void:
+	if original == null or replacement == null:
+		return
+	if home == original and replacement is ResidentialBuilding:
+		home = replacement as ResidentialBuilding
+	if favorite_restaurant == original and replacement is Restaurant:
+		favorite_restaurant = replacement as Restaurant
+	if favorite_supermarket == original and replacement is Supermarket:
+		favorite_supermarket = replacement as Supermarket
+	if favorite_shop == original and replacement is Shop:
+		favorite_shop = replacement as Shop
+	if favorite_cinema == original and replacement is Cinema:
+		favorite_cinema = replacement as Cinema
+	if favorite_park == original:
+		favorite_park = replacement
+	if job != null:
+		if job.workplace == original:
+			job.workplace = replacement
+		if job.preferred_workplace == original:
+			job.preferred_workplace = replacement
 
 
 func start_action(a: Action, world: World) -> void:
@@ -1510,6 +1971,8 @@ func start_action(a: Action, world: World) -> void:
 func _start_action(a: Action, world: World) -> void:
 	if a is GoToBuildingAction and is_inside_building():
 		exit_current_building(world)
+	elif a is GoToBuildingAction and current_location != null:
+		leave_current_location(world)
 
 	current_action = a
 	current_action.start(world, self)
@@ -1569,9 +2032,8 @@ func _maybe_log_job_requirement_notice(blocked_workplace: Building = null) -> vo
 	var nearest_uni := _find_nearest_university(study_origin, false)
 	var study_hint := " No reachable university available right now."
 	if nearest_uni != null:
-		study_hint = " Study option: %s (tuition %d EUR)." % [
+		study_hint = " Study option: %s (publicly funded)." % [
 			nearest_uni.get_display_name(),
-			nearest_uni.tuition_fee
 		]
 	debug_log("Needs education level %d for job %s (current %d). Candidate workplace: %s.%s" % [
 		job.required_education_level,

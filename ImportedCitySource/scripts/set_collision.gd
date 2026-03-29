@@ -4,16 +4,16 @@ extends Node3D
 var map: Resource
 
 func _set_nodes(parent) -> void:
-	#if not Engine.is_editor_hint():
-	#	return  # Nur im Editor ausfÃ¼hren
+	# if not Engine.is_editor_hint():
+	# 	return  # Only run in editor
 	for categorie: Node3D in parent.get_children():
 		for node: Node3D in categorie.get_children():
 			if node.get_child_count() > 0:
-				#node.set_script(data_node)
+				# node.set_script(data_node)
 				_set_collision(node)
 
 func _ready() -> void:
-	self._set_nodes(self)
+	_set_nodes(self)
 
 func find_mesh(node: Node, parent: Node = null) -> Array:
 	if node is MeshInstance3D:
@@ -24,40 +24,37 @@ func find_mesh(node: Node, parent: Node = null) -> Array:
 		if res[0] != null:
 			return res
 
-	return [null, null]  # Immer ein Array zurÃ¼ckgeben
+	return [null, null]
 
 func _set_collision(parent) -> void:
-	#var is_road = model_name.begins_with("road")
-	# 1) Referenz auf einen MeshInstance3D in der Szene
-	var result = find_mesh(parent)
-	var mesh_instance = result[0]
-	var parent_node = result[1]
-	if !mesh_instance:
+	if _has_existing_physics_body(parent):
 		return
-	#var new_node: Node3D = Node3D.new()
-	#new_node.add_child(mesh_instance)
-	#new_node.position = parent_node.position
-	#new_node.rotation = parent_node.rotation
-	#parent_node.hide()
+
+	var result = find_mesh(parent)
+	var mesh_instance := result[0] as MeshInstance3D
+	var parent_node := result[1] as Node3D
+	if mesh_instance == null or parent_node == null:
+		return
 
 	var mesh_tmp: Mesh = mesh_instance.mesh
+	if mesh_tmp == null:
+		return
 
-	# 2) Einen StaticBody3D (oder RigidBody3D) erzeugen und in die Szene hÃ¤ngen
-	var static_body = StaticBody3D.new()
-	#if is_road:
-	#	static_body.collision_layer = 2  # Andere Bit-Maske
-	#else:
-	#static_body.collision_layer = 1  # Standard
-	#new_node.add_child(static_body)
+	var static_body := StaticBody3D.new()
 	parent_node.add_child(static_body)
-	
-	# 3) CollisionShape3D erzeugen und an den Body hÃ¤ngen
-	var collision_shape = CollisionShape3D.new()
-	collision_shape.scale = mesh_instance.scale
-	static_body.add_child(collision_shape)
+	static_body.transform = mesh_instance.transform
 
-	# 4) Aus dem Mesh ein Trimesh-Shape generieren
-	# (verwendet man meist fÃ¼r statische und eher komplexe 3D-Modelle)
-	if mesh_tmp:
-		var shape = mesh_tmp.create_trimesh_shape()
-		collision_shape.shape = shape
+	var collision_shape := CollisionShape3D.new()
+	static_body.add_child(collision_shape)
+	collision_shape.shape = mesh_tmp.create_trimesh_shape()
+
+func _has_existing_physics_body(node: Node) -> bool:
+	if node == null:
+		return false
+
+	for child in node.get_children():
+		if child is StaticBody3D or child is RigidBody3D or child is CharacterBody3D:
+			return true
+		if _has_existing_physics_body(child):
+			return true
+	return false

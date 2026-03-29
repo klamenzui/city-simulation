@@ -56,6 +56,23 @@ func transfer(from_acc: Account, to_acc: Account, amount: int) -> bool:
 	to_acc.balance += amount
 	return true
 
+func pay_to_wallet(from_acc: Account, citizen: Citizen, amount: int) -> bool:
+	if citizen == null:
+		return false
+	return transfer(from_acc, citizen.wallet, amount)
+
+func collect_tax(payer: Account, collector: Account, amount: int) -> bool:
+	return transfer(payer, collector, amount)
+
+func fund_public_building(payer: Account, receiver: Account, amount: int) -> bool:
+	return transfer(payer, receiver, amount)
+
+func pay_production_cost(payer: Account, amount: int) -> bool:
+	return transfer(payer, market_account, amount)
+
+func pay_public_operating_cost(payer: Account, sink: Account, amount: int) -> bool:
+	return transfer(payer, sink, amount)
+
 func register_job(job: Job) -> void:
 	if job == null:
 		return

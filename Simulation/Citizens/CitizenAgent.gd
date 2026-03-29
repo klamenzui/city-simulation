@@ -26,6 +26,8 @@ func sim_tick(citizen, world) -> void:
 	var h_delta := needs_component.tick_needs(world, citizen)
 	citizen._update_work_day(world)
 	citizen._update_debug(world, h_delta)
+	if citizen.has_method("is_manual_control_enabled") and citizen.is_manual_control_enabled():
+		return
 
 	if citizen.current_action != null:
 		citizen.current_action.tick(world, citizen, world.minutes_per_tick)
