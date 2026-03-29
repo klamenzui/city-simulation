@@ -88,7 +88,7 @@ func _ready() -> void:
 	account.owner_name = get_display_name()
 	_setup_clickable()
 	_setup_highlight()
-	_setup_navigation_blocker()
+	#_setup_navigation_blocker()
 	_setup_entrance_trigger()
 
 func _apply_common_balance_settings() -> void:
@@ -98,30 +98,28 @@ func _apply_common_balance_settings() -> void:
 	_maybe_apply_start_balance()
 
 func _setup_clickable() -> void:
-	var area := get_node_or_null("ClickArea") as Area3D
-	if area == null:
-		area = Area3D.new()
-		area.name = "ClickArea"
-		area.input_ray_pickable = true
-		add_child(area)
+	var click_targets: Array[CollisionObject3D] = []
+	_collect_click_targets(self, click_targets)
+	for click_target in click_targets:
+		if click_target == null:
+			continue
+		click_target.input_ray_pickable = true
+		if not click_target.input_event.is_connected(_on_area_input_event):
+			click_target.input_event.connect(_on_area_input_event)
 
-	var shape_node := area.get_node_or_null("CollisionShape3D") as CollisionShape3D
-	if shape_node == null:
-		shape_node = CollisionShape3D.new()
-		shape_node.name = "CollisionShape3D"
-		area.add_child(shape_node)
+func _collect_click_targets(node: Node, out: Array[CollisionObject3D]) -> void:
+	for child in node.get_children():
+		if child is CollisionObject3D:
+			var collision_object := child as CollisionObject3D
+			if _should_use_as_click_target(collision_object):
+				out.append(collision_object)
+		if child is Node:
+			_collect_click_targets(child as Node, out)
 
-	var shape := shape_node.shape as BoxShape3D
-	if shape == null:
-		shape = BoxShape3D.new()
-		shape_node.shape = shape
-
-	var bounds := _infer_click_bounds()
-	shape.size = bounds.size
-	shape_node.position = bounds.position + bounds.size * 0.5
-
-	if not area.input_event.is_connected(_on_area_input_event):
-		area.input_event.connect(_on_area_input_event)
+func _should_use_as_click_target(collision_object: CollisionObject3D) -> bool:
+	if collision_object == null:
+		return false
+	return collision_object.name != "NavigationBlocker" and collision_object.name != "EntranceTrigger"
 
 func _infer_click_bounds() -> AABB:
 	var meshes: Array[MeshInstance3D] = []

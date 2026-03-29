@@ -1,8 +1,10 @@
-[gd_scene load_steps=3 format=3 uid="uid://co6dly5p7eavi"]
+[gd_scene load_steps=4 format=3 uid="uid://co6dly5p7eavi"]
 
 [ext_resource type="Script" uid="uid://fg3i5r23xtys" path="res://Entities/Buildings/Restaurant.gd" id="1_hi3lj"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_hi3lj"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_click"]
+size = Vector3(2.145951, 1.7127451, 2.2952132)
 
 [node name="Restaurant" type="Node3D" groups=["buildings"] node_paths=PackedStringArray("entrance")]
 script = ExtResource("1_hi3lj")
@@ -12,6 +14,12 @@ entrance = NodePath("Entrance")
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
 transform = Transform3D(2.145951, 0, 0, 0, 1.7127451, 0, 0, 0, 2.2952132, 0, 0, 0)
 mesh = SubResource("BoxMesh_hi3lj")
+
+[node name="ClickArea" type="Area3D" parent="."]
+input_ray_pickable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ClickArea"]
+shape = SubResource("BoxShape3D_click")
 
 [node name="Entrance" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1380649, 0, 0.005073726)
