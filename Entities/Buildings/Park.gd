@@ -7,9 +7,9 @@ class_name Park
 func _ready() -> void:
 	building_type = BuildingType.PARK
 	apply_balance_settings("park")
-	_remove_embedded_scene_bodies()
+	#_remove_embedded_scene_bodies()
 	super._ready()
-	_rebuild_park_navigation_boundaries()
+	#_rebuild_park_navigation_boundaries()
 	add_to_group("parks")
 
 func _remove_embedded_scene_bodies() -> void:

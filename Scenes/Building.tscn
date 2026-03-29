@@ -1,8 +1,10 @@
-[gd_scene load_steps=3 format=3 uid="uid://bjous0rfhgj1c"]
+[gd_scene load_steps=4 format=3 uid="uid://bjous0rfhgj1c"]
 
 [ext_resource type="Script" uid="uid://cr3k623edd7lg" path="res://Entities/Buildings/Building.gd" id="1_33ows"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_33ows"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_click"]
+size = Vector3(1, 1, 1)
 
 [node name="Building" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings"]]
 script = ExtResource("1_33ows")
@@ -10,6 +12,12 @@ entrance = NodePath("Entrance")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
 mesh = SubResource("BoxMesh_33ows")
+
+[node name="ClickArea" type="Area3D" parent="."]
+input_ray_pickable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ClickArea"]
+shape = SubResource("BoxShape3D_click")
 
 [node name="Entrance" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5954189, 0, 0)

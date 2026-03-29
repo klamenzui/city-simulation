@@ -43,13 +43,21 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_113vh")
 
-[node name="park_park_05" type="Node3D" unique_id=1808626305 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_park", "parks"]]
+[sub_resource type="BoxShape3D" id="BoxShape3D_6pjdl"]
+size = Vector3(0.02, 0.02, 0.001)
+
+[node name="park_park_05" type="Node3D" unique_id=1808626305 groups=["buildings", "city_buildings", "city_park", "parks"]]
 script = ExtResource("1_6pjdl")
 building_name = "Park 05 (Park)"
 building_type = 9
-entrance = NodePath("")
 
 [node name="park_base_decorated_bushes" type="MeshInstance3D" parent="." unique_id=1763736107]
 transform = Transform3D(100, 0, 0, 0, -1.1920929e-05, 99.99999, 0, -99.99999, -1.1920929e-05, 0, 0, 0)
 mesh = SubResource("ArrayMesh_bov0o")
 skeleton = NodePath("")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="park_base_decorated_bushes" unique_id=1295816467]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="park_base_decorated_bushes/StaticBody3D" unique_id=127299981]
+transform = Transform3D(1.0000004, 0, 0, 0, 1.0000004, -2.842171e-14, 0, 2.842171e-14, 1.0000004, 0, -6.938894e-18, 0.0005)
+shape = SubResource("BoxShape3D_6pjdl")
