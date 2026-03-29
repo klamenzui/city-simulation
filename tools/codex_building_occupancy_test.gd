@@ -1,6 +1,7 @@
 extends SceneTree
 
 const BuildingScript = preload("res://Entities/Buildings/Building.gd")
+const ParkScript = preload("res://Entities/Buildings/Park.gd")
 const UniversityScript = preload("res://Entities/Buildings/University.gd")
 const CitizenScript = preload("res://Entities/Citizens/Citizen.gd")
 const WorldScript = preload("res://Simulation/World.gd")
@@ -20,6 +21,8 @@ func _run_all_tests() -> void:
 	for test_name in [
 		"building_entry_updates_visitors",
 		"university_requires_worker_for_study",
+		"university_unstaffed_label_is_teaching_specific",
+		"park_entry_keeps_citizen_visible",
 		"worker_count_lifecycle",
 	]:
 		var error := _run_test(test_name)
@@ -46,6 +49,10 @@ func _run_test(test_name: String) -> String:
 			return _test_building_entry_updates_visitors()
 		"university_requires_worker_for_study":
 			return _test_university_requires_worker_for_study()
+		"university_unstaffed_label_is_teaching_specific":
+			return _test_university_unstaffed_label_is_teaching_specific()
+		"park_entry_keeps_citizen_visible":
+			return _test_park_entry_keeps_citizen_visible()
 		"worker_count_lifecycle":
 			return _test_worker_count_lifecycle()
 		_:
@@ -72,8 +79,10 @@ func _test_university_requires_worker_for_study() -> String:
 	var citizen: Citizen = _new_citizen("Student One")
 	var teacher: Citizen = _new_citizen("Teacher One")
 	var world: World = _new_world()
-	citizen.wallet.balance = max(citizen.wallet.balance, university.tuition_fee + 40)
 	var wallet_before: int = citizen.wallet.balance
+	teacher.job = Job.new()
+	teacher.job.title = "Teacher"
+	teacher.job.workplace = university
 
 	_expect(not university.is_open(world.time.get_hour()), "university should be unavailable without at least one worker")
 	_expect(not university.can_study(citizen), "student should not be able to study when no worker is present")
@@ -84,7 +93,7 @@ func _test_university_requires_worker_for_study() -> String:
 	var action: StudyAtUniversityAction = StudyAtUniversityActionScript.new(university, 90)
 	action.start(world, citizen)
 	_expect(action.finished, "study action should stop immediately when the university has no worker")
-	_expect_eq(university.account.balance, 0, "university should not receive tuition while it has no worker")
+	_expect_eq(university.account.balance, 0, "university should not receive income while it has no worker")
 	_expect_eq(citizen.education_level, 0, "study should not progress while university is unstaffed")
 
 	_expect(university.try_hire(teacher), "university should accept its first worker")
@@ -95,8 +104,8 @@ func _test_university_requires_worker_for_study() -> String:
 	action.start(world, citizen)
 	_expect_eq(university.visitors.size(), 1, "study start should not double-count an already entered visitor")
 	_expect_eq(citizen.education_level, 1, "study start should grant education progress")
-	_expect_eq(university.account.balance, university.tuition_fee, "university should receive tuition during study start")
-	_expect_eq(citizen.wallet.balance, wallet_before - university.tuition_fee, "tuition should move money out of the student wallet")
+	_expect_eq(university.account.balance, 0, "university should not charge tuition in the public funding model")
+	_expect_eq(citizen.wallet.balance, wallet_before, "public university study should not change the student wallet")
 
 	action.finish(world, citizen)
 	_expect_eq(university.visitors.size(), 0, "study finish should clear the university visitor again")
@@ -118,6 +127,34 @@ func _test_worker_count_lifecycle() -> String:
 	_expect_eq(building.workers.size(), 1, "fire should reduce worker count")
 	var info := building.get_info(null)
 	_expect_eq(info.get("Workers", ""), "1 / 2", "building info should reflect live worker count")
+	return _current_error
+
+func _test_university_unstaffed_label_is_teaching_specific() -> String:
+	var university: University = _new_university("Teaching Uni")
+	var janitor: Citizen = _new_citizen("Janitor Worker")
+	janitor.job = Job.new()
+	janitor.job.title = "Janitor"
+	janitor.job.workplace = university
+
+	_expect(university.try_hire(janitor), "university should be able to hire non-teaching staff")
+	_expect_eq(university.workers.size(), 1, "worker count should include non-teaching staff")
+	_expect_eq(university.get_open_status_label(10), "UNSTAFFED", "university should remain unstaffed for teaching without teachers")
+	_expect_eq(university.get_open_status_display_label(10), "Geschlossen: keine Lehrkraft", "status label should explain the missing teaching role")
+	return _current_error
+
+func _test_park_entry_keeps_citizen_visible() -> String:
+	var park: Park = _new_park("Central Park")
+	var citizen: Citizen = _new_citizen("Park Visitor")
+
+	citizen.enter_building(park, null, false)
+	_expect(citizen.current_location == park, "citizen current_location should point to the park")
+	_expect(not citizen.is_inside_building(), "park should not mark the citizen as hidden indoors")
+	_expect(citizen.visible, "citizen should stay visible inside the park")
+	_expect_eq(park.visitors.size(), 1, "park should register one visitor")
+
+	citizen.leave_current_location(null, false)
+	_expect(citizen.current_location == null, "leaving the park should clear current location")
+	_expect_eq(park.visitors.size(), 0, "park visitor should be removed after leaving")
 	return _current_error
 
 func _new_building(building_name: String, worker_capacity: int = 0) -> Building:
@@ -142,6 +179,21 @@ func _new_university(building_name: String) -> University:
 	university.add_child(entrance)
 	_harness_root.add_child(university)
 	return university
+
+func _new_park(building_name: String) -> Park:
+	var park: Park = ParkScript.new()
+	park.name = building_name
+	park.building_name = building_name
+	var entrance_south := Node3D.new()
+	entrance_south.name = "EntranceSouth"
+	entrance_south.position = Vector3(0.0, 0.0, 1.4)
+	park.add_child(entrance_south)
+	var entrance_north := Node3D.new()
+	entrance_north.name = "EntranceNorth"
+	entrance_north.position = Vector3(0.0, 0.0, -1.4)
+	park.add_child(entrance_north)
+	_harness_root.add_child(park)
+	return park
 
 func _new_citizen(citizen_name: String) -> Citizen:
 	var citizen: Citizen = CitizenScript.new()

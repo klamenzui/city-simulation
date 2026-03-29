@@ -5,7 +5,7 @@
   "world": {
     "minutes_per_tick": 1,
     "tick_interval_sec": 0.5,
-    "speed_multiplier": 1.0,
+    "speed_multiplier": 5.0,
     "city_reserve_start_balance": 18000
   },
   "economy": {
@@ -30,22 +30,64 @@
     "jobs": {
       "wage_per_hour_min": 10,
       "wage_per_hour_max": 26,
+      "wage_per_hour_by_title": {
+        "Baecker": 12,
+        "Kellner": 12,
+        "Programmierer": 24,
+        "Fahrer": 15,
+        "Mechaniker": 18,
+        "Verkaeufer": 13,
+        "Designer": 19,
+        "Doctor": 30,
+        "Teacher": 18,
+        "Engineer": 26,
+        "Professor": 28,
+        "Janitor": 13,
+        "Gardener": 14,
+        "MaintenanceWorker": 16,
+        "Technician": 22
+      },
       "required_education": {
         "Doctor": 1,
         "Teacher": 0,
-        "Engineer": 1
+        "Engineer": 1,
+        "Professor": 2,
+        "Janitor": 0,
+        "Gardener": 0,
+        "MaintenanceWorker": 0,
+        "Technician": 1
+      },
+      "allowed_building_types": {
+        "Teacher": ["UNIVERSITY"],
+        "Professor": ["UNIVERSITY"],
+        "Janitor": ["UNIVERSITY", "CITY_HALL", "PARK"],
+        "Gardener": ["PARK"],
+        "MaintenanceWorker": ["CAFE", "CINEMA", "FACTORY", "FARM", "RESIDENTIAL", "RESTAURANT", "SHOP", "SUPERMARKET", "CITY_HALL", "UNIVERSITY", "PARK"],
+        "Technician": ["FACTORY", "CITY_HALL"]
       }
     },
     "city_hall": {
       "business_tax_rate": 0.1,
       "citizen_tax_rate": 0.02,
-      "infrastructure_cost_per_day": 120,
-      "unemployment_support": 40,
-      "start_balance": 4500
+      "infrastructure_cost_per_day": 70,
+      "unemployment_support": 25,
+      "start_balance": 4500,
+      "min_operating_balance": 1200,
+      "reserve_transfer_target_balance": 3500,
+      "reserve_transfer_daily_limit": 2000,
+      "max_underfunded_days_before_closure": 3,
+      "underfunded_efficiency_multiplier": 0.82,
+      "underfunded_service_multiplier": 0.76
+    },
+    "buildings": {
+      "start_balance": 900,
+      "max_missed_payment_days_before_closure": 3,
+      "struggling_efficiency_multiplier": 0.72,
+      "struggling_customer_multiplier": 0.78
     }
   },
   "world_setup": {
-    "default_rent_per_day": 15,
+    "default_rent_per_day": 10,
     "default_work_capacity": 1,
     "university_job_capacity_override": 8
   },
@@ -88,6 +130,12 @@
       "health_recovery_fun_threshold": 20.0,
       "health_recovery_per_min": 0.015
     }
+  },
+  "building": {
+    "condition_start": 100.0,
+    "daily_decay": 1.0,
+    "maintenance_cost_per_day": 14,
+    "repair_threshold": 60.0
   },
   "actions": {
     "eat_home": {
@@ -318,13 +366,15 @@
       "job_capacity": 8,
       "open_hour": 7,
       "close_hour": 21,
-      "tuition_fee": 25,
+      "base_operating_cost": 110,
       "education_gain": 1
     },
     "park": {
       "capacity": 40,
+      "job_capacity": 2,
       "open_hour": 6,
       "close_hour": 23,
+      "base_operating_cost": 32,
       "navigation_blocker_margin": 1.35,
       "entrance_clearance_width": 2.6,
       "entrance_clearance_depth": 1.9,
@@ -336,7 +386,7 @@
       "job_capacity": 6,
       "open_hour": 5,
       "close_hour": 19,
-      "base_food_output_per_day": 140,
+      "base_food_output_per_day": 60,
       "production_cost_per_unit": 1
     },
     "factory": {
@@ -344,8 +394,8 @@
       "job_capacity": 8,
       "open_hour": 6,
       "close_hour": 21,
-      "clothes_output_per_day": 55,
-      "entertainment_output_per_day": 90,
+      "clothes_output_per_day": 25,
+      "entertainment_output_per_day": 40,
       "production_cost_per_unit": 2
     }
   }

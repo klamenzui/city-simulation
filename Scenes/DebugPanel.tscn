@@ -19,3 +19,8 @@ layout_mode = 2
 bbcode_enabled = true
 fit_content = true
 scroll_active = false
+
+[node name="CitizenControlButton" type="Button" parent="Panel/VBoxContainer"]
+layout_mode = 2
+visible = false
+text = "Control Citizen"

@@ -5,9 +5,8 @@ const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 
 var university: University
 var study_minutes_target: int = 90
-var _tuition_paid: bool = false
+var _study_started: bool = false
 var _education_before: int = 0
-var _wallet_before: int = 0
 var _stop_hunger_threshold: float = 70.0
 var _stop_health_threshold: float = 35.0
 
@@ -24,9 +23,8 @@ func _init(_university: University, _study_minutes_target: int = -1) -> void:
 
 func start(world, citizen) -> void:
 	super.start(world, citizen)
-	_tuition_paid = false
+	_study_started = false
 	_education_before = citizen.education_level
-	_wallet_before = citizen.wallet.balance
 
 	if university == null:
 		citizen.debug_log_once_per_day("study_missing_target", "Study action aborted: no university target was assigned.")
@@ -52,30 +50,25 @@ func start(world, citizen) -> void:
 		finished = true
 		return
 
-	_tuition_paid = university.study_session(world, citizen)
-	if not _tuition_paid:
+	_study_started = university.study_session(world, citizen)
+	if not _study_started:
 		citizen.debug_log_once_per_day(
-			"study_payment_%s" % university.get_display_name(),
-			"Study payment failed at %s: tuition %d EUR, balance %d EUR." % [
+			"study_start_%s" % university.get_display_name(),
+			"Study could not start at %s because the university is not operational." % [
 				university.get_display_name(),
-				university.tuition_fee,
-				_wallet_before
 			]
 		)
 		finished = true
 		return
-	citizen.debug_log("Study session started at %s: tuition %d EUR, education %d -> %d, balance %d -> %d." % [
+	citizen.debug_log("Study session started at %s: education %d -> %d." % [
 		university.get_display_name(),
-		university.tuition_fee,
 		_education_before,
-		citizen.education_level,
-		_wallet_before,
-		citizen.wallet.balance
+		citizen.education_level
 	])
 
 func tick(world, citizen, dt: int) -> void:
 	super.tick(world, citizen, dt)
-	if not _tuition_paid:
+	if not _study_started:
 		finished = true
 		return
 	if citizen.needs.hunger >= _stop_hunger_threshold \
@@ -89,7 +82,7 @@ func tick(world, citizen, dt: int) -> void:
 func finish(world, citizen) -> void:
 	if university != null:
 		university.finish_study(citizen)
-	if _tuition_paid:
+	if _study_started:
 		citizen.debug_log("Study session finished at %s after %d min. Education now %d." % [
 			university.get_display_name() if university != null else "Unknown",
 			elapsed_minutes,

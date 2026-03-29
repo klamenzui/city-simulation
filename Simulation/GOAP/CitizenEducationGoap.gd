@@ -40,17 +40,6 @@ func try_plan(world, citizen) -> bool:
 			]
 		)
 		return false
-	if citizen.wallet.balance < uni.tuition_fee:
-		citizen.debug_log_once_per_day(
-			"education_funds_%s" % citizen.job.title,
-			"Education blocked for %s: tuition %d EUR at %s, balance %d EUR." % [
-				citizen.job.title,
-				uni.tuition_fee,
-				uni.get_display_name(),
-				citizen.wallet.balance
-			]
-		)
-		return false
 
 	var state = _build_state(world, citizen)
 	var goal = {"education_progress": true}
@@ -71,7 +60,7 @@ func _build_state(world, citizen) -> Dictionary:
 	state["has_university"] = uni != null
 	state["at_university"] = uni != null and citizen.current_location == uni
 	state["is_night"] = is_night
-	state["can_afford_study"] = uni != null and citizen.wallet.balance >= uni.tuition_fee
+	state["university_operational"] = uni != null and uni.can_study(citizen)
 	state["education_progress"] = false
 	return state
 
@@ -86,7 +75,7 @@ func _build_actions() -> Array:
 	actions.append(GoapActionScript.new(
 		"study",
 		_study_cost,
-		{"at_university": true, "can_afford_study": true},
+		{"at_university": true, "university_operational": true},
 		{"education_progress": true}
 	))
 	return actions

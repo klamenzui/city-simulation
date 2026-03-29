@@ -1,7 +1,7 @@
-[gd_scene load_steps=6 format=4]
+[gd_scene format=4 uid="uid://yoqb0pc5m7o"]
 
-[ext_resource type="Script" path="res://Entities/Buildings/Park.gd" id="1_na43l"]
-[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/KayKit_City_Builder_Bits_1.0_EXTRA/Assets/fbx/citybits_texture.png" id="2_77wdj"]
+[ext_resource type="Script" uid="uid://4t0xdxolvh7e" path="res://Entities/Buildings/Park.gd" id="1_na43l"]
+[ext_resource type="Texture2D" uid="uid://b3cvcg0o5h3d8" path="res://ImportedCitySource/assets/KayKit_City_Builder_Bits_1.0_EXTRA/Assets/fbx/citybits_texture.png" id="2_77wdj"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ndw5a"]
 resource_name = "citybits_texture"
@@ -41,16 +41,13 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_tyigo")
 
-[node name="park_park_01" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_park", "parks"]]
+[node name="park_park_01" type="Node3D" unique_id=1616927614 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_park", "parks"]]
 script = ExtResource("1_na43l")
 building_name = "Park 01 (Park)"
 building_type = 9
-entrance = NodePath("Entrance")
+entrance = NodePath("")
 
-[node name="park_wall_straight" type="MeshInstance3D" parent="."]
+[node name="park_wall_straight" type="MeshInstance3D" parent="." unique_id=889896462]
 transform = Transform3D(100, 0, 0, 0, -1.1920929e-05, 99.99999, 0, -99.99999, -1.1920929e-05, 0, 0, 0)
 mesh = SubResource("ArrayMesh_qdfmx")
 skeleton = NodePath("")
-
-[node name="Entrance" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, -5.9604645e-08)

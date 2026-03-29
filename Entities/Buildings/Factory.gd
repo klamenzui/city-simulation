@@ -23,12 +23,31 @@ func get_service_type() -> String:
 func run_daily_production(world: World) -> void:
 	if world == null:
 		return
+	if is_financially_closed():
+		output_clothes_today = 0
+		output_entertainment_today = 0
+		return
+	if requires_staff_to_operate() and not has_required_staff():
+		output_clothes_today = 0
+		output_entertainment_today = 0
+		return
 
 	var labor_ratio: float = clamp(float(workers.size()) / float(maxi(job_capacity, 1)), 0.2, 1.3)
+	labor_ratio *= get_operating_efficiency_multiplier()
 	var clothes_qty: int = maxi(int(round(float(clothes_output_per_day) * labor_ratio)), 0)
 	var entertainment_qty: int = maxi(int(round(float(entertainment_output_per_day) * labor_ratio)), 0)
 	output_clothes_today = clothes_qty
 	output_entertainment_today = entertainment_qty
+
+	var total_output := clothes_qty + entertainment_qty
+	var production_cost: int = total_output * maxi(production_cost_per_unit, 0)
+	if production_cost > 0:
+		if not world.economy.pay_production_cost(account, production_cost):
+			close_due_to_finance(world, "unpaid production costs")
+			output_clothes_today = 0
+			output_entertainment_today = 0
+			return
+		record_production_expense(production_cost)
 
 	var shipped_total := 0
 	if clothes_qty > 0:
@@ -44,12 +63,6 @@ func run_daily_production(world: World) -> void:
 		if ent_revenue > 0:
 			record_income(ent_revenue)
 		shipped_total += int(ent_result.get("qty", 0))
-
-	if shipped_total > 0:
-		var cost: int = shipped_total * maxi(production_cost_per_unit, 0)
-		if cost > 0 and account.balance >= cost:
-			account.balance -= cost
-			record_expense(cost)
 
 func _get_extra_info(_world = null) -> Dictionary:
 	var info := get_commercial_info()

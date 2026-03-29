@@ -53,7 +53,15 @@ func begin_travel_to(citizen, target_pos: Vector3, target_building, world) -> bo
 
 	var route_start = citizen.global_position
 	var grounded_start = citizen._project_to_ground(route_start)
-	var grounded_target = citizen._project_to_ground(target_pos)
+	var route_target := target_pos
+	var internal_route := PackedVector3Array()
+	if target_building != null and citizen.has_method("get_navigation_points_for_building"):
+		var nav_points: Dictionary = citizen.get_navigation_points_for_building(target_building, world)
+		if target_building.has_method("get_internal_navigation_route"):
+			internal_route = target_building.get_internal_navigation_route(nav_points)
+			if not internal_route.is_empty():
+				route_target = nav_points.get("access", target_pos)
+	var grounded_target = citizen._project_to_ground(route_target)
 
 	citizen._debug_last_travel_route = PackedVector3Array()
 	citizen._debug_last_travel_failed = false
@@ -62,14 +70,14 @@ func begin_travel_to(citizen, target_pos: Vector3, target_building, world) -> bo
 	var used_pedestrian_path := false
 	if world != null and world.has_method("get_pedestrian_path"):
 		used_pedestrian_path = true
-		if world.has_method("has_pedestrian_route") and not world.has_pedestrian_route(route_start, target_pos, citizen.current_location, target_building):
+		if world.has_method("has_pedestrian_route") and not world.has_pedestrian_route(route_start, route_target, citizen.current_location, target_building):
 			route = PackedVector3Array()
 		else:
-			route = world.get_pedestrian_path(route_start, target_pos, citizen.current_location, target_building)
+			route = world.get_pedestrian_path(route_start, route_target, citizen.current_location, target_building)
 		if route.size() < 2 and world.has_method("get_navigation_path"):
-			route = world.get_navigation_path(route_start, target_pos)
+			route = world.get_navigation_path(route_start, route_target)
 	elif world != null and world.has_method("get_road_path"):
-		route = world.get_road_path(route_start, target_pos)
+		route = world.get_road_path(route_start, route_target)
 
 	if route.size() < 2:
 		if used_pedestrian_path:
@@ -79,19 +87,23 @@ func begin_travel_to(citizen, target_pos: Vector3, target_building, world) -> bo
 			citizen._travel_target = grounded_start
 			citizen._repath_time_left = 0.0
 			citizen._current_speed = 0.0
-			citizen._debug_last_travel_route = PackedVector3Array([grounded_start, grounded_target])
+			citizen._debug_last_travel_route = PackedVector3Array([grounded_start, citizen._project_to_ground(target_pos)])
 			citizen._debug_last_travel_failed = true
 			if citizen._nav_agent != null:
 				citizen._nav_agent.target_position = citizen.global_position
 			return false
 		else:
 			var fallback_start = route_start
-			var fallback_end := target_pos
+			var fallback_end := route_target
 			if world != null and world.has_method("get_pedestrian_access_point"):
 				fallback_start = world.get_pedestrian_access_point(route_start)
-				fallback_end = world.get_pedestrian_access_point(target_pos)
+				fallback_end = world.get_pedestrian_access_point(route_target)
 			route.append(fallback_start)
 			route.append(fallback_end)
+
+	route = _append_internal_route_points(route, internal_route)
+	if not internal_route.is_empty():
+		grounded_target = citizen._project_to_ground(internal_route[internal_route.size() - 1])
 
 	citizen._travel_route = route
 	citizen._travel_route_index = 0
@@ -107,6 +119,16 @@ func begin_travel_to(citizen, target_pos: Vector3, target_building, world) -> bo
 		return false
 
 	return true
+
+func _append_internal_route_points(route: PackedVector3Array, internal_route: PackedVector3Array) -> PackedVector3Array:
+	if internal_route.is_empty():
+		return route
+
+	var combined := PackedVector3Array(route)
+	for point in internal_route:
+		if combined.is_empty() or combined[combined.size() - 1].distance_to(point) > 0.18:
+			combined.append(point)
+	return combined
 
 func repath_current_travel(citizen, world) -> bool:
 	if citizen == null or not citizen._is_travelling:
@@ -168,12 +190,16 @@ func has_reached_travel_target(citizen) -> bool:
 func stop_travel(citizen) -> void:
 	if citizen == null:
 		return
+	if citizen.is_inside_tree() and citizen._inside_building == null:
+		citizen.global_position = citizen._project_to_ground(citizen.global_position)
+		citizen._last_move_position = citizen.global_position
 	citizen._is_travelling = false
 	citizen._current_speed = 0.0
 	citizen._arrived_via_entrance_contact = false
 	citizen._travel_target_building = null
 	citizen._stuck_timer = 0.0
 	citizen._last_move_position = citizen.global_position
+	citizen._vertical_speed = 0.0
 	citizen.velocity = Vector3.ZERO
 	citizen._travel_route = PackedVector3Array()
 	citizen._travel_route_index = -1

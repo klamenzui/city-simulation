@@ -46,7 +46,7 @@ func buy_groceries(world: World, buyer: Citizen) -> int:
 func buy_clothes(world: World, buyer: Citizen) -> bool:
 	if not buy_item(world, buyer, 1.0):
 		return false
-	buyer.needs.fun = clamp(buyer.needs.fun + 9.0, 0.0, 100.0)
+	buyer.needs.fun = clamp(buyer.needs.fun + 9.0 * get_attractiveness_multiplier(), 0.0, 100.0)
 	return true
 
 func _get_extra_info(_world = null) -> Dictionary:

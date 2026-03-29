@@ -5,6 +5,7 @@ const RoadGraphScript = preload("res://Simulation/Navigation/RoadGraph.gd")
 const PedestrianGraphScript = preload("res://Simulation/Navigation/PedestrianGraph.gd")
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
+const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
 
 @export var minutes_per_tick: int = 1
 @export var tick_interval_sec: float = 0.5
@@ -15,7 +16,7 @@ var economy: EconomySystem = EconomySystem.new()
 var road_graph = RoadGraphScript.new()
 var pedestrian_graph = PedestrianGraphScript.new()
 
-# Reserve account used as fallback / infrastructure sink.
+# Reserve/infrastructure account used as a visible sink for public-system costs.
 var city_account: Account = Account.new()
 
 var citizens: Array[Citizen] = []
@@ -86,9 +87,11 @@ func _on_day_changed(_day: int) -> void:
 func _on_payday() -> void:
 	SimLogger.log("\n=== PAYDAY (Day %d) ===" % world_day())
 
-	var city_hall = find_city_hall()
+	var city_hall := find_city_hall()
 	if city_hall != null:
 		city_hall.collect_daily_taxes(self)
+		city_hall.ensure_operating_liquidity(self, "payday_start")
+		city_hall.fund_public_buildings(self)
 
 	var employed_count := 0
 	for citizen in citizens:
@@ -103,13 +106,24 @@ func _on_payday() -> void:
 
 	var welfare_total := 0
 	var salaries_total := 0
+	var operating_total := 0
+	var maintenance_total := 0
+
+	for building in buildings:
+		if building == null or not building.requires_public_funding():
+			continue
+		var operating_before := building.operating_costs_today
+		if building.pay_base_operating_cost(self):
+			operating_total += building.operating_costs_today - operating_before
+			continue
+		operating_total += building.operating_costs_today - operating_before
 
 	for citizen in citizens:
 		if citizen == null:
 			continue
 
 		if citizen.job == null or citizen.job.workplace == null:
-			var welfare: int = 40
+			var welfare: int = city_hall.unemployment_support if city_hall != null else 0
 			if _pay_welfare(citizen, welfare, city_hall):
 				welfare_total += welfare
 				var welfare_reason := citizen.get_unemployment_debug_reason() if citizen.has_method("get_unemployment_debug_reason") else "no job/workplace"
@@ -130,15 +144,49 @@ func _on_payday() -> void:
 			salaries_total += daily_wage
 			SimLogger.log("  [PAY:%s] %s +%d" % [source, citizen.citizen_name, daily_wage])
 		else:
+			if citizen.job != null and citizen.job.workplace != null:
+				citizen.job.workplace.record_unpaid_wages(daily_wage)
 			SimLogger.log("  [PAY-FAIL] %s +%d could not be paid" % [citizen.citizen_name, daily_wage])
+
+	for building in buildings:
+		if building == null:
+			continue
+		building.apply_daily_condition_decay()
+		var maintenance_before := building.maintenance_today
+		var maintenance_ok := building.pay_daily_maintenance(self)
+		var maintenance_paid_today := building.maintenance_today - maintenance_before
+		maintenance_total += maintenance_paid_today
+		if not maintenance_ok and building.has_maintenance_staff():
+			var maintenance_shortfall := maxi(building.maintenance_cost_per_day - maintenance_paid_today, 0)
+			building.record_unpaid_maintenance(maintenance_shortfall)
 
 	if city_hall != null:
 		city_hall.pay_infrastructure(self)
 
-	SimLogger.log("  [SUMMARY] salaries=%d welfare=%d city_reserve=%d" % [
+	var struggling_buildings := 0
+	var closed_buildings := 0
+	for building in buildings:
+		if building == null:
+			continue
+		building.finalize_daily_financial_state(self)
+		if building.is_financially_closed():
+			closed_buildings += 1
+		elif building.is_struggling() or building.is_underfunded():
+			struggling_buildings += 1
+		SimLogger.log("  [BUILDING] %s" % building.get_daily_finance_log_summary())
+
+	SimLogger.log("  [SUMMARY] salaries=%d welfare=%d operating=%d maintenance=%d city_hall_balance=%d city_reserve_balance=%d reserve_transfers_today=%d public_funding_requested=%d public_funding_paid=%d struggling_buildings=%d closed_buildings=%d" % [
 		salaries_total,
 		welfare_total,
-		city_account.balance
+		operating_total,
+		maintenance_total,
+		city_hall.account.balance if city_hall != null else 0,
+		city_account.balance,
+		city_hall.reserve_transfer_amount_today if city_hall != null else 0,
+		city_hall.public_funding_requested_total_today if city_hall != null else 0,
+		city_hall.public_funding_total_today if city_hall != null else 0,
+		struggling_buildings,
+		closed_buildings
 	])
 	SimLogger.log("===========================\n")
 
@@ -160,24 +208,22 @@ func _run_daily_market_cycle() -> void:
 			(building2 as CommercialBuilding).run_daily_supply(self)
 
 func _pay_welfare(citizen: Citizen, amount: int, city_hall) -> bool:
+	if amount <= 0:
+		return false
 	if city_hall != null and city_hall.pay_welfare(self, citizen, amount):
 		return true
-	return economy.transfer(city_account, citizen.wallet, amount)
+	return false
 
-func _pay_salary(citizen: Citizen, amount: int, city_hall) -> String:
+func _pay_salary(citizen: Citizen, amount: int, _city_hall) -> String:
 	if amount <= 0:
 		return ""
 
 	var workplace: Building = citizen.job.workplace if citizen.job != null else null
-	if workplace != null and economy.transfer(workplace.account, citizen.wallet, amount):
-		workplace.record_expense(amount)
+	if workplace is CityHall:
+		(workplace as CityHall).ensure_operating_liquidity(self, "city_hall_payroll")
+	if workplace != null and economy.pay_to_wallet(workplace.account, citizen, amount):
+		workplace.record_wage_expense(amount)
 		return "work"
-
-	if city_hall != null and city_hall.pay_salary(self, citizen, amount):
-		return "city_hall"
-
-	if economy.transfer(city_account, citizen.wallet, amount):
-		return "reserve"
 
 	return ""
 
@@ -326,16 +372,25 @@ func find_available_residential_building(from_pos: Vector3 = Vector3.ZERO) -> Re
 func find_first_residential_building() -> ResidentialBuilding:
 	return find_available_residential_building(Vector3.ZERO)
 
-func find_nearest_restaurant(from_pos: Vector3, require_open: bool = true) -> Restaurant:
-	return find_preferred_restaurant(from_pos, null, require_open)
+func _is_building_temporarily_blocked_for(building: Building, seeker: Citizen = null) -> bool:
+	if building == null or seeker == null:
+		return false
+	if seeker.has_method("is_building_temporarily_unreachable"):
+		return seeker.is_building_temporarily_unreachable(building, self)
+	return false
 
-func find_preferred_restaurant(from_pos: Vector3, excluded_citizen: Citizen = null, require_open: bool = true) -> Restaurant:
+func find_nearest_restaurant(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> Restaurant:
+	return find_preferred_restaurant(from_pos, null, require_open, seeker)
+
+func find_preferred_restaurant(from_pos: Vector3, excluded_citizen: Citizen = null, require_open: bool = true, seeker: Citizen = null) -> Restaurant:
 	var best: Restaurant = null
 	var best_score := INF
 	for building in buildings:
 		if building is not Restaurant:
 			continue
 		var restaurant := building as Restaurant
+		if _is_building_temporarily_blocked_for(restaurant, seeker):
+			continue
 		if require_open and not restaurant.is_open(time.get_hour()):
 			continue
 		if not _is_building_pedestrian_reachable(from_pos, restaurant):
@@ -350,7 +405,7 @@ func find_preferred_restaurant(from_pos: Vector3, excluded_citizen: Citizen = nu
 			best = restaurant
 	return best
 
-func find_nearest_shop(from_pos: Vector3, require_open: bool = true) -> Shop:
+func find_nearest_shop(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> Shop:
 	var best: Shop = null
 	var best_dist := INF
 	for building in buildings:
@@ -359,6 +414,8 @@ func find_nearest_shop(from_pos: Vector3, require_open: bool = true) -> Shop:
 		if building is Supermarket:
 			continue
 		var shop := building as Shop
+		if _is_building_temporarily_blocked_for(shop, seeker):
+			continue
 		if require_open and not shop.is_open(time.get_hour()):
 			continue
 		if not _is_building_pedestrian_reachable(from_pos, shop):
@@ -369,13 +426,15 @@ func find_nearest_shop(from_pos: Vector3, require_open: bool = true) -> Shop:
 			best = shop
 	return best
 
-func find_nearest_cinema(from_pos: Vector3, require_open: bool = true) -> Cinema:
+func find_nearest_cinema(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> Cinema:
 	var best: Cinema = null
 	var best_dist := INF
 	for building in buildings:
 		if building is not Cinema:
 			continue
 		var cinema := building as Cinema
+		if _is_building_temporarily_blocked_for(cinema, seeker):
+			continue
 		if require_open and not cinema.is_open(time.get_hour()):
 			continue
 		if not _is_building_pedestrian_reachable(from_pos, cinema):
@@ -385,13 +444,15 @@ func find_nearest_cinema(from_pos: Vector3, require_open: bool = true) -> Cinema
 			best_dist = dist
 			best = cinema
 	return best
-func find_nearest_park(from_pos: Vector3) -> Building:
+func find_nearest_park(from_pos: Vector3, seeker: Citizen = null) -> Building:
 	var best: Building = null
 	var best_dist := INF
 	for building in buildings:
 		if building == null:
 			continue
 		if not building.is_in_group("parks"):
+			continue
+		if _is_building_temporarily_blocked_for(building, seeker):
 			continue
 		if not _is_building_pedestrian_reachable(from_pos, building):
 			continue
@@ -401,13 +462,15 @@ func find_nearest_park(from_pos: Vector3) -> Building:
 			best = building
 	return best
 
-func find_nearest_supermarket(from_pos: Vector3, require_open: bool = true) -> Supermarket:
+func find_nearest_supermarket(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> Supermarket:
 	var best: Supermarket = null
 	var best_dist := INF
 	for building in buildings:
 		if building is not Supermarket:
 			continue
 		var market := building as Supermarket
+		if _is_building_temporarily_blocked_for(market, seeker):
+			continue
 		if require_open and not market.is_open(time.get_hour()):
 			continue
 		if not _is_building_pedestrian_reachable(from_pos, market):
@@ -418,13 +481,15 @@ func find_nearest_supermarket(from_pos: Vector3, require_open: bool = true) -> S
 			best = market
 	return best
 
-func find_nearest_university(from_pos: Vector3, require_open: bool = true) -> University:
+func find_nearest_university(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> University:
 	var best: University = null
 	var best_dist := INF
 	for building in buildings:
 		if building is not University:
 			continue
 		var uni := building as University
+		if _is_building_temporarily_blocked_for(uni, seeker):
+			continue
 		if require_open and not uni.is_open(time.get_hour()):
 			continue
 		if not _is_building_pedestrian_reachable(from_pos, uni):
@@ -435,11 +500,13 @@ func find_nearest_university(from_pos: Vector3, require_open: bool = true) -> Un
 			best = uni
 	return best
 
-func find_nearest_building_with_service(from_pos: Vector3, service_type: String, require_open: bool = true) -> Building:
+func find_nearest_building_with_service(from_pos: Vector3, service_type: String, require_open: bool = true, seeker: Citizen = null) -> Building:
 	var best: Building = null
 	var best_dist := INF
 	for building in buildings:
 		if building == null:
+			continue
+		if _is_building_temporarily_blocked_for(building, seeker):
 			continue
 		if building.get_service_type() != service_type:
 			continue
@@ -453,12 +520,14 @@ func find_nearest_building_with_service(from_pos: Vector3, service_type: String,
 			best = building
 	return best
 
-func find_nearest_open_workplace(from_pos: Vector3, workplace_name_filter: String = "", workplace_service_type_filter: String = "") -> Building:
+func find_nearest_open_workplace(from_pos: Vector3, workplace_name_filter: String = "", workplace_service_type_filter: String = "", seeker: Citizen = null) -> Building:
 	var best: Building = null
 	var best_dist := INF
 
 	for building in buildings:
 		if building == null:
+			continue
+		if _is_building_temporarily_blocked_for(building, seeker):
 			continue
 		if not building.has_free_job_slots():
 			continue
@@ -476,11 +545,182 @@ func find_nearest_open_workplace(from_pos: Vector3, workplace_name_filter: Strin
 
 	return best
 
+func find_best_workplace_for_job(from_pos: Vector3, job: Job, seeker: Citizen = null) -> Building:
+	if job == null:
+		return null
+
+	var best: Building = null
+	var best_dist := INF
+
+	for building in buildings:
+		if building == null:
+			continue
+		if _is_building_temporarily_blocked_for(building, seeker):
+			continue
+		if not building.has_free_job_slots():
+			continue
+		if not job.allows_building(building):
+			continue
+		if not _is_building_pedestrian_reachable(from_pos, building):
+			continue
+
+		var building_pos := building.global_position if building.is_inside_tree() else building.position
+		var dist := from_pos.distance_to(building_pos)
+		if dist < best_dist:
+			best_dist = dist
+			best = building
+
+	return best
+
+func find_best_job_offer_for_citizen(from_pos: Vector3, citizen: Citizen, allow_training: bool = true) -> Dictionary:
+	if citizen == null:
+		return {}
+
+	var best_fit: Dictionary = {}
+	var best_fit_score := -INF
+	var best_training: Dictionary = {}
+	var best_training_score := -INF
+
+	for building in buildings:
+		if building == null:
+			continue
+		if _is_building_temporarily_blocked_for(building, citizen):
+			continue
+		if not building.has_free_job_slots():
+			continue
+		if not _is_building_pedestrian_reachable(from_pos, building):
+			continue
+
+		for job_title in _get_candidate_job_titles_for_building(building):
+			var offer := _build_job_offer_for_citizen(citizen, building, job_title, from_pos)
+			if offer.is_empty():
+				continue
+			var education_gap := int(offer.get("education_gap", 0))
+			var offer_score := float(offer.get("score", -INF))
+			if education_gap <= 0:
+				if offer_score > best_fit_score:
+					best_fit_score = offer_score
+					best_fit = offer
+			elif allow_training and offer_score > best_training_score:
+				best_training_score = offer_score
+				best_training = offer
+
+	if not best_fit.is_empty():
+		return best_fit
+	if allow_training:
+		return best_training
+	return {}
+
+func _build_job_offer_for_citizen(citizen: Citizen, building: Building, job_title: String, from_pos: Vector3) -> Dictionary:
+	if citizen == null or building == null or job_title.is_empty():
+		return {}
+
+	var allowed_types := CitizenFactoryScript.get_allowed_building_types_for_job_title(job_title)
+	if not allowed_types.is_empty() and not allowed_types.has(building.building_type):
+		return {}
+
+	var required_education := CitizenFactoryScript.get_required_education_for_job_title(job_title)
+	var education_gap := maxi(required_education - citizen.education_level, 0)
+	var offer_score := _score_job_offer_for_citizen(citizen, building, job_title, from_pos, education_gap)
+
+	return {
+		"title": job_title,
+		"building": building,
+		"required_education_level": required_education,
+		"education_gap": education_gap,
+		"wage_per_hour": CitizenFactoryScript.get_wage_for_job_title(job_title),
+		"allowed_building_types": allowed_types.duplicate(),
+		"score": offer_score,
+	}
+
+func _score_job_offer_for_citizen(
+	citizen: Citizen,
+	building: Building,
+	job_title: String,
+	from_pos: Vector3,
+	education_gap: int
+) -> float:
+	var distance := from_pos.distance_to(building.get_entrance_pos())
+	var free_slots := maxi(building.job_capacity - building.workers.size(), 0)
+	var score := 0.0
+	var university_missing_teaching := false
+	var park_missing_gardener := false
+	if building.building_type == Building.BuildingType.UNIVERSITY:
+		university_missing_teaching = building.get_workers_by_titles(["Professor", "Teacher"]).is_empty()
+	if building.building_type == Building.BuildingType.PARK:
+		park_missing_gardener = building.get_workers_by_titles(["Gardener"]).is_empty()
+
+	score -= distance * 1.6
+	score += float(maxi(free_slots, 1)) * 40.0
+	score += 240.0 if education_gap <= 0 else -170.0 * float(education_gap)
+
+	if building.is_public_building():
+		score += 260.0
+	if building.requires_staff_to_operate() and not building.has_required_staff():
+		score += 520.0
+	if building.workers.is_empty():
+		score += 120.0
+	if building.is_underfunded():
+		score -= 90.0
+	elif building.is_struggling():
+		score -= 45.0
+
+	match building.building_type:
+		Building.BuildingType.UNIVERSITY:
+			if job_title == "Teacher":
+				score += 900.0 if university_missing_teaching else 120.0
+			elif job_title == "Professor":
+				score += 620.0 if university_missing_teaching else 80.0
+			elif job_title == "Janitor" or job_title == "MaintenanceWorker":
+				score += 200.0
+		Building.BuildingType.PARK:
+			if job_title == "Gardener":
+				score += 520.0 if park_missing_gardener else 90.0
+		Building.BuildingType.CITY_HALL:
+			if job_title == "Programmierer" or job_title == "Technician":
+				score += 250.0
+		Building.BuildingType.FACTORY:
+			if job_title == "Technician" or job_title == "Engineer":
+				score += 180.0
+
+	if citizen.job != null and citizen.job.title == job_title:
+		score += 30.0
+
+	return score
+
+func _get_candidate_job_titles_for_building(building: Building) -> Array[String]:
+	if building == null:
+		return []
+
+	match building.building_type:
+		Building.BuildingType.UNIVERSITY:
+			return ["Teacher", "Professor", "Janitor", "MaintenanceWorker"]
+		Building.BuildingType.PARK:
+			return ["Gardener", "MaintenanceWorker", "Janitor"]
+		Building.BuildingType.CITY_HALL:
+			return ["Programmierer", "Technician", "Janitor", "Doctor", "MaintenanceWorker"]
+		Building.BuildingType.RESTAURANT, Building.BuildingType.CAFE:
+			return ["Kellner", "Baecker", "Janitor", "MaintenanceWorker"]
+		Building.BuildingType.SHOP, Building.BuildingType.SUPERMARKET:
+			return ["Verkaeufer", "Janitor", "MaintenanceWorker"]
+		Building.BuildingType.CINEMA:
+			return ["Designer", "Janitor", "MaintenanceWorker"]
+		Building.BuildingType.FACTORY:
+			return ["Engineer", "Technician", "Mechaniker", "Fahrer", "MaintenanceWorker"]
+		Building.BuildingType.FARM:
+			return ["Fahrer", "Mechaniker", "Gardener", "MaintenanceWorker"]
+		Building.BuildingType.RESIDENTIAL:
+			return ["Janitor", "MaintenanceWorker"]
+		_:
+			return ["MaintenanceWorker", "Janitor"]
+
 func is_building_pedestrian_reachable(from_pos: Vector3, building: Building) -> bool:
 	return _is_building_pedestrian_reachable(from_pos, building)
 
 func _is_building_pedestrian_reachable(from_pos: Vector3, building: Building) -> bool:
 	if building == null:
+		return false
+	if building.has_method("has_navigation_entry") and not building.has_navigation_entry():
 		return false
 	return has_pedestrian_route(from_pos, building.get_entrance_pos(), null, building)
 
@@ -559,7 +799,11 @@ func _get_registered_ground_y() -> float:
 	if best_y != INF:
 		return best_y
 
-	for road in get_tree().get_nodes_in_group("road_group"):
+	var tree := get_tree()
+	if tree == null:
+		return best_y
+
+	for road in tree.get_nodes_in_group("road_group"):
 		if road is Node3D:
 			best_y = minf(best_y, (road as Node3D).global_position.y)
 	return best_y

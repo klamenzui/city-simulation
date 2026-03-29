@@ -39,7 +39,7 @@ func buy_item(world: World, buyer: Citizen, multiplier: float = 1.0) -> bool:
 		return false
 
 	_finalize_sale("clothing", 1, price)
-	buyer.needs.fun = clamp(buyer.needs.fun + fun_gain, 0.0, 100.0)
+	buyer.needs.fun = clamp(buyer.needs.fun + fun_gain * get_attractiveness_multiplier(), 0.0, 100.0)
 	return true
 
 func _get_extra_info(_world = null) -> Dictionary:

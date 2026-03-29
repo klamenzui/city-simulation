@@ -105,6 +105,10 @@ func run_daily_production(_world: World) -> void:
 func run_daily_supply(world: World) -> void:
 	if world == null or not restock_enabled:
 		return
+	if is_financially_closed():
+		return
+	if requires_staff_to_operate() and not has_required_staff():
+		return
 
 	for item in restock_targets.keys():
 		var item_key: String = str(item)
@@ -126,7 +130,7 @@ func run_daily_supply(world: World) -> void:
 
 		inventory[item_key] = stock + qty
 		supply_today[item_key] = int(supply_today.get(item_key, 0)) + qty
-		record_expense(total_cost)
+		record_production_expense(total_cost)
 
 func begin_new_day() -> void:
 	_record_daily_history()
