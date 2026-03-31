@@ -3,12 +3,11 @@
 [ext_resource type="Script" uid="uid://b0nnpitsvn2am" path="res://main.gd" id="1_ig7tw"]
 [ext_resource type="Script" uid="uid://burjatjhmdkuv" path="res://Simulation/World.gd" id="2_0xm2m"]
 [ext_resource type="Script" uid="uid://bxl1fb4huvklu" path="res://ImportedCitySource/scripts/set_collision.gd" id="3_nmx32"]
-[ext_resource type="PackedScene" path="res://Scenes/Roads/RoadJunction.tscn" id="4_d646h"]
+[ext_resource type="PackedScene" uid="uid://b017wtrrg1qm7" path="res://Scenes/Roads/RoadJunction.tscn" id="4_d646h"]
 [ext_resource type="ArrayMesh" uid="uid://4dktms00016b" path="res://ImportedCitySource/assets/island/terrain_mesh.tres" id="4_deygs"]
-[ext_resource type="PackedScene" path="res://Scenes/Roads/RoadCornerCurved.tscn" id="5_5y3io"]
-[ext_resource type="Texture2D" uid="uid://c07jlgiwvm37r" path="res://ImportedCitySource/assets/roads/citybits_texture.png" id="5_t7kw1"]
-[ext_resource type="PackedScene" path="res://Scenes/Roads/RoadStraight.tscn" id="6_1nwvn"]
-[ext_resource type="PackedScene" path="res://Scenes/Roads/RoadTSplit.tscn" id="7_dfq0k"]
+[ext_resource type="PackedScene" uid="uid://cfchr011xcsjc" path="res://Scenes/Roads/RoadCornerCurved.tscn" id="5_5y3io"]
+[ext_resource type="PackedScene" uid="uid://duu3qhchgt3f0" path="res://Scenes/Roads/RoadStraight.tscn" id="6_1nwvn"]
+[ext_resource type="PackedScene" uid="uid://bfeifu0c35w8k" path="res://Scenes/Roads/RoadTSplit.tscn" id="7_dfq0k"]
 [ext_resource type="PackedScene" uid="uid://bj5iflrv1q80d" path="res://Scenes/CityBuildings/services/services_001_bf24cdee.tscn" id="9_elw4l"]
 [ext_resource type="PackedScene" uid="uid://c6aq6481iy1ul" path="res://Scenes/CityBuildings/services/services_002_16fa335f.tscn" id="12_05tku"]
 [ext_resource type="PackedScene" uid="uid://d1w6v6f36ay88" path="res://Scenes/CityBuildings/services/services_003_bb6f7293.tscn" id="15_6ibml"]
@@ -30,7 +29,7 @@
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_010_20ac9e10.tscn" id="50_uupql"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_011_9f723ff3.tscn" id="52_nakit"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_012_c3b413e4.tscn" id="53_o25de"]
-[ext_resource type="PackedScene" path="res://Scenes/Roads/RoadStraightCrossing.tscn" id="55_eho1g"]
+[ext_resource type="PackedScene" uid="uid://doaenty10x3ft" path="res://Scenes/Roads/RoadStraightCrossing.tscn" id="55_eho1g"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_013_500cad96.tscn" id="55_k1ahk"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_014_126ea44a.tscn" id="58_mk7o0"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_015_f544cce0.tscn" id="59_jhmog"]
@@ -67,7 +66,7 @@
 [ext_resource type="PackedScene" uid="uid://b5kkdojdg8h7r" path="res://ImportedCitySource/assets/plants/flowers01.gltf" id="96_cxcit"]
 [ext_resource type="PackedScene" uid="uid://baht0juqj6hl2" path="res://ImportedCitySource/assets/plants/flowers02.gltf" id="97_b1va2"]
 [ext_resource type="PackedScene" uid="uid://b62bl36jcrod4" path="res://ImportedCitySource/assets/plants/flowers04.gltf" id="98_8gn08"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/multilayer/multilayer_004_d588520f.tscn" id="98_xlpjy"]
+[ext_resource type="PackedScene" uid="uid://blprlwgfny7m" path="res://Scenes/CityBuildings/multilayer/multilayer_004_d588520f.tscn" id="98_xlpjy"]
 [ext_resource type="PackedScene" uid="uid://c2sjyx3wuxudg" path="res://environment/sky/Cycle.tscn" id="99_deygs"]
 [ext_resource type="PackedScene" uid="uid://cib1b468oy5er" path="res://Scenes/CityBuildings/multilayer/multilayer_005_ae5226aa.tscn" id="100_inxc5"]
 [ext_resource type="PackedScene" uid="uid://d180o3e5em11x" path="res://Scenes/CityBuildings/multilayer/multilayer_006_51b92887.tscn" id="102_xpnqb"]
@@ -76,7 +75,7 @@
 [ext_resource type="PackedScene" uid="uid://deo16kr38jbmc" path="res://Scenes/CityBuildings/multi_building/multi_building_001_04e25c36.tscn" id="108_k5qk0"]
 [ext_resource type="PackedScene" uid="uid://c3fiy3c1p7yh4" path="res://Scenes/CityBuildings/multi_building/multi_building_002_e2882763.tscn" id="110_vm52a"]
 [ext_resource type="PackedScene" uid="uid://cnbp643i1mta7" path="res://Scenes/CityBuildings/multi_building/multi_building_003_d0a32ce0.tscn" id="112_qr1df"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/multi_building/multi_building_004_eb500c74.tscn" id="114_aquj3"]
+[ext_resource type="PackedScene" uid="uid://cn00e3vrxiei3" path="res://Scenes/CityBuildings/multi_building/multi_building_004_eb500c74.tscn" id="114_aquj3"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/multi_building/multi_building_005_e89a241a.tscn" id="116_wed7b"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/commercial_building/commercial_building_001_23cb9fc1.tscn" id="118_eminm"]
 [ext_resource type="PackedScene" uid="uid://0kse2l1oy6o2" path="res://Scenes/CityBuildings/commercial_building/commercial_building_002_751c8aa3.tscn" id="119_upd3q"]
@@ -103,195 +102,6 @@
 [ext_resource type="PackedScene" uid="uid://btysdbo6rqmmu" path="res://ImportedCitySource/scenes/trafficlight_c_active.tscn" id="158_jjbne"]
 [ext_resource type="Script" uid="uid://bvbbkwfa8hqcf" path="res://Simulation/Camera/CityBuilderCamera.gd" id="400_camctl"]
 [ext_resource type="Script" uid="uid://c6yi1cvdganj0" path="res://environment/sky/simulation_sky_bridge.gd" id="401_skybr"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1xkvu"]
-resource_name = "citybits_texture"
-albedo_texture = ExtResource("5_t7kw1")
-roughness = 0.4
-
-[sub_resource type="ArrayMesh" id="ArrayMesh_4v42y"]
-_surfaces = [{
-"aabb": AABB(-1, 0, -1.0000002, 2, 0.09999998, 2.0000002),
-"format": 34359742465,
-"index_count": 510,
-"index_data": PackedByteArray("AAABAAIAAAACAAMAAwACAAEAAwABAAQABQADAAQAAAADAAUABgAEAAEABQAEAAYAAAAHAAEABgABAAcACAAAAAUACAAJAAAACgAIAAUACgAFAAYACQAIAAsAAAAJAAwAAAAMAAcACQALAAwABwAMAA0ADQAMAAsACwAIAA4ACgAOAAgADQALAA8ABwANABAABgAHABAADwARAA0ADQARABIADQASABAADwATABEAEgARABMADwALABQACwAOABQADwAUABUADwAWABMADwAVABYAFAAXABUAFwAWABUADgAYABQAFAAYABcADgAZABgAGgAZAA4AGAAZABoAGgAOAAoAGwAXABgAGAAaABwAGwAYABwACgAdABoACgAeAB0AGgAfABwAGgAdAB8AHQAeACAAHQAgAB8AIQAeAAoAIQAgAB4AIQAfACAAIQAcAB8AGwAcACEACgAGACEAGwAhACIAIgAhAAYAIwAXABsAIwAkABcAFwAkABYAFgAkACMAIwAbACUAIgAlABsAIwAlACYAIwAmACcAKAAmACUAKAAnACYAIgAoACUAIwAnACkAKQAnACgAFgAjACkAKQAoACIAKgAWACkAIgAqACkAKgATABYAIgAGACsAIgArACoABgAQACsAEgATACoAEAAsACsAKgArACwAEgAtABAAEAAtACwAKgAsAC4AEgAqAC4ALQAuACwAEgAuAC8ALQAvAC4AEgAvAC0AMAAxADIAMAAzADEAMQA0ADIAMQA1ADQANQA2ADQANQA3ADYANwA4ADYANwA5ADgAOQA6ADgAOQA7ADoAOgA7ADwAOgA8AD0APgA/AEAAPgBBAD8APwBCAEAAPwBDAEIAQwBEAEIAQwBFAEQARQBGAEQARQBHAEYARwBIAEYARwBJAEgASABJAEoASABKAEsATABNAE4ATABPAE0ATQBQAE4ATQBRAFAAUQBSAFAAUQBTAFIAUwBUAFIAUwBVAFQAVQBWAFQAVQBXAFYAVgBXAFgAVgBYAFkAWgBbAFwAWgBdAFsAWwBeAFwAWwBfAF4AXwBgAF4AXwBhAGAAYQBiAGAAYQBjAGIAYwBkAGIAYwBlAGQAZABlAGYAZABmAGcAaABpAGoAaABrAGkAagBpAGwAagBsAG0AbgBvAHAAbgBxAG8AcABvAHIAcAByAHMAdAB1AHYAdAB3AHUAeAB5AHoAeAB7AHkAfAB9AH4AfAB/AH0AgACBAIIAgACDAIEAhACFAIYAhACHAIUAiACJAIoAiACLAIkAjACNAI4AjACPAI0AkACRAJIAkACTAJEAlACVAJYAlACXAJUAmACZAJoAmACbAJkAnACdAJ4AnACfAJ0A"),
-"name": "citybits_texture",
-"primitive": 3,
-"uv_scale": Vector4(0, 0, 0, 0),
-"vertex_count": 160,
-"vertex_data": PackedByteArray("AACAPydcjz0AAIC/AACAP8rMzD17FG6/AACAP8rMzD0AAIC/exRuP8rMzD0AAIC/exRuP8rMzD17FG6/Z2ZmPydcjz0AAIC/Z2ZmPydcjz1nZma/AACAPydcjz1nZma/Z2ZmPwAAAAAAAIC/AACAPwAAAAAAAIC/Z2Zmvydcjz0AAIC/Z2ZmPwAAAABnZma/AACAPwAAAABnZma/AACAPwAAAABnZmY/Z2ZmvwAAAAAAAIC/Z2ZmPwAAAABnZmY/AACAPydcjz1nZmY/AACAPwAAAAAAAIA/AACAPydcjz0AAIA/Z2ZmPwAAAAAAAIA/Z2ZmvwAAAABnZma/Z2ZmvwAAAABnZmY/Z2ZmvwAAAAAAAIA/AACAvwAAAABnZmY/AACAvwAAAABnZma/AACAvwAAAAAAAIC/AACAvydcjz0AAIC/AACAvydcjz1nZmY/AACAvydcjz1nZma/AACAv8rMzD0AAIC/exRuv8rMzD0AAIC/AACAv8rMzD17FG6/exRuv8rMzD17FG6/Z2Zmvydcjz1nZma/Z2Zmvydcjz1nZmY/AACAvydcjz0AAIA/AACAvwAAAAAAAIA/AACAv8rMzD17FG4/AACAv8rMzD0AAIA/exRuv8rMzD0AAIA/exRuv8rMzD17FG4/Z2Zmvydcjz0AAIA/Z2ZmPydcjz0AAIA/Z2ZmPydcjz1nZmY/exRuP8rMzD17FG4/AACAP8rMzD17FG4/exRuP8rMzD0AAIA/AACAP8rMzD0AAIA/UrgePzuBlT0AAIA/4noUPzuBlT22Vl8/UrgePzuBlT1mZmY/4noUPzuBlT0AAIA/UpsiPzuBlT1PZkk/pC0aPzuBlT0IsUI/BJgxPzuBlT0EmDE/1mcqPzuBlT3WZyo/T2ZJPzuBlT1SmyI/CLFCPzuBlT2kLRo/ZmZmPzuBlT1SuB4/tlZfPzuBlT3iehQ/AACAPzuBlT3jehQ/AACAPzuBlT1TuB4/TbgevzuBlT0CAIC/3XoUvzuBlT25Vl+/TbgevzuBlT1pZma/3XoUvzuBlT0CAIC/TpsivzuBlT1SZkm/oC0avzuBlT0LsUK/AJgxvzuBlT0ImDG/0mcqvzuBlT3aZyq/TGZJvzuBlT1WmyK/BbFCvzuBlT2oLRq/Y2ZmvzuBlT1XuB6/s1ZfvzuBlT3nehS//f9/vzuBlT3oehS//f9/vzuBlT1YuB6/AACAPzuBlT1SuB6/tlZfPzuBlT3iehS/ZmZmPzuBlT1SuB6/AACAPzuBlT3iehS/T2ZJPzuBlT1SmyK/CLFCPzuBlT2kLRq/BJgxPzuBlT0EmDG/1mcqPzuBlT3WZyq/UpsiPzuBlT1PZkm/pC0aPzuBlT0IsUK/UrgePzuBlT1mZma/4noUPzuBlT22Vl+/43oUPzuBlT0AAIC/U7gePzuBlT0AAIC/AACAvzuBlT1RuB4/tlZfvzuBlT3hehQ/ZmZmvzuBlT1RuB4/AACAvzuBlT3hehQ/T2ZJvzuBlT1RmyI/CLFCvzuBlT2jLRo/BZgxvzuBlT0DmDE/1mcqvzuBlT3WZyo/U5sivzuBlT1PZkk/pS0avzuBlT0IsUI/U7gevzuBlT1mZmY/43oUvzuBlT22Vl8/5HoUvzuBlT0AAIA/VLgevzuBlT0AAIA/4noUPzuBlT2ZmRm/U7gePzuBlT0B16O84noUPzuBlT0K16M8U7gePzuBlT2ZmRm/ZmZmPzuBlT311qO8ZmZmPzuBlT0s16M85XoUvzuBlT2WmRk/U7gevzuBlT2V1qM84noUvzuBlT1v16O8VrgevzuBlT2WmRk/ZmZmvzuBlT1Y1qM8ZmZmvzuBlT3J16O8U7gePzuBlT3KzEw+4noUPzuBlT3RzMw9U7gePzuBlT3RzMw94noUPzuBlT3KzEw+U7gePzuBlT3LzMw+4noUPzuBlT2bmZk+U7gePzuBlT2bmZk+4noUPzuBlT3LzMw+U7gePzuBlT2ZmRk/4noUPzuBlT0BAAA/U7gePzuBlT0BAAA/4noUPzuBlT2ZmRk/UrgevzuBlT3YzEy+4XoUvzuBlT3qzMy9UrgevzuBlT3szMy94XoUvzuBlT3XzEy+UbgevzuBlT3SzMy+4HoUvzuBlT2hmZm+UbgevzuBlT2imZm+4HoUvzuBlT3RzMy+ULgevzuBlT2cmRm/33oUvzuBlT0EAAC/ULgevzuBlT0EAAC/33oUvzuBlT2cmRm/F9ejPDuBlT00MzO/CtejvDuBlT1mZma/F9ejPDuBlT1mZma/CtejvDuBlT00MzO/F9ejPDuBlT2bmZm+CtejvDuBlT3///++F9ejPDuBlT3///++CtejvDuBlT2bmZm+F9ejPDuBlT3IzMw9CtejvDuBlT3IzMy9F9ejPDuBlT3IzMy9CtejvDuBlT3IzMw9F9ejPDuBlT3///8+CtejvDuBlT2bmZk+F9ejPDuBlT2bmZk+CtejvDuBlT3///8+F9ejPDuBlT1mZmY/CtejvDuBlT00MzM/F9ejPDuBlT00MzM/CtejvDuBlT1mZmY/")
-}]
-blend_shape_mode = 0
-
-[sub_resource type="ArrayMesh" id="ArrayMesh_p243e"]
-resource_name = "road_junction_Cube_949"
-_surfaces = [{
-"aabb": AABB(-1, 0, -1.0000002, 2, 0.09999998, 2.0000002),
-"attribute_data": PackedByteArray("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"),
-"format": 34359742487,
-"index_count": 510,
-"index_data": PackedByteArray("AAABAAIAAAADAAEAAAAEAAMAAAAFAAQABgAHAAgABgAJAAcACgAGAAgACgALAAYADAANAA4ADAAPAA0ADAAOABAADAAQABEAEgATABQAEgAVABMAFAAWABIAFAAXABYAGAAZABoAGAAbABkAGAAaABwAGAAcAB0AHgAfACAAHgAhAB8AIgAjACQAIgAlACMAIgAmACUAJgAnACUAJgAoACcAIgApACYAKgApACIAKgArACkALAAmACkALAAtACYALgAvADAALgAxAC8AMgAuADAAMgAzAC4ANAA1ADYANAA3ADUANAA4ADcAOAA5ADcAOAA6ADkANAA7ADgAOwA8ADgAOwA9ADwAPgA7ADQAPgA/ADsAQABBAEIAQABDAEEARABFAEYARABHAEUASABJAEoASABLAEkATABNAE4ATABPAE0AUABRAFIAUABTAFEAVABVAFYAVABXAFUAWABUAFYAWABZAFQAWgBbAFwAWgBdAFsAXgBfAGAAXgBhAF8AYgBjAGQAYgBlAGMAZgBnAGgAZgBpAGcAagBrAGwAagBtAGsAawBuAGwAawBvAG4AcABxAHIAcABzAHEAdAB1AHYAdAB3AHUAeAB5AHoAeAB7AHkAfAB9AH4AfAB/AH0AgACBAIIAgACDAIEAhACFAIYAhACHAIUAiACJAIoAiACLAIkAjACNAI4AjACPAI0AkACRAJIAkACTAJEAlACVAJYAlACXAJUAmACZAJoAmACbAJkAnACdAJoAnACeAJ0AngCfAJ0AngCgAJ8AoAChAJ8AoACiAKEAogCjAKEAogCkAKMAowClAKYAowCnAKUAqACpAKoAqACrAKkArACtAKoArACuAK0ArgCvAK0ArgCwAK8AsACxAK8AsACyALEAsgCzALEAsgC0ALMAswC1ALYAswC3ALUAuAC5ALoAuAC7ALkAvAC9ALoAvAC+AL0AvgC/AL0AvgDAAL8AwADBAL8AwADCAMEAwgDDAMEAwgDEAMMAwwDFAMYAwwDHAMUAyADJAMoAyADLAMkAzADNAMoAzADOAM0AzgDPAM0AzgDQAM8A0ADRAM8A0ADSANEA0gDTANEA0gDUANMA0wDVANYA0wDXANUA2ADZANoA2ADbANkA2gDZANwA2gDcAN0A3gDfAOAA3gDhAN8A4ADfAOIA4ADiAOMA5ADlAOYA5ADnAOUA6ADpAOoA6ADrAOkA7ADtAO4A7ADvAO0A8ADxAPIA8ADzAPEA9AD1APYA9AD3APUA+AD5APoA+AD7APkA/AD9AP4A/AD/AP0AAAEBAQIBAAEDAQEBBAEFAQYBBAEHAQUBCAEJAQoBCAELAQkBDAENAQ4BDAEPAQ0B"),
-"material": SubResource("StandardMaterial3D_1xkvu"),
-"name": "citybits_texture",
-"primitive": 3,
-"uv_scale": Vector4(0, 0, 0, 0),
-"vertex_count": 272,
-"vertex_data": PackedByteArray("AACAPydcjz0AAIC/AACAP8rMzD17FG6/AACAP8rMzD0AAIC/AACAPydcjz1nZma/AACAPwAAAABnZma/AACAPwAAAAAAAIC/AACAPydcjz0AAIC/exRuP8rMzD0AAIC/Z2ZmPydcjz0AAIC/AACAP8rMzD0AAIC/Z2ZmPwAAAAAAAIC/AACAPwAAAAAAAIC/AACAvydcjz0AAIA/AACAvwAAAABnZmY/AACAvydcjz1nZmY/AACAvwAAAAAAAIA/AACAv8rMzD17FG4/AACAv8rMzD0AAIA/AACAvydcjz0AAIC/Z2ZmvwAAAAAAAIC/Z2Zmvydcjz0AAIC/AACAvwAAAAAAAIC/AACAv8rMzD0AAIC/exRuv8rMzD0AAIC/AACAPydcjz0AAIA/Z2ZmPwAAAAAAAIA/Z2ZmPydcjz0AAIA/AACAPwAAAAAAAIA/exRuP8rMzD0AAIA/AACAP8rMzD0AAIA/Z2ZmPydcjz1nZma/AACAP8rMzD17FG6/AACAPydcjz1nZma/exRuP8rMzD17FG6/Z2Zmvydcjz1nZmY/Z2ZmPydcjz0AAIA/Z2Zmvydcjz0AAIA/Z2ZmPydcjz1nZmY/Z2ZmPydcjz1nZma/AACAPydcjz1nZmY/AACAPydcjz1nZma/Z2Zmvydcjz1nZma/AACAvydcjz1nZmY/AACAvydcjz1nZma/Z2Zmvydcjz0AAIC/Z2ZmPydcjz0AAIC/AACAvydcjz0AAIA/exRuv8rMzD0AAIA/Z2Zmvydcjz0AAIA/AACAv8rMzD0AAIA/Z2ZmvwAAAAAAAIA/AACAvwAAAAAAAIA/Z2ZmPwAAAABnZmY/Z2ZmvwAAAAAAAIA/Z2ZmPwAAAAAAAIA/Z2ZmvwAAAABnZmY/Z2ZmvwAAAABnZma/AACAvwAAAABnZmY/AACAvwAAAABnZma/Z2ZmPwAAAABnZma/Z2ZmvwAAAAAAAIC/Z2ZmPwAAAAAAAIC/AACAPwAAAABnZmY/AACAPwAAAABnZma/Z2ZmvwAAAAAAAIC/AACAvwAAAABnZma/Z2ZmvwAAAABnZma/AACAvwAAAAAAAIC/AACAvydcjz1nZmY/AACAvwAAAABnZma/AACAvydcjz1nZma/AACAvwAAAABnZmY/AACAPwAAAAAAAIC/Z2ZmPwAAAABnZma/AACAPwAAAABnZma/Z2ZmPwAAAAAAAIC/Z2ZmPwAAAABnZmY/AACAPwAAAAAAAIA/AACAPwAAAABnZmY/Z2ZmPwAAAAAAAIA/AACAPydcjz1nZma/AACAPwAAAABnZmY/AACAPydcjz1nZmY/AACAPwAAAABnZma/AACAvydcjz0AAIC/AACAv8rMzD17FG6/AACAvydcjz1nZma/AACAv8rMzD0AAIC/AACAvwAAAABnZma/AACAvwAAAAAAAIC/Z2Zmvydcjz0AAIA/exRuv8rMzD17FG4/Z2Zmvydcjz1nZmY/exRuv8rMzD0AAIA/Z2Zmvydcjz1nZma/AACAv8rMzD17FG6/exRuv8rMzD17FG6/AACAvydcjz1nZma/AACAvwAAAABnZmY/Z2ZmvwAAAAAAAIA/Z2ZmvwAAAABnZmY/AACAvwAAAAAAAIA/AACAPydcjz1nZmY/exRuP8rMzD17FG4/Z2ZmPydcjz1nZmY/AACAP8rMzD17FG4/AACAPwAAAABnZmY/AACAPydcjz0AAIA/AACAPydcjz1nZmY/AACAPwAAAAAAAIA/AACAP8rMzD17FG4/AACAP8rMzD0AAIA/Z2ZmPydcjz0AAIA/Z2ZmvwAAAAAAAIA/Z2Zmvydcjz0AAIA/Z2ZmPwAAAAAAAIA/Z2ZmPydcjz0AAIA/exRuP8rMzD17FG4/exRuP8rMzD0AAIA/Z2ZmPydcjz1nZmY/AACAP8rMzD17FG4/exRuP8rMzD0AAIA/exRuP8rMzD17FG4/AACAP8rMzD0AAIA/exRuP8rMzD0AAIC/AACAP8rMzD17FG6/exRuP8rMzD17FG6/AACAP8rMzD0AAIC/AACAv8rMzD0AAIC/exRuv8rMzD17FG6/AACAv8rMzD17FG6/exRuv8rMzD0AAIC/exRuv8rMzD17FG4/AACAv8rMzD0AAIA/AACAv8rMzD17FG4/exRuv8rMzD0AAIA/Z2Zmvydcjz1nZmY/AACAv8rMzD17FG4/AACAvydcjz1nZmY/exRuv8rMzD17FG4/Z2ZmPydcjz0AAIC/exRuP8rMzD17FG6/Z2ZmPydcjz1nZma/exRuP8rMzD0AAIC/Z2Zmvydcjz1nZma/exRuv8rMzD0AAIC/Z2Zmvydcjz0AAIC/exRuv8rMzD17FG6/Z2Zmvydcjz0AAIC/Z2ZmPwAAAAAAAIC/Z2ZmPydcjz0AAIC/Z2ZmvwAAAAAAAIC/UrgePzuBlT0AAIA/4noUPzuBlT22Vl8/UrgePzuBlT1mZmY/4noUPzuBlT0AAIA/4noUPzuBlT22Vl8/UpsiPzuBlT1PZkk/pC0aPzuBlT0IsUI/BJgxPzuBlT0EmDE/1mcqPzuBlT3WZyo/T2ZJPzuBlT1SmyI/CLFCPzuBlT2kLRo/ZmZmPzuBlT1SuB4/tlZfPzuBlT3iehQ/AACAPzuBlT3jehQ/AACAPzuBlT1TuB4/tlZfPzuBlT3iehQ/TbgevzuBlT0CAIC/3XoUvzuBlT25Vl+/TbgevzuBlT1pZma/3XoUvzuBlT0CAIC/3XoUvzuBlT25Vl+/TpsivzuBlT1SZkm/oC0avzuBlT0LsUK/AJgxvzuBlT0ImDG/0mcqvzuBlT3aZyq/TGZJvzuBlT1WmyK/BbFCvzuBlT2oLRq/Y2ZmvzuBlT1XuB6/s1ZfvzuBlT3nehS//f9/vzuBlT3oehS//f9/vzuBlT1YuB6/s1ZfvzuBlT3nehS/AACAPzuBlT1SuB6/tlZfPzuBlT3iehS/ZmZmPzuBlT1SuB6/AACAPzuBlT3iehS/tlZfPzuBlT3iehS/T2ZJPzuBlT1SmyK/CLFCPzuBlT2kLRq/BJgxPzuBlT0EmDG/1mcqPzuBlT3WZyq/UpsiPzuBlT1PZkm/pC0aPzuBlT0IsUK/UrgePzuBlT1mZma/4noUPzuBlT22Vl+/43oUPzuBlT0AAIC/U7gePzuBlT0AAIC/4noUPzuBlT22Vl+/AACAvzuBlT1RuB4/tlZfvzuBlT3hehQ/ZmZmvzuBlT1RuB4/AACAvzuBlT3hehQ/tlZfvzuBlT3hehQ/T2ZJvzuBlT1RmyI/CLFCvzuBlT2jLRo/BZgxvzuBlT0DmDE/1mcqvzuBlT3WZyo/U5sivzuBlT1PZkk/pS0avzuBlT0IsUI/U7gevzuBlT1mZmY/43oUvzuBlT22Vl8/5HoUvzuBlT0AAIA/VLgevzuBlT0AAIA/43oUvzuBlT22Vl8/4noUPzuBlT2ZmRm/U7gePzuBlT0B16O84noUPzuBlT0K16M8U7gePzuBlT2ZmRm/ZmZmPzuBlT311qO8ZmZmPzuBlT0s16M85XoUvzuBlT2WmRk/U7gevzuBlT2V1qM84noUvzuBlT1v16O8VrgevzuBlT2WmRk/ZmZmvzuBlT1Y1qM8ZmZmvzuBlT3J16O8U7gePzuBlT3KzEw+4noUPzuBlT3RzMw9U7gePzuBlT3RzMw94noUPzuBlT3KzEw+U7gePzuBlT3LzMw+4noUPzuBlT2bmZk+U7gePzuBlT2bmZk+4noUPzuBlT3LzMw+U7gePzuBlT2ZmRk/4noUPzuBlT0BAAA/U7gePzuBlT0BAAA/4noUPzuBlT2ZmRk/UrgevzuBlT3YzEy+4XoUvzuBlT3qzMy9UrgevzuBlT3szMy94XoUvzuBlT3XzEy+UbgevzuBlT3SzMy+4HoUvzuBlT2hmZm+UbgevzuBlT2imZm+4HoUvzuBlT3RzMy+ULgevzuBlT2cmRm/33oUvzuBlT0EAAC/ULgevzuBlT0EAAC/33oUvzuBlT2cmRm/F9ejPDuBlT00MzO/CtejvDuBlT1mZma/F9ejPDuBlT1mZma/CtejvDuBlT00MzO/F9ejPDuBlT2bmZm+CtejvDuBlT3///++F9ejPDuBlT3///++CtejvDuBlT2bmZm+F9ejPDuBlT3IzMw9CtejvDuBlT3IzMy9F9ejPDuBlT3IzMy9CtejvDuBlT3IzMw9F9ejPDuBlT3///8+CtejvDuBlT2bmZk+F9ejPDuBlT2bmZk+CtejvDuBlT3///8+F9ejPDuBlT1mZmY/CtejvDuBlT00MzM/F9ejPDuBlT00MzM/CtejvDuBlT1mZmY/////f////7////9/////v////3////+/////f////7////9/////v////3////+//////////z//////////P/////////8//////////z//////////P/////////8/AAD/f////78AAP9/////vwAA/3////+/AAD/f////78AAP9/////vwAA/3////+//////////z//////////P/////////8//////////z//////////P/////////8//3//f////7//f/9/////v/9//3////+//3//f////7//f/9/////v/9//3////+//3//v////7//f/+/////v/9//7////+//3//v////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f/9/////v/9//3////+//3//f////7//f/9/////v/9//3////+//3//f////7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////vwAA/3////+/AAD/f////78AAP9/////vwAA/3////+//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v////3////+/////f////7////9/////v////3////+/AAD/f////78AAP9/////vwAA/3////+/AAD/f////78AAP9/////vwAA/3////+//7//v////7//v/+/////v/+//7////+//7//v////7//f/+/////v/9//7////+//3//v////7//f/+/////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//7///////z//v///////P/+///////8//7///////z////9/////v////3////+/////f////7////9/////v////3////+/////f////7//f/9/////v/9//3////+//3//f////7//f/9/////v/8//7////+//z//v////7//P/+/////v/8//7////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//v///////P/+///////8//7///////z//v///////P/8//7////+//z//v////7//P/+/////v/8//7////+//7//v////7//v/+/////v/+//7////+//7//v////7//////////P/////////8//////////z//////////P/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9//v////+//3/+/////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////vw==")
-}]
-blend_shape_mode = 0
-shadow_mesh = SubResource("ArrayMesh_4v42y")
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_litqb"]
-resource_name = "citybits_texture"
-albedo_texture = ExtResource("5_t7kw1")
-roughness = 0.4
-
-[sub_resource type="ArrayMesh" id="ArrayMesh_8t7lw"]
-_surfaces = [{
-"aabb": AABB(-1, 0, -1, 2, 0.09999998, 2),
-"format": 34359742465,
-"index_count": 516,
-"index_data": PackedByteArray("AAABAAIAAQAJAAIAAgAEAAAAAgAGAAQAWAAGAAIACQBYAAIABgAHAAQABgAIAAcAWAAIAAYAWAAHAAgABQAEAAcAWAAFAAcABQAAAAQACQAKAFgAWAALAAUAWAAKAAsAWQAKAAkAWQALAAoACQBaAFkAWwALAFkAWgBbAFkABQALAA0AWwANAAsABQANAAMAAAAFAAMAXAANAFsAXAAOAA0ADQAOAF0AXQAOAFwADQBdAAMAXgBcAFsAWgBeAFsAXgBfAFwAYABeAFoAXQARAAMAXQAPABEAAwARAGEAYQARAA8AXQBiAA8AYQAPAGIAXQBcAGMAXQBjAGIAYwBcAF8AAwBhAGQAAAADAGQAYgASAGEAEgBkAGEAYwAUAGIAYgAUABIAEgBlAGQAZQAAAGQAZgBlABIAZgAAAGUAZgASAGcAEgAUAGcAaABmAGcAaAAAAGYAaABnAGkAZwAUAGkAagBoAGkAagAAAGgAagBpAGsAaQAUAGsAbABqAGsAbAAAAGoAbABrAG0AbgBsAG0AbgAAAGwAawAWAG0AawAUABYAbgBtAG8AbQAWAG8AcAAAAG4AcABuAG8AcABvAHEAbwAWAHEAcgAAAHAAcgBwAHEAcgBxABMAFgATAHEAcgATAHMAFgBzABMAdAAAAHIAcgBzAHQAAAB0AAEAdABzABUAdAAVAAEAcwAXABUAdQABABUAdQAVABcAcwB2ABcAFgB2AHMAdQAXAHYAdwB2ABYAdQB2AHgAdwB4AHYAdQAMAAEAAQAMAAkACQAMAFoAGABaAAwAdQAYAAwAGABgAFoAYAAYAHUAYAB1AHgAdwBgAHgAdwAWABkAGQAWABQAdwB5AGAAYAB5AF4AdwAZAHoAegAZABQAegB5AHcAegAUAHsAYwB7ABQAYwBfAHsAXwB6AHsAeQBfAF4AXwAQAHoAegAQAHkAeQAQAF8AGgAbABwAGgAdABsAGwAeABwAGwAfAB4AHwAgAB4AHwAhACAAIQAiACAAIQAjACIAIwAkACIAIwAlACQAJAAlACYAJAAmACcAKAApACoAKAArACkALAAqACkALAApAC0ALgAsAC0ALgAtAC8AMAAuAC8AMAAvADEAMgAwADEAMgAxADMANAAyADMANAAzADUANgA0ADUANgA1ADcAOAA2ADcAOAA3ADkAOAA5ADoAOAA6ADsAPAA9AD4APAA/AD0AQABBAEIAQABDAEEARABFAEYARABHAEUARABIAEcARABJAEgASQBKAEgASQBLAEoASwBMAEoASwBNAEwATQBOAEwATQBPAE4ATwBQAE4ATwBRAFAAUQBSAFAAUQBTAFIAUwBUAFIAUwBVAFQAVgBUAFUAVgBXAFQA"),
-"lods": [0.6771849, PackedByteArray("AAABAAIAAQAAAAMAAgAEAAAABQAAAAQAAAAFAAMAAgAGAAQABgAHAAQABQAEAAcABgAIAAcACAAFAAcACAAGAAIACQAIAAIAAQAJAAIACQAKAAgACAAKAAsACwAKAAkACAALAAUACQAMAAsAAQAMAAkABQALAA0ADAANAAsABQANAAMADAAOAA0ADQAOAA8ADQAPAAMADAAQAA4ADwAOABAADwARAAMAEgADABEADwASABEAAwASABMAAQADABMADwAUABIAEgAUABMADwAQABQAAQATABUAFgAVABMAEwAUABYAFwABABUAFgAXABUAFwAMAAEAEAAXABYAFwAYAAwAGAAQAAwAEAAYABcAGQAWABQAEAAWABkAEAAZABQAGgAbABwAGgAdABsAGwAeABwAGwAfAB4AHwAgAB4AHwAhACAAIQAiACAAIQAjACIAIwAkACIAIwAlACQAJAAlACYAJAAmACcAKAApACoAKAArACkALAAqACkALAApAC0ALgAsAC0ALgAtAC8AMAAuAC8AMAAvADEAMgAwADEAMgAxADMANAAyADMANAAzADUANgA0ADUANgA1ADcAOAA2ADcAOAA3ADkAOAA5ADoAOAA6ADsAPAA9AD4APAA/AD0AQABBAEIAQABDAEEARABFAEYARABHAEUARABIAEcARABJAEgASQBKAEgASQBLAEoASwBMAEoASwBNAEwATQBOAEwATQBPAE4ATwBQAE4ATwBRAFAAUQBSAFAAUQBTAFIAUwBUAFIAUwBVAFQAVgBUAFUAVgBXAFQA")],
-"name": "citybits_texture",
-"primitive": 3,
-"uv_scale": Vector4(0, 0, 0, 0),
-"vertex_count": 124,
-"vertex_data": PackedByteArray("Z2ZmPydcjz1nZmY/AACAPydcjz1nZma/AACAPydcjz1nZmY/Z2Zmvydcjz0AAIA/exRuP8rMzD17FG4/Z2ZmPydcjz0AAIA/AACAP8rMzD17FG4/exRuP8rMzD0AAIA/AACAP8rMzD0AAIA/AACAPwAAAABnZmY/AACAPwAAAAAAAIA/Z2ZmPwAAAAAAAIA/AACAPwAAAABnZma/Z2ZmvwAAAAAAAIA/AACAvwAAAAAAAIA/AACAv8rMzD0AAIA/AACAvwAAAAAAAIC/exRuv8rMzD0AAIA/exRuv8rMzD1tndc+aZ3XPsrMzD17FG6/ufx/v8rMzD1nZma/AACAP8rMzD17FG6/Z2Zmv8rMzD25/H+/AACAP8rMzD0AAIC/AACAPwAAAAAAAIC/AACAv8rMzD0AAIC/UrgePzuBlT0AAIA/4noUPzuBlT22Vl8/UrgePzuBlT1mZmY/4noUPzuBlT0AAIA/UpsiPzuBlT1PZkk/pC0aPzuBlT0IsUI/BJgxPzuBlT0EmDE/1mcqPzuBlT3WZyo/T2ZJPzuBlT1SmyI/CLFCPzuBlT2kLRo/ZmZmPzuBlT1SuB4/tlZfPzuBlT3iehQ/AACAPzuBlT3jehQ/AACAPzuBlT1TuB4/4XoUvzuBlT0AAIA/UrgevzuBlT2ot/M+4noUvzuBlT1IGQQ/UrgevzuBlT0AAIA/AHINvzuBlT0GVIs+cK8XvzuBlT0/sm0+VmPxvjuBlT1owyU9GO8CvzuBlT0AHPY5iIiuvjuBlT1cWyu+XAPDvjuBlT0oUVS+lFsrvjuBlT14iK6+KFFUvjuBlT1cA8O+OMIlPTuBlT1KY/G+ACT2OTuBlT0Y7wK/1FOLPjuBlT39cQ2/R7JtPjuBlT1vrxe/KBkEPzuBlT3gehS/rrfzPjuBlT1RuB6/AACAPzuBlT1RuB6/AACAPzuBlT3gehS/F9ejPDuBlT1mZmY/CtejvDuBlT00MzM/F9ejPDuBlT00MzM/CtejvDuBlT1mZmY/NDMzPzuBlT0n16M8ZmZmPzuBlT311qO8ZmZmPzuBlT0s16M8NDMzPzuBlT361qO8zczMPjuBlT0g16M8////PjuBlT3+1qO8////PjuBlT0j16M8zczMPjuBlT0A16O8rwmePjuBlT1rn/C74rqgPjuBlT2ud+U8nJtiPjuBlT2ays08aIVuPjuBlT1mE2M9CdsQPjuBlT0Wg5k97ZQjPjuBlT2G78s9DoOZPTuBlT0L2xA+hu/LPTuBlT3tlCM+esrNPDuBlT2em2I+bRNjPTuBlT1ohW4+7J/wuzuBlT2wCZ4+rnflPDuBlT3iuqA+CtejvDuBlT3NzMw+F9ejPDuBlT3NzMw+F9ejPDuBlT3///8+CtejvDuBlT3///8+AACAPydcjz0AAIA/Z2ZmPwAAAABnZmY/Z2ZmPwAAAABnZma/Z2ZmvwAAAABnZmY/AACAvwAAAABnZmY/AACAvydcjz0AAIA/Z2ZmvwAAAABnZma/AACAvwAAAABnZma/Z2ZmPwAAAAAAAIC/exRuv8rMzD1nZmY/AACAv8rMzD1nZmY/AACAvydcjz1nZmY/Z2Zmvydcjz1nZmY/Z2Zmvydcjz2S+eY+V7pdvydcjz26FBo+a2hlv8rMzD3guPY9eSVEvydcjz2YWQq+jdNLv8rMzD3mESm+MfAavydcjz34Vsi+R54iv8rMzD0fs9e+9lbIvidcjz0z8Bq/IbPXvsrMzD1FniK/lFkKvidcjz15JUS/6hEpvsrMzD2N00u/whQaPidcjz1Xul2/0Lj2PcrMzD1raGW/lvnmPidcjz1nZma/Z2ZmP8rMzD17FG6/Z2ZmPydcjz1nZma/AACAPydcjz0AAIC/Z2ZmP8rMzD0AAIC/Z2Zmvydcjz0AAIC/Z2ZmPydcjz0AAIC/Z2ZmvwAAAAAAAIC/AACAvydcjz0AAIC/AACAvydcjz1nZma/")
-}]
-blend_shape_mode = 0
-
-[sub_resource type="ArrayMesh" id="ArrayMesh_0k6hs"]
-resource_name = "road_corner_curved_Cube_947"
-_surfaces = [{
-"aabb": AABB(-1, 0, -1, 2, 0.09999998, 2),
-"attribute_data": PackedByteArray("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"),
-"format": 34359742487,
-"index_count": 516,
-"index_data": PackedByteArray("AAABAAIAAACSAAEAkgAAAJMAkwAAAJQAlAAAAJUAlQAAAJYAlgAAAJcAlwAAAJgAmAAAAJkAmQAAAJoAmgAAAJsAAAADAJsAAAAEAAMAnACdAJ4AnAA3AJ0AngCdAJ8AnACeAKAAnACgADMAngA1AKAAngCfAKEAngChADUAnwCiAKEAogA1AKEAnwA0AKIAogA2ADUAowCkAKUAowAUAKQApQAWAKMApQAVABYApQCkAKYApQCnABUApQCmAKgApQCoAKcApgCpAKgAqQCnAKgApgAYAKkAqQAXAKcABQAGAKoABgALAKsArAAGAKsArQAGAKwArgAGAK0ArgAMAAYArwAMAK4AsAAMAK8ADQAMALAAsQAHAA0AsQANALIAsgAOALEAsgAPAA4ABgCzAAkABgC0ALMAswC0AAoAswAKAAgAOQC1ALYAOQA6ALUAOAC2ALUAOAC3ALYAuAC3ADgAuAA4ALkAugC4ALkAugC5ALsAvAC6ALsAvAC7AL0AvgC8AL0AvgC9AL8AwAC+AL8AwAC/AMEAwgDAAMEAwgDBAMMAxADCAMMAxADDADsAxAA7AMUAxADFAMYAxgDFAD0AxgA9ADwAxwAoAMgAxwAnACgAyQDHAMgAyQDKAMcAywDKAMkAywAlAMoAzADLAMkAzADJAM0AJADMAM0AJADNACYAEAARABIAEAATABEAzgAaABsAzgAZABoAHAAdAB4AHAAfAB0AzwDQANEAzwDSANAA0AAiANEA0AAhACIAIwDPANEAIwAgAM8A0wArACkA0wAqACsA0wAsACoA0wAtACwA1AAwAC4A1AAvADAA1AAxAC8A1AAyADEAPgA/AEAAPgBBAD8A1QBDAEQA1QBCAEMARQDVAEQARQBGANUA1gBIAEkA1gBHAEgASgDWAEkASgBLANYATABNAE4ATABPAE0AUABRAFIAUABTAFEAVADXAFYAVABXANcAVQBYAFYAVQBZAFgAWQBaAFgAWQBbAFoAWwBcAFoAWwBdAFwAXQBeAFwAXQBfAF4AXgBgAGEAXgDYAGAAYgBjAGQAYgBlAGMAZgBkAGMAZgBjAGcAaABmAGcAaABnAGkAagBoAGkAagBpAGsAbABqAGsAbABrAG0AbgBsAG0AbgBtAG8AcABuAG8AcABvAHEAcgBwAHEAcgBxAHMAcgBzAHQAcgB0AHUAdgB3AHgAdgB5AHcAegB7AHwAegB9AHsAfgB/AIAAfgCBAH8AfgCCAIEAfgCDAIIAgwCEAIIAgwCFAIQAhQCGAIQAhQCHAIYAhwCIAIYAhwCJAIgAiQCKAIgAiQCLAIoAiwCMAIoAiwCNAIwAjQCOAIwAjQCPAI4AkACOAI8AkACRAI4A"),
-"lods": [0.6771849, PackedByteArray("AAABAAIAAQAAAAMAAAAEAAMABQAGAAcABgAIAAkABgAKAAgACwAMAAYADQAMAAsADgAHAA0ADgANAA8AEAARABIAEAATABEAFAAVABYAFAAXABUAFAAYABcAGQAaABsAHAAdAB4AHAAfAB0AIAAhACIAIwAgACIAJAAlACYAJgAlACcAJgAnACgAKQAqACsAKQAsACoAKQAtACwALgAvADAALgAxAC8ALgAyADEAMwA0ADUANAA2ADUAMwA3ADQAOAA5ADoAOQA4ADsAPAA5ADsAPAA7AD0APgA/AEAAPgBBAD8AQgBDAEQARQBCAEQARQBGAEIARwBIAEkASgBHAEkASgBLAEcATABNAE4ATABPAE0AUABRAFIAUABTAFEAVABVAFYAVABXAFUAVQBYAFYAVQBZAFgAWQBaAFgAWQBbAFoAWwBcAFoAWwBdAFwAXQBeAFwAXQBfAF4AXgBfAGAAXgBgAGEAYgBjAGQAYgBlAGMAZgBkAGMAZgBjAGcAaABmAGcAaABnAGkAagBoAGkAagBpAGsAbABqAGsAbABrAG0AbgBsAG0AbgBtAG8AcABuAG8AcABvAHEAcgBwAHEAcgBxAHMAcgBzAHQAcgB0AHUAdgB3AHgAdgB5AHcAegB7AHwAegB9AHsAfgB/AIAAfgCBAH8AfgCCAIEAfgCDAIIAgwCEAIIAgwCFAIQAhQCGAIQAhQCHAIYAhwCIAIYAhwCJAIgAiQCKAIgAiQCLAIoAiwCMAIoAiwCNAIwAjQCOAIwAjQCPAI4AkACOAI8AkACRAI4A")],
-"material": SubResource("StandardMaterial3D_litqb"),
-"name": "citybits_texture",
-"primitive": 3,
-"uv_scale": Vector4(0, 0, 0, 0),
-"vertex_count": 217,
-"vertex_data": PackedByteArray("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/3///1m3/z//f/7/b4b/P/9///////+//3///////7//f/9/////v/9//3////+//3//f////7//f/9/////v/////////8/4//7//v//z/j//b/9v//P/////////8//////////z//fwAA////v/9/AAD///+//38AAP///7//v///////P/+///////8//7///////z//v///////P/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v////3////+/////f////7////9/////v////3////+/////f////7//f/9/////v/9//3////+//3//f////7//f/9/////v/9//3////+/AAD/f////78AAP9/////vx8AGoD///8/IwAagP///z8AAP9/////v3m7/7////8//7//v////7//v/+/////v4WE/7/r/5jE/3//v////7//f/+/////v/8//7////+//z//v////7//P/+/////v/8//7////+/////f////7////9/////v////3////+/////f////7////9/////v/9//3////+//3//f////7//f/9/////v/9//3////+//3//f////7////9/////v////3////+/////f////7////9/////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f/7/////v/9//v////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3/+/////7//f/7/////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///Iqb/P/9///8Zu/+//3///xm7/z//f/////9M5/9//////8HR/3///9zZ/7//f///////v/9///////+/AAD/f////78AAP9/////vwYABoD///+/AAD/f////78NAA2A////vw8ADYD///8/EQANgP///z/x//r/+v//P/////////8/8f/9//3//z//////////Pw0A/v////8/BgD+/////z//////////P/9///////+//3///////7//f///////v/9///////+//3///1m3/z//f///Wbf/P/9//v8Vk/+//3/+/////7//f/7/////v/9///////+//3///////7//v/+/////v/+//7////+/2L3/v////z+wtf+/////P82y/7////8/9qv/v////z+Nqv+/////P9Wj/78T+4mdaKP/v5r7zZ0pnP+/9P8x3Jac/7/0/53cCJT/v93/JNRxlf+/3/+L1U6K/7/D/4TKMY3/v8b/Y80mgv+/6v86wv9//7////+//3//v////7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//38AAP///7////9/////v/9//3////+/////f////7//f/9/////v/9///////+//3///////78=")
-}]
-blend_shape_mode = 0
-shadow_mesh = SubResource("ArrayMesh_8t7lw")
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_iqms3"]
-resource_name = "citybits_texture"
-albedo_texture = ExtResource("5_t7kw1")
-roughness = 0.4
-
-[sub_resource type="ArrayMesh" id="ArrayMesh_uj8qx"]
-_surfaces = [{
-"aabb": AABB(-1, 0, -1, 2, 0.099999994, 2),
-"format": 34359742465,
-"index_count": 174,
-"index_data": PackedByteArray("AAABAAIAAAADAAEAAwAAAAQABAAAAAIAAQADAAUAAwAEAAUAAQAFAAYABgAHAAEAAQAIAAIAAQAHAAgAAgAIAAkACgAIAAcACgAJAAgABgAKAAcAAgAJAAsACwAJAAoACwAKAAYABAACAAsADAALAAYADAAEAAsABgAFAA0ADQAFAAQADAAGAA4ABgANAA4ADAAPAAQADQAEAA8ADQAPABAAEQAPAAwAEQAQAA8ADQAQABIAEgAQABEADQASABMADQATAA4AEgARABMAEwAUAA4ADgAVAAwADgAUABUAEQAMABUAEwAWABQAEQAWABMAFgAVABQAEQAVABcAFgAXABUAEQAXABYAGAAZABoAGAAbABkAHAAdAB4AHAAfAB0AIAAhACIAIAAjACEAJAAlACYAJAAnACUAKAApACoAKAArACkALAAtAC4ALAAvAC0AMAAxADIAMAAzADEA"),
-"name": "citybits_texture",
-"primitive": 3,
-"uv_scale": Vector4(0, 0, 0, 0),
-"vertex_count": 52,
-"vertex_data": PackedByteArray("AACAvwAAAAAAAIA/AACAvydcjz0AAIC/AACAvydcjz0AAIA/AACAvwAAAAAAAIC/ZWZmvwAAAAAAAIA/ZWZmvwAAAAAAAIC/ZWZmvydcjz0AAIC/AACAv8zMzD0AAIC/AACAv8zMzD0AAIA/eRRuv8zMzD0AAIA/eRRuv8zMzD0AAIC/ZWZmvydcjz0AAIA/ZWZmPydcjz0AAIA/ZWZmPwAAAAAAAIC/ZWZmPydcjz0AAIC/ZWZmPwAAAAAAAIA/AACAPwAAAAAAAIA/AACAPydcjz0AAIA/AACAPwAAAAAAAIC/AACAPydcjz0AAIC/eRRuP8zMzD0AAIC/eRRuP8zMzD0AAIA/AACAP8zMzD0AAIC/AACAP8zMzD0AAIA/F9ejPDuBlT00MzO/CtejvDuBlT1mZma/F9ejPDuBlT1mZma/CtejvDuBlT00MzO/4XoUvzuBlT0AAIA/UrgevzuBlT0AAIC/4XoUvzuBlT0AAIC/UrgevzuBlT0AAIA/UrgePzuBlT0AAIA/4noUPzuBlT0AAIC/UrgePzuBlT0AAIC/4noUPzuBlT0AAIA/F9ejPDuBlT2bmZm+CtejvDuBlT3///++F9ejPDuBlT3///++CtejvDuBlT2bmZm+F9ejPDuBlT3IzMw9CtejvDuBlT3IzMy9F9ejPDuBlT3IzMy9CtejvDuBlT3IzMw9F9ejPDuBlT3///8+CtejvDuBlT2bmZk+F9ejPDuBlT2bmZk+CtejvDuBlT3///8+F9ejPDuBlT1mZmY/CtejvDuBlT00MzM/F9ejPDuBlT00MzM/CtejvDuBlT1mZmY/")
-}]
-blend_shape_mode = 0
-
-[sub_resource type="ArrayMesh" id="ArrayMesh_nq0c1"]
-resource_name = "road_straight_Cube_952"
-_surfaces = [{
-"aabb": AABB(-1, 0, -1, 2, 0.099999994, 2),
-"attribute_data": PackedByteArray("Lw2ePjjNQD4vDZ4+XGkyPi8Nnj5caTI+Lw2ePjjNQD4vDZ4+9P8rPi8Nnj70/ys+2OWwPvD/Cz5gA68+8P8LPmADrz7w/ws+2OWwPvD/Cz7Y5bA+OM1APtjlsD5caTI+2OWwPlxpMj7Y5bA+OM1APtjlsD70/ys+2OWwPvT/Kz4vDZ4+XGkyPqfvnz44zUA+p++fPlxpMj4vDZ4+OM1APi8Nnj70/ys+p++fPvT/Kz7Y5bA+XGkyPmADrz44zUA+YAOvPlxpMj7Y5bA+OM1APmADrz70/ys+2OWwPvT/Kz7Y5bA+XGkyPmADrz70/ys+YAOvPlxpMj7Y5bA+9P8rPmADrz44zUA+2OWwPjjNQD6n758+XGkyPqfvnz70/ys+p++fPlxpMj6n758+9P8rPmADrz44zWA+p++fPjjNYD5gA68+OM1gPqfvnz44zWA+YAOvPvjbVT6n758+OM1gPqfvnz7421U+YAOvPjjNYD4vDZ4+OM1APqfvnz44zUA+p++fPjjNQD4vDZ4+OM1APmADrz44zUA+2OWwPjjNQD7Y5bA+OM1APmADrz44zUA+p++fPvjbVT5gA68+OM1gPmADrz7421U+p++fPjjNYD6n758+OM1APi8Nnj5caTI+p++fPlxpMj4vDZ4+OM1APqfvnz70/ys+Lw2ePvT/Kz6n758+8P8LPi8Nnj7w/ws+Lw2ePvD/Cz6n758+8P8LPmADrz5caTI+YAOvPvT/Kz5gA68+XGkyPmADrz70/ys+YAOvPvjbVT6n758++NtVPmADrz7421U+p++fPvjbVT7ABl4+8LerPU7fPz7wt6s9wAZePvC3qz1O3z8+8LerPWAD7z787ao+p+/fPvztqj5gA+8+/O2qPqfv3z787ao+YAPvPvztqj6n798+/O2qPmAD7z787ao+p+/fPvztqj7ABl4+8LerPU7fPz7wt6s9wAZePvC3qz1O3z8+8LerPcAGXj7wt6s9Tt8/PvC3qz3ABl4+8LerPU7fPz7wt6s9wAZePvC3qz1O3z8+8LerPcAGXj7wt6s9Tt8/PvC3qz3ABl4+8LerPU7fPz7wt6s9wAZePvC3qz1O3z8+8LerPQ=="),
-"format": 34359742487,
-"index_count": 174,
-"index_data": PackedByteArray("AAABAAIAAAADAAEAAQAEAAIAAQAFAAQABgAHAAgABgAJAAcACgALAAwACgANAAsACwAOAAwACwAPAA4AEAARABIAEAATABEAEgAUABAAEgAVABQAFgAXABgAFgAZABcAFgAYABoAFgAaABsAHAAdAB4AHAAfAB0AIAAcAB4AIAAhABwAIgAjACQAIgAlACMAJgAnACgAJgApACcAKgArACwAKgAtACsALgAvADAALgAxAC8AMgAzADQAMgA1ADMANgA3ADgANgA5ADcAOgA7ADwAOgA9ADsAOwA+ADwAOwA/AD4AQABBAEIAQABDAEEARABFAEYARABHAEUASABJAEoASABLAEkATABNAE4ATABPAE0AUABRAFIAUABTAFEAVABVAFYAVABXAFUAWABZAFoAWABbAFkAXABdAF4AXABfAF0AYABhAGIAYABjAGEAZABlAGYAZABnAGUA"),
-"material": SubResource("StandardMaterial3D_iqms3"),
-"name": "citybits_texture",
-"primitive": 3,
-"uv_scale": Vector4(0, 0, 0, 0),
-"vertex_count": 104,
-"vertex_data": PackedByteArray("AACAvwAAAAAAAIA/AACAvydcjz0AAIC/AACAvydcjz0AAIA/AACAvwAAAAAAAIC/AACAv8zMzD0AAIA/AACAv8zMzD0AAIC/AACAP8zMzD0AAIC/eRRuP8zMzD0AAIA/eRRuP8zMzD0AAIC/AACAP8zMzD0AAIA/AACAPwAAAAAAAIC/AACAPydcjz0AAIA/AACAPydcjz0AAIC/AACAPwAAAAAAAIA/AACAP8zMzD0AAIC/AACAP8zMzD0AAIA/AACAvydcjz0AAIC/ZWZmvwAAAAAAAIC/ZWZmvydcjz0AAIC/AACAvwAAAAAAAIC/AACAv8zMzD0AAIC/eRRuv8zMzD0AAIC/AACAPydcjz0AAIA/ZWZmPwAAAAAAAIA/ZWZmPydcjz0AAIA/AACAPwAAAAAAAIA/eRRuP8zMzD0AAIA/AACAP8zMzD0AAIA/AACAPydcjz0AAIC/eRRuP8zMzD0AAIC/ZWZmPydcjz0AAIC/AACAP8zMzD0AAIC/ZWZmPwAAAAAAAIC/AACAPwAAAAAAAIC/ZWZmvydcjz0AAIA/eRRuv8zMzD0AAIC/ZWZmvydcjz0AAIC/eRRuv8zMzD0AAIA/ZWZmPwAAAAAAAIC/ZWZmvwAAAAAAAIA/ZWZmPwAAAAAAAIA/ZWZmvwAAAAAAAIC/ZWZmPydcjz0AAIA/ZWZmvwAAAAAAAIA/ZWZmvydcjz0AAIA/ZWZmPwAAAAAAAIA/AACAvwAAAAAAAIC/ZWZmvwAAAAAAAIA/ZWZmvwAAAAAAAIC/AACAvwAAAAAAAIA/ZWZmPwAAAAAAAIC/AACAPwAAAAAAAIA/AACAPwAAAAAAAIC/ZWZmPwAAAAAAAIA/ZWZmvydcjz0AAIC/ZWZmPwAAAAAAAIC/ZWZmPydcjz0AAIC/ZWZmvwAAAAAAAIC/ZWZmvwAAAAAAAIA/AACAvydcjz0AAIA/ZWZmvydcjz0AAIA/AACAvwAAAAAAAIA/eRRuv8zMzD0AAIA/AACAv8zMzD0AAIA/eRRuv8zMzD0AAIC/AACAv8zMzD0AAIA/AACAv8zMzD0AAIC/eRRuv8zMzD0AAIA/ZWZmPydcjz0AAIC/eRRuP8zMzD0AAIA/ZWZmPydcjz0AAIA/eRRuP8zMzD0AAIC/ZWZmPydcjz0AAIA/ZWZmvydcjz0AAIC/ZWZmPydcjz0AAIC/ZWZmvydcjz0AAIA/F9ejPDuBlT00MzO/CtejvDuBlT1mZma/F9ejPDuBlT1mZma/CtejvDuBlT00MzO/4XoUvzuBlT0AAIA/UrgevzuBlT0AAIC/4XoUvzuBlT0AAIC/UrgevzuBlT0AAIA/UrgePzuBlT0AAIA/4noUPzuBlT0AAIC/UrgePzuBlT0AAIC/4noUPzuBlT0AAIA/F9ejPDuBlT2bmZm+CtejvDuBlT3///++F9ejPDuBlT3///++CtejvDuBlT2bmZm+F9ejPDuBlT3IzMw9CtejvDuBlT3IzMy9F9ejPDuBlT3IzMy9CtejvDuBlT3IzMw9F9ejPDuBlT3///8+CtejvDuBlT2bmZk+F9ejPDuBlT2bmZk+CtejvDuBlT3///8+F9ejPDuBlT1mZmY/CtejvDuBlT00MzM/F9ejPDuBlT00MzM/CtejvDuBlT1mZmY/AAD/f////78AAP9/////vwAA/3////+/AAD/f////78AAP9/////vwAA/3////+//3///////7//f///////v/9///////+//3///////7////9/////v////3////+/////f////7////9/////v////3////+/////f////7//////////P/////////8//////////z//////////P/////////8//////////z//f/9/////v/9//3////+//3//f////7//f/9/////v/9//3////+//3//f////7//////////P/////////8//////////z//////////P/////////8//////////z//v/+/////v/+//7////+//7//v////7//v/+/////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//3//f////7//f/9/////v/9//3////+//3//f////7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//////////z//////////P/////////8//////////z//f/9/////v/9//3////+//3//f////7//f/9/////v/9//3////+//3//f////7//f///////v/9///////+//3///////7//f///////v/8//7////+//z//v////7//P/+/////v/8//7////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////vw==")
-}]
-blend_shape_mode = 0
-shadow_mesh = SubResource("ArrayMesh_uj8qx")
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_k2tw7"]
-resource_name = "citybits_texture"
-albedo_texture = ExtResource("5_t7kw1")
-roughness = 0.4
-
-[sub_resource type="ArrayMesh" id="ArrayMesh_28158"]
-_surfaces = [{
-"aabb": AABB(-1, 0, -1, 2, 0.09999998, 2),
-"format": 34359742465,
-"index_count": 414,
-"index_data": PackedByteArray("AAABAAIABQAAAAIAAAADAAEAZAADAAAAZAABAAMAZAAAAAUABgACAAEABQACAAYAZAAHAAEABgABAAcACQBkAAUACQAEAGQAZAAIAAcAZAAEAAgABAAJAGUABABlAAgACgAJAAUABwAIAAsACwAIAGUAZQAJAA4ACgAOAAkABwALAAwABgAHAAwAZgAFAAYAZgAKAAUACwBlAGcAZgATAAoAZwAYAAsAaABmAAYAZwBlAGkAZQAOAGkACwAYAGoACwBqAAwAZwAWABgAagAYABYAZwBpAGsAawAWAGcAaQBsAGsAawAPABYAbAAPAGsAagAWABcAFwAWAA8ADgBtAGkAaQBtAGwAbAARAA8ADgAQAG0AbgAQAA4AbQAQAG4AbgAOAAoAbQBuAG8ADwARAHAAcAARAGwAcQBsAG0AcQBtAG8AcABsAHEACgASAG4ACgATABIAbgByAG8AcQBvAHIAbgASAHIAEgATAHMAEgBzAHIAZgBzABMAcQByAHQAdAByAHMAcABxAHQAZgB1AHMAdABzAHUAcAB0ABUAdQAVAHQAcAAVABQAdQAUABUAZgBoAHUAcAAUAA0ADQAUAHUADQB1AGgADwBwAA0AFwAPAA0AGQANAGgAGQAXAA0AaAAGABkABgAMABkAFwAZABoADAAaABkAFwAaABsAagAXABsADAAcABoAagAcAAwAHAAbABoAagAbAB0AHAAdABsAagAdABwAHgAfACAAHgAhAB8AIgAjACQAIgAlACMAIwAmACQAIwAnACYAJwAoACYAJwApACgAKQAqACgAKQArACoAKwAsACoAKwAtACwALAAtAC4ALAAuAC8AMAAxADIAMAAzADEANAA1ADYANAA3ADUAOAA5ADoAOAA7ADkAPAA9AD4APAA/AD0AQABBAEIAQABDAEEARABFAEYARABHAEUARgBFAEgARgBIAEkASgBLAEwASgBNAEsASwBOAEwASwBPAE4ATwBQAE4ATwBRAFAAUQBSAFAAUQBTAFIAUwBUAFIAUwBVAFQAVABVAFYAVABWAFcAWABZAFoAWABbAFkAXABdAF4AXABfAF0AYABhAGIAYABjAGEA"),
-"lods": [0.01601876, PackedByteArray("AAABAAIAAAADAAEABAADAAAABAABAAMABQAAAAIABAAAAAUABgACAAEABQACAAYABAAHAAEABgABAAcABAAIAAcACQAEAAUABAAJAAgACgAJAAUACgAFAAYACwAIAAkABwAIAAsABgAHAAwABwALAAwADQAKAAYACwAJAA4ACgAOAAkACwAOAA8AEAAOAAoADgAQABEADgARAA8ACgASABAAEQAQABIACgATABIACgAUABMAEgATABQACgANABQAFQARABIAFQASABQADwARABUAFQAUAA0ADwAVAA0ADwAWAAsAFwAPAA0AFwAWAA8ACwAWABgAGAAWABcACwAYAAwAGQAXAA0ADQAGABkABgAMABkAFwAZABoADAAaABkAGAAXABsAFwAaABsADAAcABoAGAAcAAwAHAAbABoAGAAbAB0AHAAdABsAGAAdABwAHgAfACAAHgAhAB8AIgAjACQAIgAlACMAIwAmACQAIwAnACYAJwAoACYAJwApACgAKQAqACgAKQArACoAKwAsACoAKwAtACwALAAtAC4ALAAuAC8AMAAxADIAMAAzADEANAA1ADYANAA3ADUAOAA5ADoAOAA7ADkAPAA9AD4APAA/AD0AQABBAEIAQABDAEEARABFAEYARABHAEUARgBFAEgARgBIAEkASgBLAEwASgBNAEsASwBOAEwASwBPAE4ATwBQAE4ATwBRAFAAUQBSAFAAUQBTAFIAUwBUAFIAUwBVAFQAVABVAFYAVABWAFcAWABZAFoAWABbAFkAXABdAF4AXABfAF0AYABhAGIAYABjAGEA")],
-"name": "citybits_texture",
-"primitive": 3,
-"uv_scale": Vector4(0, 0, 0, 0),
-"vertex_count": 118,
-"vertex_data": PackedByteArray("exRuP8rMzD0AAIC/AACAP8rMzD17FG6/exRuP8rMzD17FG6/AACAP8rMzD0AAIC/AACAPwAAAAAAAIC/Z2ZmPydcjz0AAIC/Z2ZmPydcjz1nZma/AACAPydcjz1nZma/AACAPwAAAABnZma/Z2ZmPwAAAAAAAIC/Z2Zmvydcjz0AAIC/AACAPwAAAABnZmY/AACAPydcjz1nZmY/Z2Zmvydcjz0AAIA/Z2ZmvwAAAAAAAIC/Z2ZmvwAAAAAAAIA/AACAvwAAAAAAAIC/AACAvwAAAAAAAIA/AACAv8rMzD0AAIC/exRuv8rMzD0AAIC/exRuv8rMzD0AAIA/AACAv8rMzD0AAIA/Z2ZmPwAAAAAAAIA/Z2ZmPydcjz0AAIA/AACAPwAAAAAAAIA/Z2ZmPydcjz1nZmY/exRuP8rMzD17FG4/exRuP8rMzD0AAIA/AACAP8rMzD17FG4/AACAP8rMzD0AAIA/4XoUvzuBlT0AAIA/UrgevzuBlT0AAIC/4XoUvzuBlT0AAIC/UrgevzuBlT0AAIA/AACAPzuBlT1TuB6/tlZfPzuBlT3jehS/ZmZmPzuBlT1TuB6/AACAPzuBlT3jehS/T2ZJPzuBlT1TmyK/CLFCPzuBlT2lLRq/A5gxPzuBlT0FmDG/1mcqPzuBlT3WZyq/UZsiPzuBlT1PZkm/oy0aPzuBlT0IsUK/UbgePzuBlT1mZma/4XoUPzuBlT22Vl+/4noUPzuBlT0AAIC/UrgePzuBlT0AAIC/F9ejPDuBlT00MzO/CtejvDuBlT1mZma/F9ejPDuBlT1mZma/CtejvDuBlT00MzO/F9ejPDuBlT2bmZm+CtejvDuBlT3///++F9ejPDuBlT3///++CtejvDuBlT2bmZm+F9ejPDuBlT3IzMw9CtejvDuBlT3IzMy9F9ejPDuBlT3IzMy9CtejvDuBlT3IzMw9F9ejPDuBlT3///8+CtejvDuBlT2bmZk+F9ejPDuBlT2bmZk+CtejvDuBlT3///8+F9ejPDuBlT1mZmY/CtejvDuBlT00MzM/F9ejPDuBlT00MzM/CtejvDuBlT1mZmY/4noUPzuBlT2ZmRm/U7gePzuBlT0B16O84noUPzuBlT0K16M8U7gePzuBlT2ZmRm/ZmZmPzuBlT311qO8ZmZmPzuBlT0s16M8UrgePzuBlT0AAIA/4noUPzuBlT22Vl8/UrgePzuBlT1mZmY/4noUPzuBlT0AAIA/UpsiPzuBlT1PZkk/pC0aPzuBlT0IsUI/BJgxPzuBlT0EmDE/1mcqPzuBlT3WZyo/T2ZJPzuBlT1SmyI/CLFCPzuBlT2kLRo/ZmZmPzuBlT1SuB4/tlZfPzuBlT3iehQ/AACAPzuBlT3jehQ/AACAPzuBlT1TuB4/U7gePzuBlT3KzEw+4noUPzuBlT3RzMw9U7gePzuBlT3RzMw94noUPzuBlT3KzEw+U7gePzuBlT3LzMw+4noUPzuBlT2bmZk+U7gePzuBlT2bmZk+4noUPzuBlT3LzMw+U7gePzuBlT2ZmRk/4noUPzuBlT0BAAA/U7gePzuBlT0BAAA/4noUPzuBlT2ZmRk/AACAPydcjz0AAIC/Z2ZmPwAAAABnZma/Z2Zmvydcjz1nZma/Z2ZmPwAAAABnZmY/Z2Zmvydcjz1nZmY/Z2ZmvwAAAABnZma/AACAPydcjz0AAIA/Z2ZmvwAAAABnZmY/AACAvwAAAABnZmY/AACAvwAAAABnZma/AACAvydcjz0AAIC/AACAvydcjz1nZma/AACAvydcjz0AAIA/AACAvydcjz1nZmY/AACAv8rMzD1nZma/exRuv8rMzD1nZma/AACAv8rMzD1nZmY/exRuv8rMzD1nZmY/")
-}]
-blend_shape_mode = 0
-
-[sub_resource type="ArrayMesh" id="ArrayMesh_lnhjk"]
-resource_name = "road_tsplit_Cube_950"
-_surfaces = [{
-"aabb": AABB(-1, 0, -1, 2, 0.09999998, 2),
-"attribute_data": PackedByteArray("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"),
-"format": 34359742487,
-"index_count": 414,
-"index_data": PackedByteArray("AAABAAIAAAADAAEABAAFAAYABAAHAAUArACtAK4ArABYAK0ArgCtAK8ArACuALAArACwAFcArgCxALAArgCvALIArgCyALEArwCzALIAswCxALIArwBaALMAswBZALEAtAAJAAoAtAAIAAkACgALALQACgAMAAsAtQAOAA8AtQANAA4AtQAPABAAtQAQABEAtgATABQAtgASABMAFQC2ABQAFQAWALYAtwAYABkAtwAXABgAtwAZABoAtwAaABsAHAC4ALkAHAAdALgAuQC4ALoAuQC6ALsAugAfALsAugAeAB8AIAAhACIAIAAjACEAJAC8ACYAJAAlALwAvAAnACYAvAAoACcAKQAqACsAKQAsACoALQC9AL4ALQAuAL0AvgC9AL8AvQAwAL8AvQAvADAAvgC/AMAAwAAyAL4AwAAxADIAwQA1ADMAwQA0ADUANgA3ADgANgA5ADcAOgA7ADwAOgA9ADsAPgBAAMIAPgA/AEAAwgBBAD4AQQBCAD4AQQBDAEIAwgDDAEEAwwBFAEEAwwBEAEUAUADEAMUAUABRAMQAxgDFAMQAxgDEAMcAxgDHAFIAxgBSAE8AyABHAEgAyABJAEcASgDIAEgASgBGAMgASwDJAMoASwBMAMkAywDKAMkAywDJAMwAzABOAMsAzABNAE4AUwBUAFUAUwBWAFQAWwBcAF0AWwBeAFwAXwBgAGEAXwBiAGAAYwDNAGUAYwBkAM0AZgBnAGgAZgBpAGcAagDOAGwAagBtAM4AawBuAGwAawBvAG4AbwBwAG4AbwBxAHAAcQByAHAAcQBzAHIAcwB0AHIAcwB1AHQAdAB2AHcAdADPAHYAeAB5AHoAeAB7AHkAfAB9AH4AfAB/AH0AgACBAIIAgACDAIEAhACFAIYAhACHAIUAiACJAIoAiACLAIkAjACNAI4AjACPAI0AjgCNAJAAjgCQAJEAkgDQAJQAkgCVANAAkwCWAJQAkwCXAJYAlwCYAJYAlwCZAJgAmQCaAJgAmQCbAJoAmwCcAJoAmwCdAJwAnACeAJ8AnADRAJ4AoAChAKIAoACjAKEApAClAKYApACnAKUAqACpAKoAqACrAKkA"),
-"lods": [0.01601876, PackedByteArray("AAABAAIAAAADAAEABAAFAAYABAAHAAUACAAJAAoACgALAAgACgAMAAsADQAOAA8ADQAPABAADQAQABEAEgATABQAFQASABQAFQAWABIAFwAYABkAFwAZABoAFwAaABsAHAAdAB4AHAAeAB8AIAAhACIAIAAjACEAJAAlACYAJQAnACYAJQAoACcAKQAqACsAKQAsACoALQAuAC8ALQAvADAALQAwADEAMQAyAC0AMwA0ADUANgA3ADgANgA5ADcAOgA7ADwAOgA9ADsAPgA/AEAAQABBAD4AQQBCAD4AQQBDAEIAQABEAEEARABFAEEARgBHAEgARgBJAEcASgBGAEgASwBMAE0ATgBLAE0ATwBQAFEATwBRAFIAUwBUAFUAUwBWAFQAVwBYAFkAWABaAFkAWwBcAF0AWwBeAFwAXwBgAGEAXwBiAGAAYwBkAGUAZgBnAGgAZgBpAGcAagBrAGwAagBtAGsAawBuAGwAawBvAG4AbwBwAG4AbwBxAHAAcQByAHAAcQBzAHIAcwB0AHIAcwB1AHQAdAB1AHYAdAB2AHcAeAB5AHoAeAB7AHkAfAB9AH4AfAB/AH0AgACBAIIAgACDAIEAhACFAIYAhACHAIUAiACJAIoAiACLAIkAjACNAI4AjACPAI0AjgCNAJAAjgCQAJEAkgCTAJQAkgCVAJMAkwCWAJQAkwCXAJYAlwCYAJYAlwCZAJgAmQCaAJgAmQCbAJoAmwCcAJoAmwCdAJwAnACdAJ4AnACeAJ8AoAChAKIAoACjAKEApAClAKYApACnAKUAqACpAKoAqACrAKkA")],
-"material": SubResource("StandardMaterial3D_k2tw7"),
-"name": "citybits_texture",
-"primitive": 3,
-"uv_scale": Vector4(0, 0, 0, 0),
-"vertex_count": 210,
-"vertex_data": PackedByteArray("exRuP8rMzD0AAIC/AACAP8rMzD17FG6/exRuP8rMzD17FG6/AACAP8rMzD0AAIC/Z2ZmPydcjz1nZma/AACAP8rMzD17FG6/AACAPydcjz1nZma/exRuP8rMzD17FG6/AACAvwAAAAAAAIC/Z2ZmvwAAAAAAAIC/Z2Zmvydcjz0AAIC/AACAv8rMzD0AAIC/exRuv8rMzD0AAIC/AACAPwAAAAAAAIA/Z2ZmPwAAAAAAAIA/Z2ZmPydcjz0AAIA/exRuP8rMzD0AAIA/AACAP8rMzD0AAIA/AACAv8rMzD0AAIA/exRuv8rMzD0AAIA/Z2Zmvydcjz0AAIA/Z2ZmvwAAAAAAAIA/AACAvwAAAAAAAIA/AACAPwAAAAAAAIC/AACAPwAAAABnZma/AACAPydcjz1nZma/AACAP8rMzD17FG6/AACAP8rMzD0AAIC/Z2ZmvwAAAAAAAIC/AACAvwAAAAAAAIC/AACAvwAAAAAAAIA/Z2ZmvwAAAAAAAIA/Z2ZmPydcjz0AAIA/Z2ZmvwAAAAAAAIA/Z2Zmvydcjz0AAIA/Z2ZmPwAAAAAAAIA/Z2ZmPwAAAAAAAIC/AACAPwAAAAAAAIC/Z2ZmPydcjz0AAIC/exRuP8rMzD0AAIC/AACAP8rMzD0AAIC/Z2Zmvydcjz0AAIC/Z2ZmPwAAAAAAAIC/Z2ZmPydcjz0AAIC/Z2ZmvwAAAAAAAIC/AACAPwAAAABnZmY/AACAPwAAAABnZma/Z2ZmPwAAAAAAAIC/Z2ZmvwAAAAAAAIC/Z2ZmvwAAAAAAAIA/Z2ZmPwAAAAAAAIA/AACAPwAAAABnZmY/Z2ZmPwAAAAAAAIA/AACAPwAAAAAAAIA/AACAPydcjz1nZmY/exRuP8rMzD17FG4/Z2ZmPydcjz1nZmY/AACAP8rMzD17FG4/Z2ZmPydcjz0AAIA/exRuP8rMzD17FG4/exRuP8rMzD0AAIA/Z2ZmPydcjz1nZmY/Z2ZmPydcjz1nZmY/Z2ZmPydcjz0AAIA/Z2Zmvydcjz0AAIA/Z2ZmPydcjz1nZma/AACAPydcjz1nZmY/AACAPydcjz1nZma/Z2Zmvydcjz0AAIC/Z2ZmPydcjz0AAIC/AACAPwAAAAAAAIA/AACAP8rMzD17FG4/AACAPydcjz1nZmY/AACAP8rMzD0AAIA/AACAPwAAAABnZmY/AACAv8rMzD0AAIC/exRuv8rMzD0AAIC/exRuv8rMzD0AAIA/AACAv8rMzD0AAIA/Z2Zmvydcjz0AAIC/Z2Zmvydcjz0AAIA/exRuv8rMzD0AAIA/exRuv8rMzD0AAIC/AACAPydcjz1nZma/AACAPwAAAABnZmY/AACAPydcjz1nZmY/AACAPwAAAABnZma/AACAv8rMzD0AAIA/AACAvwAAAAAAAIA/AACAv8rMzD0AAIC/AACAvwAAAAAAAIC/AACAP8rMzD17FG4/exRuP8rMzD0AAIA/exRuP8rMzD17FG4/AACAP8rMzD0AAIA/Z2ZmPydcjz0AAIC/exRuP8rMzD17FG6/Z2ZmPydcjz1nZma/exRuP8rMzD0AAIC/AACAPwAAAAAAAIC/Z2ZmPwAAAAAAAIC/AACAPwAAAABnZma/4XoUvzuBlT0AAIA/UrgevzuBlT0AAIC/4XoUvzuBlT0AAIC/UrgevzuBlT0AAIA/AACAPzuBlT1TuB6/tlZfPzuBlT3jehS/ZmZmPzuBlT1TuB6/AACAPzuBlT3jehS/T2ZJPzuBlT1TmyK/CLFCPzuBlT2lLRq/A5gxPzuBlT0FmDG/1mcqPzuBlT3WZyq/UZsiPzuBlT1PZkm/oy0aPzuBlT0IsUK/UbgePzuBlT1mZma/4XoUPzuBlT22Vl+/4noUPzuBlT0AAIC/UrgePzuBlT0AAIC/F9ejPDuBlT00MzO/CtejvDuBlT1mZma/F9ejPDuBlT1mZma/CtejvDuBlT00MzO/F9ejPDuBlT2bmZm+CtejvDuBlT3///++F9ejPDuBlT3///++CtejvDuBlT2bmZm+F9ejPDuBlT3IzMw9CtejvDuBlT3IzMy9F9ejPDuBlT3IzMy9CtejvDuBlT3IzMw9F9ejPDuBlT3///8+CtejvDuBlT2bmZk+F9ejPDuBlT2bmZk+CtejvDuBlT3///8+F9ejPDuBlT1mZmY/CtejvDuBlT00MzM/F9ejPDuBlT00MzM/CtejvDuBlT1mZmY/4noUPzuBlT2ZmRm/U7gePzuBlT0B16O84noUPzuBlT0K16M8U7gePzuBlT2ZmRm/ZmZmPzuBlT311qO8ZmZmPzuBlT0s16M8UrgePzuBlT0AAIA/4noUPzuBlT22Vl8/UrgePzuBlT1mZmY/4noUPzuBlT0AAIA/UpsiPzuBlT1PZkk/pC0aPzuBlT0IsUI/BJgxPzuBlT0EmDE/1mcqPzuBlT3WZyo/T2ZJPzuBlT1SmyI/CLFCPzuBlT2kLRo/ZmZmPzuBlT1SuB4/tlZfPzuBlT3iehQ/AACAPzuBlT3jehQ/AACAPzuBlT1TuB4/U7gePzuBlT3KzEw+4noUPzuBlT3RzMw9U7gePzuBlT3RzMw94noUPzuBlT3KzEw+U7gePzuBlT3LzMw+4noUPzuBlT2bmZk+U7gePzuBlT2bmZk+4noUPzuBlT3LzMw+U7gePzuBlT2ZmRk/4noUPzuBlT0BAAA/U7gePzuBlT0BAAA/4noUPzuBlT2ZmRk/AACAvydcjz0AAIA/AACAvwAAAABnZmY/AACAvydcjz1nZmY/AACAvwAAAABnZma/AACAv8rMzD1nZmY/AACAv8rMzD1nZma/AACAvydcjz1nZma/AACAvydcjz0AAIC/AACAvydcjz0AAIC/AACAPydcjz0AAIA/AACAvydcjz0AAIA/AACAPydcjz0AAIC/AACAvwAAAABnZma/Z2ZmvwAAAABnZma/AACAvwAAAABnZmY/Z2ZmvwAAAABnZmY/AACAPydcjz0AAIC/Z2ZmPwAAAABnZma/Z2ZmPwAAAABnZmY/Z2ZmvwAAAABnZma/Z2ZmvwAAAABnZmY/Z2ZmPwAAAABnZmY/Z2Zmvydcjz1nZmY/Z2Zmvydcjz1nZma/exRuv8rMzD1nZmY/Z2Zmvydcjz1nZmY/Z2Zmvydcjz1nZma/exRuv8rMzD1nZma/AACAPydcjz0AAIA/exRuv8rMzD1nZma/AACAv8rMzD1nZma/AACAv8rMzD1nZmY/exRuv8rMzD1nZmY/Z2ZmPwAAAABnZma/tlZfPzuBlT3jehS/4XoUPzuBlT22Vl+/4noUPzuBlT22Vl8/tlZfPzuBlT3iehQ//3///////7//f///////v/9///////+//3///////7//f/+/////v/9//7////+//3//v////7//f/+/////v/////////8//////////z//////////P/////////8//////////z//f/9/////v/9//3////+//3//f////7//f/9/////v/9//3////+//3//f////7//f/9/////v/9//3////+//3//f////7//f/9/////v////3////+/////f////7////9/////v////3////+/////f////7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9//3////+//3//f////7//f/9/////v/9//3////+//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//7///////z//v///////P/+///////8//7///////z//P/+/////v/8//7////+//z//v////7//P/+/////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7////9/////v////3////+/////f////7////9/////v////3////+//3///////7//f///////v/9///////+//3///////7//v/+/////v/+//7////+//7//v////7//v/+/////v////3////+/////f////7////9/////v////3////+/AAD/f////78AAP9/////vwAA/3////+/AAD/f////7//f///////v/9///////+//3///////7//f///////v/8//7////+//z//v////7//P/+/////v/8//7////+//38AAP///7//fwAA////v/9/AAD///+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////78AAP9/////vwAA/3////+/AAD/f////78AAP9/////vwAA/3////+/AAD/f////78AAP9/////vwAA/3////+//////////z//f/9/////v/9//3////+/////f////7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/////////8//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9///////+//3///////7//v/+/////v/+//7////+//7//v////7//v/+/////v////3////+//3///////7//f///////v/9///////+//3///////7//fwAA////v/9///////+//3///////7//f///////v/9///////+/")
-}]
-blend_shape_mode = 0
-shadow_mesh = SubResource("ArrayMesh_28158")
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0w8vo"]
-resource_name = "citybits_texture"
-albedo_texture = ExtResource("5_t7kw1")
-roughness = 0.4
-
-[sub_resource type="ArrayMesh" id="ArrayMesh_ghocq"]
-_surfaces = [{
-"aabb": AABB(-1, 0, -1, 2, 0.099999994, 2),
-"format": 34359742465,
-"index_count": 192,
-"index_data": PackedByteArray("AAABAAIAAAADAAEAAwAAAAQABAAAAAIAAQADAAUAAwAEAAUAAQAFAAYABgAHAAEAAQAIAAIAAQAHAAgAAgAIAAkACgAIAAcACgAJAAgABgAKAAcAAgAJAAsACwAJAAoACwAKAAYABAACAAsADAALAAYADAAEAAsABgAFAA0ADQAFAAQADAAGAA4ABgANAA4ADAAPAAQADQAEAA8ADQAPABAAEQAPAAwAEQAQAA8ADQAQABIAEgAQABEADQASABMADQATAA4AEgARABMAEwAUAA4ADgAVAAwADgAUABUAEQAMABUAEwAWABQAEQAWABMAFgAVABQAEQAVABcAFgAXABUAEQAXABYAGAAZABoAGAAbABkAHAAdAB4AHAAfAB0AIAAhACIAIAAjACEAJAAlACYAJAAnACUAKAApACoAKAArACkALAAtAC4ALAAvAC0AMAAxADIAMAAzADEANAA1ADYANAA3ADUAOAA5ADoAOAA7ADkAPAA9AD4APAA/AD0A"),
-"name": "citybits_texture",
-"primitive": 3,
-"uv_scale": Vector4(0, 0, 0, 0),
-"vertex_count": 64,
-"vertex_data": PackedByteArray("AACAvwAAAAAAAIA/AACAvydcjz0AAIC/AACAvydcjz0AAIA/AACAvwAAAAAAAIC/ZWZmvwAAAAAAAIA/ZWZmvwAAAAAAAIC/ZWZmvydcjz0AAIC/AACAv8zMzD0AAIC/AACAv8zMzD0AAIA/eRRuv8zMzD0AAIA/eRRuv8zMzD0AAIC/ZWZmvydcjz0AAIA/ZWZmPydcjz0AAIA/ZWZmPwAAAAAAAIC/ZWZmPydcjz0AAIC/ZWZmPwAAAAAAAIA/AACAPwAAAAAAAIA/AACAPydcjz0AAIA/AACAPwAAAAAAAIC/AACAPydcjz0AAIC/eRRuP8zMzD0AAIC/eRRuP8zMzD0AAIA/AACAP8zMzD0AAIC/AACAP8zMzD0AAIA/4XoUvzuBlT3d3d2+UrgevzuBlT0AAIC/4XoUvzuBlT0AAIC/UrgevzuBlT3d3d2+UrgePzuBlT3d3d2+4noUPzuBlT0AAIC/UrgePzuBlT0AAIC/4noUPzuBlT3d3d2+sEdhPjuBlT2YmZk+CdejPTuBlT2YmZm+sEdhPjuBlT2YmZm+CdejPTuBlT2YmZk+hetRPzuBlT2YmZk+exQuPzuBlT2YmZm+hetRPzuBlT2YmZm+exQuPzuBlT2YmZk+4XoUvzuBlT0AAIA/UrgevzuBlT3d3d0+4XoUvzuBlT3d3d0+UrgevzuBlT0AAIA/UrgePzuBlT0AAIA/4noUPzuBlT3d3d0+UrgePzuBlT3d3d0+4noUPzuBlT0AAIA/XI/CvjuBlT2YmZk+uR4FvzuBlT2YmZm+XI/CvjuBlT2YmZm+uR4FvzuBlT2YmZk+CNejvTuBlT2YmZk+r0dhvjuBlT2YmZm+CNejvTuBlT2YmZm+r0dhvjuBlT2YmZk+uR4FPzuBlT2YmZk+XI/CPjuBlT2YmZm+uR4FPzuBlT2YmZm+XI/CPjuBlT2YmZk+exQuvzuBlT2YmZk+hutRvzuBlT2YmZm+exQuvzuBlT2YmZm+hutRvzuBlT2YmZk+")
-}]
-blend_shape_mode = 0
-
-[sub_resource type="ArrayMesh" id="ArrayMesh_xvq5n"]
-resource_name = "road_straight_crossing_Cube_951"
-_surfaces = [{
-"aabb": AABB(-1, 0, -1, 2, 0.099999994, 2),
-"attribute_data": PackedByteArray("Lw2ePjjNQD4vDZ4+XGkyPi8Nnj5caTI+Lw2ePjjNQD4vDZ4+9P8rPi8Nnj70/ys+2OWwPvD/Cz5gA68+8P8LPmADrz7w/ws+2OWwPvD/Cz7Y5bA+OM1APtjlsD5caTI+2OWwPlxpMj7Y5bA+OM1APtjlsD70/ys+2OWwPvT/Kz4vDZ4+XGkyPqfvnz44zUA+p++fPlxpMj4vDZ4+OM1APi8Nnj70/ys+p++fPvT/Kz7Y5bA+XGkyPmADrz44zUA+YAOvPlxpMj7Y5bA+OM1APmADrz70/ys+2OWwPvT/Kz7Y5bA+XGkyPmADrz70/ys+YAOvPlxpMj7Y5bA+9P8rPmADrz44zUA+2OWwPjjNQD6n758+XGkyPqfvnz70/ys+p++fPlxpMj6n758+9P8rPmADrz44zWA+p++fPjjNYD5gA68+OM1gPqfvnz44zWA+YAOvPvjbVT6n758+OM1gPqfvnz7421U+YAOvPjjNYD4vDZ4+OM1APqfvnz44zUA+p++fPjjNQD4vDZ4+OM1APmADrz44zUA+2OWwPjjNQD7Y5bA+OM1APmADrz44zUA+p++fPvjbVT5gA68+OM1gPmADrz7421U+p++fPjjNYD6n758+OM1APi8Nnj5caTI+p++fPlxpMj4vDZ4+OM1APqfvnz70/ys+Lw2ePvT/Kz6n758+8P8LPi8Nnj7w/ws+Lw2ePvD/Cz6n758+8P8LPmADrz5caTI+YAOvPvT/Kz5gA68+XGkyPmADrz70/ys+YAOvPvjbVT6n758++NtVPmADrz7421U+p++fPvjbVT5gA+8+/O2qPqfv3z787ao+YAPvPvztqj6n798+/O2qPmAD7z787ao+p+/fPvztqj5gA+8+/O2qPqfv3z787ao+wAZePvC3qz1O3z8+8LerPcAGXj7wt6s9Tt8/PvC3qz3ABl4+8LerPU7fPz7wt6s9wAZePvC3qz1O3z8+8LerPWAD7z787ao+p+/fPvztqj5gA+8+/O2qPqfv3z787ao+YAPvPvztqj6n798+/O2qPmAD7z787ao+p+/fPvztqj7ABl4+8LerPU7fPz7wt6s9wAZePvC3qz1O3z8+8LerPcAGXj7wt6s9Tt8/PvC3qz3ABl4+8LerPU7fPz7wt6s9wAZePvC3qz1O3z8+8LerPcAGXj7wt6s9Tt8/PvC3qz3ABl4+8LerPU7fPz7wt6s9wAZePvC3qz1O3z8+8LerPQ=="),
-"format": 34359742487,
-"index_count": 192,
-"index_data": PackedByteArray("AAABAAIAAAADAAEAAQAEAAIAAQAFAAQABgAHAAgABgAJAAcACgALAAwACgANAAsACwAOAAwACwAPAA4AEAARABIAEAATABEAEgAUABAAEgAVABQAFgAXABgAFgAZABcAFgAYABoAFgAaABsAHAAdAB4AHAAfAB0AIAAcAB4AIAAhABwAIgAjACQAIgAlACMAJgAnACgAJgApACcAKgArACwAKgAtACsALgAvADAALgAxAC8AMgAzADQAMgA1ADMANgA3ADgANgA5ADcAOgA7ADwAOgA9ADsAOwA+ADwAOwA/AD4AQABBAEIAQABDAEEARABFAEYARABHAEUASABJAEoASABLAEkATABNAE4ATABPAE0AUABRAFIAUABTAFEAVABVAFYAVABXAFUAWABZAFoAWABbAFkAXABdAF4AXABfAF0AYABhAGIAYABjAGEAZABlAGYAZABnAGUAaABpAGoAaABrAGkAbABtAG4AbABvAG0AcABxAHIAcABzAHEA"),
-"material": SubResource("StandardMaterial3D_0w8vo"),
-"name": "citybits_texture",
-"primitive": 3,
-"uv_scale": Vector4(0, 0, 0, 0),
-"vertex_count": 116,
-"vertex_data": PackedByteArray("AACAvwAAAAAAAIA/AACAvydcjz0AAIC/AACAvydcjz0AAIA/AACAvwAAAAAAAIC/AACAv8zMzD0AAIA/AACAv8zMzD0AAIC/AACAP8zMzD0AAIC/eRRuP8zMzD0AAIA/eRRuP8zMzD0AAIC/AACAP8zMzD0AAIA/AACAPwAAAAAAAIC/AACAPydcjz0AAIA/AACAPydcjz0AAIC/AACAPwAAAAAAAIA/AACAP8zMzD0AAIC/AACAP8zMzD0AAIA/AACAvydcjz0AAIC/ZWZmvwAAAAAAAIC/ZWZmvydcjz0AAIC/AACAvwAAAAAAAIC/AACAv8zMzD0AAIC/eRRuv8zMzD0AAIC/AACAPydcjz0AAIA/ZWZmPwAAAAAAAIA/ZWZmPydcjz0AAIA/AACAPwAAAAAAAIA/eRRuP8zMzD0AAIA/AACAP8zMzD0AAIA/AACAPydcjz0AAIC/eRRuP8zMzD0AAIC/ZWZmPydcjz0AAIC/AACAP8zMzD0AAIC/ZWZmPwAAAAAAAIC/AACAPwAAAAAAAIC/ZWZmvydcjz0AAIA/eRRuv8zMzD0AAIC/ZWZmvydcjz0AAIC/eRRuv8zMzD0AAIA/ZWZmPwAAAAAAAIC/ZWZmvwAAAAAAAIA/ZWZmPwAAAAAAAIA/ZWZmvwAAAAAAAIC/ZWZmPydcjz0AAIA/ZWZmvwAAAAAAAIA/ZWZmvydcjz0AAIA/ZWZmPwAAAAAAAIA/AACAvwAAAAAAAIC/ZWZmvwAAAAAAAIA/ZWZmvwAAAAAAAIC/AACAvwAAAAAAAIA/ZWZmPwAAAAAAAIC/AACAPwAAAAAAAIA/AACAPwAAAAAAAIC/ZWZmPwAAAAAAAIA/ZWZmvydcjz0AAIC/ZWZmPwAAAAAAAIC/ZWZmPydcjz0AAIC/ZWZmvwAAAAAAAIC/ZWZmvwAAAAAAAIA/AACAvydcjz0AAIA/ZWZmvydcjz0AAIA/AACAvwAAAAAAAIA/eRRuv8zMzD0AAIA/AACAv8zMzD0AAIA/eRRuv8zMzD0AAIC/AACAv8zMzD0AAIA/AACAv8zMzD0AAIC/eRRuv8zMzD0AAIA/ZWZmPydcjz0AAIC/eRRuP8zMzD0AAIA/ZWZmPydcjz0AAIA/eRRuP8zMzD0AAIC/ZWZmPydcjz0AAIA/ZWZmvydcjz0AAIC/ZWZmPydcjz0AAIC/ZWZmvydcjz0AAIA/4XoUvzuBlT3d3d2+UrgevzuBlT0AAIC/4XoUvzuBlT0AAIC/UrgevzuBlT3d3d2+UrgePzuBlT3d3d2+4noUPzuBlT0AAIC/UrgePzuBlT0AAIC/4noUPzuBlT3d3d2+sEdhPjuBlT2YmZk+CdejPTuBlT2YmZm+sEdhPjuBlT2YmZm+CdejPTuBlT2YmZk+hetRPzuBlT2YmZk+exQuPzuBlT2YmZm+hetRPzuBlT2YmZm+exQuPzuBlT2YmZk+4XoUvzuBlT0AAIA/UrgevzuBlT3d3d0+4XoUvzuBlT3d3d0+UrgevzuBlT0AAIA/UrgePzuBlT0AAIA/4noUPzuBlT3d3d0+UrgePzuBlT3d3d0+4noUPzuBlT0AAIA/XI/CvjuBlT2YmZk+uR4FvzuBlT2YmZm+XI/CvjuBlT2YmZm+uR4FvzuBlT2YmZk+CNejvTuBlT2YmZk+r0dhvjuBlT2YmZm+CNejvTuBlT2YmZm+r0dhvjuBlT2YmZk+uR4FPzuBlT2YmZk+XI/CPjuBlT2YmZm+uR4FPzuBlT2YmZm+XI/CPjuBlT2YmZk+exQuvzuBlT2YmZk+hutRvzuBlT2YmZm+exQuvzuBlT2YmZm+hutRvzuBlT2YmZk+AAD/f////78AAP9/////vwAA/3////+/AAD/f////78AAP9/////vwAA/3////+//3///////7//f///////v/9///////+//3///////7////9/////v////3////+/////f////7////9/////v////3////+/////f////7//////////P/////////8//////////z//////////P/////////8//////////z//f/9/////v/9//3////+//3//f////7//f/9/////v/9//3////+//3//f////7//////////P/////////8//////////z//////////P/////////8//////////z//v/+/////v/+//7////+//7//v////7//v/+/////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//3//f////7//f/9/////v/9//3////+//3//f////7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//38AAP///7//fwAA////v/9/AAD///+//////////z//////////P/////////8//////////z//f/9/////v/9//3////+//3//f////7//f/9/////v/9//3////+//3//f////7//f///////v/9///////+//3///////7//f///////v/8//7////+//z//v////7//P/+/////v/8//7////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////v/9///////+//3///////7//f///////vw==")
-}]
-blend_shape_mode = 0
-shadow_mesh = SubResource("ArrayMesh_ghocq")
 
 [sub_resource type="Curve3D" id="Curve3D_cxcit"]
 closed = true
@@ -709,514 +519,223 @@ script = ExtResource("3_nmx32")
 [node name="_Node3D_204" parent="World/City/only_transport/Road_junction" unique_id=617667990 instance=ExtResource("4_d646h")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 20)
 
-[node name="road_junction2" type="MeshInstance3D" parent="World/City/only_transport/Road_junction/_Node3D_204" unique_id=49040793]
-mesh = SubResource("ArrayMesh_p243e")
-skeleton = NodePath("")
-
 [node name="_Node3D_207" parent="World/City/only_transport/Road_junction" unique_id=872267720 instance=ExtResource("4_d646h")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 10)
-
-[node name="road_junction2" type="MeshInstance3D" parent="World/City/only_transport/Road_junction/_Node3D_207" unique_id=498134709]
-mesh = SubResource("ArrayMesh_p243e")
-skeleton = NodePath("")
 
 [node name="_Node3D_236" parent="World/City/only_transport/Road_junction" unique_id=964438531 instance=ExtResource("4_d646h")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 20)
 
-[node name="road_junction2" type="MeshInstance3D" parent="World/City/only_transport/Road_junction/_Node3D_236" unique_id=1437821415]
-mesh = SubResource("ArrayMesh_p243e")
-skeleton = NodePath("")
-
 [node name="road_junction2" parent="World/City/only_transport/Road_junction" unique_id=1229947422 instance=ExtResource("4_d646h")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 10)
-
-[node name="road_junction2_mesh" type="MeshInstance3D" parent="World/City/only_transport/Road_junction/road_junction2" unique_id=965199224]
-mesh = SubResource("ArrayMesh_p243e")
-skeleton = NodePath("")
 
 [node name="Road_curved" type="Node3D" parent="World/City/only_transport" unique_id=1476676103 groups=["road_group"]]
 
 [node name="road_corner_curved2" parent="World/City/only_transport/Road_curved" unique_id=1402822545 instance=ExtResource("5_5y3io")]
 
-[node name="road_corner_curved2_mesh" type="MeshInstance3D" parent="World/City/only_transport/Road_curved/road_corner_curved2" unique_id=422245113]
-mesh = SubResource("ArrayMesh_0k6hs")
-skeleton = NodePath("")
-
 [node name="_Node3D_263" parent="World/City/only_transport/Road_curved" unique_id=1429990996 instance=ExtResource("5_5y3io")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0, 30)
-
-[node name="road_corner_curved2" type="MeshInstance3D" parent="World/City/only_transport/Road_curved/_Node3D_263" unique_id=209357229]
-mesh = SubResource("ArrayMesh_0k6hs")
-skeleton = NodePath("")
-
-[node name="bush02" parent="World/City/only_transport/Road_curved/_Node3D_263" unique_id=539184299 instance=ExtResource("78_aon1w")]
-transform = Transform3D(-4.37114e-08, 0, -1, 0, 0.9999999, 0, 1, 0, -4.37114e-08, 5.202837, 0.007294625, 4.8183913)
 
 [node name="_Node3D_266" parent="World/City/only_transport/Road_curved" unique_id=892047279 instance=ExtResource("5_5y3io")]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 30, 0, 0)
 
-[node name="road_corner_curved2" type="MeshInstance3D" parent="World/City/only_transport/Road_curved/_Node3D_266" unique_id=309841150]
-mesh = SubResource("ArrayMesh_0k6hs")
-skeleton = NodePath("")
-
 [node name="_Node3D_346" parent="World/City/only_transport/Road_curved" unique_id=1614677543 instance=ExtResource("5_5y3io")]
 transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 30, 0, 30)
-
-[node name="road_corner_curved2" type="MeshInstance3D" parent="World/City/only_transport/Road_curved/_Node3D_346" unique_id=1884092234]
-mesh = SubResource("ArrayMesh_0k6hs")
-skeleton = NodePath("")
 
 [node name="Road_straight" type="Node3D" parent="World/City/only_transport" unique_id=19785188 groups=["road_group"]]
 
 [node name="_Node3D_6" parent="World/City/only_transport/Road_straight" unique_id=1621918578 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 2, 0, 0)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_6" unique_id=1917864082]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="road_straight2" parent="World/City/only_transport/Road_straight" unique_id=1669893995 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
-
-[node name="road_straight2_mesh" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/road_straight2" unique_id=246831826]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_11" parent="World/City/only_transport/Road_straight" unique_id=787394300 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 0, 0)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_11" unique_id=2005147438]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_14" parent="World/City/only_transport/Road_straight" unique_id=622636471 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_14" unique_id=938088429]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_17" parent="World/City/only_transport/Road_straight" unique_id=624294729 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 6, 0, 0)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_17" unique_id=157067984]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_20" parent="World/City/only_transport/Road_straight" unique_id=178345280 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_20" unique_id=1531471435]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_41" parent="World/City/only_transport/Road_straight" unique_id=427837127 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 14, 0, 0)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_41" unique_id=808144903]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_44" parent="World/City/only_transport/Road_straight" unique_id=2073745752 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 14)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_44" unique_id=777335142]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_47" parent="World/City/only_transport/Road_straight" unique_id=103921346 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 16, 0, 0)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_47" unique_id=1909890785]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_50" parent="World/City/only_transport/Road_straight" unique_id=1807853882 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 16)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_50" unique_id=1759833718]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_71" parent="World/City/only_transport/Road_straight" unique_id=517649280 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 24, 0, 0)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_71" unique_id=4998345]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_74" parent="World/City/only_transport/Road_straight" unique_id=1053101676 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 24)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_74" unique_id=167088769]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_77" parent="World/City/only_transport/Road_straight" unique_id=2103126464 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 26, 0, 0)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_77" unique_id=829418030]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_80" parent="World/City/only_transport/Road_straight" unique_id=1368751230 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 26)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_80" unique_id=985970275]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_83" parent="World/City/only_transport/Road_straight" unique_id=1927085655 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 28, 0, 0)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_83" unique_id=2033391054]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_86" parent="World/City/only_transport/Road_straight" unique_id=1980662704 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 28)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_86" unique_id=266015446]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_100" parent="World/City/only_transport/Road_straight" unique_id=554566730 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 0, 10)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_100" unique_id=1082871529]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_103" parent="World/City/only_transport/Road_straight" unique_id=1207551384 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 4)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_103" unique_id=166465283]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_106" parent="World/City/only_transport/Road_straight" unique_id=1635986591 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 6, 0, 10)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_106" unique_id=1948288040]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_109" parent="World/City/only_transport/Road_straight" unique_id=439323490 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 6)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_109" unique_id=396417776]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_128" parent="World/City/only_transport/Road_straight" unique_id=1856754502 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 14, 0, 10)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_128" unique_id=233923605]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_131" parent="World/City/only_transport/Road_straight" unique_id=735114854 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 14)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_131" unique_id=1391738589]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_134" parent="World/City/only_transport/Road_straight" unique_id=826181670 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 16, 0, 10)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_134" unique_id=1116306314]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_137" parent="World/City/only_transport/Road_straight" unique_id=450171598 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 16)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_137" unique_id=1714534701]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_158" parent="World/City/only_transport/Road_straight" unique_id=1849205317 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 24, 0, 10)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_158" unique_id=1506111617]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_161" parent="World/City/only_transport/Road_straight" unique_id=1668724778 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 24)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_161" unique_id=1046255133]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_164" parent="World/City/only_transport/Road_straight" unique_id=587043318 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 26, 0, 10)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_164" unique_id=261192755]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_167" parent="World/City/only_transport/Road_straight" unique_id=959790091 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 26)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_167" unique_id=1270833275]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_188" parent="World/City/only_transport/Road_straight" unique_id=322014734 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 0, 20)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_188" unique_id=1613609693]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_191" parent="World/City/only_transport/Road_straight" unique_id=1641985148 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 4)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_191" unique_id=1318696590]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_196" parent="World/City/only_transport/Road_straight" unique_id=83476600 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 6, 0, 20)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_196" unique_id=617700857]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_201" parent="World/City/only_transport/Road_straight" unique_id=1526116575 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 6)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_201" unique_id=1749446144]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_216" parent="World/City/only_transport/Road_straight" unique_id=1209913520 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 14, 0, 20)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_216" unique_id=1869380393]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_219" parent="World/City/only_transport/Road_straight" unique_id=535086923 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 14)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_219" unique_id=406404555]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_222" parent="World/City/only_transport/Road_straight" unique_id=386952655 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 16, 0, 20)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_222" unique_id=73790853]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_225" parent="World/City/only_transport/Road_straight" unique_id=791835107 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 16)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_225" unique_id=38430526]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_245" parent="World/City/only_transport/Road_straight" unique_id=1858065051 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 24, 0, 20)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_245" unique_id=2079933259]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_248" parent="World/City/only_transport/Road_straight" unique_id=1568348810 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 24)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_248" unique_id=1980638093]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_251" parent="World/City/only_transport/Road_straight" unique_id=2104908573 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 26, 0, 20)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_251" unique_id=1862450451]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_254" parent="World/City/only_transport/Road_straight" unique_id=1040778563 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 26)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_254" unique_id=288501613]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_269" parent="World/City/only_transport/Road_straight" unique_id=1800510130 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 2, 0, 30)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_269" unique_id=162103920]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_272" parent="World/City/only_transport/Road_straight" unique_id=648573215 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 2)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_272" unique_id=76989945]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_275" parent="World/City/only_transport/Road_straight" unique_id=1519840295 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 0, 30)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_275" unique_id=763248410]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_278" parent="World/City/only_transport/Road_straight" unique_id=710591807 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 4)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_278" unique_id=310866009]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_283" parent="World/City/only_transport/Road_straight" unique_id=913569159 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 6, 0, 30)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_283" unique_id=1157711093]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_288" parent="World/City/only_transport/Road_straight" unique_id=1305261000 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 6)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_288" unique_id=1203006983]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_303" parent="World/City/only_transport/Road_straight" unique_id=158211200 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 14, 0, 30)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_303" unique_id=623370233]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_306" parent="World/City/only_transport/Road_straight" unique_id=141796440 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 14)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_306" unique_id=1211779560]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_311" parent="World/City/only_transport/Road_straight" unique_id=1760876715 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 16, 0, 30)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_311" unique_id=1916497833]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_316" parent="World/City/only_transport/Road_straight" unique_id=10523396 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 16)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_316" unique_id=998434788]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_331" parent="World/City/only_transport/Road_straight" unique_id=1351145789 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 24, 0, 30)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_331" unique_id=86837664]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_334" parent="World/City/only_transport/Road_straight" unique_id=1796004479 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 24)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_334" unique_id=1150144043]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_337" parent="World/City/only_transport/Road_straight" unique_id=1881532061 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 26, 0, 30)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_337" unique_id=1818281181]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_340" parent="World/City/only_transport/Road_straight" unique_id=889494929 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 26)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_340" unique_id=743632507]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="_Node3D_343" parent="World/City/only_transport/Road_straight" unique_id=1897321844 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 28)
 
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_343" unique_id=744210879]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
-
 [node name="_Node3D_345" parent="World/City/only_transport/Road_straight" unique_id=546431009 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 28, 0, 30)
-
-[node name="road_straight2" type="MeshInstance3D" parent="World/City/only_transport/Road_straight/_Node3D_345" unique_id=1406760642]
-mesh = SubResource("ArrayMesh_nq0c1")
-skeleton = NodePath("")
 
 [node name="Road_tsplit" type="Node3D" parent="World/City/only_transport" unique_id=217125772 groups=["road_group"]]
 
 [node name="road_tsplit2" parent="World/City/only_transport/Road_tsplit" unique_id=20326055 instance=ExtResource("7_dfq0k")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10)
 
-[node name="road_tsplit2_mesh" type="MeshInstance3D" parent="World/City/only_transport/Road_tsplit/road_tsplit2" unique_id=720073518]
-mesh = SubResource("ArrayMesh_lnhjk")
-skeleton = NodePath("")
-
 [node name="_Node3D_91" parent="World/City/only_transport/Road_tsplit" unique_id=1584562702 instance=ExtResource("7_dfq0k")]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 10, 0, 0)
-
-[node name="road_tsplit2" type="MeshInstance3D" parent="World/City/only_transport/Road_tsplit/_Node3D_91" unique_id=1396094593]
-mesh = SubResource("ArrayMesh_lnhjk")
-skeleton = NodePath("")
 
 [node name="_Node3D_176" parent="World/City/only_transport/Road_tsplit" unique_id=1036510092 instance=ExtResource("7_dfq0k")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 20)
 
-[node name="road_tsplit2" type="MeshInstance3D" parent="World/City/only_transport/Road_tsplit/_Node3D_176" unique_id=439053134]
-mesh = SubResource("ArrayMesh_lnhjk")
-skeleton = NodePath("")
-
 [node name="_Node3D_179" parent="World/City/only_transport/Road_tsplit" unique_id=141384618 instance=ExtResource("7_dfq0k")]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 20, 0, 0)
-
-[node name="road_tsplit2" type="MeshInstance3D" parent="World/City/only_transport/Road_tsplit/_Node3D_179" unique_id=1642053628]
-mesh = SubResource("ArrayMesh_lnhjk")
-skeleton = NodePath("")
 
 [node name="_Node3D_291" parent="World/City/only_transport/Road_tsplit" unique_id=821160943 instance=ExtResource("7_dfq0k")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 10, 0, 30)
 
-[node name="road_tsplit2" type="MeshInstance3D" parent="World/City/only_transport/Road_tsplit/_Node3D_291" unique_id=1015870663]
-mesh = SubResource("ArrayMesh_lnhjk")
-skeleton = NodePath("")
-
 [node name="_Node3D_294" parent="World/City/only_transport/Road_tsplit" unique_id=506194949 instance=ExtResource("7_dfq0k")]
 transform = Transform3D(-1, 0, 8.74228e-08, 0, 1, 0, -8.74228e-08, 0, -1, 30, 0, 10)
-
-[node name="road_tsplit2" type="MeshInstance3D" parent="World/City/only_transport/Road_tsplit/_Node3D_294" unique_id=125284371]
-mesh = SubResource("ArrayMesh_lnhjk")
-skeleton = NodePath("")
 
 [node name="_Node3D_319" parent="World/City/only_transport/Road_tsplit" unique_id=575331382 instance=ExtResource("7_dfq0k")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 20, 0, 30)
 
-[node name="road_tsplit2" type="MeshInstance3D" parent="World/City/only_transport/Road_tsplit/_Node3D_319" unique_id=1089084535]
-mesh = SubResource("ArrayMesh_lnhjk")
-skeleton = NodePath("")
-
 [node name="_Node3D_322" parent="World/City/only_transport/Road_tsplit" unique_id=128428753 instance=ExtResource("7_dfq0k")]
 transform = Transform3D(-1, 0, 8.74228e-08, 0, 1, 0, -8.74228e-08, 0, -1, 30, 0, 20)
-
-[node name="road_tsplit2" type="MeshInstance3D" parent="World/City/only_transport/Road_tsplit/_Node3D_322" unique_id=401197447]
-mesh = SubResource("ArrayMesh_lnhjk")
-skeleton = NodePath("")
 
 [node name="only_people_nav" type="Node3D" parent="World/City" unique_id=183291374]
 
@@ -1527,282 +1046,122 @@ transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 32, 0,
 [node name="road_straight_crossing2" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=358490877 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 2)
 
-[node name="road_straight_crossing2_mesh" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/road_straight_crossing2" unique_id=248992957]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_354" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=857543036 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 12, 0, 0)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_354" unique_id=1733415413]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_356" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1165346830 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 8, 0, 0)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_356" unique_id=993605437]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_358" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1443515805 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 12)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_358" unique_id=409660251]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_360" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1096613079 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 2, 0, 10)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_360" unique_id=944238449]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_362" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=875015496 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 8)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_362" unique_id=1909905194]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_372" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1486687446 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 2)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_372" unique_id=926886487]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_374" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=832162074 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 22, 0, 0)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_374" unique_id=184954619]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_376" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1267963961 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 18, 0, 0)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_376" unique_id=1158229163]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_378" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1367092823 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 22)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_378" unique_id=1599258604]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_380" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=564524829 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 2, 0, 20)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_380" unique_id=1281273521]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_382" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=656764353 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 18)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_382" unique_id=1469577743]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_399" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=842465569 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 12)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_399" unique_id=474904089]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_401" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1960337740 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 12, 0, 10)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_401" unique_id=19080632]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_403" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=484997205 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 8)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_403" unique_id=680538390]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_405" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1216522795 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 8, 0, 10)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_405" unique_id=7981342]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_415" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=939644442 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 12)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_415" unique_id=1136670565]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_417" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=632246839 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 22, 0, 10)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_417" unique_id=598927069]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_419" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=853674916 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 8)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_419" unique_id=479955968]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_421" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1408225231 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 18, 0, 10)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_421" unique_id=1381440022]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_423" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1028205830 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 22)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_423" unique_id=1626952677]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_425" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=2060799296 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 12, 0, 20)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_425" unique_id=859075287]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_427" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1698369177 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 18)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_427" unique_id=207517660]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_429" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=270580598 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 8, 0, 20)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_429" unique_id=1192583327]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_439" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=783303629 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 12)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_439" unique_id=855518477]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_441" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=2080701689 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 8)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_441" unique_id=1745714932]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_443" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1533034395 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 28, 0, 10)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_443" unique_id=809536444]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_445" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1938898410 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 12, 0, 30)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_445" unique_id=1904339863]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_447" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=879189045 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 28)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_447" unique_id=81477837]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_449" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1368768793 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 8, 0, 30)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_449" unique_id=1340091223]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_467" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=909728917 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 22)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_467" unique_id=550904038]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_469" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=283420863 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 22, 0, 20)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_469" unique_id=1014654168]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_471" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1878158306 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 18)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_471" unique_id=410218339]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_473" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1352399970 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 18, 0, 20)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_473" unique_id=1283546684]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_483" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=343102704 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 22)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_483" unique_id=463851893]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_485" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1158756210 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 18)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_485" unique_id=502637738]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_487" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1840834437 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 28, 0, 20)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_487" unique_id=541917785]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_489" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=1378363382 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 22, 0, 30)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_489" unique_id=1938291971]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="_Node3D_491" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=793617183 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 28)
 
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_491" unique_id=1193277098]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
-
 [node name="_Node3D_493" parent="World/City/only_people_nav/only_people/Road_straight_crossing" unique_id=2081669276 instance=ExtResource("55_eho1g")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 18, 0, 30)
-
-[node name="road_straight_crossing2" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Road_straight_crossing/_Node3D_493" unique_id=557945070]
-mesh = SubResource("ArrayMesh_xvq5n")
-skeleton = NodePath("")
 
 [node name="Foundation" type="Node3D" parent="World/City/only_people_nav/only_people" unique_id=603556065]
 

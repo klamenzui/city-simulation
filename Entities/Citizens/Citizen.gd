@@ -101,6 +101,7 @@ var _debug_last_travel_route: PackedVector3Array = PackedVector3Array()
 var _debug_last_travel_failed: bool = false
 var _obstacle_sensor_pivot: Node3D = null
 var _obstacle_ray_forward: RayCast3D = null
+var _obstacle_ray_down: RayCast3D = null
 var _obstacle_ray_left: RayCast3D = null
 var _obstacle_ray_right: RayCast3D = null
 var _body_collision_shape: CollisionShape3D = null
@@ -115,6 +116,7 @@ var _trace_last_decision_reason: String = "idle"
 var _trace_last_desired_dir: Vector3 = Vector3.ZERO
 var _trace_last_move_dir: Vector3 = Vector3.ZERO
 var _trace_last_forward_hit: String = "clear"
+var _trace_last_down_hit: String = "clear"
 var _trace_last_left_hit: String = "clear"
 var _trace_last_right_hit: String = "clear"
 var _stuck_slide_hold_dir: Vector3 = Vector3.ZERO
@@ -365,6 +367,7 @@ func _setup_highlight() -> void:
 func _setup_obstacle_sensors() -> void:
 	_obstacle_sensor_pivot = get_node_or_null("ObstacleSensorPivot") as Node3D
 	_obstacle_ray_forward = get_node_or_null("ObstacleSensorPivot/ObstacleRayCastForward") as RayCast3D
+	_obstacle_ray_down = get_node_or_null("ObstacleSensorPivot/ObstacleRayCastDown") as RayCast3D
 	_obstacle_ray_left = get_node_or_null("ObstacleSensorPivot/ObstacleRayCastLeft") as RayCast3D
 	_obstacle_ray_right = get_node_or_null("ObstacleSensorPivot/ObstacleRayCastRight") as RayCast3D
 
@@ -382,6 +385,11 @@ func _setup_obstacle_sensors() -> void:
 		_obstacle_ray_forward.target_position = Vector3(0.0, 0.0, -obstacle_probe_length)
 		_obstacle_ray_forward.collision_mask = 9
 		_obstacle_ray_forward.enabled = true
+	if _obstacle_ray_down != null:
+		# Preserve the scene-authored downwards tilt so we can probe curb-height
+		# obstacles that the horizontal rays miss.
+		_obstacle_ray_down.collision_mask = 9
+		_obstacle_ray_down.enabled = true
 	if _obstacle_ray_left != null:
 		_obstacle_ray_left.target_position = Vector3(-side_x, 0.0, side_z)
 		_obstacle_ray_left.collision_mask = 9
@@ -905,6 +913,9 @@ func _compute_move_direction(desired_dir: Vector3) -> Vector3:
 
 	_refresh_obstacle_sensors(planar_dir)
 	_update_trace_obstacle_hits()
+	if _try_step_up_from_down_ray():
+		_refresh_obstacle_sensors(planar_dir)
+		_update_trace_obstacle_hits()
 	if _try_mark_arrived_via_target_entrance(planar_dir):
 		_update_trace_navigation_state("arrive_target_entrance", planar_dir, Vector3.ZERO)
 		return Vector3.ZERO
@@ -932,6 +943,8 @@ func _compute_move_direction(desired_dir: Vector3) -> Vector3:
 		return escape_dir
 
 	var forward_blocked := _ray_is_blocked(_obstacle_ray_forward)
+	if not forward_blocked and _ray_detects_low_obstacle(_obstacle_ray_down):
+		forward_blocked = true
 	var left_blocked := _ray_is_blocked(_obstacle_ray_left)
 	var right_blocked := _ray_is_blocked(_obstacle_ray_right)
 
@@ -966,6 +979,8 @@ func _refresh_obstacle_sensors(move_dir: Vector3) -> void:
 	_obstacle_sensor_pivot.rotation.y = wrapf(target_yaw - rotation.y, -PI, PI)
 	if _obstacle_ray_forward != null:
 		_obstacle_ray_forward.force_raycast_update()
+	if _obstacle_ray_down != null:
+		_obstacle_ray_down.force_raycast_update()
 	if _obstacle_ray_left != null:
 		_obstacle_ray_left.force_raycast_update()
 	if _obstacle_ray_right != null:
@@ -980,6 +995,63 @@ func _ray_is_blocked(ray: RayCast3D) -> bool:
 	if collider is Node and _is_entrance_trigger_node(collider as Node):
 		return false
 	return collider != null and collider != self
+
+func _ray_detects_low_obstacle(ray: RayCast3D) -> bool:
+	if ray == null or not ray.enabled or not ray.is_colliding():
+		return false
+
+	var collider := ray.get_collider()
+	if collider == null or collider == self:
+		return false
+	if collider is Node:
+		var node := collider as Node
+		if _is_entrance_trigger_node(node):
+			return false
+	if _ray_hits_target_building(ray):
+		return false
+
+	var hit_normal := ray.get_collision_normal()
+	return hit_normal.dot(Vector3.UP) < 0.55
+
+func _is_walkable_step_surface(collider: Variant) -> bool:
+	if not (collider is Node):
+		return false
+	var node := collider as Node
+	var label := node.name.to_lower()
+	if node.is_inside_tree():
+		label = str(node.get_path()).to_lower()
+	return label.contains("road_")
+
+func _try_step_up_from_down_ray() -> bool:
+	if _floor_snap_suppress_left > 0.0:
+		return false
+	if _obstacle_ray_down == null or not _obstacle_ray_down.enabled or not _obstacle_ray_down.is_colliding():
+		return false
+
+	var collider := _obstacle_ray_down.get_collider()
+	if collider == null or collider == self:
+		return false
+	if collider is Node:
+		var node := collider as Node
+		if _is_entrance_trigger_node(node):
+			return false
+	if not _is_walkable_step_surface(collider):
+		return false
+
+	var hit_normal := _obstacle_ray_down.get_collision_normal()
+	if hit_normal.dot(Vector3.UP) < 0.55:
+		return false
+
+	var hit_pos := _obstacle_ray_down.get_collision_point()
+	var step_height := hit_pos.y - global_position.y
+	if step_height <= 0.02 or step_height > max_ground_step_up:
+		return false
+
+	global_position.y = hit_pos.y
+	velocity.y = 0.0
+	_vertical_speed = 0.0
+	_last_move_position = global_position
+	return true
 
 func _try_mark_arrived_via_target_entrance(preferred_dir: Vector3) -> bool:
 	if _travel_target_building == null:
@@ -1229,12 +1301,13 @@ func _update_trace_navigation_state(reason: String, desired_dir: Vector3, move_d
 
 func _update_trace_obstacle_hits() -> void:
 	_trace_last_forward_hit = _trace_describe_ray_hit(_obstacle_ray_forward)
+	_trace_last_down_hit = _trace_describe_ray_hit(_obstacle_ray_down)
 	_trace_last_left_hit = _trace_describe_ray_hit(_obstacle_ray_left)
 	_trace_last_right_hit = _trace_describe_ray_hit(_obstacle_ray_right)
 	_update_congestion_debug_label()
 
 func _update_congestion_debug_label() -> void:
-	for candidate in [_trace_last_forward_hit, _trace_last_left_hit, _trace_last_right_hit]:
+	for candidate in [_trace_last_forward_hit, _trace_last_down_hit, _trace_last_left_hit, _trace_last_right_hit]:
 		if candidate != "clear" and candidate != "off":
 			_debug_last_blocking_area = candidate
 			return
@@ -1280,7 +1353,7 @@ func get_trace_debug_summary() -> String:
 	if _is_travelling and not _travel_route.is_empty():
 		waypoint_label = "%d/%d" % [_travel_route_index, _travel_route.size() - 1]
 
-	return "citizen=%s pos=%s vel=%s speed=%.2f action=%s location=%s inside=%s travel_to=%s on_floor=%s travelling=%s target=%s waypoint=%s decision=%s desired=%s move=%s seen[fwd=%s | left=%s | right=%s] crowd[repath=%d stuck_slide=%d jump=%d hotspot=%s]" % [
+	return "citizen=%s pos=%s vel=%s speed=%.2f action=%s location=%s inside=%s travel_to=%s on_floor=%s travelling=%s target=%s waypoint=%s decision=%s desired=%s move=%s seen[fwd=%s | down=%s | left=%s | right=%s] crowd[repath=%d stuck_slide=%d jump=%d hotspot=%s]" % [
 		citizen_name,
 		_trace_fmt_vec3(global_position),
 		_trace_fmt_vec3(velocity),
@@ -1297,6 +1370,7 @@ func get_trace_debug_summary() -> String:
 		_trace_fmt_vec3(_trace_last_desired_dir),
 		_trace_fmt_vec3(_trace_last_move_dir),
 		_trace_last_forward_hit,
+		_trace_last_down_hit,
 		_trace_last_left_hit,
 		_trace_last_right_hit,
 		_debug_repath_count,
