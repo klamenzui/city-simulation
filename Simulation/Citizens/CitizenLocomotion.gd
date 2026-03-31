@@ -13,6 +13,9 @@ func physics_step(citizen, delta: float, world) -> void:
 		return
 	if world != null and world.is_paused:
 		return
+	if citizen.has_method("has_active_rest_pose") and citizen.has_active_rest_pose():
+		citizen.apply_rest_pose()
+		return
 	if citizen.has_method("is_inside_building") and citizen.is_inside_building():
 		citizen.velocity = Vector3.ZERO
 		return

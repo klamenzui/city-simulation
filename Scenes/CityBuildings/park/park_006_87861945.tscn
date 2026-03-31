@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://4t0xdxolvh7e" path="res://Entities/Buildings/Park.gd" id="1_3puv3"]
 [ext_resource type="Texture2D" uid="uid://b3cvcg0o5h3d8" path="res://ImportedCitySource/assets/KayKit_City_Builder_Bits_1.0_EXTRA/Assets/fbx/citybits_texture.png" id="2_531ij"]
+[ext_resource type="PackedScene" uid="uid://bbq72g26qig4p" path="res://Entities/Bench.tscn" id="3_531ij"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pmfkq"]
 resource_name = "citybits_texture"
@@ -59,3 +60,15 @@ skeleton = NodePath("")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="park_road_junction_decorated_C/StaticBody3D" unique_id=1344038217]
 transform = Transform3D(1.0000001, 0, 0, 0, 1.0000001, -1.4210855e-14, 0, 1.4210855e-14, 1.0000001, 0, 0, 0)
 shape = SubResource("ConcavePolygonShape3D_3puv3")
+
+[node name="Bench" parent="." unique_id=2036566530 instance=ExtResource("3_531ij")]
+transform = Transform3D(1.0000001, 0, 0, 0, 1.0000001, -1.4210855e-14, 0, 1.4210855e-14, 1.0000001, 0.69122124, 0.20000015, 0.7088312)
+
+[node name="Bench2" parent="." unique_id=394925685 instance=ExtResource("3_531ij")]
+transform = Transform3D(1.0000001, 0, 0, 0, 1.0000001, -1.4210855e-14, 0, 1.4210855e-14, 1.0000001, 0.684579, 0.20000018, -0.71957153)
+
+[node name="Bench3" parent="." unique_id=1163584692 instance=ExtResource("3_531ij")]
+transform = Transform3D(1.0000001, 0, 0, 0, 1.0000001, -1.4210855e-14, 0, 1.4210855e-14, 1.0000001, -0.6973918, 0.20000015, 0.7033642)
+
+[node name="Bench4" parent="." unique_id=1534548256 instance=ExtResource("3_531ij")]
+transform = Transform3D(1.0000001, 0, 0, 0, 1.0000001, -1.4210855e-14, 0, 1.4210855e-14, 1.0000001, -0.72260755, 0.19999997, -0.7058273)

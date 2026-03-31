@@ -6,6 +6,8 @@ const PedestrianGraphScript = preload("res://Simulation/Navigation/PedestrianGra
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
+const CITY_BENCH_NAME_HINTS := ["bench", "bank", "seat", "sit"]
+const CITY_BENCH_RESERVATIONS_META := "_world_city_bench_reservations"
 
 @export var minutes_per_tick: int = 1
 @export var tick_interval_sec: float = 0.5
@@ -462,6 +464,73 @@ func find_nearest_park(from_pos: Vector3, seeker: Citizen = null) -> Building:
 			best = building
 	return best
 
+func has_available_city_bench_for(citizen = null, reference_pos: Vector3 = Vector3.ZERO) -> bool:
+	if not get_reserved_city_bench_for(citizen).is_empty():
+		return true
+	_prune_invalid_city_bench_reservations()
+	return _find_best_city_bench(reference_pos) != null
+
+func reserve_city_bench_for(citizen, reference_pos: Vector3 = Vector3.ZERO) -> Dictionary:
+	if citizen == null:
+		return {}
+
+	var existing: Dictionary = get_reserved_city_bench_for(citizen)
+	if not existing.is_empty():
+		return existing
+
+	_prune_invalid_city_bench_reservations()
+	var best_bench := _find_best_city_bench(reference_pos)
+	if best_bench == null:
+		return {}
+
+	var reservations := _get_city_bench_reservations()
+	reservations[best_bench.get_instance_id()] = weakref(citizen)
+	_set_city_bench_reservations(reservations)
+	return _build_city_bench_reservation(best_bench)
+
+func get_reserved_city_bench_for(citizen) -> Dictionary:
+	if citizen == null:
+		return {}
+
+	_prune_invalid_city_bench_reservations()
+	var reservations := _get_city_bench_reservations()
+	for bench_id in reservations.keys():
+		if _resolve_reserved_city_bench_citizen(reservations[bench_id]) != citizen:
+			continue
+		var bench := instance_from_id(int(bench_id)) as Node3D
+		if bench == null or not is_instance_valid(bench):
+			continue
+		return _build_city_bench_reservation(bench)
+	return {}
+
+func release_city_bench_for(citizen) -> void:
+	if citizen == null:
+		return
+	var reservations := _get_city_bench_reservations()
+	var release_keys: Array[int] = []
+	for bench_id in reservations.keys():
+		if _resolve_reserved_city_bench_citizen(reservations[bench_id]) == citizen:
+			release_keys.append(int(bench_id))
+	for bench_id in release_keys:
+		reservations.erase(bench_id)
+	if not release_keys.is_empty():
+		_set_city_bench_reservations(reservations)
+
+func is_citizen_at_reserved_city_bench(citizen) -> bool:
+	if citizen == null:
+		return false
+	var bench: Dictionary = get_reserved_city_bench_for(citizen)
+	if bench.is_empty():
+		return false
+	var bench_pos: Vector3 = bench.get("position", citizen.global_position)
+	var delta: Vector3 = citizen.global_position - bench_pos
+	delta.y = 0.0
+	if delta.length() <= 0.45:
+		return true
+	if citizen.has_method("has_active_rest_pose") and citizen.has_active_rest_pose():
+		return true
+	return false
+
 func find_nearest_supermarket(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> Supermarket:
 	var best: Supermarket = null
 	var best_dist := INF
@@ -480,6 +549,120 @@ func find_nearest_supermarket(from_pos: Vector3, require_open: bool = true, seek
 			best_dist = dist
 			best = market
 	return best
+
+func _find_best_city_bench(reference_pos: Vector3) -> Node3D:
+	var best_bench: Node3D = null
+	var best_score := INF
+	for bench in _get_city_bench_nodes():
+		if not _is_city_bench_available(bench):
+			continue
+		var score := bench.global_position.distance_squared_to(reference_pos)
+		if score < best_score:
+			best_score = score
+			best_bench = bench
+	return best_bench
+
+func _get_city_bench_nodes() -> Array[Node3D]:
+	var benches: Array[Node3D] = []
+	if not is_inside_tree():
+		return benches
+	_collect_city_bench_nodes(get_tree().get_root(), benches)
+	return benches
+
+func _collect_city_bench_nodes(node: Node, out: Array[Node3D]) -> void:
+	for child in node.get_children():
+		if child is Node3D:
+			var marker := child as Node3D
+			if _is_city_bench_marker_node(marker):
+				out.append(marker)
+		if child is Node:
+			_collect_city_bench_nodes(child, out)
+
+func _is_city_bench_marker_node(node: Node3D) -> bool:
+	if node == null:
+		return false
+	if node.get_script() != null:
+		return false
+	if node.get_child_count() > 0:
+		return false
+	if _is_node_inside_park(node):
+		return false
+	var name_lower := node.name.to_lower()
+	for hint in CITY_BENCH_NAME_HINTS:
+		if name_lower.contains(hint):
+			return true
+	return false
+
+func _is_city_bench_available(bench: Node3D) -> bool:
+	if bench == null or not is_instance_valid(bench):
+		return false
+	var reservations := _get_city_bench_reservations()
+	var bench_id := bench.get_instance_id()
+	if not reservations.has(bench_id):
+		return true
+	return _resolve_reserved_city_bench_citizen(reservations[bench_id]) == null
+
+func _build_city_bench_reservation(bench: Node3D) -> Dictionary:
+	if bench == null:
+		return {}
+	return {
+		"node": bench,
+		"name": bench.name,
+		"position": bench.global_position,
+		"yaw": bench.global_rotation.y,
+		"building": _find_bench_owner_building(bench),
+	}
+
+func _get_city_bench_reservations() -> Dictionary:
+	if not has_meta(CITY_BENCH_RESERVATIONS_META):
+		set_meta(CITY_BENCH_RESERVATIONS_META, {})
+	var reservations: Variant = get_meta(CITY_BENCH_RESERVATIONS_META)
+	if reservations is Dictionary:
+		return reservations as Dictionary
+	var fresh: Dictionary = {}
+	set_meta(CITY_BENCH_RESERVATIONS_META, fresh)
+	return fresh
+
+func _set_city_bench_reservations(reservations: Dictionary) -> void:
+	set_meta(CITY_BENCH_RESERVATIONS_META, reservations)
+
+func _resolve_reserved_city_bench_citizen(value) -> Node:
+	if value is WeakRef:
+		var citizen: Node = (value as WeakRef).get_ref() as Node
+		if citizen != null and is_instance_valid(citizen):
+			return citizen
+	return null
+
+func _prune_invalid_city_bench_reservations() -> void:
+	var reservations := _get_city_bench_reservations()
+	var stale_keys: Array[int] = []
+	for bench_id in reservations.keys():
+		var bench := instance_from_id(int(bench_id)) as Node3D
+		if bench == null or not is_instance_valid(bench):
+			stale_keys.append(int(bench_id))
+			continue
+		if _resolve_reserved_city_bench_citizen(reservations[bench_id]) == null:
+			stale_keys.append(int(bench_id))
+	for bench_id in stale_keys:
+		reservations.erase(bench_id)
+	if not stale_keys.is_empty():
+		_set_city_bench_reservations(reservations)
+
+func _is_node_inside_park(node: Node) -> bool:
+	var current := node.get_parent()
+	while current != null:
+		if current is Node and current.is_in_group("parks"):
+			return true
+		current = current.get_parent()
+	return false
+
+func _find_bench_owner_building(node: Node) -> Building:
+	var current := node.get_parent()
+	while current != null:
+		if current is Building:
+			return current as Building
+		current = current.get_parent()
+	return null
 
 func find_nearest_university(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> University:
 	var best: University = null

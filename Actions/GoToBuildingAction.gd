@@ -34,6 +34,7 @@ func start(world: World, citizen: Citizen) -> void:
 			_travel_failed = true
 			finished = true
 			return
+	_reserve_park_bench(citizen, target)
 	_start_repath_count = citizen._debug_repath_count if citizen != null else 0
 	_last_progress_pos = citizen.global_position if citizen != null else Vector3.ZERO
 
@@ -59,6 +60,7 @@ func start(world: World, citizen: Citizen) -> void:
 	var travel_started := citizen.begin_travel_to(_arrival_target, target)
 	if not travel_started:
 		_travel_failed = true
+		_release_reserved_park_bench(citizen, target)
 		var source_label := citizen.current_location.get_display_name() if citizen.current_location != null else "current position"
 		SimLogger.log("[Citizen %s] No pedestrian route to %s. from=%s start=%s end=%s | %s" % [
 			citizen.citizen_name,
@@ -102,16 +104,20 @@ func tick(world: World, citizen: Citizen, dt: int) -> void:
 
 func finish(world: World, citizen: Citizen) -> void:
 	if target == null:
+		_release_reserved_park_bench(citizen, target)
 		return
 	if _travel_failed:
 		citizen.stop_travel()
 		citizen.decision_cooldown_left = 0
+		_release_reserved_park_bench(citizen, target)
 		return
 	var reached_target := citizen.has_reached_travel_target()
 	citizen.stop_travel()
 	if not reached_target:
 		citizen.decision_cooldown_left = 0
+		_release_reserved_park_bench(citizen, target)
 		return
+	_reserve_park_bench(citizen, target)
 	citizen.enter_building(target, world)
 
 func _update_progress_state(citizen: Citizen, dt: int) -> void:
@@ -149,9 +155,30 @@ func _attempt_dynamic_reroute(world: World, citizen: Citizen) -> bool:
 	if replacement == null or replacement == target:
 		return false
 	_reroute_attempts += 1
+	_release_reserved_park_bench(citizen, target)
 	target = replacement
 	citizen.stop_travel()
 	start(world, citizen)
+	return true
+
+func _reserve_park_bench(citizen: Citizen, building: Building) -> void:
+	if not _should_use_park_bench(citizen, building):
+		return
+	building.reserve_bench_for(citizen, citizen.global_position)
+
+func _release_reserved_park_bench(citizen: Citizen, building: Building) -> void:
+	if not _should_use_park_bench(citizen, building):
+		return
+	building.release_bench_for(citizen)
+
+func _should_use_park_bench(citizen: Citizen, building: Building) -> bool:
+	if building == null or citizen == null:
+		return false
+	if not building.has_method("reserve_bench_for") or not building.has_method("release_bench_for"):
+		return false
+	# Park staff should not block visitor benches during the work commute.
+	if citizen.job != null and citizen.job.workplace == building:
+		return false
 	return true
 
 func _format_point(pos: Vector3) -> String:

@@ -1,8 +1,9 @@
-[gd_scene load_steps=7 format=4 uid="uid://cib1b468oy5er"]
+[gd_scene format=4 uid="uid://cib1b468oy5er"]
 
 [ext_resource type="Script" uid="uid://bj48dr0vegu14" path="res://Entities/Buildings/ResidentialBuilding.gd" id="1_63ugf"]
 [ext_resource type="PackedScene" uid="uid://8mg4m1vrctrj" path="res://ImportedCitySource/assets/buildings/building_B.gltf" id="2_f3lk2"]
 [ext_resource type="Texture2D" uid="uid://iykerheey3u6" path="res://ImportedCitySource/assets/buildings/citybits_texture.png" id="3_us8xp"]
+[ext_resource type="PackedScene" uid="uid://bbq72g26qig4p" path="res://Entities/Bench.tscn" id="4_f3lk2"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2flca"]
 resource_name = "citybits_texture"
@@ -41,17 +42,23 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_ub6ku")
 
-[node name="multilayer_residential_05" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_multilayer", "residential"]]
+[node name="multilayer_residential_05" type="Node3D" unique_id=32471901 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_multilayer", "residential"]]
 script = ExtResource("1_63ugf")
 building_name = "Residential 05 (Multilayer)"
 building_type = 1
 entrance = NodePath("Entrance")
 
-[node name="building_B2" parent="." instance=ExtResource("2_f3lk2")]
+[node name="building_B2" parent="." unique_id=1073122521 instance=ExtResource("2_f3lk2")]
 
-[node name="building_B_mesh" type="MeshInstance3D" parent="building_B2"]
+[node name="building_B_mesh" type="MeshInstance3D" parent="building_B2" unique_id=834887184]
 mesh = SubResource("ArrayMesh_teqoc")
 skeleton = NodePath("")
 
-[node name="Entrance" type="Node3D" parent="."]
+[node name="Entrance" type="Node3D" parent="." unique_id=1216250725]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
+
+[node name="Bench" parent="." unique_id=2036566530 instance=ExtResource("4_f3lk2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.19437528, 0.19438279, 0.7055001)
+
+[node name="Bench2" parent="." unique_id=650126463 instance=ExtResource("4_f3lk2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3190382, 0.19255728, 0.7193312)
