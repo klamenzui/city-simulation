@@ -1,6 +1,9 @@
 extends Building
 class_name Park
 
+const BENCH_NAME_HINTS := ["bench", "bank", "seat", "sit"]
+const BENCH_RESERVATIONS_META := "_park_bench_reservations"
+
 @export var park_visit_inside_distance: float = 1.25
 @export var park_wall_depth: float = 0.6
 
@@ -37,6 +40,76 @@ func is_outdoor_destination() -> bool:
 
 func has_navigation_entry() -> bool:
 	return not _get_park_entrance_nodes().is_empty()
+
+func has_available_bench_for(citizen = null) -> bool:
+	if not get_reserved_bench_for(citizen).is_empty():
+		return true
+	_prune_invalid_bench_reservations()
+	for bench in _get_park_bench_nodes():
+		if _is_bench_available(bench):
+			return true
+	return false
+
+func reserve_bench_for(citizen, reference_pos = null) -> Dictionary:
+	if citizen == null:
+		return {}
+
+	var existing: Dictionary = get_reserved_bench_for(citizen)
+	if not existing.is_empty():
+		return existing
+
+	_prune_invalid_bench_reservations()
+	var ref_pos: Vector3 = global_position
+	if citizen is Node3D:
+		ref_pos = (citizen as Node3D).global_position
+	if reference_pos is Vector3:
+		ref_pos = reference_pos as Vector3
+
+	var best_bench: Node3D = null
+	var best_score := INF
+	for bench in _get_park_bench_nodes():
+		if not _is_bench_available(bench):
+			continue
+		var score := bench.global_position.distance_squared_to(ref_pos)
+		if score < best_score:
+			best_score = score
+			best_bench = bench
+
+	if best_bench == null:
+		return {}
+
+	var reservations := _get_park_bench_reservations()
+	reservations[best_bench.get_instance_id()] = weakref(citizen)
+	_set_park_bench_reservations(reservations)
+	return _build_bench_reservation(best_bench)
+
+func get_reserved_bench_for(citizen) -> Dictionary:
+	if citizen == null:
+		return {}
+
+	_prune_invalid_bench_reservations()
+	var reservations := _get_park_bench_reservations()
+	for bench_id in reservations.keys():
+		if _resolve_reserved_citizen(reservations[bench_id]) != citizen:
+			continue
+		var bench := instance_from_id(int(bench_id)) as Node3D
+		if bench == null or not is_instance_valid(bench):
+			continue
+		return _build_bench_reservation(bench)
+	return {}
+
+func release_bench_for(citizen) -> void:
+	if citizen == null:
+		return
+	var reservations := _get_park_bench_reservations()
+	var release_keys: Array[int] = []
+	for bench_id in reservations.keys():
+		if _resolve_reserved_citizen(reservations[bench_id]) == citizen:
+			release_keys.append(int(bench_id))
+	for bench_id in release_keys:
+		reservations.erase(bench_id)
+	if not release_keys.is_empty():
+		_set_park_bench_reservations(reservations)
 
 func _get_extra_info(_world = null) -> Dictionary:
 	var center_anchor := _get_park_center_anchor()
@@ -103,6 +176,96 @@ func get_internal_navigation_route(nav_points: Dictionary) -> PackedVector3Array
 	var start_pos: Vector3 = nav_points.get("entrance", get_entrance_pos())
 	var end_pos: Vector3 = nav_points.get("visit", nav_points.get("center", global_position))
 	return _build_park_internal_route(start_pos, end_pos)
+
+func _get_park_bench_nodes() -> Array[Node3D]:
+	var benches: Array[Node3D] = []
+	_collect_park_bench_nodes(_get_park_cluster_root(), benches)
+	return benches
+
+func _collect_park_bench_nodes(node: Node, out: Array[Node3D]) -> void:
+	for child in node.get_children():
+		if child is Node3D:
+			var marker := child as Node3D
+			if _is_bench_marker_node(marker):
+				out.append(marker)
+		if child is Node:
+			_collect_park_bench_nodes(child, out)
+
+func _is_bench_marker_node(node: Node3D) -> bool:
+	if node == null:
+		return false
+	if node.get_script() != null:
+		return false
+	if node.get_child_count() > 0:
+		return false
+	var node_class := node.get_class()
+	if node_class != "Node3D" and node_class != "Marker3D":
+		return false
+	var name_lower := node.name.to_lower()
+	for hint in BENCH_NAME_HINTS:
+		if name_lower.contains(hint):
+			return true
+	return false
+
+func _is_bench_available(bench: Node3D) -> bool:
+	if bench == null or not is_instance_valid(bench):
+		return false
+	var reservations := _get_park_bench_reservations()
+	var bench_id := bench.get_instance_id()
+	if not reservations.has(bench_id):
+		return true
+	return _resolve_reserved_citizen(reservations[bench_id]) == null
+
+func _build_bench_reservation(bench: Node3D) -> Dictionary:
+	if bench == null:
+		return {}
+	return {
+		"node": bench,
+		"name": bench.name,
+		"position": bench.global_position,
+		"yaw": bench.global_rotation.y,
+	}
+
+func _get_park_cluster_root() -> Node:
+	var park_root: Node = get_parent()
+	return park_root if park_root != null else self
+
+func _get_park_bench_reservations() -> Dictionary:
+	var park_root := _get_park_cluster_root()
+	if not park_root.has_meta(BENCH_RESERVATIONS_META):
+		park_root.set_meta(BENCH_RESERVATIONS_META, {})
+	var reservations: Variant = park_root.get_meta(BENCH_RESERVATIONS_META)
+	if reservations is Dictionary:
+		return reservations as Dictionary
+	var fresh: Dictionary = {}
+	park_root.set_meta(BENCH_RESERVATIONS_META, fresh)
+	return fresh
+
+func _set_park_bench_reservations(reservations: Dictionary) -> void:
+	var park_root := _get_park_cluster_root()
+	park_root.set_meta(BENCH_RESERVATIONS_META, reservations)
+
+func _resolve_reserved_citizen(value) -> Node:
+	if value is WeakRef:
+		var citizen: Node = (value as WeakRef).get_ref() as Node
+		if citizen != null and is_instance_valid(citizen):
+			return citizen
+	return null
+
+func _prune_invalid_bench_reservations() -> void:
+	var reservations := _get_park_bench_reservations()
+	var stale_keys: Array[int] = []
+	for bench_id in reservations.keys():
+		var bench := instance_from_id(int(bench_id)) as Node3D
+		if bench == null or not is_instance_valid(bench):
+			stale_keys.append(int(bench_id))
+			continue
+		if _resolve_reserved_citizen(reservations[bench_id]) == null:
+			stale_keys.append(int(bench_id))
+	for bench_id in stale_keys:
+		reservations.erase(bench_id)
+	if not stale_keys.is_empty():
+		_set_park_bench_reservations(reservations)
 
 func _get_park_center_anchor() -> Node3D:
 	var park_root := get_parent()

@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://4t0xdxolvh7e" path="res://Entities/Buildings/Park.gd" id="1_wbmcw"]
 [ext_resource type="Texture2D" uid="uid://b3cvcg0o5h3d8" path="res://ImportedCitySource/assets/KayKit_City_Builder_Bits_1.0_EXTRA/Assets/fbx/citybits_texture.png" id="2_vxq1t"]
+[ext_resource type="PackedScene" uid="uid://bbq72g26qig4p" path="res://Entities/Bench.tscn" id="3_vxq1t"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6jweg"]
 resource_name = "citybits_texture"
@@ -64,3 +65,9 @@ shape = SubResource("ConcavePolygonShape3D_wbmcw")
 
 [node name="Entrance" type="Node3D" parent="." unique_id=953316064]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0.7736309)
+
+[node name="Bench2" parent="." unique_id=2036566530 instance=ExtResource("3_vxq1t")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.40156874, 0.20000002, 0.005990196)
+
+[node name="Bench" parent="." unique_id=2055305566 instance=ExtResource("3_vxq1t")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.39830273, 0.20000002, 0.010672606)

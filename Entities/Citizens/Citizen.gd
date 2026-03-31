@@ -131,6 +131,9 @@ var _debug_repath_count: int = 0
 var _debug_stuck_slide_count: int = 0
 var _debug_stuck_jump_count: int = 0
 var _debug_last_blocking_area: String = "-"
+var _rest_pose_active: bool = false
+var _rest_pose_position: Vector3 = Vector3.ZERO
+var _rest_pose_yaw: float = 0.0
 # --- Variation / Personality ---
 @export var schedule_offset_min: int = -25
 @export var schedule_offset_max: int = 25
@@ -227,6 +230,7 @@ func set_manual_control_enabled(enabled: bool, world: World = null) -> void:
 		return
 	_manual_control_enabled = enabled
 	if enabled:
+		clear_rest_pose(true)
 		if is_inside_building():
 			exit_current_building(world)
 		elif current_location != null:
@@ -432,6 +436,13 @@ func _probe_ground_hit(pos: Vector3) -> Dictionary:
 		if hit.is_empty():
 			return {}
 
+		var collider: Variant = hit.get("collider", null)
+		if _is_citizen_collider(collider):
+			if not hit.has("rid"):
+				return {}
+			exclude.append(hit["rid"])
+			continue
+
 		var hit_pos: Vector3 = hit.get("position", pos)
 		if hit_pos.y <= pos.y + max_ground_step_up:
 			return hit
@@ -472,6 +483,39 @@ func _apply_grounding(pos: Vector3, delta: float) -> Vector3:
 func set_position_grounded(pos: Vector3) -> void:
 	_agent.locomotion.set_position_grounded(self, pos, _world_ref)
 
+func has_active_rest_pose() -> bool:
+	return _rest_pose_active
+
+func set_rest_pose(target_pos: Vector3, yaw: float = 0.0) -> void:
+	if _inside_building == null and is_inside_tree():
+		target_pos = _project_to_ground(target_pos)
+	_rest_pose_active = true
+	_rest_pose_position = target_pos
+	_rest_pose_yaw = yaw
+	apply_rest_pose()
+
+func apply_rest_pose() -> void:
+	if not _rest_pose_active:
+		return
+	global_position = _rest_pose_position
+	rotation.y = _rest_pose_yaw
+	_current_speed = 0.0
+	_vertical_speed = 0.0
+	velocity = Vector3.ZERO
+	_last_move_position = global_position
+	_update_trace_navigation_state("rest_pose", Vector3.ZERO, Vector3.ZERO)
+
+func clear_rest_pose(snap_to_ground: bool = false) -> void:
+	if not _rest_pose_active:
+		return
+	_rest_pose_active = false
+	_current_speed = 0.0
+	_vertical_speed = 0.0
+	velocity = Vector3.ZERO
+	if snap_to_ground and is_inside_tree():
+		set_position_grounded(global_position)
+	_last_move_position = global_position
+
 func begin_travel_to(target_pos: Vector3, target_building: Building = null) -> bool:
 	return _agent.locomotion.begin_travel_to(self, target_pos, target_building, _world_ref)
 
@@ -487,6 +531,9 @@ func is_inside_building() -> bool:
 func enter_building(building: Building, world: World = null, emit_log: bool = true) -> void:
 	if building == null:
 		return
+	clear_rest_pose(true)
+	if current_location != null and current_location != building and current_location.has_method("release_bench_for"):
+		current_location.release_bench_for(self)
 	var nav_points := _get_building_nav_points(building, world)
 	var entry_pos := global_position
 	stop_travel()
@@ -495,6 +542,11 @@ func enter_building(building: Building, world: World = null, emit_log: bool = tr
 	if is_outdoor:
 		set_position_grounded(global_position)
 		_inside_building = null
+		if nav_points.has("bench") and _should_auto_rest_on_outdoor_entry(building):
+			set_rest_pose(
+				nav_points.get("bench", global_position),
+				float(nav_points.get("bench_yaw", rotation.y))
+			)
 	else:
 		if nav_points.has("spawn"):
 			set_position_grounded(nav_points["spawn"])
@@ -524,6 +576,9 @@ func leave_current_location(world: World = null, emit_log: bool = true) -> void:
 		return
 
 	var exit_building := current_location
+	clear_rest_pose(true)
+	if exit_building.has_method("release_bench_for"):
+		exit_building.release_bench_for(self)
 	var nav_points := _get_building_nav_points(exit_building, world)
 	var is_outdoor := exit_building.has_method("is_outdoor_destination") and exit_building.is_outdoor_destination()
 	var exit_pos: Vector3 = nav_points.get("spawn", nav_points.get("access", global_position))
@@ -547,6 +602,7 @@ func exit_current_building(world: World = null) -> void:
 	if _inside_building == null:
 		return
 
+	clear_rest_pose(true)
 	var exit_building := _inside_building
 	var nav_points := _get_building_nav_points(exit_building, world)
 	var access_pos: Vector3 = nav_points.get("access", _get_building_access_pos(exit_building, world))
@@ -606,19 +662,34 @@ func _get_building_nav_points(building: Building, world: World = null) -> Dictio
 		return {}
 
 	var lane_offset := _get_building_lane_offset()
+	var nav_points: Dictionary = {}
 	if building.has_method("get_navigation_points"):
-		return building.get_navigation_points(world, lane_offset, global_position)
+		nav_points = building.get_navigation_points(world, lane_offset, global_position)
+	else:
+		var entrance_pos := building.get_entrance_pos()
+		var access_pos := entrance_pos
+		if world != null and world.has_method("get_pedestrian_access_point"):
+			access_pos = world.get_pedestrian_access_point(entrance_pos, building)
 
-	var entrance_pos := building.get_entrance_pos()
-	var access_pos := entrance_pos
-	if world != null and world.has_method("get_pedestrian_access_point"):
-		access_pos = world.get_pedestrian_access_point(entrance_pos, building)
+		nav_points = {
+			"entrance": entrance_pos,
+			"access": access_pos,
+			"spawn": _compute_building_exit_spawn_from_points(building, entrance_pos, access_pos, lane_offset),
+		}
 
-	return {
-		"entrance": entrance_pos,
-		"access": access_pos,
-		"spawn": _compute_building_exit_spawn_from_points(building, entrance_pos, access_pos, lane_offset),
-	}
+	var reserved_bench: Dictionary = {}
+	if building is Park:
+		reserved_bench = (building as Park).get_reserved_bench_for(self)
+	elif building.has_method("get_reserved_bench_for"):
+		reserved_bench = building.get_reserved_bench_for(self)
+	if not reserved_bench.is_empty():
+		var bench_pos: Vector3 = reserved_bench.get("position", nav_points.get("visit", nav_points.get("center", global_position)))
+		nav_points["visit"] = bench_pos
+		nav_points["center"] = bench_pos
+		nav_points["bench"] = bench_pos
+		nav_points["bench_yaw"] = float(reserved_bench.get("yaw", 0.0))
+
+	return nav_points
 
 func _get_building_lane_offset() -> float:
 	var lane_offsets := [-0.18, -0.06, 0.06, 0.18]
@@ -921,6 +992,14 @@ func _compute_move_direction(desired_dir: Vector3) -> Vector3:
 		return Vector3.ZERO
 	if _stuck_timer >= obstacle_stuck_timeout:
 		var repath_timeout := maxf(obstacle_repath_timeout, obstacle_jump_stuck_timeout + 0.35)
+		# Give the locomotion system a chance to rebuild the route before we keep
+		# committing to the same slide direction forever against the same obstacle.
+		if _stuck_timer >= repath_timeout:
+			if _agent != null and _agent.locomotion != null and _agent.locomotion.repath_current_travel(self, _world_ref):
+				_debug_repath_count += 1
+				_update_congestion_debug_label()
+				_update_trace_navigation_state("repath_stuck", planar_dir, Vector3.ZERO)
+				return Vector3.ZERO
 		if _stuck_timer >= obstacle_jump_stuck_timeout and _try_stuck_jump(planar_dir):
 			_debug_stuck_jump_count += 1
 			_update_congestion_debug_label()
@@ -932,12 +1011,6 @@ func _compute_move_direction(desired_dir: Vector3) -> Vector3:
 			_update_congestion_debug_label()
 			_update_trace_navigation_state("stuck_slide_%s" % _trace_relative_label(slide_escape), planar_dir, slide_escape)
 			return slide_escape
-		if _stuck_timer >= repath_timeout:
-			if _agent != null and _agent.locomotion != null and _agent.locomotion.repath_current_travel(self, _world_ref):
-				_debug_repath_count += 1
-				_update_congestion_debug_label()
-				_update_trace_navigation_state("repath_stuck", planar_dir, Vector3.ZERO)
-				return Vector3.ZERO
 		var escape_dir := _compute_escape_direction(planar_dir)
 		_update_trace_navigation_state("stuck_escape_%s" % _trace_relative_label(escape_dir), planar_dir, escape_dir)
 		return escape_dir
@@ -994,6 +1067,8 @@ func _ray_is_blocked(ray: RayCast3D) -> bool:
 	var collider := ray.get_collider()
 	if collider is Node and _is_entrance_trigger_node(collider as Node):
 		return false
+	if _is_citizen_collider(collider):
+		return false
 	return collider != null and collider != self
 
 func _ray_detects_low_obstacle(ray: RayCast3D) -> bool:
@@ -1002,6 +1077,8 @@ func _ray_detects_low_obstacle(ray: RayCast3D) -> bool:
 
 	var collider := ray.get_collider()
 	if collider == null or collider == self:
+		return false
+	if _is_citizen_collider(collider):
 		return false
 	if collider is Node:
 		var node := collider as Node
@@ -1012,6 +1089,27 @@ func _ray_detects_low_obstacle(ray: RayCast3D) -> bool:
 
 	var hit_normal := ray.get_collision_normal()
 	return hit_normal.dot(Vector3.UP) < 0.55
+
+func _is_citizen_collider(collider: Variant) -> bool:
+	if collider == null or collider == self:
+		return false
+	if collider is Citizen:
+		return true
+	if collider is CharacterBody3D:
+		var node := collider as Node
+		return node.is_in_group("citizens")
+	return false
+
+func _should_auto_rest_on_outdoor_entry(building: Building) -> bool:
+	if building == null:
+		return false
+	if not (current_action is GoToBuildingAction):
+		return false
+	if not building.is_in_group("parks"):
+		return false
+	if job != null and job.workplace == building:
+		return false
+	return true
 
 func _is_walkable_step_surface(collider: Variant) -> bool:
 	if not (collider is Node):
@@ -2043,6 +2141,7 @@ func start_action(a: Action, world: World) -> void:
 	_start_action(a, world)
 
 func _start_action(a: Action, world: World) -> void:
+	clear_rest_pose(true)
 	if a is GoToBuildingAction and is_inside_building():
 		exit_current_building(world)
 	elif a is GoToBuildingAction and current_location != null:

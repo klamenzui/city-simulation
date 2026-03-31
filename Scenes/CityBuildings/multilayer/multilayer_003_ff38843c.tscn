@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://bj48dr0vegu14" path="res://Entities/Buildings/ResidentialBuilding.gd" id="1_60mlg"]
 [ext_resource type="PackedScene" uid="uid://br7cxkiu1vf68" path="res://ImportedCitySource/assets/buildings/building_C.gltf" id="2_i0fb8"]
 [ext_resource type="Texture2D" uid="uid://iykerheey3u6" path="res://ImportedCitySource/assets/buildings/citybits_texture.png" id="3_8jgcp"]
+[ext_resource type="PackedScene" uid="uid://bbq72g26qig4p" path="res://Entities/Bench.tscn" id="4_i0fb8"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2yrvi"]
 resource_name = "citybits_texture"
@@ -63,3 +64,6 @@ shape = SubResource("ConcavePolygonShape3D_60mlg")
 
 [node name="Entrance" type="Node3D" parent="." unique_id=66157946]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.41293716, 0.06, 0.6617104)
+
+[node name="Bench" parent="." unique_id=2036566530 instance=ExtResource("4_i0fb8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6759683, 0.19999993, 0.41933203)
