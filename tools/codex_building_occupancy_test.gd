@@ -7,6 +7,7 @@ const CitizenScript = preload("res://Entities/Citizens/Citizen.gd")
 const WorldScript = preload("res://Simulation/World.gd")
 const StudyAtUniversityActionScript = preload("res://Actions/StudyAtUniversityAction.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
+const GoToBenchActionScript = preload("res://Actions/GoToBenchAction.gd")
 const RelaxAtParkActionScript = preload("res://Actions/RelaxAtParkAction.gd")
 const RelaxAtBenchActionScript = preload("res://Actions/RelaxAtBenchAction.gd")
 
@@ -27,9 +28,14 @@ func _run_all_tests() -> void:
 		"university_unstaffed_label_is_teaching_specific",
 		"park_entry_keeps_citizen_visible",
 		"park_reserved_bench_sets_visit_point",
-		"park_arrival_auto_rest_uses_reserved_bench",
+		"park_arrival_keeps_bench_reserved_without_auto_rest",
+		"go_to_bench_arrival_keeps_reservation_without_auto_rest",
 		"relax_park_uses_bench_bonus",
+		"relax_park_finish_releases_bench_after_location_change",
 		"relax_park_without_bench_stays_fun_only",
+		"agent_clears_stale_outdoor_rest_pose",
+		"agent_finishes_relax_park_without_stale_rest_trace",
+		"manual_control_releases_city_bench_reservation",
 		"world_city_bench_excludes_park_benches",
 		"relax_bench_uses_energy_bonus",
 		"worker_count_lifecycle",
@@ -53,6 +59,7 @@ func _run_all_tests() -> void:
 
 func _run_test(test_name: String) -> String:
 	_current_error = ""
+	_reset_harness_root()
 	match test_name:
 		"building_entry_updates_visitors":
 			return _test_building_entry_updates_visitors()
@@ -64,12 +71,22 @@ func _run_test(test_name: String) -> String:
 			return _test_park_entry_keeps_citizen_visible()
 		"park_reserved_bench_sets_visit_point":
 			return _test_park_reserved_bench_sets_visit_point()
-		"park_arrival_auto_rest_uses_reserved_bench":
-			return _test_park_arrival_auto_rest_uses_reserved_bench()
+		"park_arrival_keeps_bench_reserved_without_auto_rest":
+			return _test_park_arrival_keeps_bench_reserved_without_auto_rest()
+		"go_to_bench_arrival_keeps_reservation_without_auto_rest":
+			return _test_go_to_bench_arrival_keeps_reservation_without_auto_rest()
 		"relax_park_uses_bench_bonus":
 			return _test_relax_park_uses_bench_bonus()
+		"relax_park_finish_releases_bench_after_location_change":
+			return _test_relax_park_finish_releases_bench_after_location_change()
 		"relax_park_without_bench_stays_fun_only":
 			return _test_relax_park_without_bench_stays_fun_only()
+		"agent_clears_stale_outdoor_rest_pose":
+			return _test_agent_clears_stale_outdoor_rest_pose()
+		"agent_finishes_relax_park_without_stale_rest_trace":
+			return _test_agent_finishes_relax_park_without_stale_rest_trace()
+		"manual_control_releases_city_bench_reservation":
+			return _test_manual_control_releases_city_bench_reservation()
 		"world_city_bench_excludes_park_benches":
 			return _test_world_city_bench_excludes_park_benches()
 		"relax_bench_uses_energy_bonus":
@@ -192,7 +209,7 @@ func _test_park_reserved_bench_sets_visit_point() -> String:
 	_expect(is_equal_approx(float(nav_points.get("bench_yaw", 0.0)), bench.global_rotation.y), "bench yaw should be forwarded for the rest pose")
 	return _current_error
 
-func _test_park_arrival_auto_rest_uses_reserved_bench() -> String:
+func _test_park_arrival_keeps_bench_reserved_without_auto_rest() -> String:
 	var world: World = _new_world()
 	var park: Park = _new_park("Arrival Park")
 	var visitor: Citizen = _new_citizen("Park Visitor")
@@ -200,11 +217,12 @@ func _test_park_arrival_auto_rest_uses_reserved_bench() -> String:
 	var bench := _add_bench(park, "Bench_A", Vector3(1.8, 0.0, 0.4), 0.7)
 
 	visitor.set_world_ref(world)
-	park.reserve_bench_for(visitor, visitor.global_position)
+	var visitor_reservation := park.reserve_bench_for(visitor, visitor.global_position)
 	visitor.current_action = GoToBuildingActionScript.new(park, 10)
 	visitor.enter_building(park, world, false)
-	_expect(visitor.has_active_rest_pose(), "park arrival should immediately use the reserved bench for visitors")
-	_expect_vec3_near(visitor.global_position, bench.global_position + Vector3(0.0, 0.02, 0.0), 0.001, "park arrival should snap the visitor to the reserved bench")
+	_expect(not visitor.has_active_rest_pose(), "park arrival should wait for RelaxPark before locking a visitor into the bench rest pose")
+	_expect_eq(visitor_reservation.get("node"), bench, "park should reserve the expected bench for the visitor")
+	_expect_eq(park.get_reserved_bench_for(visitor).get("node"), bench, "park arrival should keep the reserved bench locked until RelaxPark starts")
 
 	worker.job = Job.new()
 	worker.job.workplace = park
@@ -212,6 +230,34 @@ func _test_park_arrival_auto_rest_uses_reserved_bench() -> String:
 	worker.current_action = GoToBuildingActionScript.new(park, 10)
 	worker.enter_building(park, world, false)
 	_expect(not worker.has_active_rest_pose(), "park workers should not auto-occupy visitor benches on arrival")
+	_expect(park.get_reserved_bench_for(worker).is_empty(), "park workers should not keep a visitor bench reservation on arrival")
+
+	_free_world(world)
+	return _current_error
+
+func _test_go_to_bench_arrival_keeps_reservation_without_auto_rest() -> String:
+	var world: World = _new_world()
+	var building: Building = _new_building("Bench House")
+	var citizen: Citizen = _new_citizen("Bench Walker")
+	var bench := _add_bench(building, "Bench", Vector3(1.4, 0.0, -0.3), 1.05)
+	world.register_building(building)
+	world.register_citizen(citizen)
+
+	var reservation := world.get_reserved_city_bench_for(citizen)
+	if reservation.is_empty():
+		reservation = world.reserve_city_bench_for(citizen, citizen.global_position)
+	_expect(not reservation.is_empty(), "go-to-bench should reserve a city bench before travel starts")
+	_expect_eq(reservation.get("node"), bench, "go-to-bench should reserve the expected city bench")
+	var action = GoToBenchActionScript.new()
+	citizen.global_position = reservation.get("position", citizen.global_position)
+	citizen._is_travelling = false
+	citizen._travel_target = reservation.get("position", citizen.global_position)
+	citizen.decision_cooldown_left = citizen.decision_cooldown_range_max
+
+	action.finish(world, citizen)
+	_expect(not citizen.has_active_rest_pose(), "arriving at a city bench should wait for RelaxBench before activating the rest pose")
+	_expect_eq(world.get_reserved_city_bench_for(citizen).get("node"), bench, "city bench arrival should keep the reservation for the follow-up relax action")
+	_expect_eq(citizen.decision_cooldown_left, 0, "city bench arrival should allow immediate follow-up planning")
 
 	_free_world(world)
 	return _current_error
@@ -231,13 +277,33 @@ func _test_relax_park_uses_bench_bonus() -> String:
 
 	_expect(action.is_using_bench(), "relaxing in a park with a reserved bench should use the bench flow")
 	_expect(citizen.has_active_rest_pose(), "bench relax should activate a rest pose on the citizen")
-	_expect_vec3_near(citizen.global_position, bench.global_position + Vector3(0.0, 0.02, 0.0), 0.001, "citizen should snap to the reserved bench marker")
+	_expect_planar_vec3_near(citizen.global_position, bench.global_position, 0.001, "citizen should snap to the reserved bench marker")
 	_expect(float(modifier.get("energy_add", 0.0)) > 0.08, "bench relax should produce a net positive energy gain")
 	_expect(float(modifier.get("fun_add", 0.0)) > 0.22, "bench relax should provide a small extra fun bonus")
 
 	action.finish(world, citizen)
 	_expect(not citizen.has_active_rest_pose(), "bench relax finish should clear the rest pose again")
 	_expect(park.get_reserved_bench_for(citizen).is_empty(), "bench relax finish should release the reserved bench")
+	_expect_eq(citizen.decision_cooldown_left, 0, "bench relax finish should allow immediate replanning")
+
+	_free_world(world)
+	return _current_error
+
+func _test_relax_park_finish_releases_bench_after_location_change() -> String:
+	var world: World = _new_world()
+	var park: Park = _new_park("Moved Park")
+	var citizen: Citizen = _new_citizen("Moved Visitor")
+	_add_bench(park, "Bench_Main", Vector3(1.2, 0.0, 0.8), 1.1)
+	citizen.set_world_ref(world)
+	citizen.enter_building(park, world, false)
+	park.reserve_bench_for(citizen, citizen.global_position)
+
+	var action: RelaxAtParkAction = RelaxAtParkActionScript.new()
+	action.start(world, citizen)
+	citizen.current_location = null
+
+	action.finish(world, citizen)
+	_expect(park.get_reserved_bench_for(citizen).is_empty(), "park bench reservation should still be released even if the citizen location changed before finish")
 
 	_free_world(world)
 	return _current_error
@@ -259,6 +325,69 @@ func _test_relax_park_without_bench_stays_fun_only() -> String:
 	_expect(float(modifier.get("fun_add", 0.0)) > 0.0, "park relax without a bench should still add fun")
 
 	action.finish(world, citizen)
+	_free_world(world)
+	return _current_error
+
+func _test_agent_clears_stale_outdoor_rest_pose() -> String:
+	var world: World = _new_world()
+	var park: Park = _new_park("Cleanup Park")
+	var citizen: Citizen = _new_citizen("Cleanup Visitor")
+	var bench := _add_bench(park, "Bench", Vector3(0.8, 0.0, 0.6), 0.5)
+	citizen.set_world_ref(world)
+	park.on_citizen_entered(citizen)
+	citizen.current_location = park
+	park.reserve_bench_for(citizen, citizen.global_position)
+	citizen.set_rest_pose(bench.global_position, bench.global_rotation.y)
+	citizen.current_action = null
+	citizen.decision_cooldown_left = citizen.decision_cooldown_range_max
+
+	citizen._agent.sim_tick(citizen, world)
+
+	_expect(not citizen.has_active_rest_pose(), "agent should clear stale outdoor rest poses that are no longer owned by a relax action")
+	_expect(park.get_reserved_bench_for(citizen).is_empty(), "clearing a stale outdoor rest pose should also release the reserved park bench")
+
+	_free_world(world)
+	return _current_error
+
+func _test_agent_finishes_relax_park_without_stale_rest_trace() -> String:
+	var world: World = _new_world()
+	var park: Park = _new_park("Finish Park")
+	var citizen: Citizen = _new_citizen("Trace Visitor")
+	_add_bench(park, "Bench", Vector3(0.8, 0.0, 0.6), 0.5)
+	citizen.set_world_ref(world)
+	citizen.enter_building(park, world, false)
+
+	var action: RelaxAtParkAction = RelaxAtParkActionScript.new()
+	citizen.current_action = action
+	action.start(world, citizen)
+	action.finished = true
+
+	citizen._agent.sim_tick(citizen, world)
+
+	_expect(citizen.current_action == null, "finished relax action should be cleared from the citizen")
+	_expect(not citizen.has_active_rest_pose(), "finishing relax park through the agent should clear the active rest pose immediately")
+	_expect(not citizen._trace_last_decision_reason.begins_with("rest_pose"), "finishing relax park should not leave a stale rest_pose trace reason behind")
+	_expect(park.get_reserved_bench_for(citizen).is_empty(), "finishing relax park through the agent should release the reserved park bench immediately")
+
+	_free_world(world)
+	return _current_error
+
+func _test_manual_control_releases_city_bench_reservation() -> String:
+	var world: World = _new_world()
+	var building: Building = _new_building("Bench House")
+	var citizen: Citizen = _new_citizen("Manual Bench User")
+	var bench := _add_bench(building, "Bench", Vector3(1.4, 0.0, -0.3), 1.05)
+	world.register_building(building)
+	world.register_citizen(citizen)
+	var reservation := world.reserve_city_bench_for(citizen, citizen.global_position)
+	citizen.set_rest_pose(bench.global_position, bench.global_rotation.y)
+
+	citizen.set_manual_control_enabled(true, world)
+
+	_expect(not reservation.is_empty(), "manual control test should start with a city bench reservation")
+	_expect(not citizen.has_active_rest_pose(), "switching to manual control should clear the bench rest pose")
+	_expect(world.get_reserved_city_bench_for(citizen).is_empty(), "switching to manual control should also release the reserved city bench")
+
 	_free_world(world)
 	return _current_error
 
@@ -298,12 +427,13 @@ func _test_relax_bench_uses_energy_bonus() -> String:
 	_expect(not reservation.is_empty(), "world should reserve a city bench before bench relax starts")
 	_expect(action.is_using_bench(world, citizen), "bench relax should keep the city bench reservation active")
 	_expect(citizen.has_active_rest_pose(), "bench relax should activate a rest pose on the citizen")
-	_expect_vec3_near(citizen.global_position, bench.global_position + Vector3(0.0, 0.02, 0.0), 0.001, "bench relax should snap the citizen onto the city bench marker")
+	_expect_planar_vec3_near(citizen.global_position, bench.global_position, 0.001, "bench relax should snap the citizen onto the city bench marker")
 	_expect(float(modifier.get("energy_add", 0.0)) > 0.08, "city bench relax should provide a net positive energy gain")
 
 	action.finish(world, citizen)
 	_expect(not citizen.has_active_rest_pose(), "bench relax finish should clear the rest pose")
 	_expect(world.get_reserved_city_bench_for(citizen).is_empty(), "bench relax finish should release the city bench reservation")
+	_expect_eq(citizen.decision_cooldown_left, 0, "bench relax finish should allow immediate replanning")
 
 	_free_world(world)
 	return _current_error
@@ -381,6 +511,12 @@ func _free_world(world) -> void:
 		world.economy = null
 	world.free()
 
+func _reset_harness_root() -> void:
+	if not is_instance_valid(_harness_root):
+		return
+	for child in _harness_root.get_children():
+		child.free()
+
 func _expect(condition: bool, message: String) -> void:
 	_checks_run += 1
 	if condition or _current_error != "":
@@ -396,5 +532,15 @@ func _expect_eq(actual, expected, message: String) -> void:
 func _expect_vec3_near(actual: Vector3, expected: Vector3, tolerance: float, message: String) -> void:
 	_checks_run += 1
 	if actual.distance_to(expected) <= tolerance or _current_error != "":
+		return
+	_current_error = "%s | expected=%s actual=%s tol=%.4f" % [message, str(expected), str(actual), tolerance]
+
+func _expect_planar_vec3_near(actual: Vector3, expected: Vector3, tolerance: float, message: String) -> void:
+	_checks_run += 1
+	if _current_error != "":
+		return
+	var delta := actual - expected
+	delta.y = 0.0
+	if delta.length() <= tolerance:
 		return
 	_current_error = "%s | expected=%s actual=%s tol=%.4f" % [message, str(expected), str(actual), tolerance]

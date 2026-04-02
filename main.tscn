@@ -20,18 +20,18 @@
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_001_c4333f73.tscn" id="26_s2bl2"]
 [ext_resource type="PackedScene" uid="uid://cmi0qw7pthtc4" path="res://Scenes/CityBuildings/stores/stores_002_812a0f2a.tscn" id="31_ncbpu"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_003_d67cc4f3.tscn" id="35_xnps6"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_004_766724d2.tscn" id="37_uf2n2"]
+[ext_resource type="PackedScene" uid="uid://8c5h53n4wygf" path="res://Scenes/CityBuildings/stores/stores_004_766724d2.tscn" id="37_uf2n2"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_005_554266d6.tscn" id="41_hjwua"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_006_d04a3ec7.tscn" id="43_j3xfc"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_007_d87ed587.tscn" id="45_livak"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_008_f7a182ef.tscn" id="47_fatcg"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_009_2248c820.tscn" id="48_tmkk1"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_010_20ac9e10.tscn" id="50_uupql"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_011_9f723ff3.tscn" id="52_nakit"]
+[ext_resource type="PackedScene" uid="uid://csbbagwf1a88x" path="res://Scenes/CityBuildings/stores/stores_011_9f723ff3.tscn" id="52_nakit"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_012_c3b413e4.tscn" id="53_o25de"]
 [ext_resource type="PackedScene" uid="uid://doaenty10x3ft" path="res://Scenes/Roads/RoadStraightCrossing.tscn" id="55_eho1g"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_013_500cad96.tscn" id="55_k1ahk"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_014_126ea44a.tscn" id="58_mk7o0"]
+[ext_resource type="PackedScene" uid="uid://da1xt0o51uxma" path="res://Scenes/CityBuildings/stores/stores_014_126ea44a.tscn" id="58_mk7o0"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_015_f544cce0.tscn" id="59_jhmog"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_016_ac59b627.tscn" id="62_6fuh2"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_017_749175fb.tscn" id="64_i1nx7"]
@@ -58,7 +58,7 @@
 [ext_resource type="PackedScene" uid="uid://c6hlutt713me0" path="res://ImportedCitySource/scenes/trafficlights_list.tscn" id="81_t7kw1"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_027_7a4a6478.tscn" id="83_vlhcu"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_028_6657dffd.tscn" id="86_1tqe6"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_029_44ee7201.tscn" id="87_6jwup"]
+[ext_resource type="PackedScene" uid="uid://tuw5qd3dxl64" path="res://Scenes/CityBuildings/stores/stores_029_44ee7201.tscn" id="87_6jwup"]
 [ext_resource type="PackedScene" uid="uid://cgsngrw1cl8rt" path="res://Scenes/CityBuildings/stores/stores_030_7e20a9fc.tscn" id="88_glic8"]
 [ext_resource type="PackedScene" uid="uid://cwjkrh53hrvjp" path="res://Scenes/CityBuildings/multilayer/multilayer_001_c5dad3d6.tscn" id="89_183p3"]
 [ext_resource type="PackedScene" uid="uid://cda3uuqc2xst1" path="res://Scenes/CityBuildings/multilayer/multilayer_002_0503229c.tscn" id="93_mr67e"]
@@ -568,7 +568,7 @@ transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 14, 0,
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 14)
 
 [node name="_Node3D_47" parent="World/City/only_transport/Road_straight" unique_id=103921346 instance=ExtResource("6_1nwvn")]
-transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 16, 0, 0)
+transform = Transform3D(1, 0, 1.0658141e-14, 0, 1, 0, -1.0658141e-14, 0, 1, 16, 0, -2)
 
 [node name="_Node3D_50" parent="World/City/only_transport/Road_straight" unique_id=1807853882 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 16)
@@ -711,6 +711,18 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 28)
 [node name="_Node3D_345" parent="World/City/only_transport/Road_straight" unique_id=546431009 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 28, 0, 30)
 
+[node name="road_straight" parent="World/City/only_transport/Road_straight" unique_id=1124464009 instance=ExtResource("6_1nwvn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -4)
+
+[node name="road_straight3" parent="World/City/only_transport/Road_straight" unique_id=1418785102 instance=ExtResource("6_1nwvn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -6)
+
+[node name="road_straight4" parent="World/City/only_transport/Road_straight" unique_id=529730451 instance=ExtResource("6_1nwvn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -8)
+
+[node name="road_straight5" parent="World/City/only_transport/Road_straight" unique_id=2132531390 instance=ExtResource("6_1nwvn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -10)
+
 [node name="Road_tsplit" type="Node3D" parent="World/City/only_transport" unique_id=217125772 groups=["road_group"]]
 
 [node name="road_tsplit2" parent="World/City/only_transport/Road_tsplit" unique_id=20326055 instance=ExtResource("7_dfq0k")]
@@ -736,6 +748,9 @@ transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 20, 0,
 
 [node name="_Node3D_322" parent="World/City/only_transport/Road_tsplit" unique_id=128428753 instance=ExtResource("7_dfq0k")]
 transform = Transform3D(-1, 0, 8.74228e-08, 0, 1, 0, -8.74228e-08, 0, -1, 30, 0, 20)
+
+[node name="road_tsplit" parent="World/City/only_transport/Road_tsplit" unique_id=628958622 instance=ExtResource("7_dfq0k")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 16, 0, 0)
 
 [node name="only_people_nav" type="Node3D" parent="World/City" unique_id=183291374]
 
@@ -788,7 +803,7 @@ transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 12, 0,
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 8, 0, 22)
 
 [node name="@Node3D@15" parent="World/City/only_people_nav/only_people/Stores" unique_id=1509186246 instance=ExtResource("41_hjwua")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, -2)
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 18, 0, -8)
 
 [node name="@Node3D@16" parent="World/City/only_people_nav/only_people/Stores" unique_id=1730213768 instance=ExtResource("43_j3xfc")]
 transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 18, 0, 2)
@@ -889,7 +904,7 @@ transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -2, 0,
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -2, 0, 4)
 
 [node name="@Node3D@48" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=1554134616 instance=ExtResource("98_xlpjy")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, -2)
 
 [node name="@Node3D@49" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=587561735 instance=ExtResource("100_inxc5")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 8, 0, 6)
@@ -898,7 +913,7 @@ transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 8, 0, 
 transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 14, 0, 2)
 
 [node name="@Node3D@51" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=1513766450 instance=ExtResource("89_183p3")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, -2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, -2)
 
 [node name="@Node3D@52" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=837622591 instance=ExtResource("102_xpnqb")]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 2, 0, 14)

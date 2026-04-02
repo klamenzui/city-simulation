@@ -1170,6 +1170,13 @@ func get_navigation_points(world = null, lateral_lane_offset: float = 0.0, _refe
 		"spawn": _compute_navigation_spawn_point(entrance_pos, access_pos, lateral_lane_offset),
 	}
 
+func get_navigation_approach_distance() -> float:
+	return clampf(
+		maxf(entrance_trigger_radius * 0.55, 0.28),
+		0.28,
+		maxf(entrance_clearance_depth * 0.45, 0.6)
+	)
+
 func _compute_navigation_spawn_point(
 	entrance_pos: Vector3,
 	access_pos: Vector3,

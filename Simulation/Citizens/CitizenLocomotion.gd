@@ -49,6 +49,8 @@ func begin_travel_to(citizen, target_pos: Vector3, target_building, world) -> bo
 		return false
 
 	citizen._setup_navigation()
+	if citizen.has_method("reset_travel_debug_state"):
+		citizen.reset_travel_debug_state()
 	citizen._travel_target_building = target_building
 	citizen._arrived_via_entrance_contact = false
 	if world != null:
@@ -207,5 +209,7 @@ func stop_travel(citizen) -> void:
 	citizen._travel_route = PackedVector3Array()
 	citizen._travel_route_index = -1
 	citizen._repath_time_left = 0.0
+	if citizen.has_method("reset_travel_debug_state"):
+		citizen.reset_travel_debug_state()
 	if citizen._nav_agent != null:
 		citizen._nav_agent.target_position = citizen.global_position

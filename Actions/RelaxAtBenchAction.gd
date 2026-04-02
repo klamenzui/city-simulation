@@ -65,8 +65,12 @@ func tick(world, citizen, dt: int) -> void:
 func finish(world, citizen) -> void:
 	if citizen != null and citizen.has_method("clear_rest_pose"):
 		citizen.clear_rest_pose(true)
-	if world != null and citizen != null:
+	if citizen != null and citizen.has_method("release_reserved_benches"):
+		citizen.release_reserved_benches(world)
+	elif world != null and citizen != null:
 		world.release_city_bench_for(citizen)
+	if citizen != null:
+		citizen.decision_cooldown_left = 0
 
 func is_using_bench(world, citizen) -> bool:
 	if world == null or citizen == null:

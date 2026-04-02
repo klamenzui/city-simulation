@@ -236,6 +236,7 @@ func set_manual_control_enabled(enabled: bool, world: World = null) -> void:
 		elif current_location != null:
 			leave_current_location(world)
 		stop_travel()
+		release_reserved_benches(world)
 		current_action = null
 		decision_cooldown_left = 0
 		_current_speed = 0.0
@@ -507,6 +508,7 @@ func apply_rest_pose() -> void:
 
 func clear_rest_pose(snap_to_ground: bool = false) -> void:
 	if not _rest_pose_active:
+		_clear_rest_pose_trace_state()
 		return
 	_rest_pose_active = false
 	_current_speed = 0.0
@@ -515,6 +517,26 @@ func clear_rest_pose(snap_to_ground: bool = false) -> void:
 	if snap_to_ground and is_inside_tree():
 		set_position_grounded(global_position)
 	_last_move_position = global_position
+	_clear_rest_pose_trace_state()
+
+func _clear_rest_pose_trace_state() -> void:
+	if not _trace_last_decision_reason.begins_with("rest_pose"):
+		return
+	_update_trace_navigation_state("clear_rest_pose", Vector3.ZERO, Vector3.ZERO)
+
+func release_reserved_benches(world: World = null, building: Building = null) -> void:
+	var reserved_building := building if building != null else current_location
+	if reserved_building != null and reserved_building.has_method("release_bench_for"):
+		reserved_building.release_bench_for(self)
+	var resolved_world := world if world != null else _world_ref
+	if resolved_world != null and resolved_world.has_method("release_city_bench_for"):
+		resolved_world.release_city_bench_for(self)
+
+func reset_travel_debug_state() -> void:
+	_debug_repath_count = 0
+	_debug_stuck_slide_count = 0
+	_debug_stuck_jump_count = 0
+	_debug_last_blocking_area = "-"
 
 func begin_travel_to(target_pos: Vector3, target_building: Building = null) -> bool:
 	return _agent.locomotion.begin_travel_to(self, target_pos, target_building, _world_ref)
@@ -532,8 +554,8 @@ func enter_building(building: Building, world: World = null, emit_log: bool = tr
 	if building == null:
 		return
 	clear_rest_pose(true)
-	if current_location != null and current_location != building and current_location.has_method("release_bench_for"):
-		current_location.release_bench_for(self)
+	if current_location != building:
+		release_reserved_benches(world, current_location)
 	var nav_points := _get_building_nav_points(building, world)
 	var entry_pos := global_position
 	stop_travel()
@@ -542,11 +564,6 @@ func enter_building(building: Building, world: World = null, emit_log: bool = tr
 	if is_outdoor:
 		set_position_grounded(global_position)
 		_inside_building = null
-		if nav_points.has("bench") and _should_auto_rest_on_outdoor_entry(building):
-			set_rest_pose(
-				nav_points.get("bench", global_position),
-				float(nav_points.get("bench_yaw", rotation.y))
-			)
 	else:
 		if nav_points.has("spawn"):
 			set_position_grounded(nav_points["spawn"])
@@ -577,8 +594,7 @@ func leave_current_location(world: World = null, emit_log: bool = true) -> void:
 
 	var exit_building := current_location
 	clear_rest_pose(true)
-	if exit_building.has_method("release_bench_for"):
-		exit_building.release_bench_for(self)
+	release_reserved_benches(world, exit_building)
 	var nav_points := _get_building_nav_points(exit_building, world)
 	var is_outdoor := exit_building.has_method("is_outdoor_destination") and exit_building.is_outdoor_destination()
 	var exit_pos: Vector3 = nav_points.get("spawn", nav_points.get("access", global_position))
@@ -692,7 +708,7 @@ func _get_building_nav_points(building: Building, world: World = null) -> Dictio
 	return nav_points
 
 func _get_building_lane_offset() -> float:
-	var lane_offsets := [-0.18, -0.06, 0.06, 0.18]
+	var lane_offsets := [-0.12, -0.04, 0.04, 0.12]
 	var lane_slot := int(abs(citizen_name.hash())) % lane_offsets.size()
 	return float(lane_offsets[lane_slot])
 
@@ -1099,17 +1115,6 @@ func _is_citizen_collider(collider: Variant) -> bool:
 		var node := collider as Node
 		return node.is_in_group("citizens")
 	return false
-
-func _should_auto_rest_on_outdoor_entry(building: Building) -> bool:
-	if building == null:
-		return false
-	if not (current_action is GoToBuildingAction):
-		return false
-	if not building.is_in_group("parks"):
-		return false
-	if job != null and job.workplace == building:
-		return false
-	return true
 
 func _is_walkable_step_surface(collider: Variant) -> bool:
 	if not (collider is Node):
