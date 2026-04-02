@@ -81,13 +81,7 @@ func finish(world: World, citizen: Citizen) -> void:
 		world.release_city_bench_for(citizen)
 		citizen.decision_cooldown_left = 0
 		return
-
-	var bench := world.get_reserved_city_bench_for(citizen)
-	if not bench.is_empty():
-		citizen.set_rest_pose(
-			bench.get("position", citizen.global_position),
-			float(bench.get("yaw", citizen.rotation.y))
-		)
+	citizen.decision_cooldown_left = 0
 
 func _update_progress_state(citizen: Citizen, dt: int) -> void:
 	if citizen == null:

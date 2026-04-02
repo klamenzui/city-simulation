@@ -3,8 +3,8 @@
 [ext_resource type="Script" uid="uid://bf6j1j6o17q7i" path="res://Entities/Citizens/Citizen.gd" id="1_qc8p4"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_0gsqa"]
-radius = 0.34521484
-height = 1.2989013
+radius = 0.21386719
+height = 1.2990814
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_cbg8l"]
 
@@ -12,7 +12,7 @@ height = 1.2989013
 script = ExtResource("1_qc8p4")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=719777068]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0.20226203, 0)
+transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0.20228906, 0)
 shape = SubResource("CapsuleShape3D_0gsqa")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=1702579198]

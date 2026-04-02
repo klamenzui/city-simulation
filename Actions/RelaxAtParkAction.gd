@@ -11,6 +11,7 @@ var _stop_energy_threshold: float = 18.0
 var _stop_health_threshold: float = 35.0
 var _using_bench: bool = false
 var _bench_reservation: Dictionary = {}
+var _park_ref: Park = null
 
 func _init(max_minutes: int = -1) -> void:
 	var config: Dictionary = BalanceConfig.get_section("actions.relax_park")
@@ -37,7 +38,9 @@ func start(world, citizen) -> void:
 	super.start(world, citizen)
 	_using_bench = false
 	_bench_reservation = {}
+	_park_ref = null
 	var park := _get_park(citizen)
+	_park_ref = park
 	if park == null:
 		if citizen != null and citizen.has_method("clear_rest_pose"):
 			citizen.clear_rest_pose(true)
@@ -85,13 +88,18 @@ func tick(world, citizen, dt: int) -> void:
 		finished = true
 
 func finish(world, citizen) -> void:
-	var park := _get_park(citizen)
+	var park := _get_owned_park(citizen)
 	if citizen != null and citizen.has_method("clear_rest_pose"):
 		citizen.clear_rest_pose(true)
-	if park != null and park.has_method("release_bench_for"):
+	if citizen != null and citizen.has_method("release_reserved_benches"):
+		citizen.release_reserved_benches(world, park)
+	elif park != null and park.has_method("release_bench_for"):
 		park.release_bench_for(citizen)
+	if citizen != null:
+		citizen.decision_cooldown_left = 0
 	_using_bench = false
 	_bench_reservation = {}
+	_park_ref = null
 
 func is_using_bench() -> bool:
 	return _using_bench
@@ -102,3 +110,8 @@ func _get_park(citizen) -> Park:
 	if citizen.current_location is Park:
 		return citizen.current_location as Park
 	return null
+
+func _get_owned_park(citizen) -> Park:
+	if _park_ref != null and is_instance_valid(_park_ref):
+		return _park_ref
+	return _get_park(citizen)

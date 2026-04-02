@@ -2,58 +2,59 @@ extends RefCounted
 class_name PedestrianGraph
 
 const CELL_STEP := 2.0
-const HALF_ROAD_WIDTH := 1.0
+const HALF_ROAD_WIDTH := 0.5
+const SIDEWALK_PATH_OFFSET := 0.8
 const SIDE_DEFS := [
 	{
 		"id": 0,
 		"neighbor": Vector3(-CELL_STEP, 0.0, 0.0),
-		"mid": Vector3(-HALF_ROAD_WIDTH, 0.0, 0.0),
+		"mid": Vector3(-SIDEWALK_PATH_OFFSET, 0.0, 0.0),
 		"tangents": [
 			Vector3(0.0, 0.0, -CELL_STEP),
 			Vector3(0.0, 0.0, CELL_STEP),
 		],
 		"corners": [
-			Vector3(-HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH),
-			Vector3(-HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH),
+			Vector3(-SIDEWALK_PATH_OFFSET, 0.0, -SIDEWALK_PATH_OFFSET),
+			Vector3(-SIDEWALK_PATH_OFFSET, 0.0, SIDEWALK_PATH_OFFSET),
 		],
 	},
 	{
 		"id": 1,
 		"neighbor": Vector3(CELL_STEP, 0.0, 0.0),
-		"mid": Vector3(HALF_ROAD_WIDTH, 0.0, 0.0),
+		"mid": Vector3(SIDEWALK_PATH_OFFSET, 0.0, 0.0),
 		"tangents": [
 			Vector3(0.0, 0.0, -CELL_STEP),
 			Vector3(0.0, 0.0, CELL_STEP),
 		],
 		"corners": [
-			Vector3(HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH),
-			Vector3(HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH),
+			Vector3(SIDEWALK_PATH_OFFSET, 0.0, -SIDEWALK_PATH_OFFSET),
+			Vector3(SIDEWALK_PATH_OFFSET, 0.0, SIDEWALK_PATH_OFFSET),
 		],
 	},
 	{
 		"id": 2,
 		"neighbor": Vector3(0.0, 0.0, -CELL_STEP),
-		"mid": Vector3(0.0, 0.0, -HALF_ROAD_WIDTH),
+		"mid": Vector3(0.0, 0.0, -SIDEWALK_PATH_OFFSET),
 		"tangents": [
 			Vector3(-CELL_STEP, 0.0, 0.0),
 			Vector3(CELL_STEP, 0.0, 0.0),
 		],
 		"corners": [
-			Vector3(-HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH),
-			Vector3(HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH),
+			Vector3(-SIDEWALK_PATH_OFFSET, 0.0, -SIDEWALK_PATH_OFFSET),
+			Vector3(SIDEWALK_PATH_OFFSET, 0.0, -SIDEWALK_PATH_OFFSET),
 		],
 	},
 	{
 		"id": 3,
 		"neighbor": Vector3(0.0, 0.0, CELL_STEP),
-		"mid": Vector3(0.0, 0.0, HALF_ROAD_WIDTH),
+		"mid": Vector3(0.0, 0.0, SIDEWALK_PATH_OFFSET),
 		"tangents": [
 			Vector3(-CELL_STEP, 0.0, 0.0),
 			Vector3(CELL_STEP, 0.0, 0.0),
 		],
 		"corners": [
-			Vector3(-HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH),
-			Vector3(HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH),
+			Vector3(-SIDEWALK_PATH_OFFSET, 0.0, SIDEWALK_PATH_OFFSET),
+			Vector3(SIDEWALK_PATH_OFFSET, 0.0, SIDEWALK_PATH_OFFSET),
 		],
 	},
 ]
@@ -196,9 +197,30 @@ func _refine_building_access_point(building: Building, boundary_point: Vector3) 
 		return boundary_point
 
 	var entrance_pos := building.get_entrance_pos()
-	var refined := entrance_pos.lerp(boundary_point, 0.58)
+	var outward_dir := boundary_point - entrance_pos
+	outward_dir.y = 0.0
+	if outward_dir.length_squared() <= 0.0001:
+		outward_dir = entrance_pos - _get_building_world_center(building)
+		outward_dir.y = 0.0
+	if outward_dir.length_squared() <= 0.0001:
+		return boundary_point
+	outward_dir = outward_dir.normalized()
+
+	var boundary_distance := _xz_distance(boundary_point, entrance_pos)
+	var desired_distance := minf(boundary_distance, _get_building_access_clearance(building))
+	var refined := entrance_pos + outward_dir * desired_distance
 	refined.y = boundary_point.y
 	return refined
+
+func _get_building_access_clearance(building: Building) -> float:
+	if building == null:
+		return 0.0
+	if building.has_method("get_navigation_approach_distance"):
+		return float(building.get_navigation_approach_distance())
+	return maxf(
+		building.entrance_clearance_depth * 0.8,
+		building.entrance_trigger_outset + building.entrance_trigger_radius + 0.25
+	)
 
 func _get_building_world_center(building: Building) -> Vector3:
 	if building == null:
@@ -444,10 +466,10 @@ func _build_corner_perimeter_links() -> void:
 	for key in _crosswalk_cells.keys():
 		var road := _crosswalk_cells[key] as Vector3
 		var axis := str(_crosswalk_axes.get(key, "x"))
-		var north_west := _append_corner_node(road + Vector3(-HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH))
-		var north_east := _append_corner_node(road + Vector3(HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH))
-		var south_west := _append_corner_node(road + Vector3(-HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH))
-		var south_east := _append_corner_node(road + Vector3(HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH))
+		var north_west := _append_corner_node(road + Vector3(-SIDEWALK_PATH_OFFSET, 0.0, -SIDEWALK_PATH_OFFSET))
+		var north_east := _append_corner_node(road + Vector3(SIDEWALK_PATH_OFFSET, 0.0, -SIDEWALK_PATH_OFFSET))
+		var south_west := _append_corner_node(road + Vector3(-SIDEWALK_PATH_OFFSET, 0.0, SIDEWALK_PATH_OFFSET))
+		var south_east := _append_corner_node(road + Vector3(SIDEWALK_PATH_OFFSET, 0.0, SIDEWALK_PATH_OFFSET))
 
 		if axis == "x":
 			_connect_nodes(north_west, south_west)
@@ -561,19 +583,19 @@ func _get_crosswalk_side_corner_indices(road: Vector3, cross_dir: Vector3, forwa
 	if absf(cross_dir.x) >= absf(cross_dir.z):
 		var use_east_side := (cross_dir.x >= 0.0) if forward_side else (cross_dir.x < 0.0)
 		if use_east_side:
-			corners.append(_append_corner_node(road + Vector3(HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH)))
-			corners.append(_append_corner_node(road + Vector3(HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH)))
+			corners.append(_append_corner_node(road + Vector3(SIDEWALK_PATH_OFFSET, 0.0, -SIDEWALK_PATH_OFFSET)))
+			corners.append(_append_corner_node(road + Vector3(SIDEWALK_PATH_OFFSET, 0.0, SIDEWALK_PATH_OFFSET)))
 		else:
-			corners.append(_append_corner_node(road + Vector3(-HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH)))
-			corners.append(_append_corner_node(road + Vector3(-HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH)))
+			corners.append(_append_corner_node(road + Vector3(-SIDEWALK_PATH_OFFSET, 0.0, -SIDEWALK_PATH_OFFSET)))
+			corners.append(_append_corner_node(road + Vector3(-SIDEWALK_PATH_OFFSET, 0.0, SIDEWALK_PATH_OFFSET)))
 	else:
 		var use_south_side := (cross_dir.z >= 0.0) if forward_side else (cross_dir.z < 0.0)
 		if use_south_side:
-			corners.append(_append_corner_node(road + Vector3(-HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH)))
-			corners.append(_append_corner_node(road + Vector3(HALF_ROAD_WIDTH, 0.0, HALF_ROAD_WIDTH)))
+			corners.append(_append_corner_node(road + Vector3(-SIDEWALK_PATH_OFFSET, 0.0, SIDEWALK_PATH_OFFSET)))
+			corners.append(_append_corner_node(road + Vector3(SIDEWALK_PATH_OFFSET, 0.0, SIDEWALK_PATH_OFFSET)))
 		else:
-			corners.append(_append_corner_node(road + Vector3(-HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH)))
-			corners.append(_append_corner_node(road + Vector3(HALF_ROAD_WIDTH, 0.0, -HALF_ROAD_WIDTH)))
+			corners.append(_append_corner_node(road + Vector3(-SIDEWALK_PATH_OFFSET, 0.0, -SIDEWALK_PATH_OFFSET)))
+			corners.append(_append_corner_node(road + Vector3(SIDEWALK_PATH_OFFSET, 0.0, -SIDEWALK_PATH_OFFSET)))
 	return corners
 
 func _iter_road_nodes(root: Node3D) -> Array[Node3D]:

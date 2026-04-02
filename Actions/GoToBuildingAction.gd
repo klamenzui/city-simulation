@@ -119,6 +119,7 @@ func finish(world: World, citizen: Citizen) -> void:
 		return
 	_reserve_park_bench(citizen, target)
 	citizen.enter_building(target, world)
+	citizen.decision_cooldown_left = 0
 
 func _update_progress_state(citizen: Citizen, dt: int) -> void:
 	if citizen == null:

@@ -19,12 +19,27 @@ Wichtige Bereiche:
 ## Aktueller Funktionsumfang
 
 - Citizens koennen wohnen, arbeiten, essen, Freizeitorte besuchen und Gebaeude betreten/verlassen.
+- Freie `Node3D`-Marker mit Namen wie `Bench`, `Bank`, `Seat` oder `Sit` koennen als Baenke dienen: im Park fuer `fun` plus einen kleinen `energy`-Bonus, ausserhalb vom Park fuer eine kleine `energy`-Erholung.
 - Das Projekt nutzt lokale Hindernisvermeidung mit Raycasts plus globale Wegfindung ueber den Fussgaenger-Graph.
 - Strassenquerungen werden ueber Crosswalk-/Zebra-Knoten modelliert.
 - Es gibt ein Zeitmodell mit Pause, Geschwindigkeitsstufen und Tagesfortschritt.
 - Economy-System mit Markt, Jobs, Gehalt, Steuern, Welfare, Gebaeudezustand und oeffentlicher Finanzierung ist vorhanden.
 - Sky/Ocean und Tag-Nacht-Visualisierung sind an die Simulationszeit gekoppelt.
 - Gebaeude- und Strassenmaterialien werden beim Start matter gemacht, damit sie weniger metallisch wirken.
+
+## Baenke und Parks
+
+- Parkbesuche reservieren beim Hinlaufen eine freie Park-Bank, laufen auf deren Marker zu und aktivieren die eigentliche Sitz-/Rest-Pose erst mit `RelaxAtParkAction`.
+- Wenn im Park keine freie Bank vorhanden ist, bleibt der Parkbesuch moeglich, gibt aber nur den normalen `fun`-Effekt ohne zusaetzlichen `energy`-Gewinn.
+- Freie Stadt-Baenke ausserhalb von Parks werden separat ueber die Energy-GOAP genutzt (`GoToBenchAction` -> `RelaxAtBenchAction`).
+- Reservierungen werden bei Abbruch, Zielwechsel oder Action-Ende noch im selben Sim-Tick wieder freigegeben, damit Citizens keine Bank dauerhaft blockieren und kein veralteter Rest-Zustand in den Trace-Daten stehen bleibt.
+- Nach `RelaxPark` und `RelaxBench` wird die naechste Planung sofort wieder freigegeben, damit Citizens nicht minutenlang grundlos im `idle` zwischen zwei Freizeit-/Rueckweg-Entscheidungen stehen bleiben.
+
+## Fussgaenger-Routing
+
+- Gebaeude-Access-Punkte liegen jetzt bewusst naeher an der Gebaeudeseite des Gehwegs statt an der Strassenkante.
+- Der Pedestrian-Graph fuehrt Citizens etwas tiefer auf dem Gehweg entlang, damit sie seltener an Lampen, Triggern oder Strassenrand-Kollisionen haengen bleiben.
+- Die kleinen lane offsets fuer Citizens bleiben erhalten, sind aber enger begrenzt, damit sie nicht wieder in Richtung Fahrbahn ausbeulen.
 
 ## Economy-Modell
 
@@ -177,6 +192,12 @@ Die Logdatei enthaelt unter anderem:
 - `CitizenTraceAll`: globale Kurztraces
 - `MapDump`: Snapshot von Gebaeuden, Citizens, Strassen, Crosswalks und Lichtern
 
+Wichtig fuer die Analyse:
+
+- `action=...` kommt direkt aus `current_action`.
+- `decision=...` ist der letzte Bewegungs-/Lokomotionsgrund und nicht automatisch identisch mit dem aktuellen GOAP-Action-State.
+- `crowd[repath/stuck_slide/jump/hotspot]` beschreibt den aktuellen beziehungsweise letzten aktiven Reiseversuch und wird bei einem neuen Weg neu begonnen.
+
 Die Session wird mit `sid=... pid=...` markiert, damit mehrere Laeufe unterscheidbar bleiben.
 
 ## Balancing
@@ -205,6 +226,7 @@ Wichtige Beispiele:
 - `economy.jobs.allowed_building_types.*`
 - `citizen.needs.*`
 - `actions.work.*`, `actions.sleep.*`, `actions.eat_restaurant.*`
+- `actions.relax_park.*`, `actions.relax_bench.*`
 - `planner.*` fuer Prioritaeten und kritische Schwellen
 - `goap.*` fuer Entscheidungsgrenzen, Action-Kosten und Ziel-Reisezeiten
 - `buildings.university.*`, `buildings.restaurant.*`, `buildings.park.*`
