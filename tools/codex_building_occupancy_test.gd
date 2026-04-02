@@ -5,6 +5,7 @@ const ParkScript = preload("res://Entities/Buildings/Park.gd")
 const UniversityScript = preload("res://Entities/Buildings/University.gd")
 const CitizenScript = preload("res://Entities/Citizens/Citizen.gd")
 const WorldScript = preload("res://Simulation/World.gd")
+const ActionScript = preload("res://Actions/Action.gd")
 const StudyAtUniversityActionScript = preload("res://Actions/StudyAtUniversityAction.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
 const GoToBenchActionScript = preload("res://Actions/GoToBenchAction.gd")
@@ -37,6 +38,8 @@ func _run_all_tests() -> void:
 		"agent_finishes_relax_park_without_stale_rest_trace",
 		"manual_control_releases_city_bench_reservation",
 		"world_city_bench_excludes_park_benches",
+		"world_city_bench_cache_refreshes_on_scene_change",
+		"action_default_needs_modifier_is_isolated",
 		"relax_bench_uses_energy_bonus",
 		"worker_count_lifecycle",
 	]:
@@ -89,6 +92,10 @@ func _run_test(test_name: String) -> String:
 			return _test_manual_control_releases_city_bench_reservation()
 		"world_city_bench_excludes_park_benches":
 			return _test_world_city_bench_excludes_park_benches()
+		"world_city_bench_cache_refreshes_on_scene_change":
+			return _test_world_city_bench_cache_refreshes_on_scene_change()
+		"action_default_needs_modifier_is_isolated":
+			return _test_action_default_needs_modifier_is_isolated()
 		"relax_bench_uses_energy_bonus":
 			return _test_relax_bench_uses_energy_bonus()
 		"worker_count_lifecycle":
@@ -409,6 +416,36 @@ func _test_world_city_bench_excludes_park_benches() -> String:
 
 	world.release_city_bench_for(citizen)
 	_free_world(world)
+	return _current_error
+
+func _test_world_city_bench_cache_refreshes_on_scene_change() -> String:
+	var world: World = _new_world()
+	var building: Building = _new_building("Bench Cache House")
+	var citizen: Citizen = _new_citizen("Bench Cache Finder")
+	world.register_building(building)
+	world.register_citizen(citizen)
+
+	_expect(not world.has_available_city_bench_for(citizen, citizen.global_position), "without markers the city bench cache should start empty")
+
+	var bench := _add_bench(building, "Bench_Late", Vector3(1.8, 0.0, 0.2), 0.35)
+	var reservation := world.reserve_city_bench_for(citizen, citizen.global_position)
+	_expect(not reservation.is_empty(), "adding a bench after the initial lookup should invalidate the cache")
+	_expect_eq(reservation.get("node"), bench, "cache rebuild should discover the newly added city bench")
+
+	world.release_city_bench_for(citizen)
+	bench.free()
+	_expect(not world.has_available_city_bench_for(citizen, citizen.global_position), "removing the bench should invalidate the cache again")
+
+	_free_world(world)
+	return _current_error
+
+func _test_action_default_needs_modifier_is_isolated() -> String:
+	var action := ActionScript.new()
+	var first_modifier := action.get_needs_modifier(null, null)
+	first_modifier["energy_add"] = 123.0
+	var second_modifier := action.get_needs_modifier(null, null)
+
+	_expect(is_equal_approx(float(second_modifier.get("energy_add", -1.0)), 0.0), "default action needs modifiers should not leak mutations across calls")
 	return _current_error
 
 func _test_relax_bench_uses_energy_bonus() -> String:

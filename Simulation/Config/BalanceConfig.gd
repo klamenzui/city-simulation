@@ -79,6 +79,10 @@ static func _default_data() -> Dictionary:
 		"simulation": {
 			"initial_citizen_count": 15,
 		},
+		"debug": {
+			"enable_all_citizen_trace": false,
+			"enable_map_snapshot_log": false,
+		},
 		"world": {
 			"minutes_per_tick": 1,
 			"tick_interval_sec": 0.5,

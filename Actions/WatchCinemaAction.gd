@@ -52,7 +52,7 @@ func start(world, citizen) -> void:
 
 func get_needs_modifier(world, citizen) -> Dictionary:
 	if not _ticket_paid:
-		return Action.DEFAULT_NEEDS_MOD
+		return Action.make_default_needs_modifier()
 	return _needs_modifier
 
 func tick(world, citizen, dt: int) -> void:

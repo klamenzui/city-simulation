@@ -6,8 +6,6 @@ extends Node3D
 const CITIZEN_COUNT := 15
 const SELECTED_CITIZEN_TRACE_INTERVAL_SEC := 1.0
 const ALL_CITIZEN_TRACE_INTERVAL_SEC := 0.5
-const ENABLE_ALL_CITIZEN_TRACE := true
-const ENABLE_MAP_SNAPSHOT_LOG := true
 const SEARCH_RESULT_LIMIT := 12
 const RoadBuilderScript = preload("res://Simulation/Bootstrap/RoadBuilder.gd")
 const ImportedCitySetupScript = preload("res://Simulation/Bootstrap/ImportedCitySetup.gd")
@@ -80,10 +78,13 @@ var _building_status_badge_layer: CanvasLayer = null
 var _building_status_badge_panel: PanelContainer = null
 var _building_status_badge_label: Label = null
 var _building_status_badge_style: StyleBoxFlat = null
+var _enable_all_citizen_trace: bool = false
+var _enable_map_snapshot_log: bool = false
 
 func _ready() -> void:
 	SimLogger.start_new_session(false)
 	get_viewport().physics_object_picking = true
+	_load_debug_runtime_flags()
 
 	_setup_world_systems()
 	_setup_citizen_path_debug()
@@ -94,6 +95,10 @@ func _ready() -> void:
 	_spawn_citizens()
 	call_deferred("_log_initial_debug_snapshot")
 	_build_hud()
+
+func _load_debug_runtime_flags() -> void:
+	_enable_all_citizen_trace = BalanceConfig.get_bool("debug.enable_all_citizen_trace", false)
+	_enable_map_snapshot_log = BalanceConfig.get_bool("debug.enable_map_snapshot_log", false)
 
 func _process(delta: float) -> void:
 	if _controlled_citizen != null and not is_instance_valid(_controlled_citizen):
@@ -407,9 +412,9 @@ func _spawn_citizens() -> void:
 			citizen.clicked.connect(cb)
 
 func _log_initial_debug_snapshot() -> void:
-	if ENABLE_MAP_SNAPSHOT_LOG:
+	if _enable_map_snapshot_log:
 		_log_map_snapshot()
-	if ENABLE_ALL_CITIZEN_TRACE:
+	if _enable_all_citizen_trace:
 		_all_citizen_trace_left = 0.0
 		_log_all_citizen_traces("spawn")
 
@@ -549,7 +554,7 @@ func _log_selected_citizen_trace(event_name: String) -> void:
 	])
 
 func _update_all_citizen_trace(delta: float) -> void:
-	if not ENABLE_ALL_CITIZEN_TRACE:
+	if not _enable_all_citizen_trace:
 		return
 	_all_citizen_trace_left -= delta
 	if _all_citizen_trace_left > 0.0:

@@ -723,6 +723,18 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -8)
 [node name="road_straight5" parent="World/City/only_transport/Road_straight" unique_id=2132531390 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -10)
 
+[node name="road_straight6" parent="World/City/only_transport/Road_straight" unique_id=1208957236 instance=ExtResource("6_1nwvn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -12)
+
+[node name="road_straight7" parent="World/City/only_transport/Road_straight" unique_id=321394793 instance=ExtResource("6_1nwvn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -14)
+
+[node name="road_straight8" parent="World/City/only_transport/Road_straight" unique_id=1055876997 instance=ExtResource("6_1nwvn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -16)
+
+[node name="road_straight9" parent="World/City/only_transport/Road_straight" unique_id=593757496 instance=ExtResource("6_1nwvn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -18)
+
 [node name="Road_tsplit" type="Node3D" parent="World/City/only_transport" unique_id=217125772 groups=["road_group"]]
 
 [node name="road_tsplit2" parent="World/City/only_transport/Road_tsplit" unique_id=20326055 instance=ExtResource("7_dfq0k")]

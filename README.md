@@ -34,6 +34,7 @@ Wichtige Bereiche:
 - Freie Stadt-Baenke ausserhalb von Parks werden separat ueber die Energy-GOAP genutzt (`GoToBenchAction` -> `RelaxAtBenchAction`).
 - Reservierungen werden bei Abbruch, Zielwechsel oder Action-Ende noch im selben Sim-Tick wieder freigegeben, damit Citizens keine Bank dauerhaft blockieren und kein veralteter Rest-Zustand in den Trace-Daten stehen bleibt.
 - Nach `RelaxPark` und `RelaxBench` wird die naechste Planung sofort wieder freigegeben, damit Citizens nicht minutenlang grundlos im `idle` zwischen zwei Freizeit-/Rueckweg-Entscheidungen stehen bleiben.
+- Stadt-Baenke werden zur Laufzeit gecacht und bei Scene-Aenderungen neu aufgebaut, damit die Reservierungssuche nicht bei jedem GOAP-Check rekursiv den kompletten Szenenbaum ablaufen muss.
 
 ## Fussgaenger-Routing
 
@@ -191,6 +192,8 @@ Die Logdatei enthaelt unter anderem:
 - `CitizenTrace`: gewaehlter Citizen
 - `CitizenTraceAll`: globale Kurztraces
 - `MapDump`: Snapshot von Gebaeuden, Citizens, Strassen, Crosswalks und Lichtern
+
+Die globalen Debug-Dumps sind absichtlich nicht mehr standardmaessig aktiv. Fuer laengere Analysen lassen sie sich ueber `config/balance.json` unter `debug.enable_all_citizen_trace` und `debug.enable_map_snapshot_log` gezielt einschalten.
 
 Wichtig fuer die Analyse:
 
