@@ -31,6 +31,8 @@ signal paused_changed(paused: bool)
 signal speed_changed(multiplier: float)
 
 var _timer: Timer
+var _cached_city_bench_nodes: Array[Node3D] = []
+var _city_bench_cache_dirty: bool = true
 
 func _ready() -> void:
 	#use_collision = true
@@ -45,6 +47,7 @@ func _ready() -> void:
 	city_account.balance = BalanceConfig.get_int("world.city_reserve_start_balance", 18000)
 
 	_register_existing_scene_nodes(get_tree())
+	_connect_tree_cache_invalidation()
 
 	_timer = Timer.new()
 	speed_multiplier = maxf(speed_multiplier, 0.1)
@@ -55,6 +58,16 @@ func _ready() -> void:
 
 	time.payday.connect(_on_payday)
 	time.day_changed.connect(_on_day_changed)
+
+func _connect_tree_cache_invalidation() -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+	if not tree.node_added.is_connected(_on_scene_node_added):
+		tree.node_added.connect(_on_scene_node_added)
+	if not tree.node_removed.is_connected(_on_scene_node_removed):
+		tree.node_removed.connect(_on_scene_node_removed)
+	_mark_city_bench_cache_dirty()
 
 func _register_existing_scene_nodes(tree: SceneTree) -> void:
 	if tree == null:
@@ -563,11 +576,28 @@ func _find_best_city_bench(reference_pos: Vector3) -> Node3D:
 	return best_bench
 
 func _get_city_bench_nodes() -> Array[Node3D]:
-	var benches: Array[Node3D] = []
 	if not is_inside_tree():
-		return benches
-	_collect_city_bench_nodes(get_tree().get_root(), benches)
-	return benches
+		return []
+	if _city_bench_cache_dirty:
+		_rebuild_city_bench_cache()
+	return _cached_city_bench_nodes
+
+func _rebuild_city_bench_cache() -> void:
+	_cached_city_bench_nodes.clear()
+	if not is_inside_tree():
+		_city_bench_cache_dirty = false
+		return
+	_collect_city_bench_nodes(get_tree().get_root(), _cached_city_bench_nodes)
+	_city_bench_cache_dirty = false
+
+func _mark_city_bench_cache_dirty() -> void:
+	_city_bench_cache_dirty = true
+
+func _on_scene_node_added(_node: Node) -> void:
+	_mark_city_bench_cache_dirty()
+
+func _on_scene_node_removed(_node: Node) -> void:
+	_mark_city_bench_cache_dirty()
 
 func _collect_city_bench_nodes(node: Node, out: Array[Node3D]) -> void:
 	for child in node.get_children():

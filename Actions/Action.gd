@@ -1,8 +1,6 @@
 extends Resource
 class_name Action
 
-# BUG FIX: Added hunger_add to DEFAULT_NEEDS_MOD - was missing, causing
-# mod.get("hunger_add", 0.0) to always return 0 for idle state.
 const DEFAULT_NEEDS_MOD := {
 	"hunger_mul": 1.0,
 	"energy_mul": 1.0,
@@ -38,6 +36,9 @@ func finish(world, citizen) -> void:
 
 func is_done() -> bool:
 	return finished
-	
+
+static func make_default_needs_modifier() -> Dictionary:
+	return DEFAULT_NEEDS_MOD.duplicate(true)
+
 func get_needs_modifier(world, citizen) -> Dictionary:
-	return DEFAULT_NEEDS_MOD
+	return make_default_needs_modifier()
