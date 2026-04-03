@@ -39,6 +39,9 @@ func _run_all_tests() -> void:
 		"manual_control_releases_city_bench_reservation",
 		"world_city_bench_excludes_park_benches",
 		"world_city_bench_cache_refreshes_on_scene_change",
+		"world_auto_registers_runtime_park_queries",
+		"world_unregisters_removed_park_from_queries",
+		"citizen_auto_resolves_world_for_queries",
 		"action_default_needs_modifier_is_isolated",
 		"relax_bench_uses_energy_bonus",
 		"worker_count_lifecycle",
@@ -94,6 +97,12 @@ func _run_test(test_name: String) -> String:
 			return _test_world_city_bench_excludes_park_benches()
 		"world_city_bench_cache_refreshes_on_scene_change":
 			return _test_world_city_bench_cache_refreshes_on_scene_change()
+		"world_auto_registers_runtime_park_queries":
+			return _test_world_auto_registers_runtime_park_queries()
+		"world_unregisters_removed_park_from_queries":
+			return _test_world_unregisters_removed_park_from_queries()
+		"citizen_auto_resolves_world_for_queries":
+			return _test_citizen_auto_resolves_world_for_queries()
 		"action_default_needs_modifier_is_isolated":
 			return _test_action_default_needs_modifier_is_isolated()
 		"relax_bench_uses_energy_bonus":
@@ -435,6 +444,41 @@ func _test_world_city_bench_cache_refreshes_on_scene_change() -> String:
 	world.release_city_bench_for(citizen)
 	bench.free()
 	_expect(not world.has_available_city_bench_for(citizen, citizen.global_position), "removing the bench should invalidate the cache again")
+
+	_free_world(world)
+	return _current_error
+
+func _test_world_auto_registers_runtime_park_queries() -> String:
+	var world: World = _new_world()
+	var park: Park = _new_park("Auto Park")
+
+	_expect_eq(world.find_nearest_park(Vector3.ZERO), park, "runtime-added parks should auto-register for nearest park queries")
+	_expect_eq(world.find_nearest_building_with_service(Vector3.ZERO, "fun", false, null), park, "runtime-added parks should also populate the generic service registry")
+
+	_free_world(world)
+	return _current_error
+
+func _test_world_unregisters_removed_park_from_queries() -> String:
+	var world: World = _new_world()
+	var park: Park = _new_park("Removed Park")
+
+	_expect_eq(world.find_nearest_park(Vector3.ZERO), park, "precondition failed: park should be queryable before removal")
+	park.free()
+	_expect(world.find_nearest_park(Vector3.ZERO) == null, "removed parks should be pruned from nearest park queries")
+	_expect(world.find_nearest_building_with_service(Vector3.ZERO, "fun", false, null) == null, "removed parks should also leave the generic service registry")
+
+	_free_world(world)
+	return _current_error
+
+func _test_citizen_auto_resolves_world_for_queries() -> String:
+	var world: World = _new_world()
+	var park: Park = _new_park("Query Park")
+	var citizen: Citizen = _new_citizen("Query Citizen")
+
+	var found_park := citizen._find_nearest_park(Vector3.ZERO)
+
+	_expect_eq(found_park, park, "citizen should still find the nearest park through the world service")
+	_expect_eq(citizen._world_ref, world, "citizen query helpers should auto-resolve and retain the world reference")
 
 	_free_world(world)
 	return _current_error

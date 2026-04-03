@@ -7,77 +7,27 @@ const CITIZEN_COUNT := 15
 const SELECTED_CITIZEN_TRACE_INTERVAL_SEC := 1.0
 const ALL_CITIZEN_TRACE_INTERVAL_SEC := 0.5
 const SEARCH_RESULT_LIMIT := 12
-const RoadBuilderScript = preload("res://Simulation/Bootstrap/RoadBuilder.gd")
-const ImportedCitySetupScript = preload("res://Simulation/Bootstrap/ImportedCitySetup.gd")
+const SceneBootstrapControllerScript = preload("res://Simulation/Bootstrap/SceneBootstrapController.gd")
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
-const RestaurantScene = preload("res://Scenes/Restaurant.tscn")
-const SupermarketScene = preload("res://Scenes/Supermarket.tscn")
-const ShopScene = preload("res://Scenes/Shop.tscn")
-const CinemaScene = preload("res://Scenes/Cinema.tscn")
-const UniversityScene = preload("res://Scenes/University.tscn")
-const CityHallScene = preload("res://Scenes/CityHall.tscn")
-const FarmScene = preload("res://Scenes/Farm.tscn")
-const FactoryScene = preload("res://Scenes/Factory.tscn")
+const RuntimeDebugLoggerScript = preload("res://Simulation/Debug/RuntimeDebugLogger.gd")
+const SelectionDebugControllerScript = preload("res://Simulation/Debug/SelectionDebugController.gd")
+const SelectionStateControllerScript = preload("res://Simulation/Debug/SelectionStateController.gd")
+const BuildingStatusStyleResolverScript = preload("res://Simulation/UI/BuildingStatusStyleResolver.gd")
+const HudOverlayControllerScript = preload("res://Simulation/UI/HudOverlayController.gd")
+const SimulationInteractionControllerScript = preload("res://Simulation/UI/SimulationInteractionController.gd")
+const SimulationHudControllerScript = preload("res://Simulation/UI/SimulationHudController.gd")
+const BuildingStatusBadgeControllerScript = preload("res://Simulation/UI/BuildingStatusBadgeController.gd")
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
-const OCEAN_NODE_NAME := "Ocean"
-const MATTE_ROUGHNESS_FLOOR := 0.9
-const MATTE_METALLIC_CAP := 0.02
-const MATTE_SPECULAR_CAP := 0.18
-const BUILDING_STATUS_OPEN_COLOR := Color(0.46, 0.78, 0.56, 1.0)
-const BUILDING_STATUS_UNDERFUNDED_COLOR := Color(0.82, 0.72, 0.36, 1.0)
-const BUILDING_STATUS_STRUGGLING_COLOR := Color(0.86, 0.56, 0.32, 1.0)
-const BUILDING_STATUS_CLOSED_COLOR := Color(0.86, 0.65, 0.35, 1.0)
-const BUILDING_STATUS_UNSTAFFED_COLOR := Color(0.86, 0.36, 0.36, 1.0)
-const BUILDING_STATUS_NO_FUNDS_COLOR := Color(0.78, 0.28, 0.28, 1.0)
-const BUILDING_STATUS_UNSTAFFED_PULSE_SPEED := 5.0
-const BUILDING_STATUS_UNSTAFFED_PULSE_MIN_ALPHA := 0.72
 const BUILDING_OVERVIEW_REFRESH_INTERVAL_SEC := 0.5
 
-var _pause_btn: Button
-var _speed_label: Label
-var _date_label: Label
-var _clock_label: Label
-var _citizen_stats_label: Label
-var _control_mode_panel: PanelContainer
-var _control_mode_label: Label
-var _building_overview_btn: Button
-var _building_overview_panel: PanelContainer
-var _building_overview_label: RichTextLabel
-var _building_overview_refresh_left: float = 0.0
-var _search_input: LineEdit
-var _search_results_list: ItemList
-var _search_results: Array[Dictionary] = []
-var _debug_panel: DebugPanel
-var _selected_citizen: Citizen = null
-var _selected_building: Building = null
-var _controlled_citizen: Citizen = null
-var _entity_clicked_this_frame: bool = false
-var _building_panel_refresh_left: float = 0.0
-var _selected_citizen_trace_left: float = 0.0
-var _all_citizen_trace_left: float = 0.0
-var _citizen_path_debug: MeshInstance3D = null
-var _citizen_path_debug_mesh: ImmediateMesh = null
-var _citizen_path_line_material: StandardMaterial3D = null
-var _citizen_path_active_material: StandardMaterial3D = null
-var _citizen_path_start_material: StandardMaterial3D = null
-var _citizen_path_waypoint_material: StandardMaterial3D = null
-var _citizen_path_end_material: StandardMaterial3D = null
-var _citizen_path_failed_material: StandardMaterial3D = null
-var _building_nav_debug: MeshInstance3D = null
-var _building_nav_debug_mesh: ImmediateMesh = null
-var _building_nav_link_material: StandardMaterial3D = null
-var _building_nav_source_entrance_material: StandardMaterial3D = null
-var _building_nav_source_access_material: StandardMaterial3D = null
-var _building_nav_source_spawn_material: StandardMaterial3D = null
-var _building_nav_extra_entrance_material: StandardMaterial3D = null
-var _building_nav_extra_access_material: StandardMaterial3D = null
-var _building_nav_visit_material: StandardMaterial3D = null
-var _building_nav_target_entrance_material: StandardMaterial3D = null
-var _building_nav_target_access_material: StandardMaterial3D = null
-var _building_status_badge_layer: CanvasLayer = null
-var _building_status_badge_panel: PanelContainer = null
-var _building_status_badge_label: Label = null
-var _building_status_badge_style: StyleBoxFlat = null
+var _building_status_style_resolver = null
+var _interaction_controller = null
+var _hud_controller = null
+var _hud_overlay_controller = null
+var _selection_state_controller = null
+var _runtime_debug_logger = null
+var _selection_debug_controller = null
+var _building_status_badge_controller = null
 var _enable_all_citizen_trace: bool = false
 var _enable_map_snapshot_log: bool = false
 
@@ -87,1453 +37,144 @@ func _ready() -> void:
 	_load_debug_runtime_flags()
 
 	_setup_world_systems()
-	_setup_citizen_path_debug()
-	_setup_building_nav_debug()
-	_setup_building_status_badge()
-	_build_debug_panel()
+	_setup_runtime_debug_logger()
+	_setup_selection_debug_controller()
+	_setup_building_status_style_resolver()
+	_setup_building_status_badge_controller()
+	_setup_interaction_controller()
 	_bind_building_clicks()
 	_spawn_citizens()
 	call_deferred("_log_initial_debug_snapshot")
 	_build_hud()
+	_setup_selection_state_controller()
 
 func _load_debug_runtime_flags() -> void:
 	_enable_all_citizen_trace = BalanceConfig.get_bool("debug.enable_all_citizen_trace", false)
 	_enable_map_snapshot_log = BalanceConfig.get_bool("debug.enable_map_snapshot_log", false)
 
 func _process(delta: float) -> void:
-	if _controlled_citizen != null and not is_instance_valid(_controlled_citizen):
-		_set_citizen_control_mode(false)
-	_update_selected_citizen_path_debug()
-	_update_selected_building_nav_debug()
-	_update_selected_building_status_badge()
-	_update_selected_citizen_trace(delta)
-	_update_all_citizen_trace(delta)
-	_update_building_overview(delta)
-
-	if _selected_building != null and _debug_panel != null and _debug_panel.visible:
-		_building_panel_refresh_left -= delta
-		if _building_panel_refresh_left <= 0.0:
-			_building_panel_refresh_left = 0.25
-			_selected_building.refresh_info_panel(world)
+	var selected_citizen: Citizen = null
+	var selected_building: Building = null
+	if _selection_state_controller != null:
+		_selection_state_controller.ensure_valid_control_target()
+		selected_citizen = _selection_state_controller.get_selected_citizen()
+		selected_building = _selection_state_controller.get_selected_building()
+	if _runtime_debug_logger != null:
+		_runtime_debug_logger.update(delta, selected_citizen)
+	if _selection_debug_controller != null:
+		_selection_debug_controller.update(selected_citizen, selected_building, world)
+	if _building_status_badge_controller != null:
+		_building_status_badge_controller.update(selected_building, world)
+	if _hud_overlay_controller != null:
+		_hud_overlay_controller.update(delta)
+	if _interaction_controller != null:
+		_interaction_controller.update(delta)
 
 func _setup_world_systems() -> void:
-	var has_scene_city: bool = get_node_or_null("World/City") != null
-	var imported_city: Node3D = null
-	if not has_scene_city:
-		imported_city = ImportedCitySetupScript.ensure_city_visual(self)
+	SceneBootstrapControllerScript.setup_scene(self, world)
 
-	_spawn_missing_core_buildings()
-	NavigationSetup.ensure_region(self, world)
-	WorldSetup.configure_scene_buildings(get_tree(), world)
-	if not has_scene_city and imported_city == null:
-		RoadBuilderScript.build_simple_roads(self, world)
-	_apply_matte_city_materials()
+func _setup_runtime_debug_logger() -> void:
+	_runtime_debug_logger = RuntimeDebugLoggerScript.new()
+	_runtime_debug_logger.setup(
+		self,
+		world,
+		_enable_all_citizen_trace,
+		_enable_map_snapshot_log,
+		SELECTED_CITIZEN_TRACE_INTERVAL_SEC,
+		ALL_CITIZEN_TRACE_INTERVAL_SEC
+	)
 
-	world.rebuild_road_graph(self)
-	world.rebuild_pedestrian_graph(self)
-	_ensure_ocean()
+func _setup_selection_debug_controller() -> void:
+	_selection_debug_controller = SelectionDebugControllerScript.new()
+	_selection_debug_controller.setup(self)
 
-func _apply_matte_city_materials() -> void:
-	var processed_roots: Dictionary = {}
-	var matte_cache: Dictionary = {}
-	for path in ["World/City", "ImportedCity"]:
-		var root := get_node_or_null(path)
-		if root == null:
-			continue
-		processed_roots[root.get_instance_id()] = true
-		_apply_matte_materials_recursive(root, matte_cache)
+func _setup_building_status_style_resolver() -> void:
+	_building_status_style_resolver = BuildingStatusStyleResolverScript.new()
 
-	for building_node in get_tree().get_nodes_in_group("buildings"):
-		if building_node == null:
-			continue
-		var root_id := building_node.get_instance_id()
-		if processed_roots.has(root_id):
-			continue
-		_apply_matte_materials_recursive(building_node, matte_cache)
+func _setup_interaction_controller() -> void:
+	_interaction_controller = SimulationInteractionControllerScript.new()
+	_interaction_controller.setup(self, world)
 
-func _apply_matte_materials_recursive(node: Node, matte_cache: Dictionary) -> void:
-	if node is MeshInstance3D:
-		_apply_matte_materials_to_mesh(node as MeshInstance3D, matte_cache)
-	for child in node.get_children():
-		_apply_matte_materials_recursive(child, matte_cache)
+func _setup_building_status_badge_controller() -> void:
+	if _building_status_style_resolver == null:
+		_setup_building_status_style_resolver()
+	_building_status_badge_controller = BuildingStatusBadgeControllerScript.new()
+	_building_status_badge_controller.setup(
+		self,
+		_city_camera,
+		Callable(_building_status_style_resolver, "get_badge_color"),
+		Callable(_building_status_style_resolver, "get_badge_background"),
+		Callable(_building_status_style_resolver, "get_badge_icon"),
+		_building_status_style_resolver.get_default_border_color()
+	)
 
-func _apply_matte_materials_to_mesh(mesh_instance: MeshInstance3D, matte_cache: Dictionary) -> void:
-	if mesh_instance == null or mesh_instance.mesh == null:
-		return
-	if mesh_instance.name == OCEAN_NODE_NAME:
-		return
-
-	if mesh_instance.material_override is StandardMaterial3D:
-		mesh_instance.material_override = _get_or_create_matte_material(
-			mesh_instance.material_override as StandardMaterial3D,
-			matte_cache
-		)
-
-	for surface_idx in range(mesh_instance.mesh.get_surface_count()):
-		var override_material := mesh_instance.get_surface_override_material(surface_idx)
-		if override_material is StandardMaterial3D:
-			mesh_instance.set_surface_override_material(
-				surface_idx,
-				_get_or_create_matte_material(override_material as StandardMaterial3D, matte_cache)
-			)
-			continue
-
-		var surface_material := mesh_instance.mesh.surface_get_material(surface_idx)
-		if surface_material is StandardMaterial3D:
-			mesh_instance.set_surface_override_material(
-				surface_idx,
-				_get_or_create_matte_material(surface_material as StandardMaterial3D, matte_cache)
-			)
-
-func _get_or_create_matte_material(material: StandardMaterial3D, matte_cache: Dictionary) -> StandardMaterial3D:
-	if material == null:
-		return null
-
-	var material_id := material.get_instance_id()
-	if matte_cache.has(material_id):
-		return matte_cache[material_id] as StandardMaterial3D
-
-	if material.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
-		matte_cache[material_id] = material
-		return material
-	if material.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED:
-		matte_cache[material_id] = material
-		return material
-
-	var matte := material.duplicate() as StandardMaterial3D
-	matte.roughness = maxf(matte.roughness, MATTE_ROUGHNESS_FLOOR)
-	matte.metallic = minf(matte.metallic, MATTE_METALLIC_CAP)
-	matte.metallic_specular = minf(matte.metallic_specular, MATTE_SPECULAR_CAP)
-	matte_cache[material_id] = matte
-	return matte
-
-func _ensure_ocean() -> void:
-	if world == null or not world.has_method("get_world_bounds"):
-		return
-
-	var ocean := world.get_node_or_null(OCEAN_NODE_NAME) as MeshInstance3D
-	if ocean == null:
-		ocean = MeshInstance3D.new()
-		ocean.name = OCEAN_NODE_NAME
-		ocean.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		world.add_child(ocean)
-
-	var bounds: AABB = world.get_world_bounds()
-	var span := maxf(maxf(bounds.size.x, bounds.size.z), 120.0)
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(span * 2.4, span * 2.4)
-	plane.subdivide_width = 24
-	plane.subdivide_depth = 24
-	ocean.mesh = plane
-	ocean.material_override = _build_ocean_material()
-	ocean.position = world.to_local(_get_ocean_world_position(bounds))
-
-func _get_ocean_world_position(bounds: AABB) -> Vector3:
-	var center := bounds.position + bounds.size * 0.5
-	var water_y := bounds.position.y + clampf(bounds.size.y * 0.08, 0.18, 0.75)
-	if world != null and world.has_method("get_ground_fallback_y"):
-		water_y = minf(water_y, world.get_ground_fallback_y() - 0.35)
-	return Vector3(center.x, water_y, center.z)
-
-func _build_ocean_material() -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.albedo_color = Color(0.08, 0.33, 0.45, 0.74)
-	material.roughness = 0.08
-	material.metallic = 0.04
-	material.metallic_specular = 0.82
-	material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	material.emission_enabled = true
-	material.emission = Color(0.03, 0.14, 0.18, 1.0)
-	material.emission_energy_multiplier = 0.35
-	return material
-
-func _spawn_missing_core_buildings() -> void:
-	if not _has_building_type("restaurant"):
-		_spawn_if_missing("Restaurant", RestaurantScene, Vector3(11.0, 0.0, -7.0))
-	if not _has_building_type("supermarket"):
-		_spawn_if_missing("Supermarket", SupermarketScene, Vector3(15.0, 0.0, 9.0))
-	if not _has_building_type("shop"):
-		_spawn_if_missing("Shop", ShopScene, Vector3(19.0, 0.0, -4.0))
-	if not _has_building_type("cinema"):
-		_spawn_if_missing("Cinema", CinemaScene, Vector3(-18.0, 0.0, -9.0))
-	if not _has_building_type("university"):
-		_spawn_if_missing("University", UniversityScene, Vector3(-14.0, 0.0, 10.0))
-	if not _has_building_type("city_hall"):
-		_spawn_if_missing("CityHall", CityHallScene, Vector3(1.0, 0.0, 15.0))
-	if not _has_building_type("farm"):
-		_spawn_if_missing("Farm", FarmScene, Vector3(-24.0, 0.0, 14.0))
-	if not _has_building_type("factory"):
-		_spawn_if_missing("Factory", FactoryScene, Vector3(24.0, 0.0, 14.0))
-
-func _has_building_type(type_id: String) -> bool:
-	for node in get_tree().get_nodes_in_group("buildings"):
-		if node is not Building:
-			continue
-		match type_id:
-			"restaurant":
-				if node is Restaurant:
-					return true
-			"supermarket":
-				if node is Supermarket:
-					return true
-			"shop":
-				if node is Shop and node is not Supermarket:
-					return true
-			"cinema":
-				if node is Cinema:
-					return true
-			"university":
-				if node is University:
-					return true
-			"city_hall":
-				if node is CityHall:
-					return true
-			"farm":
-				if node is Farm:
-					return true
-			"factory":
-				if node is Factory:
-					return true
-			_:
-				pass
-	return false
-
-func _spawn_if_missing(node_name: String, scene: PackedScene, pos: Vector3) -> void:
-	if get_node_or_null(node_name) != null:
-		return
-	var instance := scene.instantiate() as Node3D
-	if instance == null:
-		return
-	instance.name = node_name
-	instance.position = pos
-	add_child(instance)
-
-func _build_debug_panel() -> void:
-	_debug_panel = preload("res://Scenes/DebugPanel.tscn").instantiate()
-	add_child(_debug_panel)
-	_debug_panel.visible = false
-	_debug_panel.ui_interacted.connect(_on_debug_panel_ui_interacted)
-	_debug_panel.citizen_control_toggled.connect(_on_debug_panel_citizen_control_toggled)
-	_refresh_debug_panel_mode_controls()
-
-func _setup_citizen_path_debug() -> void:
-	_citizen_path_debug = MeshInstance3D.new()
-	_citizen_path_debug.name = "SelectedCitizenPathDebug"
-	_citizen_path_debug.top_level = true
-	_citizen_path_debug.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_citizen_path_debug.visible = false
-
-	_citizen_path_debug_mesh = ImmediateMesh.new()
-	_citizen_path_debug.mesh = _citizen_path_debug_mesh
-
-	_citizen_path_line_material = _create_path_debug_material(Color(0.10, 0.95, 0.35, 1.0))
-	_citizen_path_active_material = _create_path_debug_material(Color(0.10, 0.85, 1.0, 1.0))
-	_citizen_path_start_material = _create_path_debug_material(Color(0.20, 1.0, 0.20, 1.0))
-	_citizen_path_waypoint_material = _create_path_debug_material(Color(1.0, 0.82, 0.18, 1.0))
-	_citizen_path_end_material = _create_path_debug_material(Color(1.0, 0.22, 0.22, 1.0))
-	_citizen_path_failed_material = _create_path_debug_material(Color(1.0, 0.35, 0.10, 1.0))
-
-	add_child(_citizen_path_debug)
-
-func _setup_building_nav_debug() -> void:
-	_building_nav_debug = MeshInstance3D.new()
-	_building_nav_debug.name = "SelectedBuildingNavDebug"
-	_building_nav_debug.top_level = true
-	_building_nav_debug.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_building_nav_debug.visible = false
-
-	_building_nav_debug_mesh = ImmediateMesh.new()
-	_building_nav_debug.mesh = _building_nav_debug_mesh
-
-	_building_nav_link_material = _create_path_debug_material(Color(1.0, 1.0, 1.0, 0.95))
-	_building_nav_source_entrance_material = _create_path_debug_material(Color(1.0, 0.30, 0.20, 1.0))
-	_building_nav_source_access_material = _create_path_debug_material(Color(0.10, 0.85, 1.0, 1.0))
-	_building_nav_source_spawn_material = _create_path_debug_material(Color(1.0, 0.88, 0.15, 1.0))
-	_building_nav_extra_entrance_material = _create_path_debug_material(Color(1.0, 0.55, 0.15, 1.0))
-	_building_nav_extra_access_material = _create_path_debug_material(Color(0.18, 1.0, 0.92, 1.0))
-	_building_nav_visit_material = _create_path_debug_material(Color(0.96, 0.96, 0.96, 1.0))
-	_building_nav_target_entrance_material = _create_path_debug_material(Color(1.0, 0.25, 0.75, 1.0))
-	_building_nav_target_access_material = _create_path_debug_material(Color(0.20, 1.0, 0.35, 1.0))
-
-	add_child(_building_nav_debug)
-
-func _setup_building_status_badge() -> void:
-	_building_status_badge_layer = CanvasLayer.new()
-	_building_status_badge_layer.name = "SelectedBuildingStatusBadge"
-	add_child(_building_status_badge_layer)
-
-	_building_status_badge_panel = PanelContainer.new()
-	_building_status_badge_panel.visible = false
-	_building_status_badge_layer.add_child(_building_status_badge_panel)
-
-	_building_status_badge_style = StyleBoxFlat.new()
-	_building_status_badge_style.bg_color = Color(0.11, 0.12, 0.16, 0.92)
-	_building_status_badge_style.border_color = BUILDING_STATUS_OPEN_COLOR
-	_building_status_badge_style.set_border_width_all(2)
-	_building_status_badge_style.corner_radius_top_left = 10
-	_building_status_badge_style.corner_radius_top_right = 10
-	_building_status_badge_style.corner_radius_bottom_right = 10
-	_building_status_badge_style.corner_radius_bottom_left = 10
-	_building_status_badge_style.content_margin_left = 10
-	_building_status_badge_style.content_margin_right = 10
-	_building_status_badge_style.content_margin_top = 6
-	_building_status_badge_style.content_margin_bottom = 6
-	_building_status_badge_panel.add_theme_stylebox_override("panel", _building_status_badge_style)
-
-	_building_status_badge_label = Label.new()
-	_building_status_badge_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_building_status_badge_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_building_status_badge_label.add_theme_font_size_override("font_size", 15)
-	_building_status_badge_panel.add_child(_building_status_badge_label)
-
-func _create_path_debug_material(color: Color) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.albedo_color = color
-	material.emission_enabled = true
-	material.emission = color
-	material.no_depth_test = true
-	return material
+func _setup_selection_state_controller() -> void:
+	_selection_state_controller = SelectionStateControllerScript.new()
+	_selection_state_controller.setup(
+		world,
+		_city_camera,
+		_interaction_controller.get_debug_panel() if _interaction_controller != null else null,
+		_hud_controller,
+		_runtime_debug_logger,
+		_selection_debug_controller,
+		_building_status_badge_controller
+	)
+	if _interaction_controller != null:
+		_interaction_controller.bind_selection_state(_selection_state_controller, _hud_overlay_controller)
 
 func _bind_building_clicks() -> void:
+	if _interaction_controller == null:
+		return
+	var building_clicked_cb := Callable(_interaction_controller, "handle_building_clicked")
 	for building in world.buildings:
 		if building == null:
 			continue
-		if not building.clicked.is_connected(_on_building_clicked):
-			building.clicked.connect(_on_building_clicked)
+		if not building.clicked.is_connected(building_clicked_cb):
+			building.clicked.connect(building_clicked_cb)
 
 func _spawn_citizens() -> void:
 	var citizen_count := BalanceConfig.get_int("simulation.initial_citizen_count", CITIZEN_COUNT)
 	var spawned := CitizenFactory.spawn_citizens(self, world, citizen_count)
+	if _interaction_controller == null:
+		return
 	for citizen in spawned:
-		var cb := _on_citizen_clicked.bind(citizen)
+		var cb := Callable(_interaction_controller, "handle_citizen_clicked").bind(citizen)
 		if not citizen.clicked.is_connected(cb):
 			citizen.clicked.connect(cb)
 
 func _log_initial_debug_snapshot() -> void:
-	if _enable_map_snapshot_log:
-		_log_map_snapshot()
-	if _enable_all_citizen_trace:
-		_all_citizen_trace_left = 0.0
-		_log_all_citizen_traces("spawn")
-
-func _on_citizen_clicked(c: Citizen) -> void:
-	_entity_clicked_this_frame = true
-
-	if _selected_citizen == c:
-		_deselect()
-		return
-
-	if _selected_building != null:
-		_selected_building.select(null, world)
-		_selected_building = null
-		_hide_selected_building_status_badge()
-
-	if _selected_citizen != null:
-		if _controlled_citizen == _selected_citizen:
-			_set_citizen_control_mode(false)
-		_log_selected_citizen_trace("switch")
-		_selected_citizen.select(null)
-		_selected_citizen_trace_left = 0.0
-		_clear_selected_citizen_path_debug()
-
-	_selected_citizen = c
-	c.select(_debug_panel)
-	_debug_panel.visible = true
-	_selected_citizen_trace_left = 0.0
-	_log_selected_citizen_trace("selected")
-	_update_selected_citizen_path_debug()
-	_refresh_debug_panel_mode_controls()
-
-func _on_building_clicked(b: Building) -> void:
-	_entity_clicked_this_frame = true
-
-	if _selected_building == b:
-		_deselect()
-		return
-
-	if _selected_citizen != null:
-		if _controlled_citizen == _selected_citizen:
-			_set_citizen_control_mode(false)
-		_log_selected_citizen_trace("deselected")
-		_selected_citizen.select(null)
-		_selected_citizen = null
-		_selected_citizen_trace_left = 0.0
-		_clear_selected_citizen_path_debug()
-
-	if _selected_building != null:
-		_selected_building.select(null, world)
-
-	_selected_building = b
-	b.select(_debug_panel, world)
-	_debug_panel.visible = true
-	_building_panel_refresh_left = 0.0
-	_update_selected_building_status_badge()
-	_refresh_debug_panel_mode_controls()
-
-func _deselect() -> void:
-	if _controlled_citizen != null:
-		_set_citizen_control_mode(false)
-	if _selected_citizen != null:
-		_log_selected_citizen_trace("deselected")
-		_selected_citizen.select(null)
-		_selected_citizen = null
-		_selected_citizen_trace_left = 0.0
-	if _selected_building != null:
-		_selected_building.select(null, world)
-		_selected_building = null
-	_hide_selected_building_status_badge()
-	_clear_selected_citizen_path_debug()
-	if _debug_panel != null:
-		_debug_panel.visible = false
-	_refresh_debug_panel_mode_controls()
-
-func _on_debug_panel_citizen_control_toggled() -> void:
-	_entity_clicked_this_frame = true
-	if _selected_citizen == null or not is_instance_valid(_selected_citizen):
-		return
-	_set_citizen_control_mode(_controlled_citizen != _selected_citizen)
-
-func _on_debug_panel_ui_interacted() -> void:
-	_entity_clicked_this_frame = true
-
-func _set_citizen_control_mode(enabled: bool) -> void:
-	if not enabled:
-		if _controlled_citizen != null and is_instance_valid(_controlled_citizen):
-			_controlled_citizen.set_manual_control_enabled(false, world)
-		_controlled_citizen = null
-		if _city_camera != null:
-			_city_camera.clear_follow_target()
-		_refresh_control_mode_hud()
-		_refresh_debug_panel_mode_controls()
-		return
-
-	if _selected_citizen == null or not is_instance_valid(_selected_citizen):
-		return
-	if _controlled_citizen != null and _controlled_citizen != _selected_citizen and is_instance_valid(_controlled_citizen):
-		_controlled_citizen.set_manual_control_enabled(false, world)
-	_controlled_citizen = _selected_citizen
-	_controlled_citizen.set_manual_control_enabled(true, world)
-	if _city_camera != null:
-		_city_camera.set_follow_target(_controlled_citizen)
-	_refresh_control_mode_hud()
-	_refresh_debug_panel_mode_controls()
-
-func _refresh_debug_panel_mode_controls() -> void:
-	if _debug_panel == null:
-		return
-	var citizen_selected := _selected_citizen != null and is_instance_valid(_selected_citizen)
-	_debug_panel.set_citizen_control_button_visible(citizen_selected)
-	_debug_panel.set_citizen_control_active(citizen_selected and _controlled_citizen == _selected_citizen)
-
-func _update_selected_citizen_trace(delta: float) -> void:
-	if _selected_citizen == null or not is_instance_valid(_selected_citizen):
-		_selected_citizen_trace_left = 0.0
-		return
-
-	_selected_citizen_trace_left -= delta
-	if _selected_citizen_trace_left > 0.0:
-		return
-
-	_selected_citizen_trace_left = SELECTED_CITIZEN_TRACE_INTERVAL_SEC
-	_log_selected_citizen_trace("tick")
-
-func _log_selected_citizen_trace(event_name: String) -> void:
-	if _selected_citizen == null or not is_instance_valid(_selected_citizen):
-		return
-
-	var time_label := "day=? time=?"
-	if world != null and world.time != null:
-		time_label = "day=%d time=%s" % [world.time.day, world.time.get_time_string()]
-
-	SimLogger.log("[CitizenTrace %s] %s | %s" % [
-		event_name,
-		time_label,
-		_selected_citizen.get_trace_debug_summary()
-	])
-
-func _update_all_citizen_trace(delta: float) -> void:
-	if not _enable_all_citizen_trace:
-		return
-	_all_citizen_trace_left -= delta
-	if _all_citizen_trace_left > 0.0:
-		return
-
-	_all_citizen_trace_left = ALL_CITIZEN_TRACE_INTERVAL_SEC
-	_log_all_citizen_traces("tick")
-
-func _log_all_citizen_traces(event_name: String) -> void:
-	var time_label := "day=? time=?"
-	if world != null and world.time != null:
-		time_label = "day=%d time=%s" % [world.time.day, world.time.get_time_string()]
-
-	for citizen in world.citizens:
-		if citizen == null or not is_instance_valid(citizen):
-			continue
-		SimLogger.log("[CitizenTraceAll %s] %s | %s" % [
-			event_name,
-			time_label,
-			citizen.get_trace_debug_summary()
-		])
-
-func _log_map_snapshot() -> void:
-	var road_nodes := _collect_debug_roads()
-	var crosswalk_nodes := _collect_debug_crosswalks()
-	var light_nodes := _collect_debug_lights(self)
-
-	SimLogger.log("[MapDump summary] buildings=%d citizens=%d roads=%d crosswalks=%d lights=%d" % [
-		world.buildings.size(),
-		world.citizens.size(),
-		road_nodes.size(),
-		crosswalk_nodes.size(),
-		light_nodes.size()
-	])
-
-	for building in world.buildings:
-		if building == null:
-			continue
-		SimLogger.log("[MapDump building] name=%s pos=%s %s" % [
-			building.get_display_name(),
-			_fmt_vec3(building.global_position),
-			building.get_navigation_debug_summary(world) if building.has_method("get_navigation_debug_summary") else ""
-		])
-
-	for citizen in world.citizens:
-		if citizen == null:
-			continue
-		SimLogger.log("[MapDump citizen] name=%s pos=%s home=%s location=%s inside=%s action=%s" % [
-			citizen.citizen_name,
-			_fmt_vec3(citizen.global_position),
-			citizen.home.get_display_name() if citizen.home != null else "-",
-			citizen.current_location.get_display_name() if citizen.current_location != null else "-",
-			citizen._inside_building.get_display_name() if citizen._inside_building != null else "-",
-			citizen.current_action.label if citizen.current_action != null else "idle"
-		])
-
-	for road in road_nodes:
-		SimLogger.log("[MapDump road] path=%s pos=%s" % [road.get_path(), _fmt_vec3(road.global_position)])
-
-	for crosswalk in crosswalk_nodes:
-		SimLogger.log("[MapDump crosswalk] path=%s pos=%s" % [crosswalk.get_path(), _fmt_vec3(crosswalk.global_position)])
-
-	for light in light_nodes:
-		SimLogger.log("[MapDump light] type=%s path=%s pos=%s" % [
-			light.get_class(),
-			light.get_path(),
-			_fmt_vec3(light.global_position)
-		])
-
-func _collect_debug_roads() -> Array[Node3D]:
-	var out: Array[Node3D] = []
-	_append_transport_segments_for_log(get_node_or_null("World/City/only_transport"), out)
-	_append_transport_segments_for_log(get_node_or_null("ImportedCity/only_transport"), out)
-	var generated := get_node_or_null("RoadNetwork")
-	if generated != null:
-		for child in generated.get_children():
-			if child is Node3D:
-				out.append(child as Node3D)
-	return out
-
-func _append_transport_segments_for_log(root: Node, out: Array[Node3D]) -> void:
-	if root == null:
-		return
-	for category in root.get_children():
-		if category is not Node3D:
-			continue
-		for segment in (category as Node3D).get_children():
-			if segment is Node3D:
-				out.append(segment as Node3D)
-
-func _collect_debug_crosswalks() -> Array[Node3D]:
-	var out: Array[Node3D] = []
-	_append_node3d_children_for_log(get_node_or_null("World/City/only_people_nav/only_people/Road_straight_crossing"), out)
-	_append_node3d_children_for_log(get_node_or_null("ImportedCity/only_people_nav/only_people/Road_straight_crossing"), out)
-	return out
-
-func _append_node3d_children_for_log(root: Node, out: Array[Node3D]) -> void:
-	if root == null:
-		return
-	for child in root.get_children():
-		if child is Node3D:
-			out.append(child as Node3D)
-
-func _collect_debug_lights(root: Node) -> Array[Light3D]:
-	var out: Array[Light3D] = []
-	_collect_debug_lights_recursive(root, out)
-	return out
-
-func _collect_debug_lights_recursive(node: Node, out: Array[Light3D]) -> void:
-	if node is Light3D:
-		out.append(node as Light3D)
-	for child in node.get_children():
-		if child is Node:
-			_collect_debug_lights_recursive(child as Node, out)
-
-func _fmt_vec3(value: Vector3) -> String:
-	return "(%.2f, %.2f, %.2f)" % [value.x, value.y, value.z]
-
-func _update_selected_citizen_path_debug() -> void:
-	if _citizen_path_debug == null or _citizen_path_debug_mesh == null:
-		return
-
-	if _selected_citizen == null or not is_instance_valid(_selected_citizen):
-		_clear_selected_citizen_path_debug()
-		return
-
-	if not _selected_citizen.has_debug_travel_route():
-		_clear_selected_citizen_path_debug()
-		return
-
-	var route := _selected_citizen.get_debug_travel_route_points()
-	if route.size() < 2:
-		_clear_selected_citizen_path_debug()
-		return
-
-	var is_active_route := _selected_citizen.is_debug_travelling()
-	var route_failed := _selected_citizen.did_debug_last_travel_fail()
-	var current_target := _selected_citizen.get_debug_travel_current_target()
-	var current_target_idx := _selected_citizen.get_debug_travel_route_index()
-	var route_material := _citizen_path_failed_material if route_failed else _citizen_path_line_material
-
-	_citizen_path_debug.visible = true
-	_citizen_path_debug.global_transform = Transform3D.IDENTITY
-	_citizen_path_debug_mesh.clear_surfaces()
-
-	var path_offset := Vector3.UP * 0.18
-	_citizen_path_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, route_material)
-	for point in route:
-		_citizen_path_debug_mesh.surface_add_vertex((point as Vector3) + path_offset)
-	_citizen_path_debug_mesh.surface_end()
-
-	if is_active_route and current_target != Vector3.ZERO:
-		_citizen_path_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _citizen_path_active_material)
-		_citizen_path_debug_mesh.surface_add_vertex(_selected_citizen.global_position + path_offset)
-		_citizen_path_debug_mesh.surface_add_vertex(current_target + path_offset)
-		_add_path_debug_marker(current_target + path_offset, 0.18, 0.42)
-		_citizen_path_debug_mesh.surface_end()
-
-	_citizen_path_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _citizen_path_start_material)
-	_add_path_debug_marker(route[0] + path_offset, 0.18, 0.42)
-	_citizen_path_debug_mesh.surface_end()
-
-	if route.size() > 2:
-		_citizen_path_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _citizen_path_waypoint_material)
-		for i in range(1, route.size() - 1):
-			var point: Vector3 = route[i]
-			if current_target_idx == i and current_target.distance_to(point) < 0.05:
-				continue
-			_add_path_debug_marker(point + path_offset, 0.12, 0.28)
-		_citizen_path_debug_mesh.surface_end()
-
-	_citizen_path_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _citizen_path_end_material)
-	_add_path_debug_marker(route[route.size() - 1] + path_offset, 0.20, 0.48)
-	_citizen_path_debug_mesh.surface_end()
-
-func _add_path_debug_marker(center: Vector3, radius: float, height: float) -> void:
-	_add_debug_marker(_citizen_path_debug_mesh, center, radius, height)
-
-func _add_debug_marker(mesh: ImmediateMesh, center: Vector3, radius: float, height: float) -> void:
-	if mesh == null:
-		return
-	mesh.surface_add_vertex(center)
-	mesh.surface_add_vertex(center + Vector3.UP * height)
-	mesh.surface_add_vertex(center + Vector3(-radius, 0.0, 0.0))
-	mesh.surface_add_vertex(center + Vector3(radius, 0.0, 0.0))
-	mesh.surface_add_vertex(center + Vector3(0.0, 0.0, -radius))
-	mesh.surface_add_vertex(center + Vector3(0.0, 0.0, radius))
-	mesh.surface_add_vertex(center + Vector3(-radius * 0.75, 0.0, -radius * 0.75))
-	mesh.surface_add_vertex(center + Vector3(radius * 0.75, 0.0, radius * 0.75))
-	mesh.surface_add_vertex(center + Vector3(-radius * 0.75, 0.0, radius * 0.75))
-	mesh.surface_add_vertex(center + Vector3(radius * 0.75, 0.0, -radius * 0.75))
-
-func _clear_selected_citizen_path_debug() -> void:
-	if _citizen_path_debug_mesh != null:
-		_citizen_path_debug_mesh.clear_surfaces()
-	if _citizen_path_debug != null:
-		_citizen_path_debug.visible = false
-
-func _update_selected_building_nav_debug() -> void:
-	if _building_nav_debug == null or _building_nav_debug_mesh == null:
-		return
-
-	_building_nav_debug_mesh.clear_surfaces()
-	_building_nav_debug.visible = false
-
-	var has_debug := false
-	if _selected_citizen != null and is_instance_valid(_selected_citizen):
-		has_debug = _draw_selected_citizen_nav_debug(_selected_citizen)
-	elif _selected_building != null and is_instance_valid(_selected_building):
-		has_debug = _draw_selected_building_nav_debug(_selected_building)
-
-	if has_debug:
-		_building_nav_debug.visible = true
-		_building_nav_debug.global_transform = Transform3D.IDENTITY
-
-func _update_selected_building_status_badge() -> void:
-	if _building_status_badge_panel == null or _building_status_badge_label == null or _city_camera == null:
-		return
-	if _selected_building == null or not is_instance_valid(_selected_building):
-		_hide_selected_building_status_badge()
-		return
-
-	var badge_world_pos := _get_selected_building_badge_world_position(_selected_building)
-	if _city_camera.is_position_behind(badge_world_pos):
-		_hide_selected_building_status_badge()
-		return
-
-	var screen_pos := _city_camera.unproject_position(badge_world_pos)
-	var viewport_rect := get_viewport().get_visible_rect()
-	if screen_pos.x < -40.0 or screen_pos.x > viewport_rect.size.x + 40.0 or screen_pos.y < -40.0 or screen_pos.y > viewport_rect.size.y + 40.0:
-		_hide_selected_building_status_badge()
-		return
-
-	var status_key := _selected_building.get_open_status_label(world.time.get_hour()) if world != null and world.time != null else _selected_building.get_open_status_label()
-	var status_text := _selected_building.get_open_status_display_label(world.time.get_hour()) if world != null and world.time != null else _selected_building.get_open_status_display_label()
-	var badge_color := _get_selected_building_status_badge_color(status_key)
-	var status_icon := _get_selected_building_status_badge_icon(status_key)
-
-	_building_status_badge_label.text = "%s\n%s %s" % [_selected_building.get_display_name(), status_icon, status_text]
-	_building_status_badge_label.add_theme_color_override("font_color", badge_color)
-	_building_status_badge_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.55))
-	_building_status_badge_label.add_theme_constant_override("shadow_offset_x", 1)
-	_building_status_badge_label.add_theme_constant_override("shadow_offset_y", 1)
-	_building_status_badge_style.border_color = badge_color
-	_building_status_badge_style.bg_color = _get_selected_building_status_badge_background(status_key)
-
-	var panel_size := _building_status_badge_panel.get_combined_minimum_size()
-	_building_status_badge_panel.size = panel_size
-	_building_status_badge_panel.position = Vector2(
-		screen_pos.x - panel_size.x * 0.5,
-		screen_pos.y - panel_size.y
-	)
-	_building_status_badge_panel.visible = true
-
-func _hide_selected_building_status_badge() -> void:
-	if _building_status_badge_panel != null:
-		_building_status_badge_panel.visible = false
-
-func _get_selected_building_badge_world_position(building: Building) -> Vector3:
-	var bounds := building.get_footprint_bounds()
-	var local_badge_pos := bounds.position + Vector3(bounds.size.x * 0.5, bounds.size.y + 1.15, bounds.size.z * 0.5)
-	return building.to_global(local_badge_pos)
-
-func _get_selected_building_status_badge_color(status_key: String) -> Color:
-	match status_key:
-		"NO_FUNDS":
-			return BUILDING_STATUS_NO_FUNDS_COLOR
-		"UNDERFUNDED":
-			return BUILDING_STATUS_UNDERFUNDED_COLOR
-		"STRUGGLING":
-			return BUILDING_STATUS_STRUGGLING_COLOR
-		"UNSTAFFED":
-			return BUILDING_STATUS_UNSTAFFED_COLOR
-		"CLOSED":
-			return BUILDING_STATUS_CLOSED_COLOR
-		_:
-			return BUILDING_STATUS_OPEN_COLOR
-
-func _get_selected_building_status_badge_background(status_key: String) -> Color:
-	if status_key == "NO_FUNDS":
-		return Color(0.26, 0.07, 0.07, 0.95)
-	if status_key == "UNDERFUNDED":
-		return Color(0.26, 0.20, 0.06, 0.94)
-	if status_key == "STRUGGLING":
-		return Color(0.29, 0.15, 0.08, 0.94)
-	if status_key != "UNSTAFFED":
-		return Color(0.10, 0.11, 0.15, 0.92)
-
-	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.001 * BUILDING_STATUS_UNSTAFFED_PULSE_SPEED)
-	var alpha := lerpf(BUILDING_STATUS_UNSTAFFED_PULSE_MIN_ALPHA, 0.98, pulse)
-	return Color(0.24, 0.08, 0.09, alpha)
-
-func _get_selected_building_status_badge_icon(status_key: String) -> String:
-	match status_key:
-		"NO_FUNDS":
-			return "[$]"
-		"UNDERFUNDED":
-			return "[~]"
-		"STRUGGLING":
-			return "[!]"
-		"UNSTAFFED":
-			return "[!]"
-		"CLOSED":
-			return "[-]"
-		_:
-			return "[+]"
-
-func _draw_selected_citizen_nav_debug(citizen: Citizen) -> bool:
-	var has_debug := false
-	var source_building: Building = citizen.get_debug_source_building() if citizen.has_method("get_debug_source_building") else citizen.current_location
-	if source_building != null:
-		var source_entrance := source_building.get_entrance_pos()
-		var source_access := citizen.get_debug_access_pos(source_building, world) if citizen.has_method("get_debug_access_pos") else source_entrance
-		var source_spawn := citizen.get_debug_exit_spawn_pos(source_building, world) if citizen.has_method("get_debug_exit_spawn_pos") else source_access
-		_draw_building_nav_triplet(
-			source_entrance,
-			source_access,
-			source_spawn,
-			_building_nav_source_entrance_material,
-			_building_nav_source_access_material,
-			_building_nav_source_spawn_material,
-			Vector3.UP * 0.10
-		)
-		has_debug = true
-
-	var target_building: Building = citizen.get_debug_travel_target_building() if citizen.has_method("get_debug_travel_target_building") else null
-	if target_building != null:
-		var target_nav_points: Dictionary = citizen.get_navigation_points_for_building(target_building, world) if citizen.has_method("get_navigation_points_for_building") else {}
-		var target_entrance: Vector3 = target_nav_points.get("entrance", target_building.get_entrance_pos())
-		var fallback_target_access: Vector3 = citizen.get_debug_access_pos(target_building, world) if citizen.has_method("get_debug_access_pos") else target_entrance
-		var target_access: Vector3 = target_nav_points.get("access", fallback_target_access)
-		_draw_building_nav_pair(
-			target_entrance,
-			target_access,
-			_building_nav_target_entrance_material,
-			_building_nav_target_access_material,
-			Vector3.UP * 0.28
-		)
-		if target_nav_points.has("visit"):
-			_draw_building_nav_pair(
-				target_access,
-				target_nav_points.get("visit", target_access),
-				_building_nav_target_access_material,
-				_building_nav_visit_material,
-				Vector3.UP * 0.44,
-				0.18,
-				0.46
-			)
-		has_debug = true
-
-	return has_debug
-
-func _draw_selected_building_nav_debug(building: Building) -> bool:
-	if building == null:
-		return false
-
-	var nav_points: Dictionary = building.get_navigation_points(world, 0.0) if building.has_method("get_navigation_points") else {}
-	var entrance: Vector3 = nav_points.get("entrance", building.get_entrance_pos())
-	var access: Vector3 = nav_points.get("access", entrance)
-	var preview_spawn: Vector3 = nav_points.get("spawn", _compute_building_spawn_preview(entrance, access))
-	var visit: Variant = nav_points.get("visit", null)
-	_draw_building_nav_triplet(
-		entrance,
-		access,
-		preview_spawn,
-		_building_nav_source_entrance_material,
-		_building_nav_source_access_material,
-		_building_nav_source_spawn_material,
-		Vector3.UP * 0.10
-	)
-	if visit is Vector3:
-		_draw_building_nav_pair(
-			access,
-			visit,
-			_building_nav_source_access_material,
-			_building_nav_visit_material,
-			Vector3.UP * 0.34,
-			0.18,
-			0.48
-		)
-
-	if building.has_method("get_debug_navigation_entries"):
-		var extra_entries: Array = building.get_debug_navigation_entries(world)
-		for idx in range(extra_entries.size()):
-			var entry := extra_entries[idx] as Dictionary
-			var extra_entrance: Vector3 = entry.get("entrance", entrance)
-			var extra_access: Vector3 = entry.get("access", extra_entrance)
-			if idx == 0:
-				continue
-			_draw_building_nav_pair(
-				extra_entrance,
-				extra_access,
-				_building_nav_extra_entrance_material,
-				_building_nav_extra_access_material,
-				Vector3.UP * 0.22,
-				0.30,
-				0.95
-			)
-	return true
-
-func _compute_building_spawn_preview(entrance_pos: Vector3, access_pos: Vector3) -> Vector3:
-	var outward := access_pos - entrance_pos
-	outward.y = 0.0
-	if outward.length_squared() <= 0.0001:
-		outward = Vector3.FORWARD
-	else:
-		outward = outward.normalized()
-
-	var spawn_base := entrance_pos.lerp(access_pos, 0.55)
-	var spawn_pos := spawn_base + outward * 0.02
-	spawn_pos.y = spawn_base.y
-	return spawn_pos
-
-func _draw_building_nav_triplet(
-	entrance: Vector3,
-	access: Vector3,
-	spawn: Vector3,
-	entrance_material: StandardMaterial3D,
-	access_material: StandardMaterial3D,
-	spawn_material: StandardMaterial3D,
-	offset: Vector3
-) -> void:
-	_building_nav_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _building_nav_link_material)
-	_building_nav_debug_mesh.surface_add_vertex(entrance + offset)
-	_building_nav_debug_mesh.surface_add_vertex(access + offset)
-	_building_nav_debug_mesh.surface_add_vertex(entrance + offset)
-	_building_nav_debug_mesh.surface_add_vertex(spawn + offset)
-	_building_nav_debug_mesh.surface_add_vertex(access + offset)
-	_building_nav_debug_mesh.surface_add_vertex(spawn + offset)
-	_building_nav_debug_mesh.surface_end()
-
-	_draw_building_nav_marker(entrance + offset, entrance_material, 0.18, 0.42)
-	_draw_building_nav_marker(access + offset, access_material, 0.18, 0.42)
-	_draw_building_nav_marker(spawn + offset, spawn_material, 0.22, 0.52)
-
-func _draw_building_nav_pair(
-	entrance: Vector3,
-	access: Vector3,
-	entrance_material: StandardMaterial3D,
-	access_material: StandardMaterial3D,
-	offset: Vector3,
-	radius: float = 0.16,
-	height: float = 0.38
-) -> void:
-	_building_nav_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _building_nav_link_material)
-	_building_nav_debug_mesh.surface_add_vertex(entrance + offset)
-	_building_nav_debug_mesh.surface_add_vertex(access + offset)
-	_building_nav_debug_mesh.surface_end()
-
-	_draw_building_nav_marker(entrance + offset, entrance_material, radius, height)
-	_draw_building_nav_marker(access + offset, access_material, radius, height)
-
-func _draw_building_nav_marker(center: Vector3, material: StandardMaterial3D, radius: float, height: float) -> void:
-	_building_nav_debug_mesh.surface_begin(Mesh.PRIMITIVE_LINES, material)
-	_add_debug_marker(_building_nav_debug_mesh, center, radius, height)
-	_building_nav_debug_mesh.surface_end()
+	if _runtime_debug_logger != null:
+		_runtime_debug_logger.log_initial_snapshot()
 
 func _build_hud() -> void:
-	var canvas := CanvasLayer.new()
-	add_child(canvas)
+	_hud_controller = SimulationHudControllerScript.new()
+	_hud_controller.setup(
+		self,
+		world,
+		Callable(_interaction_controller, "on_pause_pressed"),
+		Callable(_interaction_controller, "on_speed_pressed"),
+		Callable(_interaction_controller, "on_building_overview_pressed")
+	)
 
-	var top_margin := MarginContainer.new()
-	top_margin.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	top_margin.offset_top = 10
-	top_margin.offset_bottom = 54
-	canvas.add_child(top_margin)
+	var canvas: CanvasLayer = _hud_controller.get_canvas()
+	if canvas == null:
+		return
 
-	var top_center := CenterContainer.new()
-	top_center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	top_margin.add_child(top_center)
-
-	var time_panel := PanelContainer.new()
-	top_center.add_child(time_panel)
-
-	var time_box := HBoxContainer.new()
-	time_box.add_theme_constant_override("separation", 12)
-	time_panel.add_child(time_box)
-
-	_date_label = Label.new()
-	_date_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_date_label.custom_minimum_size = Vector2(104, 34)
-	time_box.add_child(_date_label)
-
-	var separator := Label.new()
-	separator.text = "|"
-	separator.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	time_box.add_child(separator)
-
-	_clock_label = Label.new()
-	_clock_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_clock_label.add_theme_font_size_override("font_size", 18)
-	_clock_label.custom_minimum_size = Vector2(66, 34)
-	time_box.add_child(_clock_label)
-
-	var separator2 := Label.new()
-	separator2.text = "|"
-	separator2.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	time_box.add_child(separator2)
-
-	_citizen_stats_label = Label.new()
-	_citizen_stats_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_citizen_stats_label.custom_minimum_size = Vector2(620, 34)
-	time_box.add_child(_citizen_stats_label)
-
-	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	panel.position = Vector2(10, -60)
-	canvas.add_child(panel)
-
-	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 8)
-	panel.add_child(hbox)
-
-	_pause_btn = Button.new()
-	_pause_btn.text = "Pause"
-	_pause_btn.custom_minimum_size = Vector2(100, 36)
-	_pause_btn.pressed.connect(_on_pause_pressed)
-	hbox.add_child(_pause_btn)
-
-	for speed in [1, 2, 3, 4]:
-		var btn := Button.new()
-		btn.text = "%.1fx" % speed
-		btn.custom_minimum_size = Vector2(48, 36)
-		btn.pressed.connect(_on_speed_pressed.bind(float(speed)))
-		hbox.add_child(btn)
-
-	_building_overview_btn = Button.new()
-	_building_overview_btn.text = "Buildings"
-	_building_overview_btn.custom_minimum_size = Vector2(92, 36)
-	_building_overview_btn.pressed.connect(_on_building_overview_pressed)
-	hbox.add_child(_building_overview_btn)
-
-	var hint := Label.new()
-	hint.text = "Click citizen/building -> Info"
-	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	hint.custom_minimum_size = Vector2(0, 36)
-	hbox.add_child(hint)
-
-	_speed_label = Label.new()
-	_speed_label.text = "%.1fx" % world.speed_multiplier
-	_speed_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_speed_label.custom_minimum_size = Vector2(42, 36)
-	hbox.add_child(_speed_label)
-
-	_control_mode_panel = PanelContainer.new()
-	_control_mode_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_control_mode_panel.position = Vector2(10, 10)
-	_control_mode_panel.visible = false
-	canvas.add_child(_control_mode_panel)
-
-	_control_mode_label = Label.new()
-	_control_mode_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_control_mode_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_control_mode_label.custom_minimum_size = Vector2(520, 32)
-	_control_mode_panel.add_child(_control_mode_label)
-
-	_building_overview_panel = PanelContainer.new()
-	_building_overview_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_building_overview_panel.position = Vector2(10, -360)
-	_building_overview_panel.size = Vector2(350, 290)
-	_building_overview_panel.visible = false
-	canvas.add_child(_building_overview_panel)
-
-	var building_overview_scroll := ScrollContainer.new()
-	building_overview_scroll.custom_minimum_size = Vector2(350, 290)
-	_building_overview_panel.add_child(building_overview_scroll)
-
-	_building_overview_label = RichTextLabel.new()
-	_building_overview_label.bbcode_enabled = true
-	_building_overview_label.fit_content = true
-	_building_overview_label.scroll_active = false
-	_building_overview_label.custom_minimum_size = Vector2(332, 272)
-	_building_overview_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	building_overview_scroll.add_child(_building_overview_label)
-
-	var search_margin := MarginContainer.new()
-	search_margin.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	search_margin.offset_left = -360
-	search_margin.offset_top = 10
-	search_margin.offset_right = -10
-	search_margin.offset_bottom = 236
-	canvas.add_child(search_margin)
-
-	var search_panel := PanelContainer.new()
-	search_margin.add_child(search_panel)
-
-	var search_vbox := VBoxContainer.new()
-	search_vbox.add_theme_constant_override("separation", 6)
-	search_panel.add_child(search_vbox)
-
-	_search_input = LineEdit.new()
-	_search_input.placeholder_text = "Search citizen or building..."
-	_search_input.clear_button_enabled = true
-	_search_input.custom_minimum_size = Vector2(320, 36)
-	_search_input.text_changed.connect(_on_search_text_changed)
-	_search_input.text_submitted.connect(_on_search_text_submitted)
-	_search_input.gui_input.connect(_on_search_ui_input)
-	search_vbox.add_child(_search_input)
-
-	_search_results_list = ItemList.new()
-	_search_results_list.custom_minimum_size = Vector2(320, 168)
-	_search_results_list.select_mode = ItemList.SELECT_SINGLE
-	_search_results_list.visible = false
-	_search_results_list.item_selected.connect(_on_search_result_selected)
-	_search_results_list.item_activated.connect(_on_search_result_activated)
-	_search_results_list.gui_input.connect(_on_search_ui_input)
-	search_vbox.add_child(_search_results_list)
-
-	world.paused_changed.connect(_on_world_paused)
-	world.speed_changed.connect(_on_world_speed_changed)
-	world.time.time_advanced.connect(_on_time_advanced)
-	_refresh_time_hud()
-	_refresh_control_mode_hud()
+	_hud_overlay_controller = HudOverlayControllerScript.new()
+	_hud_overlay_controller.setup(
+		world,
+		_city_camera,
+		canvas,
+		_hud_controller.get_building_overview_button(),
+		Callable(_interaction_controller, "handle_citizen_clicked"),
+		Callable(_interaction_controller, "handle_building_clicked"),
+		Callable(_building_status_style_resolver, "get_badge_color"),
+		Callable(_building_status_style_resolver, "get_badge_icon"),
+		Callable(_interaction_controller, "mark_ui_interacted"),
+		SEARCH_RESULT_LIMIT,
+		BUILDING_OVERVIEW_REFRESH_INTERVAL_SEC
+	)
 
 func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel") and _controlled_citizen != null:
-		_set_citizen_control_mode(false)
+	if _interaction_controller != null and _interaction_controller.handle_input(event):
 		get_viewport().set_input_as_handled()
-		return
-
-	if event.is_action_pressed("ui_accept") \
-		and _controlled_citizen == null \
-		and (_search_input == null or not _search_input.has_focus()):
-		_on_pause_pressed()
-
-	if event.is_action_pressed("ui_cancel") and _search_results_list != null and _search_results_list.visible:
-		_search_results_list.visible = false
-		get_viewport().set_input_as_handled()
-		return
-
-	if event is InputEventMouseButton \
-		and event.button_index == MOUSE_BUTTON_LEFT \
-		and event.pressed:
-		call_deferred("_check_deselect_this_frame")
-
-func _check_deselect_this_frame() -> void:
-	if not _entity_clicked_this_frame:
-		_deselect()
-	_entity_clicked_this_frame = false
-
-func _on_pause_pressed() -> void:
-	world.toggle_pause()
-
-func _on_speed_pressed(multiplier: float) -> void:
-	world.set_speed(multiplier)
-	if world.is_paused:
-		world.toggle_pause()
-
-func _on_building_overview_pressed() -> void:
-	_entity_clicked_this_frame = true
-	if _building_overview_panel == null:
-		return
-	_building_overview_panel.visible = not _building_overview_panel.visible
-	_building_overview_btn.text = "Hide Buildings" if _building_overview_panel.visible else "Buildings"
-	_building_overview_refresh_left = 0.0
-	_refresh_building_overview()
-
-func _on_world_paused(paused: bool) -> void:
-	_pause_btn.text = "Resume" if paused else "Pause"
-
-func _on_world_speed_changed(multiplier: float) -> void:
-	_speed_label.text = "%.1fx" % multiplier
-
-func _refresh_control_mode_hud() -> void:
-	if _control_mode_panel == null or _control_mode_label == null:
-		return
-	if _controlled_citizen == null or not is_instance_valid(_controlled_citizen):
-		_control_mode_panel.visible = false
-		return
-	_control_mode_panel.visible = true
-	_control_mode_label.text = "CONTROL MODE: %s | WASD Move | Space Jump | Esc Exit" % _controlled_citizen.citizen_name
-
-func _update_building_overview(delta: float) -> void:
-	if _building_overview_panel == null or not _building_overview_panel.visible:
-		return
-	_building_overview_refresh_left -= delta
-	if _building_overview_refresh_left > 0.0:
-		return
-	_building_overview_refresh_left = BUILDING_OVERVIEW_REFRESH_INTERVAL_SEC
-	_refresh_building_overview()
-
-func _refresh_building_overview() -> void:
-	if _building_overview_label == null or world == null:
-		return
-
-	var hour := world.time.get_hour() if world.time != null else -1
-	var entries: Array[Dictionary] = []
-	for building in world.buildings:
-		if building == null or not is_instance_valid(building):
-			continue
-		var status_key := building.get_open_status_label(hour)
-		var active := building.is_open(hour)
-		entries.append({
-			"active": active,
-			"state_rank": _get_building_state_rank(status_key),
-			"name": building.get_display_name(),
-			"line": _format_building_overview_line(building, status_key, active),
-		})
-
-	entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		if bool(a.get("active", false)) != bool(b.get("active", false)):
-			return bool(a.get("active", false))
-		if int(a.get("state_rank", 99)) != int(b.get("state_rank", 99)):
-			return int(a.get("state_rank", 99)) < int(b.get("state_rank", 99))
-		return str(a.get("name", "")).to_lower() < str(b.get("name", "")).to_lower()
-	)
-
-	var active_count := 0
-	for entry in entries:
-		if bool(entry.get("active", false)):
-			active_count += 1
-
-	var lines: PackedStringArray = []
-	lines.append("[b]Gebaeude[/b] %d aktiv / %d gesamt" % [active_count, entries.size()])
-	lines.append("")
-	for entry in entries:
-		lines.append(str(entry.get("line", "")))
-
-	_building_overview_label.clear()
-	_building_overview_label.append_text("\n".join(lines))
-	_building_overview_label.custom_minimum_size = Vector2(
-		332,
-		maxf(272.0, _building_overview_label.get_content_height() + 16.0)
-	)
-
-func _format_building_overview_line(building: Building, status_key: String, active: bool) -> String:
-	var hour := world.time.get_hour() if world != null and world.time != null else -1
-	var status_text := building.get_open_status_display_label(hour)
-	var color := _status_key_to_hex(status_key)
-	var line := "[color=%s]%s[/color]  %s  (%d EUR)" % [
-		color,
-		_status_icon_for_overview(status_key),
-		_building_overview_escape("%s | %s" % [building.get_display_name(), status_text]),
-		building.account.balance
-	]
-	return "[b]%s[/b]" % line if active else line
-
-func _get_building_state_rank(status_key: String) -> int:
-	match status_key:
-		"OPEN":
-			return 0
-		"UNDERFUNDED":
-			return 1
-		"STRUGGLING":
-			return 2
-		"UNSTAFFED":
-			return 3
-		"CLOSED":
-			return 4
-		"NO_FUNDS":
-			return 5
-		_:
-			return 6
-
-func _status_key_to_hex(status_key: String) -> String:
-	var color := _get_selected_building_status_badge_color(status_key)
-	return "#" + color.to_html(false)
-
-func _status_icon_for_overview(status_key: String) -> String:
-	match status_key:
-		"UNDERFUNDED":
-			return "[~]"
-		"STRUGGLING":
-			return "[!]"
-		_:
-			return _get_selected_building_status_badge_icon(status_key)
-
-func _building_overview_escape(value: String) -> String:
-	return value.replace("[", "[lb]").replace("]", "[rb]")
-
-func _on_search_text_changed(new_text: String) -> void:
-	_refresh_search_results(new_text)
-
-func _on_search_text_submitted(submitted_text: String) -> void:
-	_refresh_search_results(submitted_text)
-	if _search_results.is_empty():
-		return
-	_apply_search_result(0)
-
-func _on_search_result_selected(index: int) -> void:
-	_apply_search_result(index)
-
-func _on_search_result_activated(index: int) -> void:
-	_apply_search_result(index)
-
-func _on_search_ui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed:
-		_entity_clicked_this_frame = true
-
-func _refresh_search_results(raw_query: String) -> void:
-	_search_results.clear()
-	if _search_results_list == null:
-		return
-
-	_search_results_list.clear()
-	var query := raw_query.strip_edges().to_lower()
-	if query.is_empty():
-		_search_results_list.visible = false
-		return
-
-	var matches := _collect_search_matches(query)
-	for entry in matches:
-		_search_results.append(entry)
-		_search_results_list.add_item(str(entry.get("label", "")))
-
-	_search_results_list.visible = not _search_results.is_empty()
-
-func _collect_search_matches(query: String) -> Array[Dictionary]:
-	var matches: Array[Dictionary] = []
-	if world == null:
-		return matches
-
-	for citizen in world.citizens:
-		if citizen == null or not is_instance_valid(citizen):
-			continue
-		var citizen_name := citizen.citizen_name.strip_edges()
-		var location_name := citizen.current_location.get_display_name() if citizen.current_location != null else "travelling"
-		var searchable := ("%s %s citizen person" % [citizen_name, location_name]).to_lower()
-		var score := _compute_search_score(query, citizen_name.to_lower(), searchable)
-		if score < 0:
-			continue
-		matches.append({
-			"score": score,
-			"sort_name": citizen_name.to_lower(),
-			"name": citizen_name,
-			"label": "Citizen | %s | %s" % [citizen_name, location_name],
-			"entity": citizen,
-		})
-
-	for building in world.buildings:
-		if building == null or not is_instance_valid(building):
-			continue
-		var building_name := building.get_display_name().strip_edges()
-		var searchable := ("%s %s building house" % [building_name, building.get_service_type()]).to_lower()
-		var score := _compute_search_score(query, building_name.to_lower(), searchable)
-		if score < 0:
-			continue
-		matches.append({
-			"score": score,
-			"sort_name": building_name.to_lower(),
-			"name": building_name,
-			"label": "Building | %s | %s" % [building_name, building.get_service_type()],
-			"entity": building,
-		})
-
-	matches.sort_custom(_sort_search_matches)
-	if matches.size() > SEARCH_RESULT_LIMIT:
-		matches.resize(SEARCH_RESULT_LIMIT)
-	return matches
-
-func _compute_search_score(query: String, primary_name: String, searchable: String) -> int:
-	if primary_name == query:
-		return 0
-	if primary_name.begins_with(query):
-		return 1
-	if searchable.contains(" " + query):
-		return 2
-	if searchable.contains(query):
-		return 3
-	return -1
-
-func _sort_search_matches(a: Dictionary, b: Dictionary) -> bool:
-	var score_a := int(a.get("score", 99))
-	var score_b := int(b.get("score", 99))
-	if score_a != score_b:
-		return score_a < score_b
-	return str(a.get("sort_name", "")) < str(b.get("sort_name", ""))
-
-func _apply_search_result(index: int) -> void:
-	if index < 0 or index >= _search_results.size():
-		return
-
-	_entity_clicked_this_frame = true
-	var entry := _search_results[index]
-	var entity = entry.get("entity", null)
-
-	if entity is Citizen:
-		_on_citizen_clicked(entity as Citizen)
-	elif entity is Building:
-		_on_building_clicked(entity as Building)
-	else:
-		return
-
-	if _search_input != null:
-		_search_input.text = str(entry.get("name", _search_input.text))
-	if _search_results_list != null:
-		_search_results_list.visible = false
-
-	_focus_camera_on_search_entity(entity)
-
-func _focus_camera_on_search_entity(entity) -> void:
-	if _city_camera == null:
-		return
-
-	var focus_pos := Vector3.ZERO
-	if entity is Citizen:
-		var citizen := entity as Citizen
-		if citizen.is_inside_building() and citizen.current_location != null:
-			focus_pos = citizen.current_location.global_position
-		else:
-			focus_pos = citizen.global_position
-	elif entity is Building:
-		focus_pos = (entity as Building).global_position
-	else:
-		return
-
-	_city_camera.focus_on_world_position(focus_pos)
-
-func _on_time_advanced(_day: int, _hour: int, _minute: int) -> void:
-	_refresh_time_hud()
-
-func _refresh_time_hud() -> void:
-	if _date_label == null or _clock_label == null or _citizen_stats_label == null or world == null or world.time == null:
-		return
-	_date_label.text = world.time.get_ui_date_string()
-	_clock_label.text = world.time.get_time_string()
-	_citizen_stats_label.text = "Citizens: %d | Unbeschaeftigt: %d | Wohnplaetze: %d/%d | Arbeitsplaetze: %d/%d" % [
-		_count_registered_citizens(),
-		_count_unemployed_citizens(),
-		_count_used_housing_slots(),
-		_count_total_housing_slots(),
-		_count_filled_job_slots(),
-		_count_total_job_slots()
-	]
-
-func _count_registered_citizens() -> int:
-	if world == null:
-		return 0
-	var total := 0
-	for citizen in world.citizens:
-		if citizen != null:
-			total += 1
-	return total
-
-func _count_unemployed_citizens() -> int:
-	if world == null:
-		return 0
-	var unemployed := 0
-	for citizen in world.citizens:
-		if citizen == null:
-			continue
-		if citizen.job == null or citizen.job.workplace == null:
-			unemployed += 1
-	return unemployed
-
-func _count_total_housing_slots() -> int:
-	if world == null:
-		return 0
-	var total := 0
-	for building in world.buildings:
-		if building is ResidentialBuilding:
-			total += maxi((building as ResidentialBuilding).capacity, 0)
-	return total
-
-func _count_used_housing_slots() -> int:
-	if world == null:
-		return 0
-	var used := 0
-	for building in world.buildings:
-		if building is ResidentialBuilding:
-			used += (building as ResidentialBuilding).tenants.size()
-	return used
-
-func _count_total_job_slots() -> int:
-	if world == null:
-		return 0
-	var total := 0
-	for building in world.buildings:
-		if building == null:
-			continue
-		total += maxi(building.job_capacity, 0)
-	return total
-
-func _count_filled_job_slots() -> int:
-	if world == null:
-		return 0
-	var filled := 0
-	for building in world.buildings:
-		if building == null:
-			continue
-		filled += building.workers.size()
-	return filled

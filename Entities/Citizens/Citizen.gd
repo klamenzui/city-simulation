@@ -1502,6 +1502,7 @@ func select(panel) -> void:
 
 # Auto-resolve optional node references
 func _auto_resolve_refs() -> void:
+	_get_query_world()
 	if home_path != NodePath():
 		home = get_node_or_null(home_path) as ResidentialBuilding
 	if restaurant_path != NodePath():
@@ -1640,6 +1641,34 @@ func set_world_ref(world: World) -> void:
 	_world_ref = world
 	_ground_fallback_y = world.get_ground_fallback_y()
 	_connect_time_signals(world)
+
+func _get_query_world() -> World:
+	if _world_ref != null and is_instance_valid(_world_ref):
+		return _world_ref
+	_world_ref = null
+	return _resolve_world_ref_from_tree()
+
+func _resolve_world_ref_from_tree() -> World:
+	if not is_inside_tree():
+		return null
+
+	var current := get_parent()
+	while current != null:
+		if current is World:
+			var parent_world := current as World
+			set_world_ref(parent_world)
+			return parent_world
+		current = current.get_parent()
+
+	var tree := get_tree()
+	if tree == null:
+		return null
+	for node in tree.get_nodes_in_group("world"):
+		if node is World:
+			var grouped_world := node as World
+			set_world_ref(grouped_world)
+			return grouped_world
+	return null
 
 func _connect_time_signals(world: World) -> void:
 	if world == null or world.time == null:
@@ -1783,11 +1812,98 @@ func _get_fun_cash_reserve(world: World) -> int:
 	return reserve
 
 func _find_first_residential_building(from_pos: Vector3 = Vector3.ZERO) -> ResidentialBuilding:
-	if _world_ref != null:
-		if _world_ref.has_method("find_available_residential_building"):
-			return _world_ref.find_available_residential_building(from_pos)
-		return _world_ref.find_first_residential_building()
+	var query_world := _get_query_world()
+	if query_world != null:
+		if query_world.has_method("find_available_residential_building"):
+			return query_world.find_available_residential_building(from_pos)
+		return query_world.find_first_residential_building()
+	return _find_best_tree_residential_building(from_pos)
 
+
+func _find_nearest_restaurant(from_pos: Vector3, require_open: bool = true) -> Restaurant:
+	var query_world := _get_query_world()
+	if query_world != null:
+		if query_world.has_method("find_preferred_restaurant"):
+			return query_world.find_preferred_restaurant(from_pos, self, require_open, self)
+		return query_world.find_nearest_restaurant(from_pos, require_open, self)
+	return _find_nearest_tree_building(
+		from_pos,
+		"buildings",
+		func(building: Building) -> bool:
+			if building is not Restaurant:
+				return false
+			return not require_open or building.is_open(-1)
+	) as Restaurant
+
+
+func _find_nearest_supermarket(from_pos: Vector3, require_open: bool = true) -> Supermarket:
+	var query_world := _get_query_world()
+	if query_world != null:
+		return query_world.find_nearest_supermarket(from_pos, require_open, self)
+	return _find_nearest_tree_building(
+		from_pos,
+		"buildings",
+		func(building: Building) -> bool:
+			if building is not Supermarket:
+				return false
+			return not require_open or building.is_open(-1)
+	) as Supermarket
+
+
+func _find_nearest_shop(from_pos: Vector3, require_open: bool = true) -> Shop:
+	var query_world := _get_query_world()
+	if query_world != null:
+		return query_world.find_nearest_shop(from_pos, require_open, self)
+	return _find_nearest_tree_building(
+		from_pos,
+		"buildings",
+		func(building: Building) -> bool:
+			if building is not Shop or building is Supermarket:
+				return false
+			return not require_open or building.is_open(-1)
+	) as Shop
+
+
+func _find_nearest_cinema(from_pos: Vector3, require_open: bool = true) -> Cinema:
+	var query_world := _get_query_world()
+	if query_world != null:
+		return query_world.find_nearest_cinema(from_pos, require_open, self)
+	return _find_nearest_tree_building(
+		from_pos,
+		"buildings",
+		func(building: Building) -> bool:
+			if building is not Cinema:
+				return false
+			return not require_open or building.is_open(-1)
+	) as Cinema
+
+func _find_nearest_university(from_pos: Vector3, require_open: bool = true) -> University:
+	var query_world := _get_query_world()
+	if query_world != null:
+		return query_world.find_nearest_university(from_pos, require_open, self)
+	return _find_nearest_tree_building(
+		from_pos,
+		"buildings",
+		func(building: Building) -> bool:
+			if building is not University:
+				return false
+			return not require_open or building.is_open(-1)
+	) as University
+
+func _find_nearest_park(from_pos: Vector3) -> Building:
+	var query_world := _get_query_world()
+	if query_world != null:
+		return query_world.find_nearest_park(from_pos, self)
+	return _find_nearest_tree_building(
+		from_pos,
+		"parks",
+		func(building: Building) -> bool:
+			return building != null
+	)
+
+func _find_best_tree_residential_building(from_pos: Vector3) -> ResidentialBuilding:
+	if not is_inside_tree():
+		return null
 	var best: ResidentialBuilding = null
 	var best_load := INF
 	var best_dist := INF
@@ -1805,100 +1921,21 @@ func _find_first_residential_building(from_pos: Vector3 = Vector3.ZERO) -> Resid
 			best = residential
 	return best
 
-
-func _find_nearest_restaurant(from_pos: Vector3, require_open: bool = true) -> Restaurant:
-	if _world_ref != null:
-		if _world_ref.has_method("find_preferred_restaurant"):
-			return _world_ref.find_preferred_restaurant(from_pos, self, require_open, self)
-		return _world_ref.find_nearest_restaurant(from_pos, require_open, self)
-
-	var best: Restaurant = null
-	var best_dist := INF
-	for node in get_tree().get_nodes_in_group("buildings"):
-		if node is Restaurant:
-			var r := node as Restaurant
-			var d := from_pos.distance_to(r.global_position)
-			if d < best_dist:
-				best_dist = d
-				best = r
-	return best
-
-
-func _find_nearest_supermarket(from_pos: Vector3, require_open: bool = true) -> Supermarket:
-	if _world_ref != null:
-		return _world_ref.find_nearest_supermarket(from_pos, require_open, self)
-
-	var best: Supermarket = null
-	var best_dist := INF
-	for node in get_tree().get_nodes_in_group("buildings"):
-		if node is Supermarket:
-			var market := node as Supermarket
-			var d := from_pos.distance_to(market.global_position)
-			if d < best_dist:
-				best_dist = d
-				best = market
-	return best
-
-
-func _find_nearest_shop(from_pos: Vector3, require_open: bool = true) -> Shop:
-	if _world_ref != null:
-		return _world_ref.find_nearest_shop(from_pos, require_open, self)
-
-	var best: Shop = null
-	var best_dist := INF
-	for node in get_tree().get_nodes_in_group("buildings"):
-		if node is Shop and node is not Supermarket:
-			var shop := node as Shop
-			var d := from_pos.distance_to(shop.global_position)
-			if d < best_dist:
-				best_dist = d
-				best = shop
-	return best
-
-
-func _find_nearest_cinema(from_pos: Vector3, require_open: bool = true) -> Cinema:
-	if _world_ref != null:
-		return _world_ref.find_nearest_cinema(from_pos, require_open, self)
-
-	var best: Cinema = null
-	var best_dist := INF
-	for node in get_tree().get_nodes_in_group("buildings"):
-		if node is Cinema:
-			var cinema := node as Cinema
-			var d := from_pos.distance_to(cinema.global_position)
-			if d < best_dist:
-				best_dist = d
-				best = cinema
-	return best
-
-func _find_nearest_university(from_pos: Vector3, require_open: bool = true) -> University:
-	if _world_ref != null:
-		return _world_ref.find_nearest_university(from_pos, require_open, self)
-
-	var best: University = null
-	var best_dist := INF
-	for node in get_tree().get_nodes_in_group("buildings"):
-		if node is University:
-			var uni := node as University
-			var d := from_pos.distance_to(uni.global_position)
-			if d < best_dist:
-				best_dist = d
-				best = uni
-	return best
-
-func _find_nearest_park(from_pos: Vector3) -> Building:
-	if _world_ref != null:
-		return _world_ref.find_nearest_park(from_pos, self)
-
+func _find_nearest_tree_building(from_pos: Vector3, group_name: String, accept: Callable) -> Building:
+	if not is_inside_tree():
+		return null
 	var best: Building = null
 	var best_dist := INF
-	for node in get_tree().get_nodes_in_group("parks"):
-		if node is Building:
-			var b := node as Building
-			var d := from_pos.distance_to(b.global_position)
-			if d < best_dist:
-				best_dist = d
-				best = b
+	for node in get_tree().get_nodes_in_group(group_name):
+		if node is not Building:
+			continue
+		var building := node as Building
+		if accept.is_valid() and not bool(accept.call(building)):
+			continue
+		var dist := from_pos.distance_to(building.global_position)
+		if dist < best_dist:
+			best_dist = dist
+			best = building
 	return best
 
 func debug_log(message: String) -> void:
