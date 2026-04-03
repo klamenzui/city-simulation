@@ -8,8 +8,11 @@ Die Hauptszene ist `Main.tscn`. Beim Start wird die Stadt aufgebaut, das Welt-/Z
 
 Wichtige Bereiche:
 
-- `Main.tscn` / `main.gd`: Bootstrapping, HUD, Debug, Citizen-Spawn, Auswahl, Logs
-- `Simulation/World.gd`: Simulationszeit, Tick-Loop, Economy-/Payday-Anbindung
+- `Main.tscn` / `main.gd`: schlanker Szenen-Orchestrator fuer Bootstrap, HUD, Debug, Citizen-Spawn, Auswahl und Logs
+- `Simulation/Bootstrap/*`: Szene-/Welt-Setup, City-Import, Navigation-Region, Core-Buildings und World-Building-Konfiguration
+- `Simulation/World.gd`: Simulationszeit, Tick-Loop, Economy-/Payday-Anbindung, zentrale Registry fuer Citizens/Gebaeude/Service-Queries
+- `Simulation/Debug/*`: ausgezogene Debug-Helfer wie Selection-State, Selection-/Routing-Overlays und Runtime-Trace-/MapDump-Logging fuer `main.gd`
+- `Simulation/UI/*`: ausgezogene UI-Helfer wie HUD, HUD-Overlays, UI-Interaction, Search, Building-Overview, Building-Status-Styles und Selected-Building-Status-Badge fuer `main.gd`
 - `Simulation/Navigation/*`: Road- und Pedestrian-Graph, Crosswalk-Logik
 - `Entities/Citizens/*`: Citizen-Logik, Bewegung, Haus/Job/Beduerfnisse
 - `Entities/Buildings/*`: Gebaeude, Eingangs-/Access-/Spawn-Punkte, Jobs, Wohnen
@@ -194,6 +197,7 @@ Die Logdatei enthaelt unter anderem:
 - `MapDump`: Snapshot von Gebaeuden, Citizens, Strassen, Crosswalks und Lichtern
 
 Die globalen Debug-Dumps sind absichtlich nicht mehr standardmaessig aktiv. Fuer laengere Analysen lassen sie sich ueber `config/balance.json` unter `debug.enable_all_citizen_trace` und `debug.enable_map_snapshot_log` gezielt einschalten.
+Citizen-Finder loesen den `World`-Service bei Bedarf jetzt selbst aus dem SceneTree auf, damit fruehe Queries nicht wieder auf verteilte Gruppen-Scans zurueckfallen.
 
 Wichtig fuer die Analyse:
 

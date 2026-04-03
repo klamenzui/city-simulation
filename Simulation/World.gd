@@ -24,6 +24,15 @@ var city_account: Account = Account.new()
 var citizens: Array[Citizen] = []
 var buildings: Array[Building] = []
 var jobs: Array[Job] = []
+var _residential_buildings: Array[ResidentialBuilding] = []
+var _restaurants: Array[Restaurant] = []
+var _supermarkets: Array[Supermarket] = []
+var _shops: Array[Shop] = []
+var _cinemas: Array[Cinema] = []
+var _universities: Array[University] = []
+var _city_halls: Array[CityHall] = []
+var _parks: Array[Park] = []
+var _buildings_by_service_type: Dictionary = {}
 
 var is_paused: bool = false
 
@@ -36,6 +45,7 @@ var _city_bench_cache_dirty: bool = true
 
 func _ready() -> void:
 	#use_collision = true
+	add_to_group("world")
 	minutes_per_tick = BalanceConfig.get_int("world.minutes_per_tick", minutes_per_tick)
 	tick_interval_sec = BalanceConfig.get_float("world.tick_interval_sec", tick_interval_sec)
 	speed_multiplier = BalanceConfig.get_float("world.speed_multiplier", speed_multiplier)
@@ -343,10 +353,22 @@ func register_citizen(citizen: Citizen) -> void:
 	citizens.append(citizen)
 	citizen.set_world_ref(self)
 
+func unregister_citizen(citizen: Citizen) -> void:
+	if citizen == null:
+		return
+	citizens.erase(citizen)
+
 func register_building(building: Building) -> void:
 	if building == null or buildings.has(building):
 		return
 	buildings.append(building)
+	_index_building(building)
+
+func unregister_building(building: Building) -> void:
+	if building == null:
+		return
+	buildings.erase(building)
+	_deindex_building(building)
 
 func register_job(job: Job) -> void:
 	if job == null or jobs.has(job):
@@ -354,13 +376,19 @@ func register_job(job: Job) -> void:
 	jobs.append(job)
 	economy.register_job(job)
 
+func unregister_job(job: Job) -> void:
+	if job == null:
+		return
+	jobs.erase(job)
+
 func get_open_jobs() -> Array[Job]:
 	return economy.get_open_jobs()
 
 func find_city_hall() -> CityHall:
-	for building in buildings:
-		if building is CityHall:
-			return building as CityHall
+	for city_hall in _city_halls:
+		if city_hall == null or not is_instance_valid(city_hall):
+			continue
+		return city_hall
 	return null
 
 func find_available_residential_building(from_pos: Vector3 = Vector3.ZERO) -> ResidentialBuilding:
@@ -368,10 +396,9 @@ func find_available_residential_building(from_pos: Vector3 = Vector3.ZERO) -> Re
 	var best_load := INF
 	var best_dist := INF
 
-	for building in buildings:
-		if building is not ResidentialBuilding:
+	for residential in _residential_buildings:
+		if residential == null or not is_instance_valid(residential):
 			continue
-		var residential := building as ResidentialBuilding
 		if not residential.has_free_slot():
 			continue
 
@@ -400,10 +427,9 @@ func find_nearest_restaurant(from_pos: Vector3, require_open: bool = true, seeke
 func find_preferred_restaurant(from_pos: Vector3, excluded_citizen: Citizen = null, require_open: bool = true, seeker: Citizen = null) -> Restaurant:
 	var best: Restaurant = null
 	var best_score := INF
-	for building in buildings:
-		if building is not Restaurant:
+	for restaurant in _restaurants:
+		if restaurant == null or not is_instance_valid(restaurant):
 			continue
-		var restaurant := building as Restaurant
 		if _is_building_temporarily_blocked_for(restaurant, seeker):
 			continue
 		if require_open and not restaurant.is_open(time.get_hour()):
@@ -423,12 +449,9 @@ func find_preferred_restaurant(from_pos: Vector3, excluded_citizen: Citizen = nu
 func find_nearest_shop(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> Shop:
 	var best: Shop = null
 	var best_dist := INF
-	for building in buildings:
-		if building is not Shop:
+	for shop in _shops:
+		if shop == null or not is_instance_valid(shop):
 			continue
-		if building is Supermarket:
-			continue
-		var shop := building as Shop
 		if _is_building_temporarily_blocked_for(shop, seeker):
 			continue
 		if require_open and not shop.is_open(time.get_hour()):
@@ -444,10 +467,9 @@ func find_nearest_shop(from_pos: Vector3, require_open: bool = true, seeker: Cit
 func find_nearest_cinema(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> Cinema:
 	var best: Cinema = null
 	var best_dist := INF
-	for building in buildings:
-		if building is not Cinema:
+	for cinema in _cinemas:
+		if cinema == null or not is_instance_valid(cinema):
 			continue
-		var cinema := building as Cinema
 		if _is_building_temporarily_blocked_for(cinema, seeker):
 			continue
 		if require_open and not cinema.is_open(time.get_hour()):
@@ -462,19 +484,17 @@ func find_nearest_cinema(from_pos: Vector3, require_open: bool = true, seeker: C
 func find_nearest_park(from_pos: Vector3, seeker: Citizen = null) -> Building:
 	var best: Building = null
 	var best_dist := INF
-	for building in buildings:
-		if building == null:
+	for park in _parks:
+		if park == null or not is_instance_valid(park):
 			continue
-		if not building.is_in_group("parks"):
+		if _is_building_temporarily_blocked_for(park, seeker):
 			continue
-		if _is_building_temporarily_blocked_for(building, seeker):
+		if not _is_building_pedestrian_reachable(from_pos, park):
 			continue
-		if not _is_building_pedestrian_reachable(from_pos, building):
-			continue
-		var dist := from_pos.distance_to(building.global_position)
+		var dist := from_pos.distance_to(park.global_position)
 		if dist < best_dist:
 			best_dist = dist
-			best = building
+			best = park
 	return best
 
 func has_available_city_bench_for(citizen = null, reference_pos: Vector3 = Vector3.ZERO) -> bool:
@@ -547,10 +567,9 @@ func is_citizen_at_reserved_city_bench(citizen) -> bool:
 func find_nearest_supermarket(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> Supermarket:
 	var best: Supermarket = null
 	var best_dist := INF
-	for building in buildings:
-		if building is not Supermarket:
+	for market in _supermarkets:
+		if market == null or not is_instance_valid(market):
 			continue
-		var market := building as Supermarket
 		if _is_building_temporarily_blocked_for(market, seeker):
 			continue
 		if require_open and not market.is_open(time.get_hour()):
@@ -595,9 +614,20 @@ func _mark_city_bench_cache_dirty() -> void:
 
 func _on_scene_node_added(_node: Node) -> void:
 	_mark_city_bench_cache_dirty()
+	if _node is Building:
+		register_building(_node as Building)
+	elif _node is Citizen:
+		var citizen := _node as Citizen
+		register_citizen(citizen)
+		if citizen.job != null:
+			register_job(citizen.job)
 
 func _on_scene_node_removed(_node: Node) -> void:
 	_mark_city_bench_cache_dirty()
+	if _node is Building:
+		unregister_building(_node as Building)
+	elif _node is Citizen:
+		unregister_citizen(_node as Citizen)
 
 func _collect_city_bench_nodes(node: Node, out: Array[Node3D]) -> void:
 	for child in node.get_children():
@@ -694,13 +724,85 @@ func _find_bench_owner_building(node: Node) -> Building:
 		current = current.get_parent()
 	return null
 
+func _index_building(building: Building) -> void:
+	_append_unique_building_to_bucket(_get_or_create_service_bucket(building.get_service_type()), building)
+
+	if building is ResidentialBuilding:
+		_append_unique(_residential_buildings, building as ResidentialBuilding)
+	if building is Restaurant:
+		_append_unique(_restaurants, building as Restaurant)
+	if building is Supermarket:
+		_append_unique(_supermarkets, building as Supermarket)
+	elif building is Shop:
+		_append_unique(_shops, building as Shop)
+	if building is Cinema:
+		_append_unique(_cinemas, building as Cinema)
+	if building is University:
+		_append_unique(_universities, building as University)
+	if building is CityHall:
+		_append_unique(_city_halls, building as CityHall)
+	if building is Park:
+		_append_unique(_parks, building as Park)
+
+func _deindex_building(building: Building) -> void:
+	_remove_building_from_service_bucket(building.get_service_type(), building)
+
+	if building is ResidentialBuilding:
+		_residential_buildings.erase(building as ResidentialBuilding)
+	if building is Restaurant:
+		_restaurants.erase(building as Restaurant)
+	if building is Supermarket:
+		_supermarkets.erase(building as Supermarket)
+	elif building is Shop:
+		_shops.erase(building as Shop)
+	if building is Cinema:
+		_cinemas.erase(building as Cinema)
+	if building is University:
+		_universities.erase(building as University)
+	if building is CityHall:
+		_city_halls.erase(building as CityHall)
+	if building is Park:
+		_parks.erase(building as Park)
+
+func _get_or_create_service_bucket(service_type: String) -> Array:
+	if not _buildings_by_service_type.has(service_type):
+		_buildings_by_service_type[service_type] = []
+	var bucket: Variant = _buildings_by_service_type.get(service_type, [])
+	if bucket is Array:
+		return bucket as Array
+	return []
+
+func _remove_building_from_service_bucket(service_type: String, building: Building) -> void:
+	var bucket: Variant = _buildings_by_service_type.get(service_type, null)
+	if bucket is not Array:
+		return
+	var typed_bucket := bucket as Array
+	typed_bucket.erase(building)
+	if typed_bucket.is_empty():
+		_buildings_by_service_type.erase(service_type)
+
+func _get_buildings_for_service_type(service_type: String) -> Array:
+	var bucket: Variant = _buildings_by_service_type.get(service_type, [])
+	if bucket is Array:
+		return bucket as Array
+	return []
+
+func _append_unique(array: Array, value) -> void:
+	if value == null or array.has(value):
+		return
+	array.append(value)
+
+func _append_unique_building_to_bucket(bucket: Array, building: Building) -> void:
+	if building == null or bucket.has(building):
+		return
+	bucket.append(building)
+
 func find_nearest_university(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> University:
 	var best: University = null
 	var best_dist := INF
-	for building in buildings:
-		if building is not University:
+	for uni in _universities:
+		if uni == null or not is_instance_valid(uni):
 			continue
-		var uni := building as University
 		if _is_building_temporarily_blocked_for(uni, seeker):
 			continue
 		if require_open and not uni.is_open(time.get_hour()):
@@ -716,12 +818,10 @@ func find_nearest_university(from_pos: Vector3, require_open: bool = true, seeke
 func find_nearest_building_with_service(from_pos: Vector3, service_type: String, require_open: bool = true, seeker: Citizen = null) -> Building:
 	var best: Building = null
 	var best_dist := INF
-	for building in buildings:
-		if building == null:
+	for building in _get_buildings_for_service_type(service_type):
+		if building == null or not is_instance_valid(building):
 			continue
 		if _is_building_temporarily_blocked_for(building, seeker):
-			continue
-		if building.get_service_type() != service_type:
 			continue
 		if require_open and not building.is_open(time.get_hour()):
 			continue
