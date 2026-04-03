@@ -12,6 +12,10 @@ var time_display: Label = null
 var time_ui_controller: Node = null
 
 func _ready() -> void:
+	if _is_headless_runtime():
+		_disable_headless_visual_stack()
+		return
+
 	world = get_node_or_null("../World") as World
 	enhanced_sky = get_node_or_null("../EnhancedSky")
 	world_environment = get_node_or_null("../EnhancedSky/WorldEnvironment") as WorldEnvironment
@@ -26,6 +30,15 @@ func _ready() -> void:
 	_sync_sky_rate()
 	_apply_cozy_environment_style()
 	call_deferred("_sync_from_world_time", true)
+
+func _is_headless_runtime() -> bool:
+	return DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server")
+
+func _disable_headless_visual_stack() -> void:
+	enhanced_sky = get_node_or_null("../EnhancedSky")
+	if enhanced_sky != null:
+		enhanced_sky.queue_free()
+	queue_free()
 
 func _disable_legacy_sky_ui() -> void:
 	if time_display != null:

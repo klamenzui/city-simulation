@@ -66,7 +66,14 @@ var night_colors = {
 	"clouds_light_color": Color(0.278, 0.341, 0.584)
 }
 
+func _is_headless_runtime() -> bool:
+	return DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server")
+
 func _ready():
+	if _is_headless_runtime():
+		set_process(false)
+		return
+
 	# Initialize time to start_time
 	current_time = start_time
 	
@@ -81,6 +88,8 @@ func _ready():
 			sky_material = sky.sky_material
 
 func _process(delta):
+	if _is_headless_runtime():
+		return
 	# Update time
 	var time_delta = delta * time_scale
 	current_time = fmod(current_time + time_delta / day_length * 24.0, 24.0)

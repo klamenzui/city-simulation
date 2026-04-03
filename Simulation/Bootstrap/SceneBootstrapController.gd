@@ -23,6 +23,7 @@ const MATTE_SPECULAR_CAP := 0.18
 static func setup_scene(root: Node3D, world: World) -> void:
 	if root == null or world == null:
 		return
+	var is_headless := _is_headless_runtime()
 
 	var has_scene_city: bool = root.get_node_or_null("World/City") != null
 	var imported_city: Node3D = null
@@ -34,11 +35,35 @@ static func setup_scene(root: Node3D, world: World) -> void:
 	WorldSetupScript.configure_scene_buildings(root.get_tree(), world)
 	if not has_scene_city and imported_city == null:
 		RoadBuilderScript.build_simple_roads(root, world)
-	_apply_matte_city_materials(root)
+	if not is_headless:
+		_apply_matte_city_materials(root)
+	else:
+		_disable_headless_visual_nodes(root)
 
 	world.rebuild_road_graph(root)
 	world.rebuild_pedestrian_graph(root)
 	_ensure_ocean(world)
+
+static func _is_headless_runtime() -> bool:
+	return DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server")
+
+static func _disable_headless_visual_nodes(node: Node) -> void:
+	if node == null:
+		return
+	if node is GeometryInstance3D:
+		var geometry_node := node as GeometryInstance3D
+		geometry_node.visible = false
+		geometry_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	elif node is Light3D:
+		(node as Light3D).visible = false
+	elif node is GPUParticles3D:
+		(node as GPUParticles3D).visible = false
+	elif node is CPUParticles3D:
+		(node as CPUParticles3D).visible = false
+	elif node is Decal:
+		(node as Decal).visible = false
+	for child in node.get_children():
+		_disable_headless_visual_nodes(child)
 
 static func _spawn_missing_core_buildings(root: Node3D) -> void:
 	if root == null:
@@ -198,8 +223,9 @@ static func _ensure_ocean(world: World) -> void:
 	plane.size = Vector2(span * 2.4, span * 2.4)
 	plane.subdivide_width = 24
 	plane.subdivide_depth = 24
+	var ocean_material := _build_ocean_material()
+	plane.material = ocean_material
 	ocean.mesh = plane
-	ocean.material_override = _build_ocean_material()
 	ocean.position = world.to_local(_get_ocean_world_position(world, bounds))
 
 static func _get_ocean_world_position(world: World, bounds: AABB) -> Vector3:

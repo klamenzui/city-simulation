@@ -6,7 +6,12 @@
 radius = 0.21386719
 height = 1.2990814
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_4g7t2"]
+albedo_color = Color(0.72, 0.81, 0.94, 1)
+roughness = 0.92
+
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_cbg8l"]
+material = SubResource("StandardMaterial3D_4g7t2")
 
 [node name="Citizen" type="CharacterBody3D" unique_id=566366776 groups=["citizens"]]
 script = ExtResource("1_qc8p4")

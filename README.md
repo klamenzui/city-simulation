@@ -8,8 +8,8 @@ Die Hauptszene ist `Main.tscn`. Beim Start wird die Stadt aufgebaut, das Welt-/Z
 
 Wichtige Bereiche:
 
-- `Main.tscn` / `main.gd`: schlanker Szenen-Orchestrator fuer Bootstrap, HUD, Debug, Citizen-Spawn, Auswahl und Logs
-- `Simulation/Bootstrap/*`: Szene-/Welt-Setup, City-Import, Navigation-Region, Core-Buildings und World-Building-Konfiguration
+- `Main.tscn` / `main.gd`: sehr schlanker Szenen-Einstieg fuer Bootstrap, Tick und Input-Weitergabe
+- `Simulation/Bootstrap/*`: Szene-/Welt-Setup, Runtime-Orchestrierung, City-Import, Navigation-Region, Core-Buildings und World-Building-Konfiguration
 - `Simulation/World.gd`: Simulationszeit, Tick-Loop, Economy-/Payday-Anbindung, zentrale Registry fuer Citizens/Gebaeude/Service-Queries
 - `Simulation/Debug/*`: ausgezogene Debug-Helfer wie Selection-State, Selection-/Routing-Overlays und Runtime-Trace-/MapDump-Logging fuer `main.gd`
 - `Simulation/UI/*`: ausgezogene UI-Helfer wie HUD, HUD-Overlays, UI-Interaction, Search, Building-Overview, Building-Status-Styles und Selected-Building-Status-Badge fuer `main.gd`
@@ -28,7 +28,7 @@ Wichtige Bereiche:
 - Es gibt ein Zeitmodell mit Pause, Geschwindigkeitsstufen und Tagesfortschritt.
 - Economy-System mit Markt, Jobs, Gehalt, Steuern, Welfare, Gebaeudezustand und oeffentlicher Finanzierung ist vorhanden.
 - Sky/Ocean und Tag-Nacht-Visualisierung sind an die Simulationszeit gekoppelt.
-- Gebaeude- und Strassenmaterialien werden beim Start matter gemacht, damit sie weniger metallisch wirken.
+- Gebaeude- und Strassenmaterialien werden im normalen Runtime-Start matter gemacht, damit sie weniger metallisch wirken; im Headless-Testpfad wird dieses reine Visual-Postprocessing bewusst uebersprungen.
 
 ## Baenke und Parks
 
@@ -198,6 +198,7 @@ Die Logdatei enthaelt unter anderem:
 
 Die globalen Debug-Dumps sind absichtlich nicht mehr standardmaessig aktiv. Fuer laengere Analysen lassen sie sich ueber `config/balance.json` unter `debug.enable_all_citizen_trace` und `debug.enable_map_snapshot_log` gezielt einschalten.
 Citizen-Finder loesen den `World`-Service bei Bedarf jetzt selbst aus dem SceneTree auf, damit fruehe Queries nicht wieder auf verteilte Gruppen-Scans zurueckfallen.
+Headless-Bootstrap blendet Visual-Nodes aus und ueberspringt reine Material-Postprocessing-Schritte, damit Testlaeufe schneller und Dummy-Renderer-sauber bleiben.
 
 Wichtig fuer die Analyse:
 
@@ -272,6 +273,8 @@ Ausfuehrliche Beschreibung, Parameter und direkte Nutzung von `run_tests.ps1` st
 - `tools/codex_route_probe.gd`: Beispielrouten, Crosswalk-Probes, Spawn-/Entrance-Debug
 - `tools/codex_crosswalk_audit.gd`: Audit fuer illegale Strassenquerungen im Graph
 - `tools/codex_sky_probe.gd`: Sky/Ocean/Tag-Nacht-Pruefung
+- `tools/codex_null_material_audit.gd`: Headless-Audit fuer fehlende oder ungueltige Materialien und Geometry-Problemstellen
+- `tools/codex_scene_warning_probe.gd`: laedt einzelne Szenen isoliert, um Renderer- oder Importwarnungen schnell einzugrenzen
 
 ## Wichtige Runtime-Dateien
 
