@@ -362,7 +362,7 @@ func _setup_highlight() -> void:
 	_mesh_instance = get_node_or_null("MeshInstance3D") as MeshInstance3D
 	if _mesh_instance == null:
 		return
-	_original_material = _mesh_instance.get_surface_override_material(0)
+	_original_material = _mesh_instance.material_overlay
 
 	_highlight_material = StandardMaterial3D.new()
 	_highlight_material.albedo_color = Color(1.0, 0.85, 0.1)  # Gelb
@@ -1486,9 +1486,9 @@ func set_selected(selected: bool) -> void:
 	if _mesh_instance == null:
 		return
 	if selected:
-		_mesh_instance.set_surface_override_material(0, _highlight_material)
+		_mesh_instance.material_overlay = _highlight_material
 	else:
-		_mesh_instance.set_surface_override_material(0, _original_material)
+		_mesh_instance.material_overlay = _original_material
 
 
 # Selection entrypoint called from main.gd

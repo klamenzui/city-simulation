@@ -73,7 +73,14 @@ var planets = [
 # Configuration save path
 const CONFIG_FILE_PATH = "user://sky_settings.cfg"
 
+func _is_headless_runtime() -> bool:
+	return DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server")
+
 func _ready():
+	if _is_headless_runtime():
+		set_process(false)
+		return
+
 	# Find time manager
 	time_manager = get_node_or_null("../SkyTimeManager")
 	
@@ -109,6 +116,8 @@ func _ready():
 	load_settings()
 
 func _process(delta):
+	if _is_headless_runtime():
+		return
 	if time_manager == null or sky_material == null:
 		return
 	
