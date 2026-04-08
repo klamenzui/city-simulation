@@ -913,15 +913,15 @@ func _test_player_dialog_request_uses_json_profile_options() -> String:
 	_expect(parsed is Dictionary, "player dialog request body should be valid JSON")
 	if parsed is Dictionary:
 		var body := parsed as Dictionary
-		_expect_eq(str(body.get("format", "")), "json", "player dialog request should force JSON output")
+		_expect_eq(str(body.get("format", "")), "", "player dialog request should use plain text output for lower latency")
 		var options: Variant = body.get("options", {})
 		_expect(options is Dictionary, "player dialog request should include generation options")
 		if options is Dictionary:
 			var typed_options := options as Dictionary
-			_expect_eq(int(typed_options.get("top_k", 0)), 30, "player dialog request should use the tuned top_k")
-			_expect_eq(int(typed_options.get("num_ctx", 0)), 2048, "player dialog request should use the tuned context window")
-			_expect_eq(int(typed_options.get("num_predict", 0)), 70, "player dialog request should use the tuned output length")
-			_expect(abs(float(typed_options.get("temperature", 0.0)) - 0.35) < 0.001, "player dialog request should use the tuned temperature")
+			_expect_eq(int(typed_options.get("top_k", 0)), 24, "player dialog request should use the lower-latency top_k")
+			_expect_eq(int(typed_options.get("num_ctx", 0)), 1024, "player dialog request should use the reduced context window")
+			_expect_eq(int(typed_options.get("num_predict", 0)), 40, "player dialog request should use the reduced output length")
+			_expect(abs(float(typed_options.get("temperature", 0.0)) - 0.25) < 0.001, "player dialog request should use the more stable lower temperature")
 
 	runtime_service.queue_free()
 	return _current_error
