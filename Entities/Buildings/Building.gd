@@ -19,6 +19,7 @@ enum BuildingType {
 	PARK,
 	FARM,
 	FACTORY,
+	GAS_STATION,
 }
 
 @export var building_name: String = "Building"
@@ -533,6 +534,8 @@ func get_building_type_name() -> String:
 			return "Farm"
 		BuildingType.FACTORY:
 			return "Factory"
+		BuildingType.GAS_STATION:
+			return "Gas Station"
 		_:
 			return "Generic"
 
@@ -622,7 +625,8 @@ func is_public_building() -> bool:
 func is_economic_building() -> bool:
 	match building_type:
 		BuildingType.CAFE, BuildingType.CINEMA, BuildingType.FACTORY, BuildingType.FARM, \
-		BuildingType.RESIDENTIAL, BuildingType.RESTAURANT, BuildingType.SHOP, BuildingType.SUPERMARKET:
+		BuildingType.GAS_STATION, BuildingType.RESIDENTIAL, BuildingType.RESTAURANT, \
+		BuildingType.SHOP, BuildingType.SUPERMARKET:
 			return true
 		_:
 			return false
@@ -745,7 +749,11 @@ func get_service_type() -> String:
 	return "generic"
 
 func get_staff_requirement_label() -> String:
-	return "kein Personal"
+	match building_type:
+		BuildingType.GAS_STATION:
+			return "Tankstellenpersonal fehlt"
+		_:
+			return "kein Personal"
 
 func is_outdoor_destination() -> bool:
 	return false
@@ -958,6 +966,8 @@ func get_maintenance_role_titles() -> Array[String]:
 			return ["Janitor", "Technician", "MaintenanceWorker"]
 		BuildingType.FACTORY:
 			return ["Technician", "MaintenanceWorker"]
+		BuildingType.GAS_STATION:
+			return ["Mechaniker", "MaintenanceWorker", "Technician"]
 		_:
 			return ["MaintenanceWorker", "Janitor", "Technician", "Gardener"]
 

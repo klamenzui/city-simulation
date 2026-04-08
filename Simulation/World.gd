@@ -1199,6 +1199,13 @@ func _score_job_offer_for_citizen(
 		Building.BuildingType.FACTORY:
 			if job_title == "Technician" or job_title == "Engineer":
 				score += 180.0
+		Building.BuildingType.GAS_STATION:
+			if job_title == "Tankwart":
+				score += 340.0
+			elif job_title == "Mechaniker":
+				score += 180.0
+			elif job_title == "MaintenanceWorker":
+				score += 120.0
 
 	if citizen.job != null and citizen.job.title == job_title:
 		score += 30.0
@@ -1224,6 +1231,8 @@ func _get_candidate_job_titles_for_building(building: Building) -> Array[String]
 			return ["Designer", "Janitor", "MaintenanceWorker"]
 		Building.BuildingType.FACTORY:
 			return ["Engineer", "Technician", "Mechaniker", "Fahrer", "MaintenanceWorker"]
+		Building.BuildingType.GAS_STATION:
+			return ["Tankwart", "Mechaniker", "Verkaeufer", "MaintenanceWorker"]
 		Building.BuildingType.FARM:
 			return ["Fahrer", "Mechaniker", "Gardener", "MaintenanceWorker"]
 		Building.BuildingType.RESIDENTIAL:

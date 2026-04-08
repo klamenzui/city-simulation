@@ -22,8 +22,8 @@
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_003_d67cc4f3.tscn" id="35_xnps6"]
 [ext_resource type="PackedScene" uid="uid://8c5h53n4wygf" path="res://Scenes/CityBuildings/stores/stores_004_766724d2.tscn" id="37_uf2n2"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_005_554266d6.tscn" id="41_hjwua"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_006_d04a3ec7.tscn" id="43_j3xfc"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_007_d87ed587.tscn" id="45_livak"]
+[ext_resource type="PackedScene" uid="uid://c2nntupit1kqn" path="res://Scenes/CityBuildings/stores/stores_006_d04a3ec7.tscn" id="43_j3xfc"]
+[ext_resource type="PackedScene" uid="uid://cpexioo6nhgod" path="res://Scenes/CityBuildings/stores/stores_007_d87ed587.tscn" id="45_livak"]
 [ext_resource type="PackedScene" uid="uid://bh8b5458rfbc" path="res://Scenes/CityBuildings/stores/stores_008_f7a182ef.tscn" id="47_fatcg"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_009_2248c820.tscn" id="48_tmkk1"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_010_20ac9e10.tscn" id="50_uupql"]
@@ -82,8 +82,8 @@
 [ext_resource type="PackedScene" uid="uid://0kse2l1oy6o2" path="res://Scenes/CityBuildings/commercial_building/commercial_building_002_751c8aa3.tscn" id="119_upd3q"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/commercial_building/commercial_building_003_f93fa3f3.tscn" id="120_7lw36"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/commercial_building/commercial_building_004_6c6c8091.tscn" id="122_5k0po"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/commercial_building/commercial_building_005_a655c3a0.tscn" id="124_yswul"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/commercial_building/commercial_building_006_61db1820.tscn" id="125_kfvpq"]
+[ext_resource type="PackedScene" uid="uid://8xn0crafcrmt" path="res://Scenes/CityBuildings/commercial_building/commercial_building_005_a655c3a0.tscn" id="124_yswul"]
+[ext_resource type="PackedScene" uid="uid://cyxrmh78xtlmp" path="res://Scenes/CityBuildings/commercial_building/commercial_building_006_61db1820.tscn" id="125_kfvpq"]
 [ext_resource type="PackedScene" uid="uid://yoqb0pc5m7o" path="res://Scenes/CityBuildings/park/park_001_0c8c5798.tscn" id="127_eesqs"]
 [ext_resource type="PackedScene" uid="uid://bruafiqnpg6jy" path="res://Scenes/CityBuildings/park/park_002_ba27dc0a.tscn" id="130_uttc6"]
 [ext_resource type="PackedScene" uid="uid://inljaydfcofa" path="res://Scenes/CityBuildings/park/park_003_dc0f145b.tscn" id="131_2tdob"]
@@ -99,7 +99,7 @@
 [ext_resource type="Texture2D" uid="uid://bexe3ruuo6oy2" path="res://ImportedCitySource/assets/plants/bush01_materialtexture.png" id="150_f22gq"]
 [ext_resource type="Texture2D" uid="uid://54nqyqpnljw7" path="res://ImportedCitySource/assets/plants/bush02_materialtexture.png" id="152_26864"]
 [ext_resource type="Texture2D" uid="uid://bj0wxgwwllu7g" path="res://ImportedCitySource/assets/plants/bush04_materialtexture.png" id="154_8jnh4"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/scenes/streetlight_active.tscn" id="156_6vb1k"]
+[ext_resource type="PackedScene" uid="uid://drobpf7wp113n" path="res://ImportedCitySource/scenes/streetlight_active.tscn" id="156_6vb1k"]
 [ext_resource type="PackedScene" uid="uid://btysdbo6rqmmu" path="res://ImportedCitySource/scenes/trafficlight_c_active.tscn" id="158_jjbne"]
 [ext_resource type="Script" uid="uid://bvbbkwfa8hqcf" path="res://Simulation/Camera/CityBuilderCamera.gd" id="400_camctl"]
 [ext_resource type="Script" uid="uid://c6yi1cvdganj0" path="res://environment/sky/simulation_sky_bridge.gd" id="401_skybr"]
@@ -774,6 +774,8 @@ script = ExtResource("3_nmx32")
 
 [node name="@Node3D@2" parent="World/City/only_people_nav/only_people/Services" unique_id=391894839 instance=ExtResource("9_elw4l")]
 transform = Transform3D(-3.22583e-08, 0, -0.5, 0, 0.456362, 0, 0.737983, 0, -2.18557e-08, 20.7679, 0, -5.1749)
+building_name = "Gas Station 01 (Services)"
+building_type = 12
 
 [node name="@Node3D@3" parent="World/City/only_people_nav/only_people/Services" unique_id=884430434 instance=ExtResource("12_05tku")]
 transform = Transform3D(-0.649959, 0, -9.21369e-08, 0, 0.750805, 0, 9.81411e-08, 0, -0.610195, 2.46187, 0.109083, 4.06591)
@@ -1023,6 +1025,8 @@ transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 16, 0,
 
 [node name="@Node3D@83" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=2102615246 instance=ExtResource("98_xlpjy")]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 22, 0, 16)
+building_name = "City Hall 01 (Services)"
+building_type = 6
 
 [node name="@Node3D@84" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=706584192 instance=ExtResource("102_xpnqb")]
 transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 26, 0, 22)

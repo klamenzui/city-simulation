@@ -20,7 +20,7 @@ const LAST_NAMES := [
 
 const JOB_TITLES := [
 	"Baecker", "Kellner", "Programmierer", "Fahrer", "Mechaniker",
-	"Verkaeufer", "Designer", "Doctor", "Teacher", "Engineer",
+	"Tankwart", "Verkaeufer", "Designer", "Doctor", "Teacher", "Engineer",
 	"Professor", "Janitor", "Gardener", "MaintenanceWorker", "Technician"
 ]
 
@@ -30,6 +30,7 @@ const JOB_SERVICE_TYPES := {
 	"Programmierer": "governance",
 	"Fahrer": "production_goods",
 	"Mechaniker": "production_goods",
+	"Tankwart": "fuel",
 	"Verkaeufer": "shopping",
 	"Designer": "fun",
 	"Doctor": "governance",
@@ -51,6 +52,7 @@ const BUILDING_TYPE_NAMES := {
 	"PARK": BuildingScript.BuildingType.PARK,
 	"FARM": BuildingScript.BuildingType.FARM,
 	"FACTORY": BuildingScript.BuildingType.FACTORY,
+	"GAS_STATION": BuildingScript.BuildingType.GAS_STATION,
 }
 
 static func spawn_citizens(parent: Node, world: World, count: int) -> Array[Citizen]:
