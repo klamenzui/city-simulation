@@ -1,0 +1,59 @@
+{
+  "world": {
+    "day": 1,
+    "hour": 18,
+    "minute": 30
+  },
+  "player": {
+    "name": "Player",
+    "position": [0.0, 0.0, 0.0]
+  },
+  "citizen": {
+    "name": "Jonas Schmidt",
+    "position": [1.5, 0.0, 0.0],
+    "wallet_balance": 145,
+    "work_motivation": 0.8,
+    "park_interest": 0.2,
+    "needs": {
+      "hunger": 92.0,
+      "energy": 18.0,
+      "fun": 24.0,
+      "health": 74.0
+    },
+    "current_location": "street",
+    "travel_target": "supermarket"
+  },
+  "places": {
+    "home": {
+      "name": "Wohnhaus am Platz",
+      "position": [0.5, 0.0, 2.0]
+    },
+    "restaurant": {
+      "name": "Cafe Nord",
+      "position": [2.8, 0.0, 0.0]
+    },
+    "supermarket": {
+      "name": "Nordmarkt",
+      "position": [0.7, 0.0, 0.2]
+    },
+    "shop": {
+      "name": "Kiosk am Eck",
+      "position": [3.3, 0.0, 0.0]
+    },
+    "cinema": {
+      "name": "Lichtspielhaus",
+      "position": [4.5, 0.0, 0.0]
+    },
+    "park": {
+      "name": "Stadtpark",
+      "position": [5.5, 0.0, 0.0]
+    }
+  },
+  "turns": [
+    "Hallo",
+    "Wie geht es dir?",
+    "Willst du etwas essen?",
+    "Wohin bist du gerade unterwegs?",
+    "Tschüss"
+  ]
+}

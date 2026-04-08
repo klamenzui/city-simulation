@@ -216,6 +216,8 @@ func request_npc_conversation_block(conversation_id: String, payload: Dictionary
 		}
 
 	var model := _get_profile_model("npc_npc")
+	var npc_request := _build_generate_request_parts("npc_npc", model, payload)
+	_log_generation_request("NPCDialog", conversation_id, "npc_npc", model, npc_request)
 	if _should_use_template_fallback(model):
 		var fallback_block := _build_npc_template_block(conversation_id, payload, _status)
 		_npc_cache[conversation_id] = fallback_block
@@ -223,7 +225,7 @@ func request_npc_conversation_block(conversation_id: String, payload: Dictionary
 
 	if _job_queue.size() >= _get_int("runtime.max_queue_size", 2):
 		var queue_policy := _get_string("fallback.on_queue_full", "skip_generation")
-		SimLogger.log("[AI][NPCDialog] Queue full for %s, policy=%s, status=%s" % [conversation_id, queue_policy, _status])
+		SimLogger.log_ai("[AI][NPCDialog] Queue full for %s, policy=%s, status=%s" % [conversation_id, queue_policy, _status])
 		if queue_policy == "use_template":
 			var queued_fallback := _build_npc_template_block(conversation_id, payload, "queue_full")
 			_npc_cache[conversation_id] = queued_fallback
@@ -241,9 +243,11 @@ func request_npc_conversation_block(conversation_id: String, payload: Dictionary
 		"profile": "npc_npc",
 		"model": model,
 		"payload": payload.duplicate(true),
-		"body": _build_generate_request_body("npc_npc", model, payload)
+		"body": str(npc_request.get("body_json", "")),
+		"prompt_text": str(npc_request.get("prompt_text", "")),
+		"system_text": str(npc_request.get("system_text", ""))
 	}, false)
-	SimLogger.log("[AI][NPCDialog] Queued job key=%s model=%s status=%s queue=%d" % [conversation_id, model, _status, _job_queue.size()])
+	SimLogger.log_ai("[AI][NPCDialog] Queued job key=%s model=%s status=%s queue=%d" % [conversation_id, model, _status, _job_queue.size()])
 	_pump_job_queue()
 	return {
 		"state": "pending",
@@ -263,6 +267,8 @@ func request_player_reply(session_id: String, payload: Dictionary) -> Dictionary
 		}
 
 	var model := _get_profile_model("player_npc")
+	var player_request := _build_generate_request_parts("player_npc", model, payload)
+	_log_generation_request("PlayerDialog", session_id, "player_npc", model, player_request)
 	if _should_use_template_fallback(model):
 		var fallback_reply := _build_player_template_reply(session_id, payload, _status)
 		_player_cache[session_id] = fallback_reply
@@ -271,7 +277,7 @@ func request_player_reply(session_id: String, payload: Dictionary) -> Dictionary
 	_make_room_for_player_dialog_job(_get_int("runtime.max_queue_size", 2))
 	if _job_queue.size() >= _get_int("runtime.max_queue_size", 2):
 		var queue_policy := _get_string("fallback.on_queue_full", "use_template")
-		SimLogger.log("[AI][PlayerDialog] Queue full for %s, policy=%s, status=%s" % [session_id, queue_policy, _status])
+		SimLogger.log_ai("[AI][PlayerDialog] Queue full for %s, policy=%s, status=%s" % [session_id, queue_policy, _status])
 		if queue_policy == "use_template":
 			var queued_reply := _build_player_template_reply(session_id, payload, "queue_full")
 			_player_cache[session_id] = queued_reply
@@ -289,9 +295,11 @@ func request_player_reply(session_id: String, payload: Dictionary) -> Dictionary
 		"profile": "player_npc",
 		"model": model,
 		"payload": payload.duplicate(true),
-		"body": _build_generate_request_body("player_npc", model, payload)
+		"body": str(player_request.get("body_json", "")),
+		"prompt_text": str(player_request.get("prompt_text", "")),
+		"system_text": str(player_request.get("system_text", ""))
 	}, true)
-	SimLogger.log("[AI][PlayerDialog] Queued job key=%s model=%s status=%s queue=%d" % [session_id, model, _status, _job_queue.size()])
+	SimLogger.log_ai("[AI][PlayerDialog] Queued job key=%s model=%s status=%s queue=%d" % [session_id, model, _status, _job_queue.size()])
 	_pump_job_queue()
 	return {
 		"state": "pending",
@@ -331,7 +339,7 @@ func _try_start_backend_process() -> void:
 		var pid := OS.create_process(candidate, serve_args, false)
 		if pid > 0:
 			_backend_process_started = true
-			SimLogger.log("[AI] Started %s backend using %s (pid=%d)" % [backend_kind, candidate, pid])
+			SimLogger.log_ai("[AI] Started %s backend using %s (pid=%d)" % [backend_kind, candidate, pid])
 			return
 
 func _resolve_command_candidates() -> Array[String]:
@@ -418,14 +426,31 @@ func _prepare_profile_models() -> void:
 		return
 	for profile in (preferences as Dictionary).keys():
 		var profile_name := str(profile)
+		var preferred_profile_model := _get_string("runtime_profiles.%s.profile_model_name" % profile_name, "")
+		var resolved_profile_model := _resolve_available_model_name(preferred_profile_model)
+		if not resolved_profile_model.is_empty():
+			_models_by_profile[profile_name] = resolved_profile_model
+			continue
 		var candidates: Variant = (preferences as Dictionary).get(profile_name, [])
 		if candidates is not Array:
 			continue
 		for candidate in candidates:
 			var model_name := str(candidate)
-			if _available_models.has(model_name):
-				_models_by_profile[profile_name] = model_name
+			var resolved_candidate := _resolve_available_model_name(model_name)
+			if not resolved_candidate.is_empty():
+				_models_by_profile[profile_name] = resolved_candidate
 				break
+
+func _resolve_available_model_name(requested_name: String) -> String:
+	var normalized := requested_name.strip_edges()
+	if normalized.is_empty():
+		return ""
+	if _available_models.has(normalized):
+		return normalized
+	var latest_name := "%s:latest" % normalized
+	if not normalized.contains(":") and _available_models.has(latest_name):
+		return latest_name
+	return ""
 
 func _begin_warmup_if_needed() -> void:
 	_warmup_queue.clear()
@@ -495,7 +520,7 @@ func _make_room_for_player_dialog_job(max_queue_size: int) -> void:
 		_job_queue.remove_at(removed_index)
 		if removed_job_variant is Dictionary:
 			var removed_job := removed_job_variant as Dictionary
-			SimLogger.log("[AI][PlayerDialog] Dropped queued warmup %s to prioritize direct dialog" % str(removed_job.get("model", removed_job.get("key", ""))))
+			SimLogger.log_ai("[AI][PlayerDialog] Dropped queued warmup %s to prioritize direct dialog" % str(removed_job.get("model", removed_job.get("key", ""))))
 
 func _pump_job_queue() -> void:
 	if _job_in_flight:
@@ -551,7 +576,9 @@ func _on_job_request_completed(result: int, response_code: int, _headers: Packed
 func _handle_npc_job_success(job: Dictionary, parsed: Variant) -> void:
 	var conversation_id := str(job.get("key", ""))
 	var payload := (job.get("payload", {}) as Dictionary).duplicate(true)
-	var lines := _normalize_npc_lines(_extract_response_text(parsed), payload)
+	var raw_text := _extract_response_text(parsed)
+	SimLogger.log_ai("[AI][NPCDialog] Raw response key=%s:\n%s" % [conversation_id, raw_text])
+	var lines := _normalize_npc_lines(raw_text, payload)
 	_npc_cache[conversation_id] = {
 		"state": "ready",
 		"source": "ollama",
@@ -559,34 +586,38 @@ func _handle_npc_job_success(job: Dictionary, parsed: Variant) -> void:
 		"lines": lines
 	}
 	_pending_keys.erase(conversation_id)
-	SimLogger.log("[AI][NPCDialog] Job ready key=%s model=%s lines=%d" % [conversation_id, str(job.get("model", "")), lines.size()])
+	SimLogger.log_ai("[AI][NPCDialog] Job ready key=%s model=%s lines=%d" % [conversation_id, str(job.get("model", "")), lines.size()])
 	npc_dialogue_ready.emit(conversation_id)
 
 func _handle_player_job_success(job: Dictionary, parsed: Variant) -> void:
 	var session_id := str(job.get("key", ""))
 	var payload := (job.get("payload", {}) as Dictionary).duplicate(true)
-	var reply_text := _normalize_player_reply(_extract_response_text(parsed), payload)
+	var raw_text := _extract_response_text(parsed)
+	SimLogger.log_ai("[AI][PlayerDialog] Raw response key=%s:\n%s" % [session_id, raw_text])
+	var reply_data := _normalize_player_reply_result(raw_text, payload)
 	_player_cache[session_id] = {
 		"state": "ready",
 		"source": "ollama",
 		"model": str(job.get("model", "")),
-		"text": reply_text
+		"text": str(reply_data.get("text", "")),
+		"mood": str(reply_data.get("mood", "")),
+		"intent": str(reply_data.get("intent", ""))
 	}
 	_pending_keys.erase(session_id)
-	SimLogger.log("[AI][PlayerDialog] Job ready key=%s model=%s" % [session_id, str(job.get("model", ""))])
+	SimLogger.log_ai("[AI][PlayerDialog] Job ready key=%s model=%s" % [session_id, str(job.get("model", ""))])
 	player_dialogue_ready.emit(session_id)
 
 func _handle_job_failure(job: Dictionary, reason: String) -> void:
 	var kind := str(job.get("kind", ""))
 	if kind == "warmup":
-		SimLogger.log("[AI] Warmup failed for %s: %s" % [str(job.get("model", "")), reason])
+		SimLogger.log_ai("[AI] Warmup failed for %s: %s" % [str(job.get("model", "")), reason])
 		return
 	if kind == "npc_npc":
 		var key := str(job.get("key", ""))
 		var payload := (job.get("payload", {}) as Dictionary).duplicate(true)
 		_npc_cache[key] = _build_npc_template_block(key, payload, reason)
 		_pending_keys.erase(key)
-		SimLogger.log("[AI][NPCDialog] Job failed key=%s reason=%s" % [key, reason])
+		SimLogger.log_ai("[AI][NPCDialog] Job failed key=%s reason=%s" % [key, reason])
 		npc_dialogue_ready.emit(key)
 		return
 	if kind == "player_npc":
@@ -594,7 +625,7 @@ func _handle_job_failure(job: Dictionary, reason: String) -> void:
 		var player_payload := (job.get("payload", {}) as Dictionary).duplicate(true)
 		_player_cache[session_id] = _build_player_template_reply(session_id, player_payload, reason)
 		_pending_keys.erase(session_id)
-		SimLogger.log("[AI][PlayerDialog] Job failed key=%s reason=%s" % [session_id, reason])
+		SimLogger.log_ai("[AI][PlayerDialog] Job failed key=%s reason=%s" % [session_id, reason])
 		player_dialogue_ready.emit(session_id)
 
 func _schedule_probe_retry(detail: String) -> void:
@@ -617,22 +648,46 @@ func _should_use_template_fallback(model: String) -> bool:
 		return true
 	return model.is_empty()
 
-func _build_generate_request_body(profile: String, model: String, payload: Dictionary) -> String:
+func _build_generate_request_parts(profile: String, model: String, payload: Dictionary) -> Dictionary:
 	var system_lines := _get_string_array("prompt_templates.%s.system" % profile)
+	var prompt_text := _build_prompt(profile, payload)
+	var system_text := "\n".join(system_lines)
 	var request_body := {
 		"model": model,
-		"prompt": _build_prompt(profile, payload),
-		"system": "\n".join(system_lines),
+		"prompt": prompt_text,
+		"system": system_text,
 		"stream": false,
 		"keep_alive": _get_string("startup.prewarm_keep_alive", "10m"),
-		"options": {
-			"temperature": _get_float("runtime.temperature", 0.7),
-			"num_predict": _get_int("runtime.num_predict", 96)
-		}
+		"options": _build_profile_request_options(profile)
 	}
-	if profile == "npc_npc":
-		request_body["format"] = "json"
-	return JSON.stringify(request_body)
+	var response_format := _get_string("runtime_profiles.%s.format" % profile, _get_string("runtime.format", ""))
+	if not response_format.is_empty():
+		request_body["format"] = response_format
+	return {
+		"prompt_text": prompt_text,
+		"system_text": system_text,
+		"body_json": JSON.stringify(request_body)
+	}
+
+func _build_profile_request_options(profile: String) -> Dictionary:
+	var options := {
+		"temperature": _get_float("runtime.temperature", 0.35),
+		"num_predict": _get_int("runtime.num_predict", 70)
+	}
+	var profile_options: Variant = _get_value("runtime_profiles.%s.options" % profile, {})
+	if profile_options is Dictionary:
+		for key in (profile_options as Dictionary).keys():
+			options[key] = (profile_options as Dictionary)[key]
+	return options
+
+func _log_generation_request(kind_label: String, key: String, profile: String, model: String, request_data: Dictionary) -> void:
+	var system_text := str(request_data.get("system_text", ""))
+	var prompt_text := str(request_data.get("prompt_text", ""))
+	var body_json := str(request_data.get("body_json", ""))
+	SimLogger.log_ai("[AI][%s] Request key=%s profile=%s model=%s" % [kind_label, key, profile, model])
+	SimLogger.log_ai("[AI][%s] System Prompt:\n%s" % [kind_label, system_text])
+	SimLogger.log_ai("[AI][%s] User Prompt:\n%s" % [kind_label, prompt_text])
+	SimLogger.log_ai("[AI][%s] Request Body:\n%s" % [kind_label, body_json])
 
 func _build_prompt(profile: String, payload: Dictionary) -> String:
 	var lines: Array[String] = []
@@ -645,18 +700,25 @@ func _build_prompt(profile: String, payload: Dictionary) -> String:
 		lines.append("Output JSON with key lines, where lines is an array of 2 to 4 short dialogue lines.")
 		lines.append("Each line must use the format 'Name: text'.")
 	elif profile == "player_npc":
-		var reply_language := str(payload.get("reply_language", "")).strip_edges()
+		var reply_language := str(payload.get("reply_language", _get_string("runtime_profiles.%s.force_reply_language" % profile, ""))).strip_edges()
 		if not reply_language.is_empty():
 			lines.append("Reply language: %s." % reply_language)
 		lines.append("Reply with one short natural answer in character.")
 		lines.append("Respond directly to the player's latest line.")
-		lines.append("Speak like a citizen in town, not like a helpful assistant.")
-		lines.append("Use only places from nearby_places or known_places when naming locations.")
-		lines.append("Do not invent rivers, landmarks, shops, buildings, or routes.")
+		lines.append("Speak like a citizen in town, never like a helpful assistant or customer support.")
+		lines.append("Do not ask how you can help unless the player explicitly asked for help.")
+		lines.append("Use the provided location, district, nearby_places, and known_places naturally when relevant.")
+		lines.append("Do not invent additional rivers, landmarks, shops, buildings, districts, or routes.")
+		lines.append("Respect the need values literally: high hunger means very hungry, low energy means tired or exhausted.")
 		lines.append("If you do not know a place, say so briefly.")
+		lines.append("Never repeat your previous reply verbatim.")
+		lines.append("Keep the reply to at most 2 short sentences.")
 		if _player_dialog_has_farewell(payload):
 			lines.append("The player is ending the conversation. Reply with one brief goodbye only.")
+		if bool(payload.get("player_flagged_repetition", false)):
+			lines.append("The player said you are repeating yourself. Acknowledge that briefly once, then answer in a different way.")
 		lines.append("Do not just repeat mood or current_goal unless the player asked about them.")
+		lines.append("Return JSON only with this schema: {\"reply\":\"short text\",\"mood\":\"single_word\",\"intent\":\"single_word\"}.")
 	return "\n".join(lines)
 
 func _stringify_prompt_value(value: Variant) -> String:
@@ -700,7 +762,30 @@ func _normalize_npc_line(raw_line: String, payload: Dictionary) -> String:
 		return line
 	return " ".join(parts.slice(0, max_words))
 
-func _normalize_player_reply(raw_text: String, payload: Dictionary) -> String:
+func _normalize_player_reply_result(raw_text: String, payload: Dictionary) -> Dictionary:
+	var parsed: Variant = JSON.parse_string(raw_text)
+	var reply_text := ""
+	var reply_mood := ""
+	var reply_intent := ""
+	if parsed is Dictionary:
+		var parsed_reply := parsed as Dictionary
+		reply_text = str(parsed_reply.get("reply", parsed_reply.get("text", ""))).strip_edges()
+		reply_mood = str(parsed_reply.get("mood", "")).strip_edges()
+		reply_intent = str(parsed_reply.get("intent", "")).strip_edges()
+	if reply_text.is_empty():
+		reply_text = raw_text
+	reply_text = _normalize_player_reply_text(reply_text, payload)
+	if _is_effectively_same_reply(reply_text, str(payload.get("last_npc_reply", ""))):
+		reply_text = _build_player_repeat_recovery_reply(payload)
+		if reply_intent.is_empty():
+			reply_intent = "clarify_without_repeating"
+	return {
+		"text": reply_text,
+		"mood": reply_mood,
+		"intent": reply_intent
+	}
+
+func _normalize_player_reply_text(raw_text: String, payload: Dictionary) -> String:
 	var reply := raw_text.strip_edges()
 	reply = _strip_player_reply_prefix(reply, payload)
 	if reply.is_empty():
@@ -712,6 +797,17 @@ func _normalize_player_reply(raw_text: String, payload: Dictionary) -> String:
 	if words.size() > max_words:
 		reply = " ".join(words.slice(0, max_words))
 	return reply
+
+func _is_effectively_same_reply(candidate: String, previous_reply: String) -> bool:
+	var normalized_candidate := _normalize_dialogue_compare_text(candidate)
+	var normalized_previous := _normalize_dialogue_compare_text(previous_reply)
+	return not normalized_candidate.is_empty() and normalized_candidate == normalized_previous
+
+func _normalize_dialogue_compare_text(text: String) -> String:
+	var normalized := text.to_lower().strip_edges()
+	for marker in [".", ",", "!", "?", ":", ";", "\"", "'", "(", ")", "[", "]", "{", "}"]:
+		normalized = normalized.replace(marker, " ")
+	return " ".join(normalized.split(" ", false))
 
 func _strip_player_reply_prefix(reply: String, payload: Dictionary) -> String:
 	var normalized := reply.strip_edges()
@@ -750,11 +846,16 @@ func _build_npc_template_block(_conversation_id: String, payload: Dictionary, re
 
 func _build_player_template_reply(session_id: String, payload: Dictionary, reason: String) -> Dictionary:
 	var reply_text := _build_player_template_reply_text_grounded(session_id, payload)
+	var reply_intent := "farewell" if _player_dialog_has_farewell(payload) else "reply"
+	if bool(payload.get("player_flagged_repetition", false)):
+		reply_intent = "clarify_without_repeating"
 	return {
 		"state": "ready",
 		"source": "template",
 		"reason": reason,
-		"text": reply_text
+		"text": reply_text,
+		"mood": str(payload.get("mood", "")),
+		"intent": reply_intent
 	}
 
 func _build_player_template_reply_text(session_id: String, payload: Dictionary) -> String:
@@ -764,7 +865,7 @@ func _build_player_template_reply_text(session_id: String, payload: Dictionary) 
 	var recent_summary := str(payload.get("recent_summary", "")).strip_edges()
 	var last_player_line := _get_last_player_line(payload)
 	var lower_line := last_player_line.to_lower()
-	var prefer_german := _prefers_german_reply(lower_line, recent_summary)
+	var prefer_german := _should_reply_in_german(payload, lower_line, recent_summary)
 	var mood_text := _humanize_dialogue_mood(mood, prefer_german)
 	var goal_text := _humanize_dialogue_goal(current_goal, prefer_german)
 
@@ -801,7 +902,7 @@ func _build_player_template_reply_text_grounded(session_id: String, payload: Dic
 	var recent_summary := str(payload.get("recent_summary", "")).strip_edges()
 	var last_player_line := _get_last_player_line(payload)
 	var lower_line := last_player_line.to_lower()
-	var prefer_german := _prefers_german_reply(lower_line, recent_summary)
+	var prefer_german := _should_reply_in_german(payload, lower_line, recent_summary)
 	var mood_text := _humanize_dialogue_mood(mood, prefer_german)
 	var goal_text := _humanize_dialogue_goal(current_goal, prefer_german)
 	var nearby_places := _extract_dialogue_places(payload.get("nearby_places", []))
@@ -811,6 +912,8 @@ func _build_player_template_reply_text_grounded(session_id: String, payload: Dic
 		food_place = _find_dialogue_place_by_services(known_places, ["food", "food_market"])
 	if _player_dialog_has_farewell(payload):
 		return "Bis spaeter." if prefer_german else "See you around."
+	if bool(payload.get("player_flagged_repetition", false)):
+		return _build_player_repeat_recovery_reply(payload)
 
 	if _matches_any(lower_line, ["hallo", "hi", "hey", "hello", "moin", "servus"]):
 		return "Hallo." if prefer_german else "Hey."
@@ -847,6 +950,21 @@ func _build_player_template_reply_text_grounded(session_id: String, payload: Dic
 				return "Im Moment bin ich bei %s in %s und eher %s." % [location, district, mood_text] if prefer_german else "Right now I'm around %s in %s and feeling %s." % [location, district, mood_text]
 			return "Im Moment bin ich bei %s und eher %s." % [location, mood_text] if prefer_german else "Right now I'm around %s and feeling %s." % [location, mood_text]
 
+func _build_player_repeat_recovery_reply(payload: Dictionary) -> String:
+	var last_player_line := _get_last_player_line(payload)
+	var lower_line := last_player_line.to_lower()
+	var prefer_german := _should_reply_in_german(payload, lower_line, str(payload.get("recent_summary", "")))
+	var mood_text := _humanize_dialogue_mood(str(payload.get("mood", "calm")), prefer_german)
+	var goal_text := _humanize_dialogue_goal(str(payload.get("current_goal", "getting through the day")), prefer_german)
+	var location := str(payload.get("location", "hier")).strip_edges()
+	if _matches_any(lower_line, ["wohin", "wo gehst", "where are you going", "where to"]):
+		return "Stimmt, ich hab mich wiederholt. Kurz gesagt: Ich will gerade zu %s." % goal_text if prefer_german else "Right, I repeated myself. Short version: I'm heading to %s." % goal_text
+	if _matches_any(lower_line, ["wo bist", "where are you"]):
+		return "Stimmt, doppelt gesagt. Ich bin gerade bei %s." % location if prefer_german else "Right, that was repetitive. I'm around %s right now." % location
+	if _matches_any(lower_line, ["wie geht", "how are you"]):
+		return "Stimmt, das klang doppelt. Ehrlich gesagt bin ich eher %s." % mood_text if prefer_german else "Right, that sounded repetitive. Honestly I'm feeling %s." % mood_text
+	return "Stimmt, ich hab mich wiederholt. Kurz gesagt: Ich bin eher %s und denke gerade an %s." % [mood_text, goal_text] if prefer_german else "Right, I repeated myself. Short version: I'm feeling %s and thinking about %s." % [mood_text, goal_text]
+
 func _get_last_player_line(payload: Dictionary) -> String:
 	var raw_turns: Variant = payload.get("last_turns", [])
 	if raw_turns is not Array:
@@ -867,6 +985,14 @@ func _prefers_german_reply(last_player_line_lower: String, recent_summary: Strin
 		return true
 	var lower_summary := recent_summary.to_lower()
 	return _matches_any(lower_summary, [" und ", " mit ", " bei ", " heute ", " gerade "])
+
+func _should_reply_in_german(payload: Dictionary, last_player_line_lower: String, recent_summary: String) -> bool:
+	var reply_language := str(payload.get("reply_language", "")).to_lower().strip_edges()
+	if reply_language == "german":
+		return true
+	if reply_language == "english":
+		return false
+	return _prefers_german_reply(last_player_line_lower, recent_summary)
 
 func _player_dialog_has_farewell(payload: Dictionary) -> bool:
 	var last_player_line := _get_last_player_line(payload).to_lower().strip_edges()
@@ -964,9 +1090,42 @@ func _load_config(config_override: Dictionary) -> Dictionary:
 			"max_queue_size": 2,
 			"request_timeout_sec": 20.0,
 			"cancel_if_player_leaves_range": true,
-			"temperature": 0.7,
-			"num_predict": 96,
+			"temperature": 0.35,
+			"num_predict": 70,
 			"force_template_mode": false
+		},
+		"runtime_profiles": {
+			"player_npc": {
+				"profile_model_name": "npc-player:latest",
+				"format": "json",
+				"force_reply_language": "german",
+				"options": {
+					"temperature": 0.35,
+					"top_p": 0.85,
+					"top_k": 30,
+					"min_p": 0.05,
+					"repeat_penalty": 1.12,
+					"repeat_last_n": 64,
+					"num_ctx": 2048,
+					"num_predict": 70,
+					"seed": 42
+				}
+			},
+			"npc_npc": {
+				"profile_model_name": "npc-overheard:latest",
+				"format": "json",
+				"options": {
+					"temperature": 0.25,
+					"top_p": 0.8,
+					"top_k": 20,
+					"min_p": 0.08,
+					"repeat_penalty": 1.1,
+					"repeat_last_n": 48,
+					"num_ctx": 1024,
+					"num_predict": 50,
+					"seed": 42
+				}
+			}
 		},
 		"startup": {
 			"backend_kind": "ollama",
@@ -1003,16 +1162,25 @@ func _load_config(config_override: Dictionary) -> Dictionary:
 					"You are a local NPC in a city simulation.",
 					"Stay in character.",
 					"Only know what the citizen could reasonably know.",
-					"Reply in short natural dialogue.",
+					"Reply in short natural everyday dialogue.",
+					"Do not sound like a helpful assistant or customer support.",
+					"Do not ask how you can help unless the player explicitly asked for help.",
 					"Do not narrate actions unless asked.",
-					"Do not invent landmarks, districts, shops, or routes.",
-					"If world facts are missing, admit uncertainty briefly."
+					"You may mention provided location, district, nearby places, and known places.",
+					"Do not invent additional landmarks, districts, shops, or routes.",
+					"Respect the citizen needs literally: higher hunger means more hungry, lower energy means more tired.",
+					"If world facts are missing, admit uncertainty briefly.",
+					"If the player says you are repeating yourself, acknowledge it briefly and answer in a different way.",
+					"All spoken dialogue must be in natural German.",
+					"Output valid JSON only."
 				],
 				"input_fields": [
 					"name",
 					"personality",
 					"mood",
 					"needs",
+					"need_scale",
+					"state_hints",
 					"wallet_balance",
 					"budget_state",
 					"location",
@@ -1025,6 +1193,7 @@ func _load_config(config_override: Dictionary) -> Dictionary:
 					"nearby_places",
 					"job_context",
 					"reply_language",
+					"player_flagged_repetition",
 					"relationship_to_player",
 					"grounding_rules",
 					"recent_summary",
@@ -1038,6 +1207,7 @@ func _load_config(config_override: Dictionary) -> Dictionary:
 		},
 		"output_rules": {
 			"player_npc": {
+				"max_sentences": 2,
 				"max_words": 60
 			},
 			"npc_npc": {
@@ -1072,7 +1242,7 @@ func _set_status(status: String, detail: String) -> void:
 	_status = status
 	_status_detail = detail
 	status_changed.emit(_status, _status_detail)
-	SimLogger.log("[AI] Runtime status: %s (%s)" % [_status, _status_detail])
+	SimLogger.log_ai("[AI] Runtime status: %s (%s)" % [_status, _status_detail])
 
 func _get_api_url(path: String) -> String:
 	var base_url := _get_string("startup.api_base_url", "http://127.0.0.1:11434/api").trim_suffix("/")

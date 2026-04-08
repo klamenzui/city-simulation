@@ -539,6 +539,13 @@ func get_runtime_conversation_label() -> String:
 func is_active_player_dialog_session() -> bool:
 	return _runtime_conversation_mode == "interactive" and _runtime_conversation_partner == "Player" and _runtime_conversation_topic == "player_dialog"
 
+func face_position_horizontal(target_position: Vector3) -> void:
+	var facing_dir := target_position - global_position
+	facing_dir.y = 0.0
+	if facing_dir.length_squared() <= 0.0001:
+		return
+	rotation.y = _yaw_from_move_direction(facing_dir.normalized())
+
 func get_home_rotation_candidate_day() -> int:
 	return _home_rotation_candidate_day
 
