@@ -1,27 +1,26 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3]
 
-[ext_resource type="Script" path="res://Entities/Buildings/Farm.gd" id="1"]
+[ext_resource type="Script" uid="uid://bbrtbqlqde5u0" path="res://Entities/Buildings/Farm.gd" id="1"]
 
 [sub_resource type="BoxMesh" id="1"]
+
 [sub_resource type="BoxShape3D" id="BoxShape3D_click"]
 size = Vector3(5.2, 0.7, 5.2)
 
-[node name="Farm" type="Node3D" groups=["buildings"] node_paths=PackedStringArray("entrance")]
+[node name="Farm" type="Node3D" unique_id=1750923972 node_paths=PackedStringArray("entrance") groups=["buildings"]]
 script = ExtResource("1")
 building_name = "Farm"
 entrance = NodePath("Entrance")
-capacity = 10
 job_capacity = 6
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=973944554]
 transform = Transform3D(5.2, 0, 0, 0, 0.7, 0, 0, 0, 5.2, 0, 0, 0)
 mesh = SubResource("1")
 
-[node name="ClickArea" type="Area3D" parent="."]
-input_ray_pickable = true
+[node name="ClickArea" type="Area3D" parent="." unique_id=1723589723]
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="ClickArea"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ClickArea" unique_id=551812515]
 shape = SubResource("BoxShape3D_click")
 
-[node name="Entrance" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.3, 0, 0)
+[node name="Entrance" type="Node3D" parent="." unique_id=240970841]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.3945327, 0, 0)
