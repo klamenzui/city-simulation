@@ -139,7 +139,7 @@ func find_path_points(start_pos: Vector3, end_pos: Vector3, start_building: Buil
 
 func get_access_point(pos: Vector3, building: Building = null) -> Vector3:
 	if building == null:
-		var direct_idx := find_node_index_for_path_point(pos)
+		var direct_idx := _get_direct_access_node_index(pos)
 		if direct_idx >= 0:
 			return nodes[direct_idx]
 	var idx := _get_access_node_index(pos, building)
@@ -149,6 +149,52 @@ func get_access_point(pos: Vector3, building: Building = null) -> Vector3:
 	if building != null:
 		return _refine_building_access_point(building, access_point)
 	return access_point
+
+func _get_direct_access_node_index(pos: Vector3) -> int:
+	var direct_idx := find_node_index_for_path_point(pos)
+	if direct_idx >= 0:
+		return direct_idx
+	return _get_crosswalk_access_node_index(pos)
+
+func _get_crosswalk_access_node_index(pos: Vector3) -> int:
+	var crosswalk_key := _grid_key(_snap_to_cell(pos))
+	if not _crosswalk_cells.has(crosswalk_key):
+		return -1
+
+	var cross_meta := _crosswalk_meta.get(crosswalk_key, {}) as Dictionary
+	if cross_meta.is_empty():
+		return -1
+
+	var center := cross_meta.get("center", _crosswalk_cells[crosswalk_key]) as Vector3
+	var cross_dir := cross_meta.get("cross_dir", Vector3.ZERO) as Vector3
+	cross_dir.y = 0.0
+	if cross_dir.length_squared() <= 0.0001:
+		return find_node_index_for_path_point(center, 0.5)
+	cross_dir = cross_dir.normalized()
+
+	var local_offset := pos - center
+	local_offset.y = 0.0
+	var along_crosswalk := local_offset.dot(cross_dir)
+	var lateral_axis := Vector3(-cross_dir.z, 0.0, cross_dir.x)
+	var lateral_offset := absf(local_offset.dot(lateral_axis))
+	var half_span := maxf(float(cross_meta.get("half_span", HALF_ROAD_WIDTH)), 0.05)
+	var lateral_limit := maxf(0.45, minf(SIDEWALK_PATH_OFFSET - 0.15, 0.6))
+	if lateral_offset > lateral_limit or absf(along_crosswalk) > half_span + 0.25:
+		return -1
+
+	var snap_target := center
+	var center_limit := minf(maxf(half_span * 0.6, 0.22), 0.35)
+	if absf(along_crosswalk) > center_limit:
+		if along_crosswalk > 0.0:
+			snap_target = center + cross_dir * half_span
+			if cross_meta.has("exit_point"):
+				snap_target = cross_meta["exit_point"] as Vector3
+		else:
+			snap_target = center - cross_dir * half_span
+			if cross_meta.has("entry_point"):
+				snap_target = cross_meta["entry_point"] as Vector3
+
+	return find_node_index_for_path_point(snap_target, 0.45)
 
 func _get_access_node_index(pos: Vector3, building: Building = null) -> int:
 	if building != null:

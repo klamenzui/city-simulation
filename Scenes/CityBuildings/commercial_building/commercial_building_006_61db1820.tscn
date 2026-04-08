@@ -1,13 +1,13 @@
-[gd_scene load_steps=24 format=4]
+[gd_scene format=4 uid="uid://cyxrmh78xtlmp"]
 
-[ext_resource type="Script" path="res://Entities/Buildings/Supermarket.gd" id="1_lo8a2"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/city/base.gltf" id="2_vneat"]
-[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="3_60ril"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/buildings_parts/building-steps-narrow.glb" id="4_wapr2"]
-[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/buildings_parts/Textures/colormap.png" id="5_qewis"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/buildings_parts/building-window-wide.glb" id="6_8r6lw"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/buildings_parts/building-window-right-sill.glb" id="7_4o1qy"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/buildings_parts/roof-flat-awning-c.glb" id="8_d6q2i"]
+[ext_resource type="Script" uid="uid://wb15p8hy5yfg" path="res://Entities/Buildings/Supermarket.gd" id="1_lo8a2"]
+[ext_resource type="PackedScene" uid="uid://dx57medmq3ji" path="res://ImportedCitySource/assets/city/base.gltf" id="2_vneat"]
+[ext_resource type="Texture2D" uid="uid://b3b5vu8lonkcv" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="3_60ril"]
+[ext_resource type="PackedScene" uid="uid://570ylxou8miy" path="res://ImportedCitySource/assets/buildings_parts/building-steps-narrow.glb" id="4_wapr2"]
+[ext_resource type="Texture2D" uid="uid://cfyaeitwbnd1e" path="res://ImportedCitySource/assets/buildings_parts/Textures/colormap.png" id="5_qewis"]
+[ext_resource type="PackedScene" uid="uid://di0474ave6rxt" path="res://ImportedCitySource/assets/buildings_parts/building-window-wide.glb" id="6_8r6lw"]
+[ext_resource type="PackedScene" uid="uid://waxjrt502xw7" path="res://ImportedCitySource/assets/buildings_parts/building-window-right-sill.glb" id="7_4o1qy"]
+[ext_resource type="PackedScene" uid="uid://2g4aejn0kifw" path="res://ImportedCitySource/assets/buildings_parts/roof-flat-awning-c.glb" id="8_d6q2i"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gdd5y"]
 resource_name = "citybits_texture"
@@ -45,6 +45,9 @@ _surfaces = [{
 }]
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_ht4oy")
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_lo8a2"]
+data = PackedVector3Array(-1, 0, -0.9, -1, 0.099999994, -1, -1, 0.099999994, -0.9, -1, 0, -0.9, -1, 0, -1, -1, 0.099999994, -1, 0.9, 0, -1, 1, 0.099999994, -1, 0.9, 0.099999994, -1, 0.9, 0, -1, 1, 0, -1, 1, 0.099999994, -1, 1, 0, 0.9, 1, 0.099999994, 1, 1, 0.099999994, 0.9, 1, 0, 0.9, 1, 0, 1, 1, 0.099999994, 1, -0.9, 0, 1, -1, 0.099999994, 1, -0.9, 0.099999994, 1, -0.9, 0, 1, -1, 0, 1, -1, 0.099999994, 1, 0.9, 0, 0.9, 1, 0, 1, 1, 0, 0.9, 0.9, 0, 0.9, 0.9, 0, 1, 1, 0, 1, 0.9, 0, 0.9, -0.9, 0, 1, 0.9, 0, 1, 0.9, 0, -0.9, 0.9, 0, 0.9, 1, 0, 0.9, 0.9, 0, -0.9, 1, 0, 0.9, 1, 0, -0.9, 0.9, 0, 0.9, -0.9, 0, 0.9, -0.9, 0, 1, 0.9, 0, -0.9, -0.9, 0, 0.9, 0.9, 0, 0.9, -1, 0, 0.9, -0.9, 0, 1, -0.9, 0, 0.9, -1, 0, 0.9, -1, 0, 1, -0.9, 0, 1, -0.9, 0, -0.9, -1, 0, 0.9, -0.9, 0, 0.9, 0.9, 0, -0.9, -0.9, 0, -0.9, -0.9, 0, 0.9, -0.9, 0, -0.9, -1, 0, -0.9, -1, 0, 0.9, -1, 0, -1, -1, 0, -0.9, -0.9, 0, -0.9, -1, 0, -1, -0.9, 0, -0.9, -0.9, 0, -1, 0.9, 0, -1, -0.9, 0, -1, -0.9, 0, -0.9, 0.9, 0, -1, -0.9, 0, -0.9, 0.9, 0, -0.9, 0.9, 0, -1, 0.9, 0, -0.9, 1, 0, -0.9, 0.9, 0, -1, 1, 0, -0.9, 1, 0, -1, -0.9, 0.099999994, 0.9, -1, 0.099999994, 1, -1, 0.099999994, 0.9, -0.9, 0.099999994, 0.9, -0.9, 0.099999994, 1, -1, 0.099999994, 1, 1, 0.099999994, 0.9, 0.9, 0.099999994, 1, 0.9, 0.099999994, 0.9, 1, 0.099999994, 0.9, 1, 0.099999994, 1, 0.9, 0.099999994, 1, 0.9, 0.099999994, 1, -0.9, 0, 1, -0.9, 0.099999994, 1, 0.9, 0.099999994, 1, 0.9, 0, 1, -0.9, 0, 1, 1, 0, 1, 0.9, 0.099999994, 1, 1, 0.099999994, 1, 1, 0, 1, 0.9, 0, 1, 0.9, 0.099999994, 1, -0.9, 0.099999994, -1, 0.9, 0, -1, 0.9, 0.099999994, -1, -0.9, 0.099999994, -1, -0.9, 0, -1, 0.9, 0, -1, 0.9, 0.099999994, -1, -0.9, 0.099999994, -0.9, -0.9, 0.099999994, -1, 0.9, 0.099999994, -1, 0.9, 0.099999994, -0.9, -0.9, 0.099999994, -0.9, 0.9, 0.099999994, -0.9, 1, 0.099999994, -0.9, 1, 0.099999994, 0.9, 0.9, 0.099999994, -0.9, 1, 0.099999994, 0.9, 0.9, 0.099999994, 0.9, -0.9, 0.099999994, -0.9, -1, 0.099999994, 0.9, -1, 0.099999994, -0.9, -0.9, 0.099999994, -0.9, -0.9, 0.099999994, 0.9, -1, 0.099999994, 0.9, 0.9, 0.099999994, 1, -0.9, 0.099999994, 0.9, 0.9, 0.099999994, 0.9, 0.9, 0.099999994, 1, -0.9, 0.099999994, 1, -0.9, 0.099999994, 0.9, -1, 0, -1, -0.9, 0.099999994, -1, -1, 0.099999994, -1, -1, 0, -1, -0.9, 0, -1, -0.9, 0.099999994, -1, -0.9, 0.099999994, -0.9, 0.9, 0.099999994, 0.9, -0.9, 0.099999994, 0.9, -0.9, 0.099999994, -0.9, 0.9, 0.099999994, -0.9, 0.9, 0.099999994, 0.9, 1, 0.099999994, -1, 0.9, 0.099999994, -0.9, 0.9, 0.099999994, -1, 1, 0.099999994, -1, 1, 0.099999994, -0.9, 0.9, 0.099999994, -0.9, -0.9, 0.099999994, -1, -1, 0.099999994, -0.9, -1, 0.099999994, -1, -0.9, 0.099999994, -1, -0.9, 0.099999994, -0.9, -1, 0.099999994, -0.9, 1, 0, -1, 1, 0.099999994, -0.9, 1, 0.099999994, -1, 1, 0, -1, 1, 0, -0.9, 1, 0.099999994, -0.9, 1, 0.099999994, -0.9, 1, 0, 0.9, 1, 0.099999994, 0.9, 1, 0.099999994, -0.9, 1, 0, -0.9, 1, 0, 0.9, -1, 0, 1, -1, 0.099999994, 0.9, -1, 0.099999994, 1, -1, 0, 1, -1, 0, 0.9, -1, 0.099999994, 0.9, -1, 0.099999994, 0.9, -1, 0, -0.9, -1, 0.099999994, -0.9, -1, 0.099999994, 0.9, -1, 0, 0.9, -1, 0, -0.9)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hlrfa"]
 resource_name = "colormap"
@@ -198,44 +201,49 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_lj1de")
 
-[node name="commercial_building_supermarket_06" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_commercial_building", "commercial", "work"]]
+[node name="commercial_building_supermarket_06" type="Node3D" unique_id=637138232 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_commercial_building", "commercial", "work"]]
 script = ExtResource("1_lo8a2")
 building_name = "Supermarket 06 (Commercial building)"
 building_type = 4
 entrance = NodePath("Entrance")
 
-[node name="base2" type="Node3D" parent="." instance=ExtResource("2_vneat")]
+[node name="base2" parent="." unique_id=1187301165 instance=ExtResource("2_vneat")]
 
-[node name="base_mesh" type="MeshInstance3D" parent="base2"]
+[node name="base_mesh" type="MeshInstance3D" parent="base2" unique_id=1109607823]
 mesh = SubResource("ArrayMesh_rw05s")
 skeleton = NodePath("")
 
-[node name="building-steps-narrow2" type="Node3D" parent="." instance=ExtResource("4_wapr2")]
+[node name="StaticBody3D" type="StaticBody3D" parent="base2/base_mesh" unique_id=1685518212]
 
-[node name="building-steps-narrow_mesh" type="MeshInstance3D" parent="building-steps-narrow2"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="base2/base_mesh/StaticBody3D" unique_id=2057472477]
+shape = SubResource("ConcavePolygonShape3D_lo8a2")
+
+[node name="building-steps-narrow2" parent="." unique_id=424594105 instance=ExtResource("4_wapr2")]
+
+[node name="building-steps-narrow_mesh" type="MeshInstance3D" parent="building-steps-narrow2" unique_id=650350935]
 mesh = SubResource("ArrayMesh_xboom")
 skeleton = NodePath("")
 
-[node name="building-window-wide2" type="Node3D" parent="." instance=ExtResource("6_8r6lw")]
+[node name="building-window-wide2" parent="." unique_id=1282682519 instance=ExtResource("6_8r6lw")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.837, 0)
 
-[node name="building-window-wide_mesh" type="MeshInstance3D" parent="building-window-wide2"]
+[node name="building-window-wide_mesh" type="MeshInstance3D" parent="building-window-wide2" unique_id=720157471]
 mesh = SubResource("ArrayMesh_bjn8k")
 skeleton = NodePath("")
 
-[node name="building-window-right-sill2" type="Node3D" parent="." instance=ExtResource("7_4o1qy")]
+[node name="building-window-right-sill2" parent="." unique_id=110926830 instance=ExtResource("7_4o1qy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.462, 0)
 
-[node name="building-window-right-sill_mesh" type="MeshInstance3D" parent="building-window-right-sill2"]
+[node name="building-window-right-sill_mesh" type="MeshInstance3D" parent="building-window-right-sill2" unique_id=1139937666]
 mesh = SubResource("ArrayMesh_1r55x")
 skeleton = NodePath("")
 
-[node name="roof-flat-awning-c2" type="Node3D" parent="." instance=ExtResource("8_d6q2i")]
+[node name="roof-flat-awning-c2" parent="." unique_id=2116417530 instance=ExtResource("8_d6q2i")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.087, 0)
 
-[node name="roof-flat-awning-c_mesh" type="MeshInstance3D" parent="roof-flat-awning-c2"]
+[node name="roof-flat-awning-c_mesh" type="MeshInstance3D" parent="roof-flat-awning-c2" unique_id=1379840388]
 mesh = SubResource("ArrayMesh_224d2")
 skeleton = NodePath("")
 
-[node name="Entrance" type="Node3D" parent="."]
+[node name="Entrance" type="Node3D" parent="." unique_id=1392917032]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
