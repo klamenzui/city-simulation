@@ -7,28 +7,37 @@ var canvas: CanvasLayer = null
 var building_overview_button: Button = null
 
 var _pause_button: Button = null
+var _player_control_button: Button = null
+var _ai_runtime_button: Button = null
 var _speed_label: Label = null
 var _date_label: Label = null
 var _clock_label: Label = null
 var _citizen_stats_label: Label = null
 var _control_mode_panel: PanelContainer = null
 var _control_mode_label: Label = null
+var _ai_runtime_label: Label = null
+var _ai_runtime_service = null
 
 func setup(
 	owner_ref: Node,
 	world_ref: World,
 	pause_pressed: Callable,
 	speed_pressed: Callable,
-	building_overview_pressed: Callable
+	building_overview_pressed: Callable,
+	player_control_pressed: Callable,
+	ai_runtime_pressed: Callable
 ) -> void:
 	owner_node = owner_ref
 	world = world_ref
-	_build_hud(pause_pressed, speed_pressed, building_overview_pressed)
+	_build_hud(pause_pressed, speed_pressed, building_overview_pressed, player_control_pressed, ai_runtime_pressed)
 	_bind_world_signals()
 	_refresh_time_hud()
 	_refresh_pause_button()
 	_refresh_speed_label()
 	refresh_control_mode(null)
+	set_player_control_visible(false)
+	refresh_player_control_button(false)
+	refresh_ai_runtime_state({})
 
 func get_canvas() -> CanvasLayer:
 	return canvas
@@ -36,19 +45,61 @@ func get_canvas() -> CanvasLayer:
 func get_building_overview_button() -> Button:
 	return building_overview_button
 
-func refresh_control_mode(controlled_citizen: Citizen) -> void:
+func refresh_control_mode(controlled_citizen: Citizen, mode_prefix: String = "CONTROL MODE", mode_hint: String = "") -> void:
 	if _control_mode_panel == null or _control_mode_label == null:
 		return
 	if controlled_citizen == null or not is_instance_valid(controlled_citizen):
 		_control_mode_panel.visible = false
 		return
 	_control_mode_panel.visible = true
-	_control_mode_label.text = "CONTROL MODE: %s | WASD Move | Space Jump | Esc Exit" % controlled_citizen.citizen_name
+	var control_hint := mode_hint if not mode_hint.is_empty() else "WASD Move | Space Jump | Esc Exit"
+	_control_mode_label.text = "%s: %s | %s" % [mode_prefix, controlled_citizen.citizen_name, control_hint]
+
+func set_player_control_visible(is_visible: bool) -> void:
+	if _player_control_button == null:
+		return
+	_player_control_button.visible = is_visible
+
+func refresh_player_control_button(is_active: bool) -> void:
+	if _player_control_button == null:
+		return
+	_player_control_button.text = "Exit Player" if is_active else "Control Player"
+
+func bind_dialogue_runtime_service(dialogue_runtime_service_ref) -> void:
+	_ai_runtime_service = dialogue_runtime_service_ref
+	if _ai_runtime_service == null:
+		refresh_ai_runtime_state({})
+		return
+	if _ai_runtime_service.has_signal("status_changed"):
+		var status_cb := Callable(self, "_on_ai_runtime_status_changed")
+		if not _ai_runtime_service.status_changed.is_connected(status_cb):
+			_ai_runtime_service.status_changed.connect(status_cb)
+	if _ai_runtime_service.has_method("get_ui_runtime_state"):
+		refresh_ai_runtime_state(_ai_runtime_service.get_ui_runtime_state())
+
+func refresh_ai_runtime_state(ui_state: Dictionary) -> void:
+	if _ai_runtime_label == null or _ai_runtime_button == null:
+		return
+	var summary_text := "AI: Offline"
+	var button_visible := false
+	var button_enabled := false
+	var button_text := "Setup AI"
+	if not ui_state.is_empty():
+		summary_text = str(ui_state.get("summary_text", summary_text))
+		button_visible = bool(ui_state.get("button_visible", false))
+		button_enabled = bool(ui_state.get("button_enabled", false))
+		button_text = str(ui_state.get("button_text", button_text))
+	_ai_runtime_label.text = summary_text
+	_ai_runtime_button.visible = button_visible
+	_ai_runtime_button.disabled = not button_enabled
+	_ai_runtime_button.text = button_text
 
 func _build_hud(
 	pause_pressed: Callable,
 	speed_pressed: Callable,
-	building_overview_pressed: Callable
+	building_overview_pressed: Callable,
+	player_control_pressed: Callable,
+	ai_runtime_pressed: Callable
 ) -> void:
 	if owner_node == null:
 		return
@@ -111,6 +162,7 @@ func _build_hud(
 	_pause_button = Button.new()
 	_pause_button.text = "Pause"
 	_pause_button.custom_minimum_size = Vector2(100, 36)
+	_pause_button.focus_mode = Control.FOCUS_NONE
 	if pause_pressed.is_valid():
 		_pause_button.pressed.connect(pause_pressed)
 	hbox.add_child(_pause_button)
@@ -119,6 +171,7 @@ func _build_hud(
 		var btn := Button.new()
 		btn.text = "%.1fx" % speed
 		btn.custom_minimum_size = Vector2(48, 36)
+		btn.focus_mode = Control.FOCUS_NONE
 		if speed_pressed.is_valid():
 			btn.pressed.connect(speed_pressed.bind(float(speed)))
 		hbox.add_child(btn)
@@ -126,15 +179,39 @@ func _build_hud(
 	building_overview_button = Button.new()
 	building_overview_button.text = "Buildings"
 	building_overview_button.custom_minimum_size = Vector2(92, 36)
+	building_overview_button.focus_mode = Control.FOCUS_NONE
 	if building_overview_pressed.is_valid():
 		building_overview_button.pressed.connect(building_overview_pressed)
 	hbox.add_child(building_overview_button)
+
+	_player_control_button = Button.new()
+	_player_control_button.text = "Control Player"
+	_player_control_button.custom_minimum_size = Vector2(108, 36)
+	_player_control_button.focus_mode = Control.FOCUS_NONE
+	_player_control_button.visible = false
+	if player_control_pressed.is_valid():
+		_player_control_button.pressed.connect(player_control_pressed)
+	hbox.add_child(_player_control_button)
+
+	_ai_runtime_button = Button.new()
+	_ai_runtime_button.text = "Setup AI"
+	_ai_runtime_button.custom_minimum_size = Vector2(104, 36)
+	_ai_runtime_button.focus_mode = Control.FOCUS_NONE
+	_ai_runtime_button.visible = false
+	if ai_runtime_pressed.is_valid():
+		_ai_runtime_button.pressed.connect(ai_runtime_pressed)
+	hbox.add_child(_ai_runtime_button)
 
 	var hint := Label.new()
 	hint.text = "Click citizen/building -> Info"
 	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	hint.custom_minimum_size = Vector2(0, 36)
 	hbox.add_child(hint)
+
+	_ai_runtime_label = Label.new()
+	_ai_runtime_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_ai_runtime_label.custom_minimum_size = Vector2(220, 36)
+	hbox.add_child(_ai_runtime_label)
 
 	_speed_label = Label.new()
 	_speed_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -152,6 +229,10 @@ func _build_hud(
 	_control_mode_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_control_mode_label.custom_minimum_size = Vector2(520, 32)
 	_control_mode_panel.add_child(_control_mode_label)
+
+func _on_ai_runtime_status_changed(_status: String, _detail: String) -> void:
+	if _ai_runtime_service != null and _ai_runtime_service.has_method("get_ui_runtime_state"):
+		refresh_ai_runtime_state(_ai_runtime_service.get_ui_runtime_state())
 
 func _bind_world_signals() -> void:
 	if world == null:

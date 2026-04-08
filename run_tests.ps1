@@ -91,6 +91,28 @@ function Invoke-GodotScript {
 	}
 }
 
+function Test-GodotOutputHealthy {
+	param([string[]]$OutputLines)
+
+	$errorPatterns = @(
+		"SCRIPT ERROR:",
+		"Parse Error:",
+		"Compile Error:",
+		"ERROR: Failed to load script",
+		"Invalid call. Nonexistent function 'new' in base 'GDScript'."
+	)
+
+	foreach ($line in $OutputLines) {
+		foreach ($pattern in $errorPatterns) {
+			if ($line -like "*$pattern*") {
+				return $false
+			}
+		}
+	}
+
+	return $true
+}
+
 $projectPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $godotConsole = Resolve-GodotConsoleExe -RequestedPath $GodotExe
 
@@ -109,6 +131,11 @@ $availableTests = @(
 		Key = "occupancy"
 		Label = "Building Occupancy Test"
 		Script = "res://tools/codex_building_occupancy_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "runtime"
+		Label = "Runtime LOD/Conversation Test"
+		Script = "res://tools/codex_runtime_lod_conversation_test.gd"
 	}
 	[pscustomobject]@{
 		Key = "route"
@@ -151,7 +178,7 @@ $results = New-Object System.Collections.Generic.List[object]
 foreach ($test in $selectedTests) {
 	Write-Host "==> $($test.Label) [$($test.Key)]"
 	$result = Invoke-GodotScript -Executable $godotConsole -ProjectPath $projectPath -ScriptPath $test.Script -UseVerbose:$VerboseGodot.IsPresent
-	$ok = ($result.ExitCode -eq 0)
+	$ok = ($result.ExitCode -eq 0) -and (Test-GodotOutputHealthy -OutputLines $result.Output)
 	$results.Add([pscustomobject]@{
 		Key = $test.Key
 		Label = $test.Label

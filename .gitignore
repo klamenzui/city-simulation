@@ -2,3 +2,6 @@
 .godot/
 /android/
 *.log
+
+# Local AI runtimes, models, and downloaded toolchains should stay machine-local.
+AI/

@@ -3,6 +3,7 @@ class_name World
 
 const RoadGraphScript = preload("res://Simulation/Navigation/RoadGraph.gd")
 const PedestrianGraphScript = preload("res://Simulation/Navigation/PedestrianGraph.gd")
+const CityDistrictIndexScript = preload("res://Simulation/Spatial/CityDistrictIndex.gd")
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
@@ -17,6 +18,7 @@ var time: TimeSystem = TimeSystem.new()
 var economy: EconomySystem = EconomySystem.new()
 var road_graph = RoadGraphScript.new()
 var pedestrian_graph = PedestrianGraphScript.new()
+var district_index = CityDistrictIndexScript.new()
 
 # Reserve/infrastructure account used as a visible sink for public-system costs.
 var city_account: Account = Account.new()
@@ -40,6 +42,11 @@ signal paused_changed(paused: bool)
 signal speed_changed(multiplier: float)
 
 var _timer: Timer
+var _simulation_tick_counter: int = 0
+var _focus_citizens: Array[Citizen] = []
+var _active_citizens: Array[Citizen] = []
+var _coarse_citizens: Array[Citizen] = []
+var _coarse_schedule: Dictionary = {}
 var _cached_city_bench_nodes: Array[Node3D] = []
 var _city_bench_cache_dirty: bool = true
 
@@ -56,6 +63,7 @@ func _ready() -> void:
 	city_account.owner_name = "CityReserve"
 	city_account.balance = BalanceConfig.get_int("world.city_reserve_start_balance", 18000)
 
+	district_index.setup(self)
 	_register_existing_scene_nodes(get_tree())
 	_connect_tree_cache_invalidation()
 
@@ -99,9 +107,11 @@ func _on_tick() -> void:
 		return
 
 	time.advance(minutes_per_tick)
-	for citizen in citizens:
-		if citizen != null:
-			citizen.sim_tick(self)
+	var tick_index := _simulation_tick_counter + 1
+	_tick_citizen_bucket(_focus_citizens)
+	_tick_citizen_bucket(_active_citizens)
+	_tick_due_coarse_citizens(tick_index)
+	_simulation_tick_counter = tick_index
 
 func _on_day_changed(_day: int) -> void:
 	# Daily economy cycle is executed after payday in _on_payday().
@@ -232,6 +242,124 @@ func _run_daily_market_cycle() -> void:
 		if building2 is CommercialBuilding:
 			(building2 as CommercialBuilding).run_daily_supply(self)
 
+func _tick_citizen_bucket(bucket: Array[Citizen]) -> void:
+	if bucket.is_empty():
+		return
+	var invalid: Array[Citizen] = []
+	for citizen in bucket:
+		if citizen == null or not is_instance_valid(citizen):
+			if citizen != null:
+				invalid.append(citizen)
+			continue
+		citizen.sim_tick(self)
+	for citizen in invalid:
+		bucket.erase(citizen)
+
+func _tick_due_coarse_citizens(tick_index: int) -> void:
+	if _coarse_schedule.is_empty():
+		return
+	var interval_keys: Array = _coarse_schedule.keys()
+	interval_keys.sort()
+	for interval_key in interval_keys:
+		var interval_ticks := int(interval_key)
+		if interval_ticks <= 0:
+			continue
+		var slots: Variant = _coarse_schedule.get(interval_key, {})
+		if slots is not Dictionary:
+			continue
+		var slot := tick_index % interval_ticks
+		var bucket_variant: Variant = (slots as Dictionary).get(slot, [])
+		if bucket_variant is not Array:
+			continue
+		var bucket: Array = bucket_variant as Array
+		var invalid: Array[Citizen] = []
+		for entry in bucket:
+			var citizen := entry as Citizen
+			if citizen == null or not is_instance_valid(citizen):
+				if citizen != null:
+					invalid.append(citizen)
+				continue
+			citizen.sim_tick(self)
+		if not invalid.is_empty():
+			for citizen in invalid:
+				bucket.erase(citizen)
+			var cleaned_slots := slots as Dictionary
+			if bucket.is_empty():
+				cleaned_slots.erase(slot)
+			else:
+				cleaned_slots[slot] = bucket
+			if cleaned_slots.is_empty():
+				_coarse_schedule.erase(interval_key)
+			else:
+				_coarse_schedule[interval_key] = cleaned_slots
+
+func _register_citizen_lod_state(citizen: Citizen) -> void:
+	if citizen == null:
+		return
+	var tier := citizen.get_simulation_lod_tier() if citizen.has_method("get_simulation_lod_tier") else "focus"
+	var bucket := _get_citizen_bucket_for_tier(tier)
+	if not bucket.has(citizen):
+		bucket.append(citizen)
+	if tier != "coarse":
+		return
+	var interval_ticks := _get_citizen_simulation_interval_ticks(citizen)
+	var slot := _get_citizen_simulation_slot(citizen, interval_ticks)
+	var slots: Dictionary = _coarse_schedule.get(interval_ticks, {})
+	var scheduled_bucket: Array = slots.get(slot, [])
+	if not scheduled_bucket.has(citizen):
+		scheduled_bucket.append(citizen)
+	slots[slot] = scheduled_bucket
+	_coarse_schedule[interval_ticks] = slots
+
+func _unregister_citizen_lod_state(citizen: Citizen) -> void:
+	if citizen == null:
+		return
+	_focus_citizens.erase(citizen)
+	_active_citizens.erase(citizen)
+	_coarse_citizens.erase(citizen)
+	var interval_keys: Array = _coarse_schedule.keys()
+	for interval_key in interval_keys:
+		var slots: Variant = _coarse_schedule.get(interval_key, {})
+		if slots is not Dictionary:
+			continue
+		var slot_dict := slots as Dictionary
+		var slot_keys: Array = slot_dict.keys()
+		for slot_key in slot_keys:
+			var bucket_variant: Variant = slot_dict.get(slot_key, [])
+			if bucket_variant is not Array:
+				continue
+			var bucket: Array = bucket_variant as Array
+			bucket.erase(citizen)
+			if bucket.is_empty():
+				slot_dict.erase(slot_key)
+			else:
+				slot_dict[slot_key] = bucket
+		if slot_dict.is_empty():
+			_coarse_schedule.erase(interval_key)
+		else:
+			_coarse_schedule[interval_key] = slot_dict
+
+func _get_citizen_bucket_for_tier(tier: String) -> Array[Citizen]:
+	match tier:
+		"focus":
+			return _focus_citizens
+		"active":
+			return _active_citizens
+		"coarse":
+			return _coarse_citizens
+		_:
+			return _focus_citizens
+
+func _get_citizen_simulation_interval_ticks(citizen: Citizen) -> int:
+	if citizen == null or not citizen.has_method("get_simulation_lod_tick_interval_ticks"):
+		return 1
+	return maxi(citizen.get_simulation_lod_tick_interval_ticks(self), 1)
+
+func _get_citizen_simulation_slot(citizen: Citizen, interval_ticks: int) -> int:
+	if citizen == null or not citizen.has_method("get_simulation_lod_tick_slot"):
+		return 0
+	return posmod(int(citizen.get_simulation_lod_tick_slot(self)), maxi(interval_ticks, 1))
+
 func _pay_welfare(citizen: Citizen, amount: int, city_hall) -> bool:
 	if amount <= 0:
 		return false
@@ -347,28 +475,102 @@ func get_ground_fallback_y() -> float:
 	var bounds := get_world_bounds()
 	return bounds.position.y + bounds.size.y * 0.5
 
+func get_district_id_for_position(world_pos: Vector3) -> String:
+	if district_index == null:
+		return ""
+	return district_index.get_district_id_for_position(world_pos)
+
+func get_neighbor_district_ids_for_position(world_pos: Vector3) -> Array[String]:
+	if district_index == null:
+		return []
+	return district_index.get_neighbor_district_ids_for_position(world_pos)
+
+func are_positions_in_same_or_neighbor_district(pos_a: Vector3, pos_b: Vector3) -> bool:
+	if district_index == null:
+		return false
+	return district_index.are_positions_in_same_or_neighbor_district(pos_a, pos_b)
+
+func get_district_center(district_id: String) -> Vector3:
+	if district_index == null:
+		return Vector3.ZERO
+	return district_index.get_district_center(district_id)
+
+func get_citizen_district_id(citizen: Citizen) -> String:
+	if citizen == null:
+		return ""
+	return get_district_id_for_position(citizen.global_position)
+
+func get_building_district_id(building: Building) -> String:
+	if district_index == null:
+		return ""
+	return district_index.get_building_district_id(building)
+
+func get_buildings_in_district(district_id: String) -> Array[Building]:
+	if district_index == null:
+		return []
+	return district_index.get_buildings_in_district(district_id)
+
 func register_citizen(citizen: Citizen) -> void:
 	if citizen == null or citizens.has(citizen):
 		return
 	citizens.append(citizen)
 	citizen.set_world_ref(self)
+	_register_citizen_lod_state(citizen)
 
 func unregister_citizen(citizen: Citizen) -> void:
 	if citizen == null:
 		return
 	citizens.erase(citizen)
+	_unregister_citizen_lod_state(citizen)
+	if citizen.job != null:
+		unregister_job(citizen.job)
+
+func notify_citizen_lod_changed(citizen: Citizen) -> void:
+	if citizen == null or not citizens.has(citizen):
+		return
+	_unregister_citizen_lod_state(citizen)
+	_register_citizen_lod_state(citizen)
+
+func get_simulation_tick_counter() -> int:
+	return _simulation_tick_counter
+
+func is_citizen_due_for_simulation(citizen: Citizen) -> bool:
+	if citizen == null:
+		return false
+	var interval_ticks := _get_citizen_simulation_interval_ticks(citizen)
+	if interval_ticks <= 1:
+		return true
+	var slot := _get_citizen_simulation_slot(citizen, interval_ticks)
+	return (_simulation_tick_counter + 1) % interval_ticks == slot
+
+func get_citizen_simulation_minutes_until_due(citizen: Citizen) -> int:
+	if citizen == null:
+		return 0
+	var interval_ticks := _get_citizen_simulation_interval_ticks(citizen)
+	if interval_ticks <= 1:
+		return 0
+	var slot := _get_citizen_simulation_slot(citizen, interval_ticks)
+	var next_tick_index := _simulation_tick_counter + 1
+	for offset in range(interval_ticks):
+		if (next_tick_index + offset) % interval_ticks == slot:
+			return offset * maxi(minutes_per_tick, 1)
+	return 0
 
 func register_building(building: Building) -> void:
 	if building == null or buildings.has(building):
 		return
 	buildings.append(building)
 	_index_building(building)
+	if district_index != null:
+		district_index.register_building(building)
 
 func unregister_building(building: Building) -> void:
 	if building == null:
 		return
 	buildings.erase(building)
 	_deindex_building(building)
+	if district_index != null:
+		district_index.unregister_building(building)
 
 func register_job(job: Job) -> void:
 	if job == null or jobs.has(job):
@@ -380,6 +582,8 @@ func unregister_job(job: Job) -> void:
 	if job == null:
 		return
 	jobs.erase(job)
+	if economy != null and economy.has_method("unregister_job"):
+		economy.unregister_job(job)
 
 func get_open_jobs() -> Array[Job]:
 	return economy.get_open_jobs()

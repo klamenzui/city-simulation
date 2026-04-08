@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "grid": {
+    "cell_size_m": 24.0,
+    "neighbor_radius_cells": 1,
+    "label_prefix": "D"
+  }
+}

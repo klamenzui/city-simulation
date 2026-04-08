@@ -80,6 +80,11 @@ func register_job(job: Job) -> void:
 		return
 	jobs.append(job)
 
+func unregister_job(job: Job) -> void:
+	if job == null:
+		return
+	jobs.erase(job)
+
 func get_open_jobs() -> Array[Job]:
 	var open_jobs: Array[Job] = []
 	for job in jobs:

@@ -7,12 +7,16 @@ const BENCH_RESERVATIONS_META := "_park_bench_reservations"
 @export var park_visit_inside_distance: float = 1.25
 @export var park_wall_depth: float = 0.6
 
+var _bench_nodes_cache: Array[Node3D] = []
+var _bench_nodes_cache_valid: bool = false
+
 func _ready() -> void:
 	building_type = BuildingType.PARK
 	apply_balance_settings("park")
 	#_remove_embedded_scene_bodies()
 	super._ready()
 	#_rebuild_park_navigation_boundaries()
+	_invalidate_park_bench_cache()
 	add_to_group("parks")
 
 func _remove_embedded_scene_bodies() -> void:
@@ -178,9 +182,23 @@ func get_internal_navigation_route(nav_points: Dictionary) -> PackedVector3Array
 	return _build_park_internal_route(start_pos, end_pos)
 
 func _get_park_bench_nodes() -> Array[Node3D]:
+	if _bench_nodes_cache_valid:
+		var cached: Array[Node3D] = []
+		for bench in _bench_nodes_cache:
+			if bench != null and is_instance_valid(bench):
+				cached.append(bench)
+		_bench_nodes_cache = cached
+		return cached
+
 	var benches: Array[Node3D] = []
 	_collect_park_bench_nodes(_get_park_cluster_root(), benches)
+	_bench_nodes_cache = benches
+	_bench_nodes_cache_valid = true
 	return benches
+
+func _invalidate_park_bench_cache() -> void:
+	_bench_nodes_cache.clear()
+	_bench_nodes_cache_valid = false
 
 func _collect_park_bench_nodes(node: Node, out: Array[Node3D]) -> void:
 	for child in node.get_children():

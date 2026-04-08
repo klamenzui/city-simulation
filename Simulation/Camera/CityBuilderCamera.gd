@@ -40,6 +40,7 @@ var _ground_y: float = 0.0
 var _rotating: bool = false
 var _follow_mode: bool = false
 var _follow_target: Node3D = null
+var _input_locked: bool = false
 
 func _ready() -> void:
 	current = true
@@ -48,12 +49,16 @@ func _ready() -> void:
 	_initialize_from_transform()
 
 func _process(delta: float) -> void:
+	var input_blocked := _should_block_camera_input()
 	if _follow_mode:
-		_update_follow_targets(delta)
+		_update_follow_targets(delta, input_blocked)
 		return
 
-	_update_pan(delta)
-	_update_key_rotation(delta)
+	if input_blocked:
+		_rotating = false
+	else:
+		_update_pan(delta)
+		_update_key_rotation(delta)
 	_clamp_targets()
 
 	var t: float = 1.0 - exp(-smoothing * delta)
@@ -65,6 +70,9 @@ func _process(delta: float) -> void:
 	_apply_camera_transform()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _should_block_camera_input():
+		_rotating = false
+		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_MIDDLE:
@@ -166,12 +174,15 @@ func _apply_camera_transform() -> void:
 	global_position = _center + offset
 	look_at(_center, Vector3.UP)
 
-func _update_follow_targets(delta: float) -> void:
+func _update_follow_targets(delta: float, input_blocked: bool = false) -> void:
 	if _follow_target == null or not is_instance_valid(_follow_target):
 		clear_follow_target()
 		return
 
-	_update_key_rotation(delta)
+	if input_blocked:
+		_rotating = false
+	else:
+		_update_key_rotation(delta)
 	_target_pitch = clampf(follow_pitch_deg, min_pitch_deg, max_pitch_deg)
 	_target_distance = clampf(follow_distance, min_distance, max_distance)
 	_target_center = _follow_target.global_position + Vector3.UP * follow_focus_height
@@ -183,6 +194,24 @@ func _update_follow_targets(delta: float) -> void:
 	_distance = lerpf(_distance, _target_distance, t)
 
 	_apply_camera_transform()
+
+func set_input_locked(locked: bool) -> void:
+	_input_locked = locked
+	if locked:
+		_rotating = false
+
+func is_input_locked() -> bool:
+	return _input_locked
+
+func _should_block_camera_input() -> bool:
+	return _input_locked or _has_text_input_focus()
+
+func _has_text_input_focus() -> bool:
+	var viewport := get_viewport()
+	if viewport == null:
+		return false
+	var focus_owner: Control = viewport.gui_get_focus_owner()
+	return focus_owner is LineEdit or focus_owner is TextEdit
 
 func _resolve_ground_height() -> void:
 	_ground_y = 0.0

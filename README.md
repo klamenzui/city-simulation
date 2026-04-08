@@ -180,8 +180,12 @@ Ingame:
 - Linksklick auf Gebaeude: Auswahl + Gebaeude-Debug
 - Linksklick ins Leere: Auswahl aufheben
 - `Enter`: Pause/Resume
-- UI-Buttons unten links: `Pause`, `0.1x`, `0.5x`, `1.0x`, `2.0x`, `Buildings`
+- UI-Buttons unten links: `Pause`, `1.0x`, `2.0x`, `3.0x`, `4.0x`, `Buildings`, `Control Player`, optional `Setup AI` / `Download AI`
 - `Buildings`: oeffnet eine sortierte Liste aller Gebaeude, aktive zuerst; aktive Eintraege sind fett markiert
+- `Control Player`: schaltet den dedizierten Player-Avatar in einen Third-Person-Steuermodus; `Esc` beendet den Modus wieder
+- KI-Status wird direkt im HUD angezeigt, z. B. `AI: Ready`, `AI: Model missing` oder `AI: Fallback active`
+- NPC-Dialog: Citizen auswaehlen, `Control Player` aktivieren, mit dem Player nah genug an den Citizen heranlaufen und dann im Debug-Fenster `Start Dialog` druecken
+- NPC-Dialog Shortcut: `F` startet oder beendet den Dialog mit dem aktuell ausgewaehlten Citizen, wenn die Dialog-Bedingungen erfuellt sind
 
 ## Debug und Logs
 
@@ -195,6 +199,8 @@ Die Logdatei enthaelt unter anderem:
 - `CitizenTrace`: gewaehlter Citizen
 - `CitizenTraceAll`: globale Kurztraces
 - `MapDump`: Snapshot von Gebaeuden, Citizens, Strassen, Crosswalks und Lichtern
+- `AI`: Runtime-Status, Warmup, Queueing und Fehler der lokalen KI
+- `PlayerDialog <Name>`: Start, Ende, Player-Nachricht, Runtime-State und NPC-Antwort fuer direkte Gespräche
 
 Die globalen Debug-Dumps sind absichtlich nicht mehr standardmaessig aktiv. Fuer laengere Analysen lassen sie sich ueber `config/balance.json` unter `debug.enable_all_citizen_trace` und `debug.enable_map_snapshot_log` gezielt einschalten.
 Citizen-Finder loesen den `World`-Service bei Bedarf jetzt selbst aus dem SceneTree auf, damit fruehe Queries nicht wieder auf verteilte Gruppen-Scans zurueckfallen.
@@ -241,6 +247,27 @@ Wichtige Beispiele:
 - `buildings.university.base_operating_cost`, `buildings.park.base_operating_cost`
 - `building.condition_start`, `building.daily_decay`, `building.maintenance_cost_per_day`, `building.repair_threshold`
 
+Zusaetzliche datengetriebene Struktur-Dateien fuer die naechsten Citizens-/LOD-/Dialog-Schritte:
+
+- `config/citizen_decision_rules.json`: Utility-/Decision-Rules fuer Needs, Umwelt, Wetter, Persoenlichkeit, Zustand und Events
+- `config/citizen_simulation_lod.json`: Focus-/Active-/Coarse-Budgets, Relevanzscores, Hysterese, Rotation und coarse travel
+- `config/conversation_rules.json`: Regeln fuer Abstract/Bark/Materialized/Interactive-Conversations
+- `config/dialogue_runtime.json`: lokale KI-Laufzeit, Modell-Praeferenzen, Prompt-Felder, Memory und Fallbacks
+
+Lokale KI-Runtime:
+
+- `Simulation/AI/LocalDialogueRuntimeService.gd`: lokale Ollama-Anbindung mit optionalem Backend-Start, Readiness-Probe, Warmup, Queue und Template-Fallback
+- `Simulation/Conversation/CitizenConversationManager.gd`: haengt materialisierte NPC-Gespraeche an die Runtime und legt generierte Zeilen im aktiven Conversation-State ab
+- `AI/llama`: bevorzugter projektlokaler Runtime-Ordner fuer `ollama.exe`
+- `AI/models`: projektlokaler Modellordner ueber `OLLAMA_MODELS`
+- `AI/runtime`: Runtime- und Setup-Artefakte
+- `tools/install_portable_ollama.ps1`: laedt die portable Windows-Runtime in `AI/llama` und zieht ein erstes Modell nach `AI/models`
+
+Wichtig:
+
+- Beim Spielstart prueft die Runtime zuerst einen vorhandenen lokalen API-Server. Wenn keiner erreichbar ist, startet sie optional bevorzugt `AI/llama/ollama.exe` und faellt danach auf globale Installationen zurueck.
+- Modelle werden bewusst nicht automatisch heruntergeladen. Wenn lokal kein passendes Modell vorhanden ist, faellt das System auf Templates zurueck.
+
 Hinweise:
 
 - Die JSON wird beim Projektstart geladen. Nach Aenderungen am Balancing am besten die Szene bzw. das Spiel neu starten.
@@ -259,7 +286,7 @@ powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\r
 
 Kurzbeschreibung:
 
-- `run_tests_quick.ps1`: Parse + Economy + Occupancy
+- `run_tests_quick.ps1`: Parse + Economy + Occupancy + Runtime LOD/Conversation
 - `run_tests_nav.ps1`: Route + Crosswalk
 - `run_tests_full.ps1`: Parse + Economy + Occupancy + Route + Crosswalk + Sky
 
@@ -270,6 +297,7 @@ Ausfuehrliche Beschreibung, Parameter und direkte Nutzung von `run_tests.ps1` st
 - `tools/codex_parse_check.gd`: prueft zentrale Ressourcen/Script-Loads
 - `tools/codex_economy_test.gd`: Economy-Regressionen
 - `tools/codex_building_occupancy_test.gd`: Besucher-/Worker-Zaehlung in Gebaeuden
+- `tools/codex_runtime_lod_conversation_test.gd`: Headless-Integrationstest fuer LOD, Conversation und AI-Template-Hookup
 - `tools/codex_route_probe.gd`: Beispielrouten, Crosswalk-Probes, Spawn-/Entrance-Debug
 - `tools/codex_crosswalk_audit.gd`: Audit fuer illegale Strassenquerungen im Graph
 - `tools/codex_sky_probe.gd`: Sky/Ocean/Tag-Nacht-Pruefung

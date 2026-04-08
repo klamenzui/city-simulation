@@ -163,6 +163,10 @@ func _test_open_jobs() -> String:
 	economy.register_job(job)
 	_expect_eq(economy.jobs.size(), 1, "register_job should deduplicate the same job")
 	_expect_eq(economy.get_open_jobs().size(), 1, "job should be open while workplace has capacity")
+	economy.unregister_job(job)
+	_expect_eq(economy.jobs.size(), 0, "unregister_job should remove the job from the economy registry")
+	_expect_eq(economy.get_open_jobs().size(), 0, "removed jobs should no longer appear as open")
+	economy.register_job(job)
 
 	var worker_a = _new_citizen("Worker A")
 	var worker_b = _new_citizen("Worker B")

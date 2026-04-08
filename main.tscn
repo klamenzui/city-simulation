@@ -24,7 +24,7 @@
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_005_554266d6.tscn" id="41_hjwua"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_006_d04a3ec7.tscn" id="43_j3xfc"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_007_d87ed587.tscn" id="45_livak"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_008_f7a182ef.tscn" id="47_fatcg"]
+[ext_resource type="PackedScene" uid="uid://bh8b5458rfbc" path="res://Scenes/CityBuildings/stores/stores_008_f7a182ef.tscn" id="47_fatcg"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_009_2248c820.tscn" id="48_tmkk1"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_010_20ac9e10.tscn" id="50_uupql"]
 [ext_resource type="PackedScene" uid="uid://csbbagwf1a88x" path="res://Scenes/CityBuildings/stores/stores_011_9f723ff3.tscn" id="52_nakit"]
@@ -69,6 +69,7 @@
 [ext_resource type="PackedScene" uid="uid://blprlwgfny7m" path="res://Scenes/CityBuildings/multilayer/multilayer_004_d588520f.tscn" id="98_xlpjy"]
 [ext_resource type="PackedScene" uid="uid://c2sjyx3wuxudg" path="res://environment/sky/Cycle.tscn" id="99_deygs"]
 [ext_resource type="PackedScene" uid="uid://cib1b468oy5er" path="res://Scenes/CityBuildings/multilayer/multilayer_005_ae5226aa.tscn" id="100_inxc5"]
+[ext_resource type="PackedScene" uid="uid://xwf5gxy5g8c" path="res://Entities/Citizens/Citizen.tscn" id="102_cxcit"]
 [ext_resource type="PackedScene" uid="uid://d180o3e5em11x" path="res://Scenes/CityBuildings/multilayer/multilayer_006_51b92887.tscn" id="102_xpnqb"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/multilayer/multilayer_007_8ef7bcee.tscn" id="104_bbw0l"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/foundation/foundation_001_64613340.tscn" id="107_bcjhn"]
@@ -76,7 +77,7 @@
 [ext_resource type="PackedScene" uid="uid://c3fiy3c1p7yh4" path="res://Scenes/CityBuildings/multi_building/multi_building_002_e2882763.tscn" id="110_vm52a"]
 [ext_resource type="PackedScene" uid="uid://cnbp643i1mta7" path="res://Scenes/CityBuildings/multi_building/multi_building_003_d0a32ce0.tscn" id="112_qr1df"]
 [ext_resource type="PackedScene" uid="uid://cn00e3vrxiei3" path="res://Scenes/CityBuildings/multi_building/multi_building_004_eb500c74.tscn" id="114_aquj3"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/multi_building/multi_building_005_e89a241a.tscn" id="116_wed7b"]
+[ext_resource type="PackedScene" uid="uid://cf62u7nv4trlh" path="res://Scenes/CityBuildings/multi_building/multi_building_005_e89a241a.tscn" id="116_wed7b"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/commercial_building/commercial_building_001_23cb9fc1.tscn" id="118_eminm"]
 [ext_resource type="PackedScene" uid="uid://0kse2l1oy6o2" path="res://Scenes/CityBuildings/commercial_building/commercial_building_002_751c8aa3.tscn" id="119_upd3q"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/commercial_building/commercial_building_003_f93fa3f3.tscn" id="120_7lw36"]
@@ -2142,6 +2143,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -84.91101, -1.2723389, -6.922
 [node name="CollisionShape3D" type="CollisionShape3D" parent="World/StaticBody3D" unique_id=525917828]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 84.91101, 1.2723389, 6.9225693)
 shape = SubResource("ConcavePolygonShape3D_deygs")
+
+[node name="Player" parent="World" unique_id=566366776 instance=ExtResource("102_cxcit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, 14)
+citizen_name = "Player"
+autonomous_simulation_enabled = false
 
 [node name="SkyBridge" type="Node" parent="." unique_id=1781400]
 script = ExtResource("401_skybr")

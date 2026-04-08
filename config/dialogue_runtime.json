@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "runtime": {
+    "provider": "local",
+    "backend": "ollama_or_llama_cpp",
+    "max_parallel_jobs": 1,
+    "max_queue_size": 2,
+    "request_timeout_sec": 20.0,
+    "cancel_if_player_leaves_range": true,
+    "temperature": 0.7,
+    "num_predict": 96,
+    "force_template_mode": false
+  },
+  "startup": {
+    "backend_kind": "ollama",
+    "api_base_url": "http://127.0.0.1:11434/api",
+    "auto_start_on_game_boot": true,
+    "auto_start_backend_if_missing": true,
+    "disabled_in_headless": true,
+    "retry_probe_interval_sec": 1.5,
+    "prewarm_on_boot": false,
+    "prewarm_keep_alive": "10m",
+    "warmup_prompt": "Hello.",
+    "serve_args": [
+      "serve"
+    ],
+    "command_candidates": [
+      "{AI_LLAMA_DIR}\\ollama.exe",
+      "ollama",
+      "{LOCALAPPDATA}\\Programs\\Ollama\\ollama.exe"
+    ]
+  },
+  "packaging": {
+    "ai_root_dir": "{PROJECT_DIR}\\AI",
+    "llama_dir": "{AI_ROOT_DIR}\\llama",
+    "models_dir": "{AI_ROOT_DIR}\\models",
+    "runtime_dir": "{AI_ROOT_DIR}\\runtime",
+    "ensure_directories_on_boot": true,
+    "prefer_project_local_runtime": true
+  },
+  "model_preferences": {
+    "player_npc": [
+      "qwen2.5:3b",
+      "llama3.2:3b",
+      "gemma3:4b"
+    ],
+    "npc_npc": [
+      "llama3.2:3b",
+      "qwen2.5:3b"
+    ]
+  },
+  "prompt_templates": {
+    "player_npc": {
+      "system": [
+        "You are a local NPC in a city simulation.",
+        "Stay in character.",
+        "Only know what the citizen could reasonably know.",
+        "Reply in short natural dialogue.",
+        "Do not narrate actions unless asked.",
+        "Do not invent landmarks, districts, shops, or routes.",
+        "If world facts are missing, admit uncertainty briefly."
+      ],
+      "input_fields": [
+        "name",
+        "personality",
+        "mood",
+        "needs",
+        "wallet_balance",
+        "budget_state",
+        "location",
+        "location_context",
+        "district",
+        "weather",
+        "current_goal",
+        "current_goal_context",
+        "known_places",
+        "nearby_places",
+        "job_context",
+        "reply_language",
+        "relationship_to_player",
+        "grounding_rules",
+        "recent_summary",
+        "last_turns"
+      ]
+    },
+    "npc_npc": {
+      "system": [
+        "Generate a short overheard NPC conversation.",
+        "Keep lines brief and grounded.",
+        "No exposition dump.",
+        "Only output speaker name and text."
+      ],
+      "input_fields": [
+        "participant_a",
+        "participant_b",
+        "relationship",
+        "location",
+        "weather",
+        "topic",
+        "tone"
+      ]
+    }
+  },
+  "output_rules": {
+    "player_npc": {
+      "max_sentences": 3,
+      "max_words": 60,
+      "allow_questions": true
+    },
+    "npc_npc": {
+      "min_lines": 2,
+      "max_lines": 4,
+      "max_words_per_line": 18
+    }
+  },
+  "memory": {
+    "player_npc": {
+      "keep_last_turns": 6,
+      "summarize_after_turns": 4,
+      "keep_world_facts_short": true
+    },
+    "npc_npc": {
+      "cache_generated_block": true,
+      "reuse_until_topic_changes": true
+    }
+  },
+  "fallback": {
+    "on_timeout": "use_template",
+    "on_model_missing": "use_template",
+    "on_queue_full": "use_template",
+    "template_style": "short_everyday_dialogue"
+  }
+}

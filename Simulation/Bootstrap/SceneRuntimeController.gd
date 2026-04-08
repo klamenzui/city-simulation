@@ -9,6 +9,9 @@ const HudOverlayControllerScript = preload("res://Simulation/UI/HudOverlayContro
 const SimulationInteractionControllerScript = preload("res://Simulation/UI/SimulationInteractionController.gd")
 const SimulationHudControllerScript = preload("res://Simulation/UI/SimulationHudController.gd")
 const BuildingStatusBadgeControllerScript = preload("res://Simulation/UI/BuildingStatusBadgeController.gd")
+const CitizenSimulationLodControllerScript = preload("res://Simulation/Citizens/CitizenSimulationLodController.gd")
+const CitizenConversationManagerScript = preload("res://Simulation/Conversation/CitizenConversationManager.gd")
+const LocalDialogueRuntimeServiceScript = preload("res://Simulation/AI/LocalDialogueRuntimeService.gd")
 
 var owner_node: Node = null
 var world: World = null
@@ -21,6 +24,9 @@ var building_status_badge_controller = null
 var hud_controller = null
 var hud_overlay_controller = null
 var selection_state_controller = null
+var citizen_lod_controller = null
+var citizen_conversation_manager = null
+var dialogue_runtime_service = null
 
 func setup(
 	owner_ref: Node,
@@ -46,15 +52,31 @@ func setup(
 		all_trace_interval_sec
 	)
 	_spawn_citizens(initial_citizen_count)
+	_setup_selection_state_controller()
+	_setup_dialogue_runtime(headless_runtime)
+	_setup_conversation_manager()
+	_setup_citizen_lod_controller()
 	if headless_runtime:
 		return
 	_setup_selection_debug_controller()
 	_setup_building_status_style_resolver()
 	_setup_interaction_controller()
+	_bind_citizen_clicks()
 	_setup_building_status_badge_controller()
 	_bind_building_clicks()
 	_build_hud(search_result_limit, building_overview_refresh_interval_sec)
-	_setup_selection_state_controller()
+	if selection_state_controller != null:
+		selection_state_controller.setup(
+			world,
+			city_camera,
+			interaction_controller.get_debug_panel() if interaction_controller != null else null,
+			hud_controller,
+			runtime_debug_logger,
+			selection_debug_controller,
+			building_status_badge_controller
+		)
+	if interaction_controller != null:
+		interaction_controller.bind_selection_state(selection_state_controller, hud_overlay_controller)
 
 func update(delta: float) -> void:
 	var selected_citizen = null
@@ -63,6 +85,12 @@ func update(delta: float) -> void:
 		selection_state_controller.ensure_valid_control_target()
 		selected_citizen = selection_state_controller.get_selected_citizen()
 		selected_building = selection_state_controller.get_selected_building()
+	if dialogue_runtime_service != null:
+		dialogue_runtime_service.update(delta)
+	if citizen_conversation_manager != null:
+		citizen_conversation_manager.update(delta)
+	if citizen_lod_controller != null:
+		citizen_lod_controller.update(delta)
 	if runtime_debug_logger != null:
 		runtime_debug_logger.update(delta, selected_citizen)
 	if selection_debug_controller != null:
@@ -118,6 +146,10 @@ func _setup_building_status_style_resolver() -> void:
 func _setup_interaction_controller() -> void:
 	interaction_controller = SimulationInteractionControllerScript.new()
 	interaction_controller.setup(owner_node, world)
+	if dialogue_runtime_service != null and interaction_controller.has_method("bind_dialogue_runtime_service"):
+		interaction_controller.bind_dialogue_runtime_service(dialogue_runtime_service)
+	if citizen_conversation_manager != null and interaction_controller.has_method("bind_conversation_manager"):
+		interaction_controller.bind_conversation_manager(citizen_conversation_manager)
 
 func _setup_building_status_badge_controller() -> void:
 	if building_status_style_resolver == null:
@@ -139,8 +171,12 @@ func _build_hud(search_result_limit: int, building_overview_refresh_interval_sec
 		world,
 		Callable(interaction_controller, "on_pause_pressed"),
 		Callable(interaction_controller, "on_speed_pressed"),
-		Callable(interaction_controller, "on_building_overview_pressed")
+		Callable(interaction_controller, "on_building_overview_pressed"),
+		Callable(interaction_controller, "on_player_control_pressed"),
+		Callable(interaction_controller, "on_ai_runtime_pressed")
 	)
+	if dialogue_runtime_service != null and hud_controller.has_method("bind_dialogue_runtime_service"):
+		hud_controller.bind_dialogue_runtime_service(dialogue_runtime_service)
 
 	var canvas: CanvasLayer = hud_controller.get_canvas()
 	if canvas == null:
@@ -162,6 +198,8 @@ func _build_hud(search_result_limit: int, building_overview_refresh_interval_sec
 	)
 
 func _setup_selection_state_controller() -> void:
+	if selection_state_controller != null:
+		return
 	selection_state_controller = SelectionStateControllerScript.new()
 	selection_state_controller.setup(
 		world,
@@ -175,6 +213,25 @@ func _setup_selection_state_controller() -> void:
 	if interaction_controller != null:
 		interaction_controller.bind_selection_state(selection_state_controller, hud_overlay_controller)
 
+func _setup_citizen_lod_controller() -> void:
+	if selection_state_controller == null:
+		return
+	citizen_lod_controller = CitizenSimulationLodControllerScript.new()
+	citizen_lod_controller.setup(world, city_camera, selection_state_controller)
+
+func _setup_dialogue_runtime(headless_runtime: bool) -> void:
+	dialogue_runtime_service = LocalDialogueRuntimeServiceScript.new()
+	owner_node.add_child(dialogue_runtime_service)
+	dialogue_runtime_service.setup({}, headless_runtime)
+
+func _setup_conversation_manager() -> void:
+	if selection_state_controller == null:
+		return
+	citizen_conversation_manager = CitizenConversationManagerScript.new()
+	citizen_conversation_manager.setup(world, city_camera, selection_state_controller)
+	if dialogue_runtime_service != null and citizen_conversation_manager.has_method("bind_dialogue_runtime"):
+		citizen_conversation_manager.bind_dialogue_runtime(dialogue_runtime_service)
+
 func _bind_building_clicks() -> void:
 	if interaction_controller == null:
 		return
@@ -184,6 +241,17 @@ func _bind_building_clicks() -> void:
 			continue
 		if not building.clicked.is_connected(building_clicked_cb):
 			building.clicked.connect(building_clicked_cb)
+
+func _bind_citizen_clicks() -> void:
+	if interaction_controller == null:
+		return
+	var citizen_clicked_base := Callable(interaction_controller, "handle_citizen_clicked")
+	for citizen in world.citizens:
+		if citizen == null:
+			continue
+		var clicked_cb := citizen_clicked_base.bind(citizen)
+		if not citizen.clicked.is_connected(clicked_cb):
+			citizen.clicked.connect(clicked_cb)
 
 func _spawn_citizens(initial_citizen_count: int) -> void:
 	var spawned := CitizenFactory.spawn_citizens(owner_node, world, initial_citizen_count)
