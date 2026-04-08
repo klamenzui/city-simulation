@@ -6,21 +6,59 @@
 script = ExtResource("1_ftgwa")
 
 [node name="Panel" type="Panel" parent="."]
-offset_right = 241.0
-offset_bottom = 513.0
+offset_right = 360.0
+offset_bottom = 760.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
 layout_mode = 0
-offset_right = 242.0
-offset_bottom = 377.0
+offset_right = 360.0
+offset_bottom = 740.0
 
 [node name="Label" type="RichTextLabel" parent="Panel/VBoxContainer"]
 layout_mode = 2
 bbcode_enabled = true
-fit_content = true
+fit_content = false
 scroll_active = false
+custom_minimum_size = Vector2(336, 280)
 
 [node name="CitizenControlButton" type="Button" parent="Panel/VBoxContainer"]
 layout_mode = 2
 visible = false
 text = "Control Citizen"
+
+[node name="CitizenClickMoveButton" type="Button" parent="Panel/VBoxContainer"]
+layout_mode = 2
+visible = false
+text = "Click Move Citizen"
+
+[node name="CitizenDialogButton" type="Button" parent="Panel/VBoxContainer"]
+layout_mode = 2
+visible = false
+text = "Start Dialog"
+
+[node name="CitizenDialogStatusLabel" type="Label" parent="Panel/VBoxContainer"]
+layout_mode = 2
+visible = false
+autowrap_mode = 2
+text = "Dialog unavailable"
+
+[node name="CitizenDialogLog" type="RichTextLabel" parent="Panel/VBoxContainer"]
+layout_mode = 2
+visible = false
+bbcode_enabled = true
+fit_content = false
+scroll_active = true
+custom_minimum_size = Vector2(336, 180)
+
+[node name="CitizenDialogInputRow" type="HBoxContainer" parent="Panel/VBoxContainer"]
+layout_mode = 2
+visible = false
+
+[node name="CitizenDialogLineEdit" type="LineEdit" parent="Panel/VBoxContainer/CitizenDialogInputRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Type a message..."
+
+[node name="CitizenDialogSendButton" type="Button" parent="Panel/VBoxContainer/CitizenDialogInputRow"]
+layout_mode = 2
+text = "Send"

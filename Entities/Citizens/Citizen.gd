@@ -17,6 +17,7 @@ signal clicked
 @export var park_path: NodePath
 @export var job: Job
 @export var debug_panel: DebugPanel
+@export var autonomous_simulation_enabled: bool = true
 
 var home: ResidentialBuilding
 var favorite_restaurant: Restaurant
@@ -32,6 +33,21 @@ var education_level: int = 0
 
 var current_location: Building = null
 var current_action: Action = null
+var simulation_lod_tier: String = "focus"
+var _simulation_lod_tick_interval_minutes: int = 1
+var _simulation_lod_tick_phase_seed: int = 0
+var _lod_commitments: Array = []
+var _lod_presence_hidden: bool = false
+var _interior_presence_hidden: bool = false
+var _home_rotation_candidate_day: int = -1
+var _runtime_conversation_mode: String = ""
+var _runtime_conversation_partner: String = ""
+var _runtime_conversation_topic: String = ""
+var _simulation_lod_path_mode: String = "default"
+var _simulation_lod_decision_interval_sec: float = 0.0
+var _lod_runtime_defaults_captured: bool = false
+var _lod_default_repath_interval_sec: float = 0.6
+var _lod_default_local_navigation_raycast_checks_enabled: bool = true
 
 var _world_ref: World = null
 var _agent = CitizenAgentScript.new()
@@ -59,14 +75,22 @@ var _debug_once_keys: Dictionary = {}
 @export var gravity_strength: float = 28.0
 @export var max_fall_speed: float = 35.0
 @export var ground_snap_rate: float = 18.0
+@export var local_navigation_raycast_checks_enabled: bool = true
+@export var cheap_path_follow_lod_enabled: bool = true
+@export var cheap_path_follow_camera_distance: float = 16.0
+@export var cheap_path_follow_ground_snap_interval_sec: float = 0.18
+@export var cheap_path_follow_corner_blend_distance: float = 0.8
+@export var cheap_path_follow_corner_blend_strength: float = 0.45
 @export var obstacle_sensor_height: float = 0.9
 @export var obstacle_probe_length: float = 0.95
 @export var obstacle_side_probe_length: float = 0.9
-@export var obstacle_side_angle_deg: float = 35.0
+@export var obstacle_side_angle_deg: float = 25.0
 @export var obstacle_turn_weight: float = 1.1
 @export var obstacle_side_bias: float = 0.35
 @export var obstacle_stuck_timeout: float = 0.7
 @export var obstacle_stuck_distance: float = 0.02
+@export var obstacle_stuck_progress_distance: float = 0.012
+@export var obstacle_stuck_hotspot_confirm_sec: float = 0.35
 @export var obstacle_repath_timeout: float = 1.6
 @export var obstacle_slide_hold_sec: float = 0.4
 @export var obstacle_jump_stuck_timeout: float = 2.2
@@ -75,6 +99,16 @@ var _debug_once_keys: Dictionary = {}
 @export var obstacle_jump_floor_snap_suppress_sec: float = 0.28
 @export var obstacle_jump_forward_hold_sec: float = 0.22
 @export var obstacle_jump_forward_speed_multiplier: float = 1.2
+@export var surface_probe_forward_distance: float = 0.42
+@export var surface_probe_lateral_offset: float = 0.24
+@export var surface_probe_up: float = 1.4
+@export var surface_probe_down: float = 2.2
+@export var surface_guard_turn_angle_deg: float = 55.0
+@export var surface_guard_side_turn_angle_deg: float = 85.0
+@export var surface_guard_blocked_waypoint_extra_distance: float = 0.18
+@export var surface_guard_repath_timeout_sec: float = 0.85
+@export var surface_guard_log_cooldown_sec: float = 1.5
+@export var surface_guard_edge_route_exception_delay_sec: float = 0.35
 @export var unreachable_target_retry_limit: int = 3
 @export var unreachable_target_no_progress_minutes: int = 18
 @export var unreachable_target_cooldown_minutes: int = 180
@@ -82,6 +116,7 @@ var _debug_once_keys: Dictionary = {}
 @export var crowded_waypoint_neighbor_radius: float = 0.55
 @export var crowded_waypoint_shared_target_radius: float = 0.45
 @export var crowded_waypoint_neighbor_count: int = 2
+@export var entrance_contact_height_tolerance: float = 0.35
 @export var entrance_contact_distance: float = 1.05
 @export var entrance_contact_alignment: float = 0.45
 
@@ -111,6 +146,8 @@ var _saved_collision_layer: int = 0
 var _saved_collision_mask: int = 0
 var _inside_building: Building = null
 var _stuck_timer: float = 0.0
+var _stuck_hotspot_label: String = ""
+var _stuck_hotspot_time: float = 0.0
 var _last_move_position: Vector3 = Vector3.ZERO
 var _trace_last_decision_reason: String = "idle"
 var _trace_last_desired_dir: Vector3 = Vector3.ZERO
@@ -119,13 +156,18 @@ var _trace_last_forward_hit: String = "clear"
 var _trace_last_down_hit: String = "clear"
 var _trace_last_left_hit: String = "clear"
 var _trace_last_right_hit: String = "clear"
+var _trace_last_surface_probe: String = "-"
 var _stuck_slide_hold_dir: Vector3 = Vector3.ZERO
 var _stuck_slide_hold_left: float = 0.0
+var _surface_guard_log_cooldown_left: float = 0.0
+var _surface_guard_stop_time: float = 0.0
 var _stuck_jump_cooldown_left: float = 0.0
 var _floor_snap_suppress_left: float = 0.0
 var _stuck_jump_hold_dir: Vector3 = Vector3.ZERO
 var _stuck_jump_hold_left: float = 0.0
 var _temporarily_unreachable_targets: Dictionary = {}
+var _cheap_path_follow_ground_snap_left: float = 0.0
+var _selection_active: bool = false
 # TODO: Keep local crowd-deadlock diagnosis separate from economy stabilization fixes.
 var _debug_repath_count: int = 0
 var _debug_stuck_slide_count: int = 0
@@ -175,10 +217,13 @@ var _mesh_instance: MeshInstance3D = null
 var _original_material: Material = null
 var _highlight_material: StandardMaterial3D = null
 var _manual_control_enabled: bool = false
+var _click_move_mode_enabled: bool = false
 var _manual_jump_was_pressed: bool = false
+var _manual_control_input_locked: bool = false
 
 func _ready() -> void:
 	_apply_balance_config()
+	_capture_lod_runtime_defaults()
 	wallet.owner_name = citizen_name
 	wallet.balance = BalanceConfig.get_int("citizen.wallet_start_balance", wallet.balance)
 	home_food_stock = BalanceConfig.get_int("citizen.home_food_stock_start", home_food_stock)
@@ -192,6 +237,7 @@ func _ready() -> void:
 	_walk_speed = randf_range(move_speed_min, move_speed_max)
 
 	decision_cooldown_left = randi_range(0, 10)
+	_cheap_path_follow_ground_snap_left = randf() * maxf(cheap_path_follow_ground_snap_interval_sec, 0.01)
 
 	_setup_clickable()
 	_setup_highlight()
@@ -242,6 +288,7 @@ func set_manual_control_enabled(enabled: bool, world: World = null) -> void:
 		_current_speed = 0.0
 		_vertical_speed = 0.0
 		velocity = Vector3.ZERO
+		_manual_control_input_locked = false
 		_manual_jump_was_pressed = false
 		_update_trace_navigation_state("manual_control", Vector3.ZERO, Vector3.ZERO)
 	else:
@@ -250,22 +297,281 @@ func set_manual_control_enabled(enabled: bool, world: World = null) -> void:
 		_current_speed = 0.0
 		_vertical_speed = 0.0
 		velocity = Vector3.ZERO
+		_manual_control_input_locked = false
 		_manual_jump_was_pressed = false
 		_update_trace_navigation_state("manual_control_exit", Vector3.ZERO, Vector3.ZERO)
 
 func is_manual_control_enabled() -> bool:
 	return _manual_control_enabled
 
+func set_manual_control_input_locked(locked: bool) -> void:
+	_manual_control_input_locked = locked
+	if locked:
+		_current_speed = 0.0
+		velocity.x = 0.0
+		velocity.z = 0.0
+		_manual_jump_was_pressed = false
+
+func is_manual_control_input_locked() -> bool:
+	return _manual_control_input_locked
+
+func set_click_move_mode_enabled(enabled: bool, world: World = null) -> void:
+	if _click_move_mode_enabled == enabled:
+		return
+	_click_move_mode_enabled = enabled
+	if enabled:
+		clear_rest_pose(true)
+		release_reserved_benches(world)
+		current_action = null
+		stop_travel()
+		decision_cooldown_left = 0
+		_current_speed = 0.0
+		_vertical_speed = 0.0
+		velocity = Vector3.ZERO
+		_update_trace_navigation_state("click_move_mode", Vector3.ZERO, Vector3.ZERO)
+	else:
+		decision_cooldown_left = 0
+		_update_trace_navigation_state("click_move_mode_exit", Vector3.ZERO, Vector3.ZERO)
+
+func is_click_move_mode_enabled() -> bool:
+	return _click_move_mode_enabled
+
+func is_autonomous_simulation_enabled() -> bool:
+	return autonomous_simulation_enabled
+
+func get_simulation_lod_tier() -> String:
+	return simulation_lod_tier
+
+func set_simulation_lod_state(
+	tier: String,
+	rendered: bool,
+	physics_enabled: bool,
+	tick_interval_minutes: int = 1
+) -> void:
+	simulation_lod_tier = tier
+	_simulation_lod_tick_interval_minutes = maxi(tick_interval_minutes, 1)
+	_simulation_lod_tick_phase_seed = randi()
+	_lod_presence_hidden = not rendered
+	_apply_presence_hidden_state()
+
+	var should_process_physics := physics_enabled or _manual_control_enabled or _click_move_mode_enabled
+	set_physics_process(should_process_physics)
+	if not should_process_physics:
+		velocity = Vector3.ZERO
+		_current_speed = 0.0
+		_vertical_speed = 0.0
+	if _world_ref != null and is_instance_valid(_world_ref) and _world_ref.has_method("notify_citizen_lod_changed"):
+		_world_ref.notify_citizen_lod_changed(self)
+
+func apply_simulation_lod_runtime_profile(profile: Dictionary, world: World = null) -> void:
+	_capture_lod_runtime_defaults()
+	var resolved_profile := profile.duplicate(true)
+	var path_mode := "default"
+	if bool(resolved_profile.get("full_navigation", false)):
+		path_mode = "full"
+	elif bool(resolved_profile.get("cheap_path_follow", false)) or not bool(resolved_profile.get("full_navigation", true)):
+		path_mode = "cheap"
+	_simulation_lod_path_mode = path_mode
+
+	var local_avoidance_enabled := bool(resolved_profile.get("local_avoidance", _lod_default_local_navigation_raycast_checks_enabled))
+	set_local_navigation_raycast_checks_enabled(local_avoidance_enabled)
+	if _nav_agent != null:
+		_nav_agent.avoidance_enabled = local_avoidance_enabled
+
+	var repath_override := float(resolved_profile.get("path_refresh_interval_sec", _lod_default_repath_interval_sec))
+	repath_interval_sec = maxf(repath_override, 0.05)
+	_simulation_lod_decision_interval_sec = maxf(float(resolved_profile.get("decision_interval_sec", 0.0)), 0.0)
+	if world != null:
+		_world_ref = world
+
+func get_simulation_lod_decision_cooldown_range_minutes(world: World) -> Vector2i:
+	if _simulation_lod_decision_interval_sec <= 0.0 or world == null:
+		return Vector2i(decision_cooldown_range_min, decision_cooldown_range_max)
+	var default_range := Vector2i(decision_cooldown_range_min, decision_cooldown_range_max)
+	# Keep decision throttling tied to the simulation cadence, not wall-clock fast-forward.
+	# Otherwise higher speed multipliers would starve active/coarse citizens from replanning.
+	var tick_wait_sec := maxf(world.tick_interval_sec, 0.001)
+	var ticks_needed := maxi(ceili(_simulation_lod_decision_interval_sec / maxf(tick_wait_sec, 0.001)), 1)
+	var base_minutes := ticks_needed * maxi(world.minutes_per_tick, 1)
+	if base_minutes <= default_range.x:
+		return default_range
+	var jitter_minutes := maxi(world.minutes_per_tick, 1)
+	return Vector2i(maxi(base_minutes - jitter_minutes, world.minutes_per_tick), max(base_minutes + jitter_minutes, default_range.x))
+
+func _capture_lod_runtime_defaults() -> void:
+	if _lod_runtime_defaults_captured:
+		return
+	_lod_runtime_defaults_captured = true
+	_lod_default_repath_interval_sec = repath_interval_sec
+	_lod_default_local_navigation_raycast_checks_enabled = local_navigation_raycast_checks_enabled
+
+func should_run_simulation_lod_tick(world: World) -> bool:
+	if world == null:
+		return true
+	if simulation_lod_tier != "coarse":
+		return true
+	if not world.has_method("is_citizen_due_for_simulation"):
+		return true
+	return world.is_citizen_due_for_simulation(self)
+
+func get_simulation_lod_tick_interval_minutes() -> int:
+	return maxi(_simulation_lod_tick_interval_minutes, 1)
+
+func get_simulation_lod_tick_interval_ticks(world: World) -> int:
+	if world == null:
+		return 1
+	return maxi(ceili(float(get_simulation_lod_tick_interval_minutes()) / float(maxi(world.minutes_per_tick, 1))), 1)
+
+func get_simulation_lod_tick_slot(world: World) -> int:
+	var interval_ticks := get_simulation_lod_tick_interval_ticks(world)
+	if interval_ticks <= 1:
+		return 0
+	return posmod(_simulation_lod_tick_phase_seed, interval_ticks)
+
+func add_lod_commitment(commitment_type: String, until_day: int, until_minute: int, priority: float = 1.0) -> void:
+	_lod_commitments.append({
+		"type": commitment_type,
+		"until_day": until_day,
+		"until_minute": until_minute,
+		"priority": priority
+	})
+
+func upsert_lod_commitment(
+	commitment_type: String,
+	until_day: int,
+	until_minute: int,
+	priority: float = 1.0,
+	metadata: Dictionary = {}
+) -> void:
+	for i in _lod_commitments.size():
+		var commitment: Variant = _lod_commitments[i]
+		if commitment is not Dictionary:
+			continue
+		if str(commitment.get("type", "")) != commitment_type:
+			continue
+		var merged := (commitment as Dictionary).duplicate(true)
+		merged["until_day"] = until_day
+		merged["until_minute"] = until_minute
+		merged["priority"] = priority
+		for key in metadata.keys():
+			merged[key] = metadata[key]
+		_lod_commitments[i] = merged
+		return
+
+	var entry := {
+		"type": commitment_type,
+		"until_day": until_day,
+		"until_minute": until_minute,
+		"priority": priority
+	}
+	for key in metadata.keys():
+		entry[key] = metadata[key]
+	_lod_commitments.append(entry)
+
+func remove_lod_commitment(commitment_type: String) -> void:
+	var remaining: Array = []
+	for commitment in _lod_commitments:
+		if commitment is Dictionary and str(commitment.get("type", "")) == commitment_type:
+			continue
+		remaining.append(commitment)
+	_lod_commitments = remaining
+
+func remove_lod_commitments(commitment_types: Array) -> void:
+	if commitment_types.is_empty():
+		return
+	var remaining: Array = []
+	for commitment in _lod_commitments:
+		if commitment is Dictionary and commitment_types.has(str(commitment.get("type", ""))):
+			continue
+		remaining.append(commitment)
+	_lod_commitments = remaining
+
+func clear_expired_lod_commitments(world: World) -> void:
+	if world == null:
+		return
+	var current_day := world.world_day()
+	var current_minute := world.time.get_hour() * 60 + world.time.get_minute()
+	var remaining: Array = []
+	for commitment in _lod_commitments:
+		if commitment is not Dictionary:
+			continue
+		var until_day := int(commitment.get("until_day", current_day))
+		var until_minute := int(commitment.get("until_minute", current_minute))
+		if until_day > current_day or (until_day == current_day and until_minute > current_minute):
+			remaining.append(commitment)
+	_lod_commitments = remaining
+
+func has_active_lod_commitment(world: World, required_types: Array = []) -> bool:
+	clear_expired_lod_commitments(world)
+	if required_types.is_empty():
+		return not _lod_commitments.is_empty()
+	for commitment in _lod_commitments:
+		if commitment is not Dictionary:
+			continue
+		if required_types.has(str(commitment.get("type", ""))):
+			return true
+	return false
+
+func get_active_lod_commitments(world: World) -> Array:
+	clear_expired_lod_commitments(world)
+	return _lod_commitments.duplicate(true)
+
+func set_runtime_conversation_state(mode: String, partner_name: String = "", topic: String = "") -> void:
+	_runtime_conversation_mode = mode
+	_runtime_conversation_partner = partner_name
+	_runtime_conversation_topic = topic
+
+func clear_runtime_conversation_state() -> void:
+	_runtime_conversation_mode = ""
+	_runtime_conversation_partner = ""
+	_runtime_conversation_topic = ""
+
+func get_runtime_conversation_label() -> String:
+	if _runtime_conversation_mode == "":
+		return "-"
+	var parts: Array[String] = [ _runtime_conversation_mode ]
+	if _runtime_conversation_partner != "":
+		parts.append("with %s" % _runtime_conversation_partner)
+	if _runtime_conversation_topic != "":
+		parts.append("topic=%s" % _runtime_conversation_topic)
+	return " ".join(parts)
+
+func is_active_player_dialog_session() -> bool:
+	return _runtime_conversation_mode == "interactive" and _runtime_conversation_partner == "Player" and _runtime_conversation_topic == "player_dialog"
+
+func get_home_rotation_candidate_day() -> int:
+	return _home_rotation_candidate_day
+
+func is_safe_home_rotation_candidate(world: World) -> bool:
+	clear_expired_lod_commitments(world)
+	var at_home_idle := home != null \
+		and current_location == home \
+		and not _is_travelling \
+		and current_action == null \
+		and not _manual_control_enabled \
+		and not _click_move_mode_enabled
+	if at_home_idle:
+		if _home_rotation_candidate_day < 0 and world != null:
+			_home_rotation_candidate_day = world.world_day()
+	else:
+		_home_rotation_candidate_day = -1
+	return at_home_idle and not has_active_lod_commitment(world)
+
+func is_travelling() -> bool:
+	return _is_travelling
+
 func _manual_control_physics(delta: float) -> void:
 	var input_vec := Vector2.ZERO
-	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
-		input_vec.x -= 1.0
-	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
-		input_vec.x += 1.0
-	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
-		input_vec.y += 1.0
-	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
-		input_vec.y -= 1.0
+	var controls_locked := _manual_control_input_locked
+	if not controls_locked:
+		if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+			input_vec.x -= 1.0
+		if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+			input_vec.x += 1.0
+		if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+			input_vec.y += 1.0
+		if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+			input_vec.y -= 1.0
 
 	var move_dir := Vector3.ZERO
 	if input_vec.length_squared() > 0.0001:
@@ -292,7 +598,7 @@ func _manual_control_physics(delta: float) -> void:
 	else:
 		_current_speed = move_toward(_current_speed, 0.0, move_deceleration * delta)
 
-	var jump_pressed := Input.is_key_pressed(KEY_SPACE)
+	var jump_pressed := Input.is_key_pressed(KEY_SPACE) if not controls_locked else false
 	if jump_pressed and not _manual_jump_was_pressed and is_on_floor():
 		velocity.y = maxf(velocity.y, manual_control_jump_velocity)
 		_floor_snap_suppress_left = maxf(_floor_snap_suppress_left, obstacle_jump_floor_snap_suppress_sec)
@@ -310,7 +616,7 @@ func _manual_control_physics(delta: float) -> void:
 	move_and_slide()
 	_recover_floor_contact()
 	_last_move_position = global_position
-	_update_trace_navigation_state("manual_control", move_dir, move_dir)
+	_update_trace_navigation_state("manual_control_locked" if controls_locked else "manual_control", move_dir, move_dir)
 
 # Click detection via Area3D
 func _setup_clickable() -> void:
@@ -387,22 +693,43 @@ func _setup_obstacle_sensors() -> void:
 	var side_z := -cos(side_angle) * obstacle_side_probe_length
 
 	if _obstacle_ray_forward != null:
-		_obstacle_ray_forward.target_position = Vector3(0.0, 0.0, -obstacle_probe_length)
-		_obstacle_ray_forward.collision_mask = 9
-		_obstacle_ray_forward.enabled = true
+		_configure_obstacle_ray(_obstacle_ray_forward, Vector3(0.0, 0.0, -obstacle_probe_length), 9)
 	if _obstacle_ray_down != null:
 		# Preserve the scene-authored downwards tilt so we can probe curb-height
 		# obstacles that the horizontal rays miss.
-		_obstacle_ray_down.collision_mask = 9
-		_obstacle_ray_down.enabled = true
+		_configure_obstacle_ray(_obstacle_ray_down, _obstacle_ray_down.target_position, 9, true)
 	if _obstacle_ray_left != null:
-		_obstacle_ray_left.target_position = Vector3(-side_x, 0.0, side_z)
-		_obstacle_ray_left.collision_mask = 9
-		_obstacle_ray_left.enabled = true
+		_configure_obstacle_ray(_obstacle_ray_left, Vector3(-side_x, 0.0, side_z), 9)
 	if _obstacle_ray_right != null:
-		_obstacle_ray_right.target_position = Vector3(side_x, 0.0, side_z)
-		_obstacle_ray_right.collision_mask = 9
-		_obstacle_ray_right.enabled = true
+		_configure_obstacle_ray(_obstacle_ray_right, Vector3(side_x, 0.0, side_z), 9)
+	_apply_local_navigation_raycast_state()
+
+func _configure_obstacle_ray(
+	ray: RayCast3D,
+	target_position: Vector3,
+	collision_mask_value: int,
+	preserve_target: bool = false
+) -> void:
+	if ray == null:
+		return
+	if not preserve_target:
+		ray.target_position = target_position
+	ray.collision_mask = collision_mask_value
+	ray.add_exception(self)
+
+func set_local_navigation_raycast_checks_enabled(enabled: bool) -> void:
+	local_navigation_raycast_checks_enabled = enabled
+	_apply_local_navigation_raycast_state()
+
+func _apply_local_navigation_raycast_state() -> void:
+	if _obstacle_ray_forward != null:
+		_obstacle_ray_forward.enabled = local_navigation_raycast_checks_enabled
+	if _obstacle_ray_down != null:
+		_obstacle_ray_down.enabled = local_navigation_raycast_checks_enabled
+	if _obstacle_ray_left != null:
+		_obstacle_ray_left.enabled = local_navigation_raycast_checks_enabled
+	if _obstacle_ray_right != null:
+		_obstacle_ray_right.enabled = local_navigation_raycast_checks_enabled
 
 func _setup_navigation() -> void:
 	_nav_agent = get_node_or_null("NavigationAgent3D") as NavigationAgent3D
@@ -453,6 +780,403 @@ func _probe_ground_hit(pos: Vector3) -> Dictionary:
 		exclude.append(hit["rid"])
 
 	return {}
+
+func _probe_surface_hit(pos: Vector3) -> Dictionary:
+	if not is_inside_tree():
+		return {}
+
+	var from := pos + Vector3.UP * maxf(surface_probe_up, 0.2)
+	var to := pos + Vector3.DOWN * maxf(surface_probe_down, 0.2)
+	var exclude: Array[RID] = [get_rid()]
+	var attempts := maxi(max_ground_probe_skips, 1)
+
+	for _attempt in range(attempts):
+		var query := PhysicsRayQueryParameters3D.create(from, to)
+		query.collision_mask = 3
+		query.collide_with_areas = false
+		query.exclude = exclude
+
+		var hit := get_world_3d().direct_space_state.intersect_ray(query)
+		if hit.is_empty():
+			return {}
+
+		var collider: Variant = hit.get("collider", null)
+		if _is_citizen_collider(collider):
+			if not hit.has("rid"):
+				return {}
+			exclude.append(hit["rid"])
+			continue
+		if collider is Node and _is_entrance_trigger_node(collider as Node):
+			if not hit.has("rid"):
+				return {}
+			exclude.append(hit["rid"])
+			continue
+
+		return hit
+
+	return {}
+
+func _classify_surface_hit(hit: Dictionary) -> String:
+	if hit.is_empty():
+		return "unknown"
+
+	var collider: Variant = hit.get("collider", null)
+	if collider is Node:
+		return _classify_surface_node(collider as Node)
+	return "unknown"
+
+func _classify_surface_node(node: Node) -> String:
+	var current := node
+	while current != null:
+		if current.is_in_group("road_group"):
+			return "road"
+
+		var current_path := ""
+		if current.is_inside_tree():
+			current_path = str(current.get_path()).to_lower()
+		var current_name := current.name.to_lower()
+
+		if current_path.contains("/road_straight_crossing/") \
+				or current_name.contains("crosswalk") \
+				or current_name.contains("crossing"):
+			return "crosswalk"
+		if current_path.contains("/only_transport/"):
+			return "road"
+		if current_path.contains("/only_people_nav/"):
+			return "pedestrian"
+
+		current = current.get_parent()
+
+	return "unknown"
+
+func _get_surface_probe_samples(move_dir: Vector3) -> Array[Dictionary]:
+	var planar_dir := move_dir
+	planar_dir.y = 0.0
+	if planar_dir.length_squared() <= 0.0001:
+		_trace_last_surface_probe = "idle"
+		return []
+	planar_dir = planar_dir.normalized()
+
+	var forward_distance := maxf(surface_probe_forward_distance, 0.12)
+	var center := global_position + planar_dir * forward_distance
+	var lateral := Vector3(-planar_dir.z, 0.0, planar_dir.x)
+	if lateral.length_squared() <= 0.0001:
+		lateral = global_transform.basis.x
+		lateral.y = 0.0
+	if lateral.length_squared() > 0.0001:
+		lateral = lateral.normalized()
+
+	var sample_points := [
+		center - lateral * surface_probe_lateral_offset,
+		center,
+		center + lateral * surface_probe_lateral_offset,
+	]
+	var sample_labels := ["L", "C", "R"]
+	var samples: Array[Dictionary] = []
+	var summary_parts: Array[String] = []
+
+	for i in range(sample_points.size()):
+		var point := sample_points[i] as Vector3
+		var hit := _probe_surface_hit(point)
+		var kind := _classify_surface_hit(hit)
+		samples.append({
+			"label": sample_labels[i],
+			"kind": kind,
+			"point": point,
+			"hit": hit,
+		})
+		summary_parts.append("%s=%s" % [sample_labels[i], kind])
+
+	_trace_last_surface_probe = " ".join(summary_parts)
+	return samples
+
+func _is_crosswalk_route_context() -> bool:
+	if _world_ref == null:
+		return false
+
+	if _travel_route.is_empty():
+		return false
+
+	var start_idx := maxi(_travel_route_index - 1, 0)
+	var end_idx := mini(_travel_route_index + 1, _travel_route.size() - 1)
+	for idx in range(start_idx, end_idx + 1):
+		var kind := str(_world_ref.get_pedestrian_path_point_kind(_travel_route[idx]))
+		if kind.begins_with("crosswalk"):
+			return true
+
+	var target_kind := str(_world_ref.get_pedestrian_path_point_kind(_travel_target))
+	return target_kind.begins_with("crosswalk")
+
+func _is_surface_edge_route_context() -> bool:
+	if _world_ref == null:
+		return false
+	if _travel_route.is_empty():
+		return false
+
+	var start_idx := maxi(_travel_route_index - 1, 0)
+	var end_idx := mini(_travel_route_index + 1, _travel_route.size() - 1)
+	for idx in range(start_idx, end_idx + 1):
+		var kind := str(_world_ref.get_pedestrian_path_point_kind(_travel_route[idx]))
+		if kind == "boundary" or kind == "corner" or kind == "crosswalk_entry" or kind == "crosswalk_exit":
+			return true
+
+	var target_kind := str(_world_ref.get_pedestrian_path_point_kind(_travel_target))
+	return target_kind == "boundary" or target_kind == "corner" \
+		or target_kind == "crosswalk_entry" or target_kind == "crosswalk_exit"
+
+func _is_move_surface_allowed(move_dir: Vector3, crosswalk_context: bool = false) -> bool:
+	if crosswalk_context:
+		return true
+
+	var samples := _get_surface_probe_samples(move_dir)
+	if samples.is_empty():
+		return true
+
+	var has_crosswalk := false
+	var road_count := 0
+	var pedestrian_count := 0
+	var center_kind := str((samples[1] as Dictionary).get("kind", "unknown")) if samples.size() >= 2 else "unknown"
+	for sample in samples:
+		var kind := str((sample as Dictionary).get("kind", "unknown"))
+		if kind == "crosswalk":
+			has_crosswalk = true
+		elif kind == "road":
+			road_count += 1
+		elif kind == "pedestrian":
+			pedestrian_count += 1
+
+	if has_crosswalk:
+		return true
+	if road_count == 0:
+		return true
+	# Accept curb-edge cases where the body center and most of the footprint are
+	# already on pedestrian space, but one outer probe still clips the road edge.
+	if center_kind == "pedestrian" and pedestrian_count >= 2 and road_count <= 1:
+		return true
+	if _surface_guard_stop_time >= maxf(surface_guard_edge_route_exception_delay_sec, 0.0) \
+			and pedestrian_count >= 1 \
+			and _is_surface_edge_route_context():
+		_trace_last_surface_probe += " edge_route_exception"
+		return true
+	return false
+
+func _rotate_planar_direction(dir: Vector3, angle_deg: float) -> Vector3:
+	var planar := dir
+	planar.y = 0.0
+	if planar.length_squared() <= 0.0001:
+		return Vector3.ZERO
+	return planar.normalized().rotated(Vector3.UP, deg_to_rad(angle_deg)).normalized()
+
+func _append_surface_candidate(out: Array[Vector3], candidate: Vector3) -> void:
+	var planar := candidate
+	planar.y = 0.0
+	if planar.length_squared() <= 0.0001:
+		return
+	planar = planar.normalized()
+
+	for existing in out:
+		if (existing as Vector3).distance_to(planar) <= 0.01:
+			return
+
+	out.append(planar)
+
+func _constrain_move_direction_to_pedestrian_surface(move_dir: Vector3, desired_dir: Vector3) -> Vector3:
+	var planar_move := move_dir
+	planar_move.y = 0.0
+	if planar_move.length_squared() <= 0.0001:
+		return Vector3.ZERO
+	planar_move = planar_move.normalized()
+	if not local_navigation_raycast_checks_enabled:
+		return planar_move
+
+	var crosswalk_context := _is_crosswalk_route_context()
+	if crosswalk_context:
+		_trace_last_surface_probe = "crosswalk_context"
+		return planar_move
+
+	if _is_move_surface_allowed(planar_move, crosswalk_context):
+		return planar_move
+
+	var candidates: Array[Vector3] = []
+	var left_dir := _ray_move_direction(_obstacle_ray_left)
+	var right_dir := _ray_move_direction(_obstacle_ray_right)
+	_append_surface_candidate(candidates, desired_dir)
+	_append_surface_candidate(candidates, _blend_move_direction(desired_dir, left_dir, obstacle_side_bias))
+	_append_surface_candidate(candidates, _blend_move_direction(desired_dir, right_dir, obstacle_side_bias))
+	_append_surface_candidate(candidates, left_dir)
+	_append_surface_candidate(candidates, right_dir)
+	_append_surface_candidate(candidates, _rotate_planar_direction(desired_dir, surface_guard_turn_angle_deg))
+	_append_surface_candidate(candidates, _rotate_planar_direction(desired_dir, -surface_guard_turn_angle_deg))
+	_append_surface_candidate(candidates, _rotate_planar_direction(desired_dir, surface_guard_side_turn_angle_deg))
+	_append_surface_candidate(candidates, _rotate_planar_direction(desired_dir, -surface_guard_side_turn_angle_deg))
+
+	var best_dir := Vector3.ZERO
+	var best_score := INF
+	for candidate in candidates:
+		if not _is_move_surface_allowed(candidate, crosswalk_context):
+			continue
+		var score := _score_direction(candidate)
+		if score < best_score:
+			best_score = score
+			best_dir = candidate
+
+	if best_dir != Vector3.ZERO:
+		_maybe_log_surface_guard("reroute", planar_move, best_dir)
+		_update_trace_navigation_state("surface_guard_%s" % _trace_relative_label(best_dir), desired_dir, best_dir)
+		return best_dir
+
+	_maybe_log_surface_guard("stop", planar_move, Vector3.ZERO)
+	_update_trace_navigation_state("surface_guard_stop", desired_dir, Vector3.ZERO)
+	return Vector3.ZERO
+
+func _is_eligible_for_cheap_lod() -> bool:
+	if _manual_control_enabled:
+		return false
+	if _selection_active:
+		return false
+	if _simulation_lod_path_mode == "full":
+		return false
+	if _simulation_lod_path_mode == "cheap":
+		return true
+	if not cheap_path_follow_lod_enabled:
+		return false
+	if simulation_lod_tier == "active":
+		return true
+	if simulation_lod_tier == "coarse":
+		return true
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return false
+	var threshold := maxf(cheap_path_follow_camera_distance, 0.0)
+	if threshold <= 0.0:
+		return true
+	var planar_camera_delta := global_position - camera.global_position
+	planar_camera_delta.y = 0.0
+	return planar_camera_delta.length_squared() >= threshold * threshold
+
+func _is_using_cheap_path_follow() -> bool:
+	return _is_travelling and _is_eligible_for_cheap_lod()
+
+func _get_cheap_path_follow_move_target() -> Vector3:
+	var move_target := _get_waypoint_move_target()
+	if _travel_route_index < 0 or _travel_route_index >= _travel_route.size() - 1:
+		return move_target
+
+	var current_delta := _travel_target - global_position
+	current_delta.y = 0.0
+	var current_distance := current_delta.length()
+	if current_distance >= maxf(cheap_path_follow_corner_blend_distance, 0.05):
+		return move_target
+
+	var next_point := _travel_route[_travel_route_index + 1]
+	var blend_t := 1.0 - clampf(
+		current_distance / maxf(cheap_path_follow_corner_blend_distance, 0.05),
+		0.0,
+		1.0
+	)
+	var blend_weight := clampf(blend_t * cheap_path_follow_corner_blend_strength, 0.0, 0.8)
+	var blended_target := move_target.lerp(next_point, blend_weight)
+	blended_target.y = lerpf(move_target.y, next_point.y, blend_weight)
+	return blended_target
+
+func _apply_cheap_path_follow_grounding(pos: Vector3, delta: float, force_snap: bool = false) -> Vector3:
+	if force_snap:
+		_cheap_path_follow_ground_snap_left = maxf(cheap_path_follow_ground_snap_interval_sec, 0.01)
+		return _project_to_ground(pos)
+
+	_cheap_path_follow_ground_snap_left = maxf(_cheap_path_follow_ground_snap_left - delta, 0.0)
+	if _cheap_path_follow_ground_snap_left > 0.0:
+		pos.y = global_position.y
+		return pos
+
+	_cheap_path_follow_ground_snap_left = maxf(cheap_path_follow_ground_snap_interval_sec, 0.01)
+	return _project_to_ground(pos)
+
+func _move_along_path_cheap(delta: float) -> void:
+	if _repath_time_left > 0.0:
+		_repath_time_left = maxf(_repath_time_left - delta, 0.0)
+
+	if _arrived_via_entrance_contact:
+		_current_speed = move_toward(_current_speed, 0.0, move_deceleration * delta)
+		velocity = Vector3.ZERO
+		return
+
+	var to_target := _travel_target - global_position
+	to_target.y = 0.0
+	var distance_to_target := to_target.length()
+	var is_last_waypoint: bool = _travel_route_index >= _travel_route.size() - 1
+	var reach_distance: float = final_arrival_distance if is_last_waypoint else waypoint_reach_distance
+	var is_building_arrival := is_last_waypoint \
+		and _travel_target_building != null \
+		and _should_use_entrance_contact_arrival()
+	if is_last_waypoint and _travel_target_building != null:
+		reach_distance = maxf(reach_distance, arrival_distance)
+
+	if distance_to_target <= reach_distance:
+		if _advance_travel_route():
+			return
+		if is_building_arrival \
+				and distance_to_target <= final_arrival_distance \
+				and absf(global_position.y - _travel_target.y) <= entrance_contact_height_tolerance:
+			_arrived_via_entrance_contact = true
+			_current_speed = 0.0
+			velocity = Vector3.ZERO
+			_update_trace_navigation_state("cheap_arrive_target_access", Vector3.ZERO, Vector3.ZERO)
+			return
+		if _travel_target_building != null and _travel_target_building.has_method("is_outdoor_destination") and _travel_target_building.is_outdoor_destination():
+			global_position = _apply_cheap_path_follow_grounding(_travel_target, delta, true)
+			stop_travel()
+			_update_trace_navigation_state("cheap_arrive_target_path_end", Vector3.ZERO, Vector3.ZERO)
+			return
+		if _travel_target_building == null:
+			global_position = _apply_cheap_path_follow_grounding(_travel_target, delta, true)
+			stop_travel()
+			_update_trace_navigation_state("cheap_arrive_target_path_end", Vector3.ZERO, Vector3.ZERO)
+			return
+
+	var move_target := _get_cheap_path_follow_move_target()
+	var move_delta := move_target - global_position
+	move_delta.y = 0.0
+	var move_distance := move_delta.length()
+	if move_distance <= 0.001:
+		_current_speed = move_toward(_current_speed, 0.0, move_deceleration * delta)
+		velocity = Vector3.ZERO
+		_update_trace_navigation_state("cheap_arriving", Vector3.ZERO, Vector3.ZERO)
+		return
+
+	var desired_speed: float = _walk_speed
+	if distance_to_target < 1.2:
+		desired_speed *= clamp(distance_to_target / 1.2, 0.25, 1.0)
+	if _current_speed < desired_speed:
+		_current_speed = move_toward(_current_speed, desired_speed, move_acceleration * delta)
+	else:
+		_current_speed = move_toward(_current_speed, desired_speed, move_deceleration * delta)
+
+	var move_dir := move_delta / move_distance
+	_update_facing(move_dir, delta)
+	var move_step := minf(_current_speed * delta, move_distance)
+	var next_pos := global_position + move_dir * move_step
+	global_position = _apply_cheap_path_follow_grounding(next_pos, delta)
+	velocity = Vector3(move_dir.x * _current_speed, 0.0, move_dir.z * _current_speed)
+	_vertical_speed = 0.0
+	_surface_guard_stop_time = 0.0
+	_stuck_timer = 0.0
+	_last_move_position = global_position
+	_update_trace_navigation_state("cheap_path_follow", move_dir, move_dir)
+
+func _maybe_log_surface_guard(action: String, attempted_dir: Vector3, resolved_dir: Vector3) -> void:
+	if surface_guard_log_cooldown_sec <= 0.0:
+		return
+	if _surface_guard_log_cooldown_left > 0.0:
+		return
+	_surface_guard_log_cooldown_left = surface_guard_log_cooldown_sec
+	debug_log("Surface guard %s | attempted=%s resolved=%s target=%s probes=%s" % [
+		action,
+		_trace_relative_label(attempted_dir),
+		_trace_relative_label(resolved_dir),
+		_trace_fmt_vec3(_travel_target),
+		_trace_last_surface_probe
+	])
 
 func _project_to_ground(pos: Vector3) -> Vector3:
 	var hit := _probe_ground_hit(pos)
@@ -537,15 +1261,155 @@ func reset_travel_debug_state() -> void:
 	_debug_stuck_slide_count = 0
 	_debug_stuck_jump_count = 0
 	_debug_last_blocking_area = "-"
+	_stuck_hotspot_label = ""
+	_stuck_hotspot_time = 0.0
 
 func begin_travel_to(target_pos: Vector3, target_building: Building = null) -> bool:
 	return _agent.locomotion.begin_travel_to(self, target_pos, target_building, _world_ref)
+
+func begin_click_move_to(target_pos: Vector3, world: World = null) -> bool:
+	var resolved_world := world if world != null else _world_ref
+	if _manual_control_enabled:
+		set_manual_control_enabled(false, resolved_world)
+
+	clear_rest_pose(true)
+	if is_inside_building():
+		exit_current_building(resolved_world)
+		current_location = null
+	elif current_location != null:
+		leave_current_location(resolved_world, false)
+
+	release_reserved_benches(resolved_world)
+	current_action = null
+	decision_cooldown_left = 0
+	stop_travel()
+	current_location = null
+
+	var snapped_target := target_pos
+	if resolved_world != null and resolved_world.has_method("get_pedestrian_access_point"):
+		snapped_target = resolved_world.get_pedestrian_access_point(target_pos)
+
+	var started := begin_travel_to(snapped_target, null)
+	if started:
+		SimLogger.log("[Citizen %s] Click-move target set to %s (raw=%s)" % [
+			citizen_name,
+			_trace_fmt_vec3(snapped_target),
+			_trace_fmt_vec3(target_pos)
+		])
+	return started
 
 func has_reached_travel_target() -> bool:
 	return _agent.locomotion.has_reached_travel_target(self)
 
 func stop_travel() -> void:
 	_agent.locomotion.stop_travel(self)
+
+func get_remaining_travel_distance() -> float:
+	var current_pos := global_position if is_inside_tree() else position
+	current_pos = _project_to_ground(current_pos)
+	if _travel_route.is_empty():
+		if _is_travelling:
+			var direct_target := _project_to_ground(_travel_target)
+			direct_target.y = current_pos.y
+			return current_pos.distance_to(direct_target)
+		if _travel_target_building != null:
+			var fallback_target := _get_building_access_pos(_travel_target_building, _world_ref)
+			fallback_target = _project_to_ground(fallback_target)
+			fallback_target.y = current_pos.y
+			return current_pos.distance_to(fallback_target)
+		return 0.0
+
+	var remaining := 0.0
+	var segment_start := current_pos
+	var current_target := _project_to_ground(_travel_target)
+	current_target.y = segment_start.y
+	remaining += segment_start.distance_to(current_target)
+
+	var start_index := clampi(_travel_route_index, 0, _travel_route.size() - 1)
+	for idx in range(start_index, _travel_route.size() - 1):
+		var point_a := _project_to_ground(_travel_route[idx])
+		var point_b := _project_to_ground(_travel_route[idx + 1])
+		point_b.y = point_a.y
+		remaining += point_a.distance_to(point_b)
+	return remaining
+
+func advance_coarse_travel_by_distance(distance_m: float) -> bool:
+	if distance_m <= 0.0:
+		return has_reached_travel_target()
+	if not _is_travelling:
+		return has_reached_travel_target()
+
+	var remaining_distance := distance_m
+	while remaining_distance > 0.001 and _is_travelling:
+		var segment_target := _project_to_ground(_travel_target)
+		var current_pos := _project_to_ground(global_position if is_inside_tree() else position)
+		var to_target := segment_target - current_pos
+		to_target.y = 0.0
+		var segment_length := to_target.length()
+		if segment_length <= 0.001:
+			if _advance_travel_route():
+				continue
+			return _finish_coarse_travel_arrival()
+
+		if remaining_distance < segment_length:
+			var next_pos := current_pos + to_target.normalized() * remaining_distance
+			set_position_grounded(next_pos)
+			_last_move_position = global_position
+			return false
+
+		set_position_grounded(segment_target)
+		remaining_distance -= segment_length
+		if _advance_travel_route():
+			continue
+		return _finish_coarse_travel_arrival()
+
+	return has_reached_travel_target()
+
+func _finish_coarse_travel_arrival() -> bool:
+	_current_speed = 0.0
+	velocity = Vector3.ZERO
+	if _travel_target_building != null:
+		_arrived_via_entrance_contact = true
+		_update_trace_navigation_state("coarse_arrive_target", Vector3.ZERO, Vector3.ZERO)
+		return true
+	stop_travel()
+	_update_trace_navigation_state("coarse_arrive_target", Vector3.ZERO, Vector3.ZERO)
+	return true
+
+func get_debug_travel_target_building() -> Building:
+	if _travel_target_building != null and is_instance_valid(_travel_target_building):
+		return _travel_target_building
+	if current_action != null:
+		var action_target: Variant = current_action.get("target")
+		if action_target is Building:
+			return action_target as Building
+	return null
+
+func get_debug_lod_label(world: World = null) -> String:
+	var label := simulation_lod_tier
+	if simulation_lod_tier == "coarse":
+		var active_world := world if world != null else _world_ref
+		var minutes_until_tick := 0
+		if active_world != null and active_world.has_method("get_citizen_simulation_minutes_until_due"):
+			minutes_until_tick = int(active_world.get_citizen_simulation_minutes_until_due(self))
+		label += " tick=%dmin" % maxi(minutes_until_tick, 0)
+	var hidden := _lod_presence_hidden or _interior_presence_hidden
+	if hidden:
+		label += " hidden"
+	return label
+
+func get_debug_coarse_eta_minutes(world: World = null) -> int:
+	var active_world := world if world != null else _world_ref
+	if active_world == null:
+		return 0
+	if simulation_lod_tier != "coarse":
+		return 0
+	var target_building := get_debug_travel_target_building()
+	if not _is_travelling and target_building == null:
+		return 0
+	if _agent != null and _agent.has_method("estimate_coarse_travel_minutes"):
+		return _agent.estimate_coarse_travel_minutes(self, active_world, get_remaining_travel_distance())
+	return 0
 
 func is_inside_building() -> bool:
 	return _inside_building != null
@@ -645,6 +1509,11 @@ func exit_current_building(world: World = null) -> void:
 	])
 
 func _set_interior_presence(hidden: bool) -> void:
+	_interior_presence_hidden = hidden
+	_apply_presence_hidden_state()
+
+func _apply_presence_hidden_state() -> void:
+	var hidden := _interior_presence_hidden or _lod_presence_hidden
 	if hidden:
 		hide()
 		velocity = Vector3.ZERO
@@ -759,6 +1628,8 @@ func _get_waypoint_move_target() -> Vector3:
 	return adjusted_target
 
 func _should_skip_crowded_waypoint(distance_to_target: float, is_last_waypoint: bool) -> bool:
+	if _is_using_cheap_path_follow():
+		return false
 	if is_last_waypoint:
 		return false
 	if _travel_route_index <= 0 or _travel_route_index >= _travel_route.size() - 1:
@@ -844,9 +1715,6 @@ func get_debug_source_building() -> Building:
 		return current_location
 	return home
 
-func get_debug_travel_target_building() -> Building:
-	return _travel_target_building
-
 func get_debug_access_pos(building: Building, world: World = null) -> Vector3:
 	return _get_building_access_pos(building, world)
 
@@ -887,6 +1755,7 @@ func _advance_travel_route() -> bool:
 
 	_travel_route_index = next_index
 	_travel_target = _project_to_ground(_travel_route[_travel_route_index])
+	_surface_guard_stop_time = 0.0
 	if _nav_agent != null:
 		_nav_agent.target_position = _travel_target
 	_repath_time_left = repath_interval_sec
@@ -914,24 +1783,35 @@ func _move_along_path(delta: float) -> void:
 	var distance_to_target := to_target.length()
 	var is_last_waypoint: bool = _travel_route_index >= _travel_route.size() - 1
 	var reach_distance: float = final_arrival_distance if is_last_waypoint else waypoint_reach_distance
+	var is_building_arrival := is_last_waypoint \
+		and _travel_target_building != null \
+		and _should_use_entrance_contact_arrival()
 	if is_last_waypoint and _travel_target_building != null:
 		reach_distance = maxf(reach_distance, arrival_distance)
 
 	if distance_to_target <= reach_distance:
 		if _advance_travel_route():
 			return
-		if _travel_target_building != null and _should_use_entrance_contact_arrival():
+		if is_building_arrival \
+				and distance_to_target <= final_arrival_distance \
+				and absf(global_position.y - _travel_target.y) <= entrance_contact_height_tolerance:
 			_arrived_via_entrance_contact = true
 			_current_speed = 0.0
 			velocity.x = 0.0
 			velocity.z = 0.0
-			_update_trace_navigation_state("arrive_target_access", Vector3.ZERO, Vector3.ZERO)
+			_update_trace_navigation_state("arrive_target_access_precise", Vector3.ZERO, Vector3.ZERO)
 			return
-		if _travel_target_building != null and _travel_target_building.has_method("is_outdoor_destination") and _travel_target_building.is_outdoor_destination():
+		if is_building_arrival:
+			pass
+		elif _travel_target_building != null and _travel_target_building.has_method("is_outdoor_destination") and _travel_target_building.is_outdoor_destination():
 			set_position_grounded(_travel_target)
-		stop_travel()
-		_update_trace_navigation_state("arrive_target_path_end", Vector3.ZERO, Vector3.ZERO)
-		return
+			stop_travel()
+			_update_trace_navigation_state("arrive_target_path_end", Vector3.ZERO, Vector3.ZERO)
+			return
+		elif _travel_target_building == null:
+			stop_travel()
+			_update_trace_navigation_state("arrive_target_path_end", Vector3.ZERO, Vector3.ZERO)
+			return
 
 	if _should_skip_crowded_waypoint(distance_to_target, is_last_waypoint):
 		if _advance_travel_route():
@@ -959,6 +1839,36 @@ func _move_along_path(delta: float) -> void:
 
 	var desired_dir: Vector3 = move_delta / move_distance
 	var move_dir := _compute_move_direction(desired_dir)
+	move_dir = _constrain_move_direction_to_pedestrian_surface(move_dir, desired_dir)
+	if move_dir == Vector3.ZERO:
+		_surface_guard_stop_time += delta
+		var blocked_waypoint_reach := reach_distance + maxf(surface_guard_blocked_waypoint_extra_distance, 0.0)
+		if not is_last_waypoint \
+				and not _is_crosswalk_waypoint(_travel_target) \
+				and distance_to_target <= blocked_waypoint_reach:
+			if _advance_travel_route():
+				_update_trace_navigation_state("surface_guard_skip_waypoint", desired_dir, Vector3.ZERO)
+				return
+		if _surface_guard_stop_time >= surface_guard_repath_timeout_sec:
+			if _agent != null and _agent.locomotion != null and _agent.locomotion.repath_current_travel(self, _world_ref):
+				_surface_guard_stop_time = 0.0
+				_debug_repath_count += 1
+				_update_congestion_debug_label()
+				_update_trace_navigation_state("surface_guard_repath", desired_dir, Vector3.ZERO)
+				return
+		_current_speed = move_toward(_current_speed, 0.0, move_deceleration * delta)
+		velocity.x = 0.0
+		velocity.z = 0.0
+		if is_on_floor():
+			if velocity.y < 0.0:
+				velocity.y = 0.0
+		else:
+			velocity.y = maxf(velocity.y - gravity_strength * delta, -max_fall_speed)
+		move_and_slide()
+		_recover_floor_contact()
+		_update_stuck_state(delta)
+		return
+	_surface_guard_stop_time = 0.0
 	if _stuck_jump_hold_left > 0.0 and _stuck_jump_hold_dir != Vector3.ZERO:
 		_current_speed = maxf(_current_speed, _walk_speed * obstacle_jump_forward_speed_multiplier)
 	_update_facing(move_dir, delta)
@@ -992,6 +1902,9 @@ func _compute_move_direction(desired_dir: Vector3) -> Vector3:
 		_update_trace_navigation_state("idle", Vector3.ZERO, Vector3.ZERO)
 		return Vector3.ZERO
 	planar_dir = planar_dir.normalized()
+	if not local_navigation_raycast_checks_enabled:
+		_update_trace_navigation_state("path_follow_no_rays", planar_dir, planar_dir)
+		return planar_dir
 
 	if _stuck_jump_hold_left > 0.0 and _stuck_jump_hold_dir != Vector3.ZERO:
 		var jump_dir := _stuck_jump_hold_dir.normalized()
@@ -1134,6 +2047,8 @@ func _try_step_up_from_down_ray() -> bool:
 	var collider := _obstacle_ray_down.get_collider()
 	if collider == null or collider == self:
 		return false
+	if _is_citizen_collider(collider):
+		return false
 	if collider is Node:
 		var node := collider as Node
 		if _is_entrance_trigger_node(node):
@@ -1164,14 +2079,20 @@ func _try_mark_arrived_via_target_entrance(preferred_dir: Vector3) -> bool:
 	var access_delta := _travel_target - global_position
 	access_delta.y = 0.0
 	var access_distance := access_delta.length()
-	if _any_ray_hits_target_entrance_trigger() and access_distance <= maxf(arrival_distance, 0.8):
+	var height_distance := absf(global_position.y - _travel_target.y)
+	var height_aligned := height_distance <= entrance_contact_height_tolerance
+	var precise_target_distance := maxf(final_arrival_distance, 0.16)
+	var trigger_contact_distance := minf(arrival_distance, maxf(precise_target_distance * 2.0, 0.35))
+	if _any_ray_hits_target_entrance_trigger() and height_aligned and access_distance <= trigger_contact_distance:
 		_arrived_via_entrance_contact = true
 		return true
 	if not _any_ray_hits_target_building():
 		return false
-	if access_distance <= arrival_distance:
+	if height_aligned and access_distance <= precise_target_distance:
 		_arrived_via_entrance_contact = true
 		return true
+	if access_distance > precise_target_distance or not height_aligned:
+		return false
 
 	var to_entrance := _travel_target_building.get_entrance_pos() - global_position
 	to_entrance.y = 0.0
@@ -1370,6 +2291,8 @@ func _blend_move_direction(preferred_dir: Vector3, avoid_dir: Vector3, weight: f
 	return blended.normalized()
 
 func _update_stuck_state(delta: float) -> void:
+	if _surface_guard_log_cooldown_left > 0.0:
+		_surface_guard_log_cooldown_left = maxf(_surface_guard_log_cooldown_left - delta, 0.0)
 	if _stuck_slide_hold_left > 0.0:
 		_stuck_slide_hold_left = maxf(_stuck_slide_hold_left - delta, 0.0)
 		if _stuck_slide_hold_left <= 0.0:
@@ -1385,8 +2308,35 @@ func _update_stuck_state(delta: float) -> void:
 		floor_snap_length = 0.0
 	else:
 		floor_snap_length = floor_snap_distance
+
+	var hotspot_label := _get_stuck_hotspot_label()
+	if hotspot_label.is_empty():
+		_stuck_hotspot_label = ""
+		_stuck_hotspot_time = 0.0
+	elif hotspot_label == _stuck_hotspot_label:
+		_stuck_hotspot_time += delta
+	else:
+		_stuck_hotspot_label = hotspot_label
+		_stuck_hotspot_time = delta
+
 	var moved := global_position.distance_to(_last_move_position)
-	if _current_speed > 0.2 and moved <= obstacle_stuck_distance:
+	var reference_target := _get_stuck_reference_target()
+	var previous_target_delta := reference_target - _last_move_position
+	previous_target_delta.y = 0.0
+	var current_target_delta := reference_target - global_position
+	current_target_delta.y = 0.0
+	var target_progress := previous_target_delta.length() - current_target_delta.length()
+	var hotspot_persistent := _stuck_hotspot_time >= obstacle_stuck_hotspot_confirm_sec
+	var has_low_movement := moved <= obstacle_stuck_distance
+	var has_low_progress := _is_travelling and target_progress <= obstacle_stuck_progress_distance
+	var should_count_direct_progress_stall := has_low_progress \
+		and current_target_delta.length() > maxf(final_arrival_distance, 0.35) \
+		and (_click_move_mode_enabled or _travel_target_building == null)
+	if _current_speed > 0.2 and (
+		has_low_movement
+		or (hotspot_persistent and has_low_progress)
+		or should_count_direct_progress_stall
+	):
 		_stuck_timer += delta
 	else:
 		_stuck_timer = 0.0
@@ -1414,6 +2364,37 @@ func _update_congestion_debug_label() -> void:
 		if candidate != "clear" and candidate != "off":
 			_debug_last_blocking_area = candidate
 			return
+	_debug_last_blocking_area = "-"
+
+func _get_stuck_reference_target() -> Vector3:
+	if _is_travelling:
+		return _get_waypoint_move_target()
+	return global_position
+
+func _get_stuck_hotspot_label() -> String:
+	if _is_blocking_hotspot_ray(_obstacle_ray_forward):
+		return _trace_collider_label(_obstacle_ray_forward.get_collider())
+	if _is_blocking_hotspot_ray(_obstacle_ray_down, true):
+		return _trace_collider_label(_obstacle_ray_down.get_collider())
+	if _is_blocking_hotspot_ray(_obstacle_ray_left):
+		return _trace_collider_label(_obstacle_ray_left.get_collider())
+	if _is_blocking_hotspot_ray(_obstacle_ray_right):
+		return _trace_collider_label(_obstacle_ray_right.get_collider())
+	return ""
+
+func _is_blocking_hotspot_ray(ray: RayCast3D, require_low_obstacle: bool = false) -> bool:
+	if ray == null or not ray.enabled or not ray.is_colliding():
+		return false
+	var collider := ray.get_collider()
+	if collider == null or collider == self:
+		return false
+	if _is_citizen_collider(collider):
+		return false
+	if collider is Node and _is_entrance_trigger_node(collider as Node):
+		return false
+	if require_low_obstacle and not _ray_detects_low_obstacle(ray):
+		return false
+	return true
 
 func _trace_describe_ray_hit(ray: RayCast3D) -> String:
 	if ray == null or not ray.enabled:
@@ -1422,10 +2403,27 @@ func _trace_describe_ray_hit(ray: RayCast3D) -> String:
 		return "clear"
 
 	var collider := ray.get_collider()
+	if collider == null or collider == self:
+		return "clear"
+	if _is_citizen_collider(collider):
+		return "clear"
+	if collider is Node and _is_entrance_trigger_node(collider as Node):
+		return "clear"
 	var collider_name := _trace_collider_label(collider)
 	var hit_pos := ray.get_collision_point()
 	var distance := ray.global_position.distance_to(hit_pos)
 	return "%s @ %s d=%.2f" % [collider_name, _trace_fmt_vec3(hit_pos), distance]
+
+func _get_debug_action_label() -> String:
+	if current_action != null:
+		return current_action.label
+	if _manual_control_enabled:
+		return "ManualControl"
+	if _click_move_mode_enabled:
+		return "ClickMove" if _is_travelling else "ClickMoveIdle"
+	if _is_travelling:
+		return "Travel"
+	return "idle"
 
 func _trace_collider_label(collider: Variant) -> String:
 	if collider is Node:
@@ -1447,7 +2445,7 @@ func _trace_fmt_vec3(value: Vector3) -> String:
 	return "(%.2f, %.2f, %.2f)" % [value.x, value.y, value.z]
 
 func get_trace_debug_summary() -> String:
-	var action_label := current_action.label if current_action != null else "idle"
+	var action_label := _get_debug_action_label()
 	var location_label := current_location.get_display_name() if current_location != null else "travelling"
 	var inside_label := _inside_building.get_display_name() if _inside_building != null else "-"
 	var travel_building_label := _travel_target_building.get_display_name() if _travel_target_building != null else "-"
@@ -1479,10 +2477,11 @@ func get_trace_debug_summary() -> String:
 		_debug_repath_count,
 		_debug_stuck_slide_count,
 		_debug_stuck_jump_count,
-		_debug_last_blocking_area
+		"%s ground=%s" % [_debug_last_blocking_area, _trace_last_surface_probe]
 	]
 # Called from main.gd when selection/debug panel changes.
 func set_selected(selected: bool) -> void:
+	_selection_active = selected
 	if _mesh_instance == null:
 		return
 	if selected:
@@ -1641,6 +2640,8 @@ func set_world_ref(world: World) -> void:
 	_world_ref = world
 	_ground_fallback_y = world.get_ground_fallback_y()
 	_connect_time_signals(world)
+	if world.citizens.has(self) and world.has_method("notify_citizen_lod_changed"):
+		world.notify_citizen_lod_changed(self)
 
 func _get_query_world() -> World:
 	if _world_ref != null and is_instance_valid(_world_ref):
@@ -1713,8 +2714,22 @@ func _update_debug(world: World, h_delta: float) -> void:
 	var travel_state := "idle"
 	var path_start := "-"
 	var path_end := "-"
+	var travel_target_building := get_debug_travel_target_building()
+	var travel_target_label := _building_label(travel_target_building) if travel_target_building != null else "-"
+	var remaining_travel_distance := get_remaining_travel_distance() if (_is_travelling or travel_target_building != null) else 0.0
+	var remaining_travel_label := "%.1f m" % remaining_travel_distance if remaining_travel_distance > 0.05 else "-"
+	var coarse_eta_minutes := get_debug_coarse_eta_minutes(world)
+	var coarse_eta_label := "%d min" % coarse_eta_minutes if coarse_eta_minutes > 0 else "-"
+	var planar_velocity := Vector2(velocity.x, velocity.z).length()
 	if _is_travelling:
-		travel_state = "moving"
+		if simulation_lod_tier == "coarse":
+			travel_state = "coarse_travel"
+		elif _trace_last_decision_reason == "surface_guard_stop" or _surface_guard_stop_time > 0.05:
+			travel_state = "blocked"
+		elif planar_velocity > 0.05 or _current_speed > 0.05:
+			travel_state = "moving"
+		else:
+			travel_state = "pathing"
 	elif _debug_last_travel_failed and debug_route.size() >= 2:
 		travel_state = "route_failed"
 	elif debug_route.size() >= 2:
@@ -1748,7 +2763,14 @@ func _update_debug(world: World, h_delta: float) -> void:
 		"Motivation": "%.2f" % work_motivation,
 		"ParkInterest": "%.2f" % park_interest,
 		"Position": "%d, %d, %d " % [global_position.x, global_position.y, global_position.z],
+		"LOD": get_debug_lod_label(world),
+		"Conversation": get_runtime_conversation_label(),
+		"Commitments": "%d" % get_active_lod_commitments(world).size(),
+		"NavMode": "cheap_path_follow" if _is_using_cheap_path_follow() else ("path_only" if not local_navigation_raycast_checks_enabled else "raycast_local"),
 		"TravelState": travel_state,
+		"TravelTarget": travel_target_label,
+		"TravelRemain": remaining_travel_label,
+		"CoarseETA": coarse_eta_label,
 		"PathStart": path_start,
 		"PathEnd": path_end,
 	})
@@ -1761,6 +2783,8 @@ func _update_work_day(world: World) -> void:
 
 
 func sim_tick(world: World) -> void:
+	if not should_run_simulation_lod_tick(world):
+		return
 	_agent.sim_tick(self, world)
 
 func plan_next_action(world: World) -> void:
@@ -2048,7 +3072,7 @@ func _apply_job_offer(offer: Dictionary) -> bool:
 	return true
 
 func get_zero_pay_debug_reason() -> String:
-	var action_label := current_action.label if current_action != null else "idle"
+	var action_label := _get_debug_action_label()
 	var location_label := _building_label(current_location) if current_location != null else "travelling"
 	return "%s action=%s location=%s" % [get_job_debug_summary(), action_label, location_label]
 
@@ -2067,12 +3091,37 @@ func is_building_temporarily_unreachable(building: Building, world: World = null
 		return false
 	return true
 
+func _get_building_temporarily_unreachable_remaining_minutes(building: Building, world: World = null) -> int:
+	if not is_building_temporarily_unreachable(building, world):
+		return 0
+	var active_world := world if world != null else _world_ref
+	if active_world == null:
+		return 0
+	var blocked_until := int(_temporarily_unreachable_targets.get(building.get_instance_id(), 0))
+	return maxi(blocked_until - _get_sim_total_minutes(active_world), 0)
+
 func prepare_go_to_target(target: Building, world: World) -> Building:
 	if target == null:
 		return null
 	if not is_building_temporarily_unreachable(target, world):
 		return target
-	return handle_unreachable_target(target, world, "target already on cooldown")
+	var replacement := _find_alternative_for_building(target, world)
+	if replacement != null and replacement != target:
+		_apply_building_target_replacement(target, replacement)
+		debug_log("Retargeting from cooled-down %s to %s." % [
+			_building_label(target),
+			_building_label(replacement)
+		])
+		return replacement
+	var remaining_minutes := _get_building_temporarily_unreachable_remaining_minutes(target, world)
+	debug_log_once_per_day(
+		"target_cooldown_%d" % target.get_instance_id(),
+		"Skipping temporarily unreachable target %s (%d sim-min remaining)." % [
+			_building_label(target),
+			remaining_minutes
+		]
+	)
+	return null
 
 func handle_unreachable_target(target: Building, world: World, reason: String = "") -> Building:
 	if target == null:
@@ -2100,7 +3149,11 @@ func _mark_building_temporarily_unreachable(target: Building, world: World, reas
 	if active_world == null or active_world.time == null:
 		return
 	var until_minute := _get_sim_total_minutes(active_world) + maxi(unreachable_target_cooldown_minutes, 1)
-	_temporarily_unreachable_targets[target.get_instance_id()] = until_minute
+	var key := target.get_instance_id()
+	var previous_until := int(_temporarily_unreachable_targets.get(key, 0))
+	if previous_until >= until_minute:
+		return
+	_temporarily_unreachable_targets[key] = until_minute
 	debug_log("Marked %s as temporarily unreachable for %d sim-min (%s)." % [
 		_building_label(target),
 		unreachable_target_cooldown_minutes,

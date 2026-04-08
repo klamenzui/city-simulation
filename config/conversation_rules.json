@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "lifecycle": {
+    "background_ai_allowed": false,
+    "default_topic": "smalltalk",
+    "max_parallel_materialized_conversations": 1,
+    "max_parallel_interactive_conversations": 1
+  },
+  "distance_thresholds_m": {
+    "bark_enter": 20.0,
+    "bark_exit": 24.0,
+    "materialize_enter": 8.0,
+    "materialize_exit": 11.0,
+    "interactive_auto_offer": 3.0
+  },
+  "pairing": {
+    "refresh_interval_sec": 0.8,
+    "max_active_pairs": 4,
+    "max_participant_distance_m": 3.5
+  },
+  "modes": {
+    "abstract": {
+      "simulate_only_outcome": true,
+      "allow_ai": false,
+      "cache_lines": false
+    },
+    "bark": {
+      "allow_ai": false,
+      "use_templates": true,
+      "max_lines": 2
+    },
+    "materialized": {
+      "allow_ai": true,
+      "shared_context_for_all_participants": true,
+      "max_lines": 4,
+      "cache_ttl_sec": 45.0
+    },
+    "interactive": {
+      "allow_ai": true,
+      "shared_context_for_all_participants": false,
+      "requires_player_input": true,
+      "max_turn_history": 6
+    }
+  },
+  "transitions": {
+    "abstract_to_bark": {
+      "requires_player_in_range": true
+    },
+    "bark_to_materialized": {
+      "requires_player_very_near": true
+    },
+    "materialized_to_abstract": {
+      "when_player_leaves_range": true
+    },
+    "materialized_to_interactive": {
+      "requires_player_start": true
+    }
+  },
+  "abort_reasons": [
+    "participant_left_area",
+    "one_participant_became_busy",
+    "player_interrupted",
+    "weather_forced_end",
+    "topic_expired"
+  ],
+  "npc_npc": {
+    "use_single_shared_context": true,
+    "prefer_lazy_generation": true,
+    "materialize_only_when_player_near": true,
+    "allowed_relationships": [
+      "stranger",
+      "acquaintance",
+      "friend",
+      "coworker",
+      "neighbor"
+    ],
+    "topics": [
+      "weather",
+      "work",
+      "food",
+      "traffic",
+      "rent",
+      "local_events"
+    ],
+    "commitment_lock_minutes": 10
+  },
+  "player_npc": {
+    "session_memory_turns": 6,
+    "summary_after_turns": 4,
+    "max_response_sentences": 3,
+    "allow_topic_shift": true,
+    "commitment_lock_minutes": 20,
+    "cancel_if_player_leaves_range": true,
+    "farewell_auto_close_sec": 2.0,
+    "farewell_keywords": [
+      "bye",
+      "goodbye",
+      "see you",
+      "ciao",
+      "tschuess",
+      "tschuss",
+      "bis spaeter",
+      "bis bald",
+      "machs gut",
+      "cu"
+    ]
+  },
+  "player_interaction": {
+    "selection_interest_lock_minutes": 15,
+    "control_interest_lock_minutes": 20,
+    "interactive_offer_lock_minutes": 20
+  },
+  "conversation_start_rules": {
+    "npc_npc_smalltalk": {
+      "min_social_need": 0.35,
+      "max_stress": 0.85,
+      "max_participants": 2
+    },
+    "npc_npc_committed_meeting": {
+      "requires_commitment": true,
+      "max_participants": 4
+    }
+  },
+  "fallback_barks": {
+    "weather": [
+      "Looks like rain again.",
+      "Nice weather today."
+    ],
+    "food": [
+      "I could really use a meal.",
+      "Do you know if the restaurant is still open?"
+    ],
+    "work": [
+      "Long shift today.",
+      "I should head back soon."
+    ]
+  }
+}

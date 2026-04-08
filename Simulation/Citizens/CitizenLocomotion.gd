@@ -20,8 +20,17 @@ func physics_step(citizen, delta: float, world) -> void:
 		citizen.velocity = Vector3.ZERO
 		return
 	if citizen._is_travelling:
-		citizen._move_along_path(delta)
+		if citizen.has_method("_is_using_cheap_path_follow") and citizen._is_using_cheap_path_follow():
+			citizen._move_along_path_cheap(delta)
+		else:
+			citizen._move_along_path(delta)
 	else:
+		if citizen.has_method("_is_eligible_for_cheap_lod") and citizen._is_eligible_for_cheap_lod() and citizen.is_on_floor():
+			citizen.velocity = Vector3.ZERO
+			citizen._vertical_speed = 0.0
+			citizen._stuck_timer = 0.0
+			citizen._surface_guard_stop_time = 0.0
+			return
 		citizen.velocity.x = 0.0
 		citizen.velocity.z = 0.0
 		if citizen.is_on_floor():
@@ -53,6 +62,7 @@ func begin_travel_to(citizen, target_pos: Vector3, target_building, world) -> bo
 		citizen.reset_travel_debug_state()
 	citizen._travel_target_building = target_building
 	citizen._arrived_via_entrance_contact = false
+	citizen._surface_guard_stop_time = 0.0
 	if world != null:
 		citizen._ground_fallback_y = world.get_ground_fallback_y()
 
@@ -154,6 +164,9 @@ func repath_current_travel(citizen, world) -> bool:
 	var old_current_speed: float = citizen._current_speed
 	var old_arrived: bool = citizen._arrived_via_entrance_contact
 	var old_target_building = citizen._travel_target_building
+	var old_debug_repath_count: int = citizen._debug_repath_count
+	var old_debug_stuck_slide_count: int = citizen._debug_stuck_slide_count
+	var old_debug_stuck_jump_count: int = citizen._debug_stuck_jump_count
 
 	if not begin_travel_to(citizen, final_target, old_target_building, world):
 		citizen._is_travelling = old_is_travelling
@@ -165,12 +178,19 @@ func repath_current_travel(citizen, world) -> bool:
 		citizen._current_speed = old_current_speed
 		citizen._arrived_via_entrance_contact = old_arrived
 		citizen._travel_target_building = old_target_building
+		citizen._debug_repath_count = old_debug_repath_count
+		citizen._debug_stuck_slide_count = old_debug_stuck_slide_count
+		citizen._debug_stuck_jump_count = old_debug_stuck_jump_count
 		citizen._repath_time_left = citizen.repath_interval_sec
 		if citizen._nav_agent != null:
 			citizen._nav_agent.target_position = old_target
 		return false
 
+	citizen._debug_repath_count = old_debug_repath_count
+	citizen._debug_stuck_slide_count = old_debug_stuck_slide_count
+	citizen._debug_stuck_jump_count = old_debug_stuck_jump_count
 	citizen._stuck_timer = 0.0
+	citizen._surface_guard_stop_time = 0.0
 	citizen._last_move_position = citizen.global_position
 	citizen._repath_time_left = citizen.repath_interval_sec
 	citizen._current_speed = minf(citizen._current_speed, citizen._walk_speed * 0.5)
@@ -203,6 +223,7 @@ func stop_travel(citizen) -> void:
 	citizen._arrived_via_entrance_contact = false
 	citizen._travel_target_building = null
 	citizen._stuck_timer = 0.0
+	citizen._surface_guard_stop_time = 0.0
 	citizen._last_move_position = citizen.global_position
 	citizen._vertical_speed = 0.0
 	citizen.velocity = Vector3.ZERO

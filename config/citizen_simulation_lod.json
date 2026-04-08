@@ -1,0 +1,129 @@
+{
+  "version": 1,
+  "budgets": {
+    "focus_citizens": 15,
+    "active_citizens": 30,
+    "always_keep_selected_focus": true,
+    "always_keep_player_focus": true,
+    "always_keep_dialog_participants_active": true
+  },
+  "refresh": {
+    "relevance_update_interval_sec": 0.5,
+    "coarse_tick_minutes_step": 5
+  },
+  "visibility": {
+    "focus_radius_m": 18.0,
+    "active_radius_m": 42.0,
+    "predicted_route_radius_m": 5.0,
+    "camera_hotspot_distance_m": 18.0,
+    "camera_hotspot_radius_m": 8.0,
+    "screen_visibility_bonus_enabled": true,
+    "distance_bands_m": [
+      {
+        "max_distance": 10.0,
+        "bonus": 55.0
+      },
+      {
+        "max_distance": 25.0,
+        "bonus": 28.0
+      },
+      {
+        "max_distance": 50.0,
+        "bonus": 10.0
+      }
+    ]
+  },
+  "hysteresis": {
+    "promote_above_score": 70.0,
+    "demote_below_score": 50.0,
+    "minimum_focus_hold_sec": 12.0,
+    "minimum_active_hold_sec": 8.0
+  },
+  "relevance_weights": {
+    "selected": 100.0,
+    "player_dialog": 90.0,
+    "npc_conversation_near_player": 70.0,
+    "very_near_player": 60.0,
+    "in_camera_view": 40.0,
+    "important_event": 25.0,
+    "same_district_as_player": 18.0,
+    "near_player_predicted_route": 20.0,
+    "near_camera_hotspot": 14.0,
+    "high_social_density_area": 12.0,
+    "soon_visible_route": 15.0,
+    "not_active_for_long_time": 12.0,
+    "recently_promoted_penalty": -20.0,
+    "distance_penalty_per_meter": -1.0
+  },
+  "tiers": {
+    "focus": {
+      "rendered": true,
+      "physics": true,
+      "full_navigation": true,
+      "local_avoidance": true
+    },
+    "active": {
+      "rendered": true,
+      "physics": true,
+      "full_navigation": false,
+      "cheap_path_follow": true,
+      "local_avoidance": false,
+      "path_refresh_interval_sec": 1.5,
+      "decision_interval_sec": 4.0
+    },
+    "coarse": {
+      "rendered": false,
+      "physics": false,
+      "full_navigation": false,
+      "local_avoidance": false,
+      "coarse_travel": true
+    }
+  },
+  "rotation": {
+    "prefer_home_arrival_swap": true,
+    "home_arrival_swap_requires_next_day": true,
+    "natural_swap_points": [
+      "arrived_home",
+      "finished_shift",
+      "finished_activity",
+      "sleep_started",
+      "new_day_started",
+      "district_changed"
+    ],
+    "demotion_requirements": {
+      "not_selected": true,
+      "not_visible_focus": true,
+      "not_in_player_dialog": true,
+      "no_active_commitment": true,
+      "no_important_event": true
+    }
+  },
+  "commitments": {
+    "lock_types": [
+      "player_interest",
+      "player_dialog",
+      "npc_dialog_materialized",
+      "meeting",
+      "event",
+      "quest_like_flag"
+    ],
+    "default_soft_lock_minutes": 45
+  },
+  "coarse_travel": {
+    "distance_source": "network_estimate",
+    "base_speeds_m_per_min": {
+      "walk": 78.0,
+      "car": 260.0,
+      "transit": 180.0
+    },
+    "modifiers": {
+      "rain_multiplier": 1.10,
+      "snow_multiplier": 1.25,
+      "rush_hour_multiplier": 1.30,
+      "fatigue_multiplier": 1.15,
+      "night_multiplier": 1.05
+    },
+    "minimum_eta_minutes": 2,
+    "fallback_eta_minutes": 20
+  }
+}

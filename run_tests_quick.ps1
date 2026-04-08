@@ -9,5 +9,5 @@ if (-not (Test-Path $runner)) {
 	throw "run_tests.ps1 not found next to run_tests_quick.ps1"
 }
 
-& $runner -GodotExe $GodotExe -Only @("parse", "economy", "occupancy") -VerboseGodot:$VerboseGodot.IsPresent
+& $runner -GodotExe $GodotExe -Only @("parse", "economy", "occupancy", "runtime") -VerboseGodot:$VerboseGodot.IsPresent
 exit $LASTEXITCODE

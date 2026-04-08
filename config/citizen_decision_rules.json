@@ -1,0 +1,451 @@
+{
+  "version": 1,
+  "meta": {
+    "description": "Data-driven citizen utility rules for needs, environment, weather, personality, state and events.",
+    "default_rule_set": "default_adult"
+  },
+  "context_schema": {
+    "needs": [
+      "hunger",
+      "energy",
+      "fun",
+      "social",
+      "hygiene",
+      "health"
+    ],
+    "environment": [
+      "is_home",
+      "is_workplace",
+      "is_indoor",
+      "is_outdoor",
+      "near_restaurant",
+      "near_park",
+      "traffic_density",
+      "noise_level",
+      "danger_level",
+      "district"
+    ],
+    "weather": [
+      "clear",
+      "rain_strength",
+      "snow_strength",
+      "storm",
+      "temperature_c",
+      "comfort_index"
+    ],
+    "time": [
+      "hour",
+      "weekday",
+      "is_weekend",
+      "is_holiday",
+      "is_night"
+    ],
+    "personality": [
+      "diligence",
+      "sociability",
+      "frugality",
+      "comfort_seeking",
+      "weather_sensitivity"
+    ],
+    "state": [
+      "stress",
+      "irritation",
+      "satisfaction",
+      "loneliness",
+      "fatigue"
+    ],
+    "events": [
+      "lost_job_recently",
+      "got_paid_recently",
+      "rent_due_soon",
+      "has_invitation",
+      "has_conflict",
+      "has_commitment"
+    ]
+  },
+  "derived_states": {
+    "stress": {
+      "base": 0.0,
+      "clamp": [0.0, 1.0],
+      "rules": [
+        {
+          "if": {
+            "needs.hunger_gte": 75
+          },
+          "add": 0.30
+        },
+        {
+          "if": {
+            "needs.energy_lte": 20
+          },
+          "add": 0.30
+        },
+        {
+          "if": {
+            "weather.rain_strength_gte": 0.65,
+            "environment.is_outdoor": true
+          },
+          "add": 0.10
+        },
+        {
+          "if": {
+            "environment.traffic_density_gte": 0.7
+          },
+          "add": 0.08
+        },
+        {
+          "if": {
+            "events.has_conflict": true
+          },
+          "add": 0.18
+        }
+      ]
+    },
+    "irritation": {
+      "base": 0.0,
+      "clamp": [0.0, 1.0],
+      "rules": [
+        {
+          "if": {
+            "state.stress_gte": 0.6
+          },
+          "add": 0.25
+        },
+        {
+          "if": {
+            "environment.noise_level_gte": 0.7
+          },
+          "add": 0.12
+        },
+        {
+          "if": {
+            "needs.fun_lte": 20
+          },
+          "add": 0.18
+        }
+      ]
+    },
+    "comfort": {
+      "base": 0.0,
+      "clamp": [0.0, 1.0],
+      "rules": [
+        {
+          "if": {
+            "environment.is_home": true
+          },
+          "add": 0.25
+        },
+        {
+          "if": {
+            "environment.is_indoor": true
+          },
+          "add": 0.10
+        },
+        {
+          "if": {
+            "weather.comfort_index_gte": 0.65
+          },
+          "add": 0.08
+        }
+      ]
+    },
+    "loneliness": {
+      "base": 0.2,
+      "clamp": [0.0, 1.0],
+      "rules": [
+        {
+          "if": {
+            "needs.social_lte": 30
+          },
+          "add": 0.25
+        },
+        {
+          "if": {
+            "environment.is_home": true,
+            "time.is_night": true
+          },
+          "add": 0.05
+        }
+      ]
+    }
+  },
+  "rule_sets": {
+    "default_adult": {
+      "goals": {
+        "eat_out": {
+          "base_score": 0.0,
+          "priority": 65,
+          "cooldown_minutes": 20,
+          "interruptible": true,
+          "tags": [
+            "need",
+            "food",
+            "outdoor"
+          ],
+          "rules": [
+            {
+              "if": {
+                "needs.hunger_gte": 60
+              },
+              "add": 35
+            },
+            {
+              "if": {
+                "needs.hunger_gte": 80
+              },
+              "add": 30
+            },
+            {
+              "if": {
+                "environment.near_restaurant": true
+              },
+              "add": 8
+            },
+            {
+              "if": {
+                "weather.rain_strength_gte": 0.6
+              },
+              "add": -6
+            },
+            {
+              "if": {
+                "personality.frugality_gte": 0.7
+              },
+              "add": -10
+            }
+          ]
+        },
+        "eat_home": {
+          "base_score": 0.0,
+          "priority": 70,
+          "cooldown_minutes": 15,
+          "interruptible": true,
+          "tags": [
+            "need",
+            "food",
+            "home"
+          ],
+          "rules": [
+            {
+              "if": {
+                "needs.hunger_gte": 60
+              },
+              "add": 32
+            },
+            {
+              "if": {
+                "environment.is_home": true
+              },
+              "add": 18
+            },
+            {
+              "if": {
+                "personality.frugality_gte": 0.5
+              },
+              "add": 8
+            }
+          ]
+        },
+        "sleep": {
+          "base_score": 0.0,
+          "priority": 90,
+          "cooldown_minutes": 30,
+          "interruptible": false,
+          "tags": [
+            "need",
+            "rest"
+          ],
+          "rules": [
+            {
+              "if": {
+                "needs.energy_lte": 35
+              },
+              "add": 35
+            },
+            {
+              "if": {
+                "needs.energy_lte": 15
+              },
+              "add": 40
+            },
+            {
+              "if": {
+                "time.is_night": true
+              },
+              "add": 10
+            },
+            {
+              "if": {
+                "environment.is_home": true
+              },
+              "add": 12
+            }
+          ]
+        },
+        "work_shift": {
+          "base_score": 0.0,
+          "priority": 75,
+          "cooldown_minutes": 10,
+          "interruptible": false,
+          "tags": [
+            "schedule",
+            "work"
+          ],
+          "rules": [
+            {
+              "if": {
+                "job.in_work_window": true
+              },
+              "add": 42
+            },
+            {
+              "if": {
+                "job.remaining_ratio_gte": 0.5
+              },
+              "add": 18
+            },
+            {
+              "if": {
+                "needs.hunger_gte": 75
+              },
+              "mul": 0.3
+            },
+            {
+              "if": {
+                "needs.energy_lte": 20
+              },
+              "mul": 0.25
+            }
+          ]
+        },
+        "park_visit": {
+          "base_score": 0.0,
+          "priority": 40,
+          "cooldown_minutes": 30,
+          "interruptible": true,
+          "tags": [
+            "fun",
+            "outdoor"
+          ],
+          "rules": [
+            {
+              "if": {
+                "needs.fun_lte": 30
+              },
+              "add": 20
+            },
+            {
+              "if": {
+                "environment.near_park": true
+              },
+              "add": 10
+            },
+            {
+              "if": {
+                "weather.clear": true
+              },
+              "add": 8
+            },
+            {
+              "if": {
+                "weather.rain_strength_gte": 0.4
+              },
+              "mul": 0.2
+            },
+            {
+              "if": {
+                "needs.hunger_gte": 60
+              },
+              "mul": 0.0
+            }
+          ]
+        },
+        "indoor_relax": {
+          "base_score": 0.0,
+          "priority": 45,
+          "cooldown_minutes": 20,
+          "interruptible": true,
+          "tags": [
+            "fun",
+            "comfort"
+          ],
+          "rules": [
+            {
+              "if": {
+                "needs.fun_lte": 35
+              },
+              "add": 18
+            },
+            {
+              "if": {
+                "weather.rain_strength_gte": 0.5
+              },
+              "add": 10
+            },
+            {
+              "if": {
+                "state.stress_gte": 0.7
+              },
+              "add": 10
+            },
+            {
+              "if": {
+                "environment.is_home": true
+              },
+              "add": 10
+            }
+          ]
+        },
+        "social_visit": {
+          "base_score": 0.0,
+          "priority": 50,
+          "cooldown_minutes": 25,
+          "interruptible": true,
+          "tags": [
+            "social"
+          ],
+          "rules": [
+            {
+              "if": {
+                "state.loneliness_gte": 0.65
+              },
+              "add": 22
+            },
+            {
+              "if": {
+                "personality.sociability_gte": 0.65
+              },
+              "add": 8
+            },
+            {
+              "if": {
+                "events.has_invitation": true
+              },
+              "add": 14
+            },
+            {
+              "if": {
+                "state.stress_gte": 0.85
+              },
+              "mul": 0.5
+            }
+          ]
+        }
+      },
+      "interrupt_rules": [
+        {
+          "if": {
+            "needs.hunger_gte": 90
+          },
+          "force_goal": "eat_home"
+        },
+        {
+          "if": {
+            "needs.energy_lte": 8
+          },
+          "force_goal": "sleep"
+        }
+      ]
+    }
+  }
+}

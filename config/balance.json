@@ -1,6 +1,6 @@
 {
   "simulation": {
-    "initial_citizen_count": 15
+    "initial_citizen_count": 10
   },
   "debug": {
     "enable_all_citizen_trace": false,
