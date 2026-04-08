@@ -95,6 +95,15 @@ if (-not $SkipModelPull) {
 	}
 }
 
+$profileScript = Join-Path $PSScriptRoot "create_local_dialogue_profiles.ps1"
+if (Test-Path $profileScript) {
+	Write-Host "Creating local dialogue profiles from $Model"
+	& powershell -ExecutionPolicy Bypass -File $profileScript -ProjectRoot $ProjectRoot -RuntimeDir $RuntimeDir -ModelsDir $ModelsDir -BaseModel $Model
+	if ($LASTEXITCODE -ne 0) {
+		throw "Dialogue profile creation failed for $Model"
+	}
+}
+
 Write-Host ""
 Write-Host "Portable Ollama setup complete."
 Write-Host "Runtime: $($ollamaExe.FullName)"

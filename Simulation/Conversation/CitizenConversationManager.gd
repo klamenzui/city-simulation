@@ -116,6 +116,7 @@ func begin_player_dialog(citizen: Citizen) -> Dictionary:
 	session["active"] = true
 	session["started_at_sec"] = float(session.get("started_at_sec", _runtime_sec))
 	_player_dialog_sessions[citizen.get_instance_id()] = session
+	_face_player_dialog_participants(citizen)
 	_refresh_player_dialog_control_lock()
 	_log_player_dialog(citizen, "Session started")
 	return session.duplicate(true)
@@ -143,6 +144,42 @@ func get_player_dialog_session(citizen: Citizen) -> Dictionary:
 	if session_variant is not Dictionary:
 		return {}
 	return (session_variant as Dictionary).duplicate(true)
+
+func get_active_player_dialog_citizen() -> Citizen:
+	for citizen_id_variant in _player_dialog_sessions.keys():
+		var session_variant: Variant = _player_dialog_sessions.get(citizen_id_variant, {})
+		if session_variant is not Dictionary:
+			continue
+		if not bool((session_variant as Dictionary).get("active", false)):
+			continue
+		var citizen := instance_from_id(int(citizen_id_variant)) as Citizen
+		if citizen != null and is_instance_valid(citizen):
+			return citizen
+	return null
+
+func find_best_player_dialog_candidate(preferred_citizen: Citizen = null) -> Citizen:
+	var active_citizen := get_active_player_dialog_citizen()
+	if active_citizen != null:
+		return active_citizen
+	if preferred_citizen != null and can_start_player_dialog(preferred_citizen):
+		return preferred_citizen
+	if world == null:
+		return null
+
+	var best_citizen: Citizen = null
+	var best_distance := INF
+	for citizen in world.citizens:
+		if citizen == null or not is_instance_valid(citizen):
+			continue
+		if not can_start_player_dialog(citizen):
+			continue
+		var availability := get_player_dialog_availability(citizen)
+		var distance := float(availability.get("distance", INF))
+		if distance >= best_distance:
+			continue
+		best_distance = distance
+		best_citizen = citizen
+	return best_citizen
 
 func toggle_player_dialog(citizen: Citizen) -> Dictionary:
 	if citizen == null:
@@ -232,6 +269,7 @@ func submit_player_dialog_message(citizen: Citizen, player_text: String) -> Dict
 	session["turn_count"] = int(session.get("turn_count", 0)) + 1
 	session["last_player_message_at_sec"] = _runtime_sec
 	session["farewell_requested"] = _is_farewell_player_line(clean_text)
+	session["player_flagged_repetition"] = _player_line_flags_repetition(clean_text)
 	session["auto_close_due_at_sec"] = -1.0
 	_compress_player_dialog_session_memory(session)
 
@@ -1029,6 +1067,10 @@ func _ensure_player_dialog_session(citizen: Citizen) -> Dictionary:
 		"pending_payload": {},
 		"pending_error": "",
 		"recent_summary": "",
+		"last_npc_reply": "",
+		"last_reply_source": "",
+		"last_reply_model": "",
+		"player_flagged_repetition": false,
 		"turn_count": 0,
 		"farewell_requested": false,
 		"auto_close_due_at_sec": -1.0,
@@ -1056,9 +1098,16 @@ func _build_player_dialogue_payload(citizen: Citizen, session: Dictionary) -> Di
 			"fun": roundf(citizen.needs.fun),
 			"health": roundf(citizen.needs.health)
 		},
+		"need_scale": {
+			"hunger": "0 means full, 100 means urgently hungry",
+			"energy": "100 means rested, 0 means exhausted",
+			"fun": "100 means satisfied, 0 means mentally drained",
+			"health": "100 means healthy, 0 means critical"
+		},
+		"state_hints": _build_player_state_hints(citizen),
 		"wallet_balance": citizen.wallet.balance,
 		"budget_state": _describe_wallet_state(citizen),
-		"location": citizen.current_location.building_name if citizen.current_location != null else "street",
+		"location": _get_current_location_dialogue_label(citizen),
 		"location_context": _build_player_location_context(citizen, nearby_places),
 		"district": _get_player_dialog_district(citizen),
 		"weather": "clear",
@@ -1068,35 +1117,19 @@ func _build_player_dialogue_payload(citizen: Citizen, session: Dictionary) -> Di
 		"nearby_places": nearby_places,
 		"job_context": _build_player_job_context(citizen),
 		"reply_language": _infer_player_dialog_reply_language(session),
+		"player_flagged_repetition": bool(session.get("player_flagged_repetition", false)),
 		"relationship_to_player": "direct conversation",
 		"recent_summary": str(session.get("recent_summary", "")),
+		"last_npc_reply": str(session.get("last_npc_reply", "")),
 		"last_turns": recent_turns,
 		"grounding_rules": [
-			"Only mention places listed in known_places or nearby_places by name.",
-			"Do not invent landmarks, rivers, shops, or buildings.",
+			"You may mention the provided location, district, nearby places, and known places.",
+			"Do not invent additional landmarks, rivers, shops, buildings, or routes.",
 			"If unsure, say you are not sure instead of making something up."
 		]
 	}
 
 func _infer_player_dialog_reply_language(session: Dictionary) -> String:
-	var recent_summary := str(session.get("recent_summary", "")).to_lower()
-	var messages: Variant = session.get("messages", [])
-	if messages is Array:
-		var typed_messages := messages as Array
-		for idx in range(typed_messages.size() - 1, -1, -1):
-			var entry: Variant = typed_messages[idx]
-			if entry is not Dictionary:
-				continue
-			var typed_entry := entry as Dictionary
-			if str(typed_entry.get("speaker", "")).to_lower() != "player":
-				continue
-			var player_text := str(typed_entry.get("text", "")).to_lower()
-			if _contains_any_dialogue_token(player_text, ["hallo", "moin", "servus", "wie", "warum", "wieso", "wo", "wohin", "wer", "und", "gut", "ja", "nein"]):
-				return "german"
-			if _contains_any_dialogue_token(player_text, ["hello", "how", "where", "why", "good", "yeah", "no", "lets", "let's"]):
-				return "english"
-	if _contains_any_dialogue_token(recent_summary, ["hallo", "wie", "warum", "wo", "und", "gerade"]):
-		return "german"
 	return "german"
 
 func _contains_any_dialogue_token(text: String, tokens: Array[String]) -> bool:
@@ -1111,7 +1144,7 @@ func _build_player_location_context(citizen: Citizen, nearby_places: Array) -> D
 	return {
 		"inside_building": citizen.is_inside_building(),
 		"travelling": citizen.is_travelling(),
-		"location_name": citizen.current_location.building_name if citizen.current_location != null else "street",
+		"location_name": _get_current_location_dialogue_label(citizen),
 		"district": _get_player_dialog_district(citizen),
 		"nearby_places": nearby_places.duplicate(true)
 	}
@@ -1119,11 +1152,14 @@ func _build_player_location_context(citizen: Citizen, nearby_places: Array) -> D
 func _build_player_goal_context(citizen: Citizen) -> Dictionary:
 	var action_label := citizen.current_action.label if citizen.current_action != null else "idle"
 	var target_building := citizen.get_debug_travel_target_building() if citizen.has_method("get_debug_travel_target_building") else null
-	var summary := _describe_player_goal_summary(action_label, target_building, citizen.is_travelling())
+	var target_relation := _get_building_dialogue_relation(citizen, target_building)
+	var target_display_name := _get_building_dialogue_name(citizen, target_building, target_relation)
+	var summary := _describe_player_goal_summary(citizen, action_label, target_building, citizen.is_travelling())
 	return {
 		"action": action_label,
 		"travelling": citizen.is_travelling(),
-		"target_name": target_building.building_name if target_building != null else "",
+		"target_name": target_display_name,
+		"target_relation": target_relation,
 		"target_service": target_building.get_service_type() if target_building != null else "",
 		"summary": summary
 	}
@@ -1136,23 +1172,29 @@ func _build_player_job_context(citizen: Citizen) -> Dictionary:
 	return {
 		"employed": true,
 		"title": citizen.job.title,
-		"workplace": citizen.job.workplace.building_name if citizen.job.workplace != null else "",
-		"preferred_workplace": citizen.job.preferred_workplace.building_name if citizen.job.preferred_workplace != null else ""
+		"workplace": _get_building_dialogue_name(citizen, citizen.job.workplace, "workplace"),
+		"preferred_workplace": _get_building_dialogue_name(citizen, citizen.job.preferred_workplace, "preferred_workplace")
 	}
 
 func _build_player_known_places(citizen: Citizen) -> Array:
 	var entries: Array = []
-	for building in [
-		citizen.home,
-		citizen.favorite_restaurant,
-		citizen.favorite_supermarket,
-		citizen.favorite_shop,
-		citizen.favorite_cinema,
-		citizen.favorite_park,
-		citizen.job.workplace if citizen.job != null else null,
-		citizen.job.preferred_workplace if citizen.job != null else null
-	]:
-		var fact := _build_building_dialogue_fact(building, citizen.global_position, false)
+	var known_targets := [
+		{"building": citizen.home, "relation": "home"},
+		{"building": citizen.favorite_restaurant, "relation": "favorite_restaurant"},
+		{"building": citizen.favorite_supermarket, "relation": "favorite_supermarket"},
+		{"building": citizen.favorite_shop, "relation": "favorite_shop"},
+		{"building": citizen.favorite_cinema, "relation": "favorite_cinema"},
+		{"building": citizen.favorite_park, "relation": "favorite_park"},
+		{"building": citizen.job.workplace if citizen.job != null else null, "relation": "workplace"},
+		{"building": citizen.job.preferred_workplace if citizen.job != null else null, "relation": "preferred_workplace"}
+	]
+	for target in known_targets:
+		if target is not Dictionary:
+			continue
+		var typed_target := target as Dictionary
+		var building := typed_target.get("building", null) as Building
+		var relation := str(typed_target.get("relation", ""))
+		var fact := _build_building_dialogue_fact(citizen, building, citizen.global_position, false, relation)
 		if not fact.is_empty():
 			entries.append(fact)
 	return _dedupe_dialogue_place_facts(entries)
@@ -1164,7 +1206,7 @@ func _build_player_nearby_places(citizen: Citizen, max_places: int = 4) -> Array
 	for building in world.buildings:
 		if building == null or not is_instance_valid(building):
 			continue
-		var fact := _build_building_dialogue_fact(building, citizen.global_position, true)
+		var fact := _build_building_dialogue_fact(citizen, building, citizen.global_position, true)
 		if fact.is_empty():
 			continue
 		entries.append(fact)
@@ -1174,11 +1216,14 @@ func _build_player_nearby_places(citizen: Citizen, max_places: int = 4) -> Array
 		deduped.resize(max_places)
 	return deduped
 
-func _build_building_dialogue_fact(building: Building, origin: Vector3, include_distance: bool) -> Dictionary:
+func _build_building_dialogue_fact(citizen: Citizen, building: Building, origin: Vector3, include_distance: bool, forced_relation: String = "") -> Dictionary:
 	if building == null or not is_instance_valid(building):
 		return {}
+	var relation := forced_relation if not forced_relation.is_empty() else _get_building_dialogue_relation(citizen, building)
 	var fact := {
-		"name": building.building_name,
+		"name": _get_building_dialogue_name(citizen, building, relation),
+		"kind": _get_building_dialogue_kind(building),
+		"relation": relation,
 		"service": building.get_service_type(),
 		"district": world.get_building_district_id(building) if world != null and world.has_method("get_building_district_id") else "",
 		"open_now": building.is_open(world.time.get_hour()) if world != null and world.time != null else true
@@ -1194,7 +1239,11 @@ func _dedupe_dialogue_place_facts(entries: Array) -> Array:
 		if entry is not Dictionary:
 			continue
 		var fact := entry as Dictionary
-		var key := str(fact.get("name", "")).strip_edges()
+		var key := "%s|%s|%s" % [
+			str(fact.get("relation", "")).strip_edges(),
+			str(fact.get("service", "")).strip_edges(),
+			str(fact.get("name", "")).strip_edges()
+		]
 		if key.is_empty() or seen.has(key):
 			continue
 		seen[key] = true
@@ -1233,25 +1282,186 @@ func _get_player_dialog_district(citizen: Citizen) -> String:
 		return ""
 	return world.get_citizen_district_id(citizen)
 
-func _describe_player_goal_summary(action_label: String, target_building: Building, travelling: bool) -> String:
+func _get_current_location_dialogue_label(citizen: Citizen) -> String:
+	if citizen == null:
+		return "auf der Straße"
+	if citizen.current_location == null:
+		return "auf der Straße"
+	if citizen.current_location == citizen.home:
+		return "zu Hause"
+	if citizen.job != null and citizen.current_location == citizen.job.workplace:
+		return "bei der Arbeit"
+	return _get_building_dialogue_name(citizen, citizen.current_location)
+
+func _get_building_dialogue_relation(citizen: Citizen, building: Building) -> String:
+	if citizen == null or building == null:
+		return ""
+	if building == citizen.home:
+		return "home"
+	if building == citizen.favorite_restaurant:
+		return "favorite_restaurant"
+	if building == citizen.favorite_supermarket:
+		return "favorite_supermarket"
+	if building == citizen.favorite_shop:
+		return "favorite_shop"
+	if building == citizen.favorite_cinema:
+		return "favorite_cinema"
+	if building == citizen.favorite_park:
+		return "favorite_park"
+	if citizen.job != null:
+		if building == citizen.job.workplace:
+			return "workplace"
+		if building == citizen.job.preferred_workplace:
+			return "preferred_workplace"
+	return "generic"
+
+func _get_building_dialogue_name(citizen: Citizen, building: Building, relation: String = "") -> String:
+	if building == null:
+		return ""
+	var resolved_relation := relation if not relation.is_empty() else _get_building_dialogue_relation(citizen, building)
+	var raw_name := building.building_name.strip_edges()
+	var friendly_raw := _is_dialogue_friendly_building_name(raw_name)
+	match resolved_relation:
+		"home":
+			return "mein Zuhause"
+		"favorite_restaurant":
+			return raw_name if friendly_raw else "mein Stammrestaurant"
+		"favorite_supermarket":
+			return raw_name if friendly_raw else "mein Supermarkt"
+		"favorite_shop":
+			return raw_name if friendly_raw else "mein Laden"
+		"favorite_cinema":
+			return raw_name if friendly_raw else "mein Kino"
+		"favorite_park":
+			return raw_name if friendly_raw else "mein Park"
+		"workplace":
+			return raw_name if friendly_raw else "meine Arbeit"
+		"preferred_workplace":
+			return raw_name if friendly_raw else "mein Arbeitsplatz"
+		_:
+			return raw_name if friendly_raw else _get_generic_building_dialogue_name(building, true)
+
+func _get_building_dialogue_kind(building: Building) -> String:
+	if building == null:
+		return "Ort"
+	var service := building.get_service_type()
+	match service:
+		"housing":
+			return "Wohnhaus"
+		"food":
+			return "Restaurant"
+		"food_market":
+			return "Supermarkt"
+		"shopping":
+			return "Laden"
+		"fun":
+			if building.is_in_group("parks"):
+				return "Park"
+			var raw_name := building.building_name.to_lower()
+			if raw_name.contains("cinema") or raw_name.contains("kino"):
+				return "Kino"
+			return "Freizeitort"
+		_:
+			return "Ort"
+
+func _get_generic_building_dialogue_name(building: Building, nearby: bool) -> String:
+	if building == null:
+		return "ein Ort"
+	var suffix := " hier in der Nähe" if nearby else ""
+	match building.get_service_type():
+		"housing":
+			return "ein Wohnhaus%s" % suffix
+		"food":
+			return "das Restaurant%s" % suffix
+		"food_market":
+			return "der Supermarkt%s" % suffix
+		"shopping":
+			return "der Laden%s" % suffix
+		"fun":
+			if building.is_in_group("parks"):
+				return "der Park%s" % suffix
+			var raw_name := building.building_name.to_lower()
+			if raw_name.contains("cinema") or raw_name.contains("kino"):
+				return "das Kino%s" % suffix
+			return "ein Freizeitort%s" % suffix
+		_:
+			return "ein Ort%s" % suffix
+
+func _is_dialogue_friendly_building_name(raw_name: String) -> bool:
+	var trimmed := raw_name.strip_edges()
+	if trimmed.is_empty():
+		return false
+	var lower_name := trimmed.to_lower()
+	if lower_name.contains("(") or lower_name.contains(")"):
+		return false
+	for token in [
+		"residential ",
+		"commercial building",
+		"multi-building",
+		"multilayer",
+		"supermarket ",
+		"restaurant ",
+		"shop ",
+		"cinema ",
+		"park "
+	]:
+		if lower_name.contains(token):
+			return false
+	return true
+
+func _build_player_state_hints(citizen: Citizen) -> Array[String]:
+	var hints: Array[String] = []
+	if citizen.needs.hunger >= 80.0:
+		hints.append("very hungry")
+	elif citizen.needs.hunger >= 60.0:
+		hints.append("noticeably hungry")
+	if citizen.needs.energy <= 15.0:
+		hints.append("exhausted")
+	elif citizen.needs.energy <= 35.0:
+		hints.append("tired")
+	if citizen.needs.fun <= 20.0:
+		hints.append("mentally drained")
+	if citizen.wallet.balance <= 25.0:
+		hints.append("very low on money")
+	if citizen.is_travelling():
+		hints.append("currently on the move")
+	if hints.is_empty():
+		hints.append("nothing urgent right now")
+	return hints
+
+func _describe_player_goal_summary(citizen: Citizen, action_label: String, target_building: Building, travelling: bool) -> String:
 	var clean_action := action_label.strip_edges()
 	if clean_action.is_empty():
 		clean_action = "idle"
 	if target_building != null:
+		var relation := _get_building_dialogue_relation(citizen, target_building)
+		var target_name := _get_building_dialogue_name(citizen, target_building, relation)
 		if clean_action == "GoTo":
-			return "going to %s" % target_building.building_name
-		return "%s at %s" % [clean_action, target_building.building_name]
+			match relation:
+				"home":
+					return "auf dem Weg nach Hause"
+				"workplace":
+					return "auf dem Weg zur Arbeit"
+				_:
+					return "auf dem Weg zu %s" % target_name
+		match clean_action:
+			"Sleep":
+				return "versucht bei %s zu ruhen" % target_name
+			"Work":
+				return "ist bei %s beschäftigt" % target_name
+			_:
+				return "%s bei %s" % [clean_action, target_name]
 	if travelling:
 		if clean_action == "GoTo":
-			return "travelling"
-		return "%s while travelling" % clean_action
+			return "unterwegs"
+		return "%s unterwegs" % clean_action
 	match clean_action:
 		"idle":
-			return "taking it easy"
+			return "lässt es ruhig angehen"
 		"Sleep":
-			return "trying to rest"
+			return "versucht sich auszuruhen"
 		"Work":
-			return "focused on work"
+			return "ist mit Arbeit beschäftigt"
 		_:
 			return clean_action
 
@@ -1294,12 +1504,72 @@ func _compress_player_dialog_session_memory(session: Dictionary) -> void:
 	var overflow := messages.size() - keep_last_turns
 	var summary_parts: Array[String] = []
 	for index in range(overflow):
-		var entry := messages[index] as Dictionary
-		summary_parts.append("%s: %s" % [str(entry.get("speaker", "")), str(entry.get("text", ""))])
+		var entry_variant: Variant = messages[index]
+		if entry_variant is not Dictionary:
+			continue
+		var summary_line := _summarize_player_dialog_memory_entry(entry_variant as Dictionary)
+		if summary_line.is_empty():
+			continue
+		if summary_parts.is_empty() or summary_parts[summary_parts.size() - 1] != summary_line:
+			summary_parts.append(summary_line)
 	var existing_summary := str(session.get("recent_summary", ""))
 	var appended_summary := " | ".join(summary_parts)
-	session["recent_summary"] = appended_summary if existing_summary.is_empty() else "%s | %s" % [existing_summary, appended_summary]
+	if not appended_summary.is_empty():
+		session["recent_summary"] = appended_summary if existing_summary.is_empty() else "%s | %s" % [existing_summary, appended_summary]
 	session["messages"] = messages.slice(overflow)
+
+func _summarize_player_dialog_memory_entry(entry: Dictionary) -> String:
+	var speaker := str(entry.get("speaker", "")).strip_edges()
+	var text := str(entry.get("text", "")).strip_edges()
+	var lower_text := text.to_lower()
+	if speaker.to_lower() == "player":
+		if _is_farewell_player_line(text):
+			return "player said goodbye"
+		if _player_line_flags_repetition(text):
+			return "player said the citizen was repeating"
+		if _contains_any_dialogue_token(lower_text, ["hallo", "hi", "hello", "hey", "moin", "servus"]):
+			return "player greeted the citizen"
+		if _contains_any_dialogue_token(lower_text, ["wie geht", "alles gut", "how are you", "you doing"]):
+			return "player asked how the citizen was doing"
+		if _contains_any_dialogue_token(lower_text, ["wo bist", "where are you"]):
+			return "player asked about the current location"
+		if _contains_any_dialogue_token(lower_text, ["wohin", "wo gehst", "where are you going", "where to"]):
+			return "player asked about the current destination"
+		if _contains_any_dialogue_token(lower_text, ["essen", "eat", "food", "restaurant", "hungry"]):
+			return "player asked about food or eating"
+		if _contains_any_dialogue_token(lower_text, ["wer bist", "wie heisst", "who are you", "your name"]):
+			return "player asked who the citizen is"
+		if _contains_any_dialogue_token(lower_text, ["deutsch", "german", "englisch", "english", "sprichst", "language"]):
+			return "player asked which language to use"
+		return "player asked a short question"
+	if speaker.is_empty():
+		return ""
+	if _contains_any_dialogue_token(lower_text, ["ich weiss nicht", "i don't know", "not sure"]):
+		return "citizen admitted uncertainty"
+	if _contains_any_dialogue_token(lower_text, ["tsch", "bye", "see you", "bis spaeter", "bis bald"]):
+		return "citizen said goodbye"
+	if _contains_any_dialogue_token(lower_text, ["bin", "feeling", "muede", "hungrig", "gestresst", "ruhig", "calm", "tired", "hungry", "stressed"]):
+		return "citizen answered about their current state"
+	if _contains_any_dialogue_token(lower_text, ["gehe", "heading", "weg", "going to"]):
+		return "citizen answered about their current plan"
+	return "citizen answered briefly"
+
+func _player_line_flags_repetition(text: String) -> bool:
+	var lower_text := text.to_lower().strip_edges()
+	if lower_text.is_empty():
+		return false
+	return _contains_any_dialogue_token(lower_text, [
+		"wiederhol",
+		"schon gesagt",
+		"hattest du schon gesagt",
+		"das hast du schon gesagt",
+		"gleiche gesagt",
+		"same thing",
+		"you said that already",
+		"you already said",
+		"repeat yourself",
+		"repeating yourself"
+	])
 
 func _apply_player_dialog_reply_to_session(session: Dictionary, citizen: Citizen, reply_result: Dictionary) -> void:
 	session["pending_reply"] = false
@@ -1316,6 +1586,10 @@ func _apply_player_dialog_reply_to_session(session: Dictionary, citizen: Citizen
 		"text": reply_text
 	})
 	session["messages"] = messages
+	session["last_npc_reply"] = reply_text
+	session["last_reply_source"] = str(reply_result.get("source", ""))
+	session["last_reply_model"] = str(reply_result.get("model", ""))
+	session["player_flagged_repetition"] = false
 	_compress_player_dialog_session_memory(session)
 	if bool(session.get("farewell_requested", false)):
 		session["auto_close_due_at_sec"] = _runtime_sec + _get_float("player_npc.farewell_auto_close_sec", 2.0)
@@ -1331,7 +1605,7 @@ func _apply_player_dialog_reply_to_session(session: Dictionary, citizen: Citizen
 	)
 
 func _build_player_fallback_reply(citizen: Citizen) -> String:
-	return "Sure. What's up?"
+	return "Klar. Was gibt's?"
 
 func _refresh_player_dialog_control_lock() -> void:
 	if selection_state_controller == null:
@@ -1342,6 +1616,15 @@ func _refresh_player_dialog_control_lock() -> void:
 		return
 	if selection_state_controller.has_method("set_player_control_input_locked"):
 		selection_state_controller.set_player_control_input_locked(locked)
+
+func _face_player_dialog_participants(citizen: Citizen) -> void:
+	if citizen == null:
+		return
+	var player_avatar: Citizen = selection_state_controller.get_player_avatar() if selection_state_controller != null and selection_state_controller.has_method("get_player_avatar") else null
+	if player_avatar == null or not is_instance_valid(player_avatar):
+		return
+	if citizen.has_method("face_position_horizontal"):
+		citizen.face_position_horizontal(player_avatar.global_position)
 
 func _has_active_player_dialog_session() -> bool:
 	for session_variant in _player_dialog_sessions.values():
@@ -1385,7 +1668,7 @@ func _on_player_dialogue_ready(request_key: String) -> void:
 
 func _log_player_dialog(citizen: Citizen, message: String) -> void:
 	var citizen_name := citizen.citizen_name if citizen != null else "Unknown"
-	SimLogger.log("[PlayerDialog %s] %s" % [citizen_name, message])
+	SimLogger.log_ai("[PlayerDialog %s] %s" % [citizen_name, message])
 
 func _load_config() -> Dictionary:
 	var defaults := {

@@ -15,6 +15,7 @@ var _building_panel_refresh_left: float = 0.0
 func setup(owner_ref: Node, world_ref: World) -> void:
 	owner_node = owner_ref
 	world = world_ref
+	_ensure_dialog_interact_input_action()
 	_build_debug_panel()
 
 func bind_selection_state(selection_state_controller_ref, hud_overlay_controller_ref) -> void:
@@ -128,12 +129,8 @@ func handle_input(event: InputEvent) -> bool:
 		search_results_list.visible = false
 		return true
 
-	if event is InputEventKey \
-		and event.pressed \
-		and not event.echo \
-		and event.keycode == KEY_F \
-		and not text_input_focused:
-		if _try_toggle_selected_citizen_dialog():
+	if event.is_action_pressed("dialog_interact") and not text_input_focused:
+		if _try_toggle_player_dialog_interaction():
 			_entity_clicked_this_frame = true
 			return true
 
@@ -213,21 +210,42 @@ func _refresh_debug_panel_dialog_ui() -> void:
 		return
 	debug_panel.update_citizen_dialog(conversation_manager.get_player_dialog_ui_state(selected_citizen))
 
-func _try_toggle_selected_citizen_dialog() -> bool:
+func _try_toggle_player_dialog_interaction() -> bool:
 	if selection_state_controller == null or conversation_manager == null:
 		return false
-	var selected_citizen: Citizen = selection_state_controller.get_selected_citizen()
-	if selected_citizen == null:
-		return false
-	var session: Dictionary = conversation_manager.get_player_dialog_session(selected_citizen)
-	if bool(session.get("active", false)):
-		conversation_manager.close_player_dialog(selected_citizen, "shortcut_closed")
+	var active_citizen: Citizen = conversation_manager.get_active_player_dialog_citizen() if conversation_manager.has_method("get_active_player_dialog_citizen") else null
+	if active_citizen != null:
+		conversation_manager.close_player_dialog(active_citizen, "shortcut_closed")
 		_refresh_debug_panel_dialog_ui()
 		return true
-	if not conversation_manager.can_start_player_dialog(selected_citizen):
+
+	var selected_citizen: Citizen = selection_state_controller.get_selected_citizen()
+	var target_citizen: Citizen = null
+	if conversation_manager.has_method("find_best_player_dialog_candidate"):
+		target_citizen = conversation_manager.find_best_player_dialog_candidate(selected_citizen)
+	else:
+		target_citizen = selected_citizen
+	if target_citizen == null:
 		return false
-	conversation_manager.begin_player_dialog(selected_citizen)
+	if selected_citizen != target_citizen and selection_state_controller.has_method("handle_citizen_clicked"):
+		selection_state_controller.handle_citizen_clicked(target_citizen)
+	if not conversation_manager.can_start_player_dialog(target_citizen):
+		return false
+	conversation_manager.begin_player_dialog(target_citizen)
 	_refresh_debug_panel_dialog_ui()
 	if debug_panel != null and debug_panel.has_method("focus_citizen_dialog_input"):
 		debug_panel.focus_citizen_dialog_input()
 	return true
+
+func _ensure_dialog_interact_input_action() -> void:
+	if InputMap.has_action("dialog_interact"):
+		for event in InputMap.action_get_events("dialog_interact"):
+			if event is InputEventKey and int(event.keycode) == KEY_F:
+				return
+	else:
+		InputMap.add_action("dialog_interact")
+
+	var key_event := InputEventKey.new()
+	key_event.keycode = KEY_F
+	key_event.physical_keycode = KEY_F
+	InputMap.action_add_event("dialog_interact", key_event)

@@ -8,6 +8,7 @@ const ActionScript = preload("res://Actions/Action.gd")
 const CitizenSimulationLodControllerScript = preload("res://Simulation/Citizens/CitizenSimulationLodController.gd")
 const CitizenConversationManagerScript = preload("res://Simulation/Conversation/CitizenConversationManager.gd")
 const LocalDialogueRuntimeServiceScript = preload("res://Simulation/AI/LocalDialogueRuntimeService.gd")
+const SimulationInteractionControllerScript = preload("res://Simulation/UI/SimulationInteractionController.gd")
 
 class MockSelectionStateController:
 	extends RefCounted
@@ -17,9 +18,13 @@ class MockSelectionStateController:
 	var player_avatar: Citizen = null
 	var player_control_active: bool = false
 	var player_control_input_locked: bool = false
+	var selected_building: Building = null
 
 	func get_selected_citizen() -> Citizen:
 		return selected_citizen if selected_citizen != null and is_instance_valid(selected_citizen) else null
+
+	func get_selected_building() -> Building:
+		return selected_building if selected_building != null and is_instance_valid(selected_building) else null
 
 	func get_controlled_citizen() -> Citizen:
 		return controlled_citizen if controlled_citizen != null and is_instance_valid(controlled_citizen) else null
@@ -39,6 +44,16 @@ class MockSelectionStateController:
 
 	func is_player_control_input_locked() -> bool:
 		return player_control_input_locked
+
+	func is_citizen_click_move_active() -> bool:
+		return false
+
+	func handle_citizen_clicked(citizen: Citizen) -> void:
+		selected_citizen = citizen
+		selected_building = null
+
+	func refresh_debug_panel_mode_controls() -> void:
+		pass
 
 var _checks_run: int = 0
 var _current_error: String = ""
@@ -64,6 +79,7 @@ func _run_all_tests() -> void:
 		"materialized_conversation_gets_template_lines_from_dialogue_runtime",
 		"player_dialog_session_gets_template_reply",
 		"player_dialog_ui_state_switches_to_active_session",
+		"dialog_interact_starts_nearest_player_dialog_and_faces_citizen",
 		"player_dialog_queue_full_uses_template_reply",
 		"player_dialog_prioritizes_over_warmup_queue",
 		"player_dialog_locks_player_input",
@@ -71,6 +87,10 @@ func _run_all_tests() -> void:
 		"player_dialog_farewell_auto_closes",
 		"player_dialog_template_farewell_reply_is_brief",
 		"player_dialog_payload_includes_grounded_world_facts",
+		"player_dialog_request_uses_json_profile_options",
+		"dialogue_runtime_prefers_local_profile_models",
+		"player_dialog_memory_summary_compacts_transcript",
+		"player_dialog_json_parser_avoids_verbatim_repeat",
 		"bark_mode_uses_topic_fallback_lines",
 		"player_dialog_respects_interactive_budget",
 		"dialogue_runtime_ui_state_prefers_setup_when_model_missing",
@@ -120,6 +140,8 @@ func _run_test(test_name: String) -> String:
 			return _test_player_dialog_session_gets_template_reply()
 		"player_dialog_ui_state_switches_to_active_session":
 			return _test_player_dialog_ui_state_switches_to_active_session()
+		"dialog_interact_starts_nearest_player_dialog_and_faces_citizen":
+			return _test_dialog_interact_starts_nearest_player_dialog_and_faces_citizen()
 		"player_dialog_queue_full_uses_template_reply":
 			return _test_player_dialog_queue_full_uses_template_reply()
 		"player_dialog_prioritizes_over_warmup_queue":
@@ -134,6 +156,14 @@ func _run_test(test_name: String) -> String:
 			return _test_player_dialog_template_farewell_reply_is_brief()
 		"player_dialog_payload_includes_grounded_world_facts":
 			return _test_player_dialog_payload_includes_grounded_world_facts()
+		"player_dialog_request_uses_json_profile_options":
+			return _test_player_dialog_request_uses_json_profile_options()
+		"dialogue_runtime_prefers_local_profile_models":
+			return _test_dialogue_runtime_prefers_local_profile_models()
+		"player_dialog_memory_summary_compacts_transcript":
+			return _test_player_dialog_memory_summary_compacts_transcript()
+		"player_dialog_json_parser_avoids_verbatim_repeat":
+			return _test_player_dialog_json_parser_avoids_verbatim_repeat()
 		"bark_mode_uses_topic_fallback_lines":
 			return _test_bark_mode_uses_topic_fallback_lines()
 		"player_dialog_respects_interactive_budget":
@@ -550,6 +580,52 @@ func _test_player_dialog_ui_state_switches_to_active_session() -> String:
 	_free_world(world)
 	return _current_error
 
+func _test_dialog_interact_starts_nearest_player_dialog_and_faces_citizen() -> String:
+	var world := _new_world()
+	var camera := _new_camera(Vector3(0.0, 10.0, 14.0), Vector3.ZERO)
+	var selection := MockSelectionStateController.new()
+	var player_avatar := _new_citizen("Player", Vector3.ZERO)
+	var far_selected := _new_citizen("Far Selected", Vector3(8.0, 0.0, 0.0))
+	var nearby_citizen := _new_citizen("Nearby Citizen", Vector3(1.5, 0.0, 0.5))
+	world.register_citizen(player_avatar)
+	world.register_citizen(far_selected)
+	world.register_citizen(nearby_citizen)
+	selection.player_avatar = player_avatar
+	selection.controlled_citizen = player_avatar
+	selection.player_control_active = true
+	selection.selected_citizen = far_selected
+	player_avatar.set_manual_control_enabled(true, world)
+
+	var manager = CitizenConversationManagerScript.new()
+	manager.setup(world, camera, selection)
+
+	var interaction_controller = SimulationInteractionControllerScript.new()
+	interaction_controller.setup(_harness_root, world)
+	interaction_controller.bind_selection_state(selection, null)
+	interaction_controller.bind_conversation_manager(manager)
+
+	var interact_event := InputEventAction.new()
+	interact_event.action = "dialog_interact"
+	interact_event.pressed = true
+
+	var handled := interaction_controller.handle_input(interact_event)
+	_expect(handled, "dialog interact action should be consumed when a nearby citizen can talk")
+	_expect_eq(selection.get_selected_citizen(), nearby_citizen, "dialog interact should retarget selection to the nearest talkable citizen")
+
+	var session := manager.get_player_dialog_session(nearby_citizen)
+	_expect(bool(session.get("active", false)), "dialog interact should start a player dialog for the nearest citizen")
+
+	var facing_dir := (player_avatar.global_position - nearby_citizen.global_position)
+	facing_dir.y = 0.0
+	var expected_yaw := atan2(-facing_dir.normalized().x, -facing_dir.normalized().z)
+	_expect(abs(wrapf(nearby_citizen.rotation.y - expected_yaw, -PI, PI)) < 0.01, "nearby citizen should face the player when the dialog starts")
+
+	if interaction_controller.debug_panel != null and is_instance_valid(interaction_controller.debug_panel):
+		interaction_controller.debug_panel.queue_free()
+	interaction_controller.debug_panel = null
+	_free_world(world)
+	return _current_error
+
 func _test_player_dialog_queue_full_uses_template_reply() -> String:
 	var runtime_service = LocalDialogueRuntimeServiceScript.new()
 	_harness_root.add_child(runtime_service)
@@ -796,12 +872,143 @@ func _test_player_dialog_payload_includes_grounded_world_facts() -> String:
 
 	_expect(str(payload.get("district", "")) != "", "player dialog payload should include the citizen district for grounding")
 	_expect_eq(str(payload.get("reply_language", "")), "german", "payload should infer German replies from German player input")
+	_expect_eq(str(payload.get("location", "")), "zu Hause", "player dialog payload should humanize the current home location")
 	var known_places: Variant = payload.get("known_places", [])
 	var nearby_places: Variant = payload.get("nearby_places", [])
 	_expect(known_places is Array and (known_places as Array).size() >= 2, "payload should include grounded known places")
 	_expect(nearby_places is Array and (nearby_places as Array).size() >= 2, "payload should include grounded nearby places")
+	if known_places is Array:
+		var known_names: Array[String] = []
+		for entry in known_places as Array:
+			if entry is Dictionary:
+				known_names.append(str((entry as Dictionary).get("name", "")))
+		_expect(known_names.has("mein Zuhause"), "known places should use a humanized home label")
+		_expect(not known_names.has("Residential Alpha"), "known places should not expose the raw technical home building name")
+		_expect(known_names.has("Cafe Nord"), "known places should still keep friendly custom place names")
 
 	_free_world(world)
+	return _current_error
+
+func _test_player_dialog_request_uses_json_profile_options() -> String:
+	var runtime_service := LocalDialogueRuntimeServiceScript.new()
+	_harness_root.add_child(runtime_service)
+	runtime_service.setup({
+		"startup": {
+			"auto_start_on_game_boot": false,
+			"disabled_in_headless": false
+		}
+	}, false)
+
+	var request := runtime_service._build_generate_request_parts("player_npc", "qwen2.5:3b", {
+		"name": "Kevin",
+		"reply_language": "german",
+		"last_turns": [
+			{
+				"speaker": "Player",
+				"text": "Wie geht's?"
+			}
+		]
+	})
+	var parsed: Variant = JSON.parse_string(str(request.get("body_json", "")))
+	_expect(parsed is Dictionary, "player dialog request body should be valid JSON")
+	if parsed is Dictionary:
+		var body := parsed as Dictionary
+		_expect_eq(str(body.get("format", "")), "json", "player dialog request should force JSON output")
+		var options: Variant = body.get("options", {})
+		_expect(options is Dictionary, "player dialog request should include generation options")
+		if options is Dictionary:
+			var typed_options := options as Dictionary
+			_expect_eq(int(typed_options.get("top_k", 0)), 30, "player dialog request should use the tuned top_k")
+			_expect_eq(int(typed_options.get("num_ctx", 0)), 2048, "player dialog request should use the tuned context window")
+			_expect_eq(int(typed_options.get("num_predict", 0)), 70, "player dialog request should use the tuned output length")
+			_expect(abs(float(typed_options.get("temperature", 0.0)) - 0.35) < 0.001, "player dialog request should use the tuned temperature")
+
+	runtime_service.queue_free()
+	return _current_error
+
+func _test_dialogue_runtime_prefers_local_profile_models() -> String:
+	var runtime_service := LocalDialogueRuntimeServiceScript.new()
+	_harness_root.add_child(runtime_service)
+	runtime_service.setup({
+		"startup": {
+			"auto_start_on_game_boot": false,
+			"disabled_in_headless": false
+		}
+	}, false)
+
+	runtime_service._available_models = {
+		"npc-player:latest": true,
+		"npc-overheard:latest": true,
+		"qwen2.5:3b": true
+	}
+	runtime_service._prepare_profile_models()
+
+	_expect_eq(str(runtime_service._models_by_profile.get("player_npc", "")), "npc-player:latest", "runtime should prefer the local player dialog profile model when available")
+	_expect_eq(str(runtime_service._models_by_profile.get("npc_npc", "")), "npc-overheard:latest", "runtime should prefer the local overheard dialog profile model when available")
+
+	runtime_service.queue_free()
+	return _current_error
+
+func _test_player_dialog_memory_summary_compacts_transcript() -> String:
+	var world := _new_world()
+	var camera := _new_camera(Vector3(0.0, 10.0, 14.0), Vector3.ZERO)
+	var selection := MockSelectionStateController.new()
+	var citizen := _new_citizen("Hannah", Vector3.ZERO)
+	world.register_citizen(citizen)
+
+	var manager = CitizenConversationManagerScript.new()
+	manager.setup(world, camera, selection)
+	var session := manager._ensure_player_dialog_session(citizen)
+	session["messages"] = [
+		{"speaker": "Player", "text": "Hallo"},
+		{"speaker": "Hannah", "text": "Hallo."},
+		{"speaker": "Player", "text": "Das hast du schon gesagt."},
+		{"speaker": "Hannah", "text": "Stimmt."},
+		{"speaker": "Player", "text": "Wohin gehst du?"},
+		{"speaker": "Hannah", "text": "Nach Hause."},
+		{"speaker": "Player", "text": "Und wo genau?"},
+		{"speaker": "Hannah", "text": "Zum Wohnhaus."},
+		{"speaker": "Player", "text": "Okay"}
+	]
+
+	manager._compress_player_dialog_session_memory(session)
+
+	var recent_summary := str(session.get("recent_summary", ""))
+	_expect(not recent_summary.is_empty(), "compressed session memory should produce a summary")
+	_expect(not recent_summary.contains("Player:"), "compressed session memory should not keep raw speaker transcript prefixes")
+	_expect(not recent_summary.contains("Das hast du schon gesagt."), "compressed session memory should not store raw repeated player text")
+	_expect(recent_summary.contains("player said the citizen was repeating"), "compressed session memory should keep the repetition signal")
+
+	_free_world(world)
+	return _current_error
+
+func _test_player_dialog_json_parser_avoids_verbatim_repeat() -> String:
+	var runtime_service := LocalDialogueRuntimeServiceScript.new()
+	_harness_root.add_child(runtime_service)
+	runtime_service.setup({
+		"startup": {
+			"auto_start_on_game_boot": false,
+			"disabled_in_headless": false
+		}
+	}, false)
+
+	var reply := runtime_service._normalize_player_reply_result("{\"reply\":\"Ich bin muede.\",\"mood\":\"tired\",\"intent\":\"answer_player\"}", {
+		"mood": "exhausted",
+		"current_goal": "going home",
+		"location": "street",
+		"reply_language": "german",
+		"last_npc_reply": "Ich bin muede.",
+		"last_turns": [
+			{
+				"speaker": "Player",
+				"text": "Wie geht's?"
+			}
+		]
+	})
+	_expect(str(reply.get("text", "")) != "Ich bin muede.", "player dialog parser should avoid reusing the exact last NPC reply")
+	_expect(not str(reply.get("text", "")).strip_edges().is_empty(), "player dialog parser should still produce a usable reply after de-duplication")
+
+	runtime_service.queue_free()
 	return _current_error
 
 func _test_bark_mode_uses_topic_fallback_lines() -> String:

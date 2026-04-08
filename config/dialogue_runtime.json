@@ -7,9 +7,42 @@
     "max_queue_size": 2,
     "request_timeout_sec": 20.0,
     "cancel_if_player_leaves_range": true,
-    "temperature": 0.7,
-    "num_predict": 96,
+    "temperature": 0.35,
+    "num_predict": 70,
     "force_template_mode": false
+  },
+  "runtime_profiles": {
+    "player_npc": {
+      "profile_model_name": "npc-player:latest",
+      "format": "json",
+      "force_reply_language": "german",
+      "options": {
+        "temperature": 0.35,
+        "top_p": 0.85,
+        "top_k": 30,
+        "min_p": 0.05,
+        "repeat_penalty": 1.12,
+        "repeat_last_n": 64,
+        "num_ctx": 2048,
+        "num_predict": 70,
+        "seed": 42
+      }
+    },
+    "npc_npc": {
+      "profile_model_name": "npc-overheard:latest",
+      "format": "json",
+      "options": {
+        "temperature": 0.25,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0.08,
+        "repeat_penalty": 1.1,
+        "repeat_last_n": 48,
+        "num_ctx": 1024,
+        "num_predict": 50,
+        "seed": 42
+      }
+    }
   },
   "startup": {
     "backend_kind": "ollama",
@@ -55,16 +88,25 @@
         "You are a local NPC in a city simulation.",
         "Stay in character.",
         "Only know what the citizen could reasonably know.",
-        "Reply in short natural dialogue.",
+        "Reply in short natural everyday dialogue.",
+        "Do not sound like a helpful assistant or customer support.",
+        "Do not ask how you can help unless the player explicitly asked for help.",
         "Do not narrate actions unless asked.",
-        "Do not invent landmarks, districts, shops, or routes.",
-        "If world facts are missing, admit uncertainty briefly."
+        "You may mention provided location, district, nearby places, and known places.",
+        "Do not invent additional landmarks, districts, shops, or routes.",
+        "Respect the citizen needs literally: higher hunger means more hungry, lower energy means more tired.",
+        "If world facts are missing, admit uncertainty briefly.",
+        "If the player says you are repeating yourself, acknowledge it briefly and answer in a different way.",
+        "All spoken dialogue must be in natural German.",
+        "Output valid JSON only."
       ],
       "input_fields": [
         "name",
         "personality",
         "mood",
         "needs",
+        "need_scale",
+        "state_hints",
         "wallet_balance",
         "budget_state",
         "location",
@@ -77,6 +119,7 @@
         "nearby_places",
         "job_context",
         "reply_language",
+        "player_flagged_repetition",
         "relationship_to_player",
         "grounding_rules",
         "recent_summary",
@@ -103,7 +146,7 @@
   },
   "output_rules": {
     "player_npc": {
-      "max_sentences": 3,
+      "max_sentences": 2,
       "max_words": 60,
       "allow_questions": true
     },

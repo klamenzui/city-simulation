@@ -340,9 +340,9 @@ func _refresh_hud_control_mode() -> void:
 		return
 	if controlled_citizen == get_player_avatar():
 		if is_player_dialog_input_locked():
-			hud_controller.refresh_control_mode(controlled_citizen, "PLAYER MODE", "Dialog active | Controls locked | F End")
+			hud_controller.refresh_control_mode(controlled_citizen, "PLAYER MODE", "Dialog active | Controls locked")
 			return
-		hud_controller.refresh_control_mode(controlled_citizen, "PLAYER MODE")
+		hud_controller.refresh_control_mode(controlled_citizen, "PLAYER MODE", "WASD Move | Space Jump | F Talk | Esc Exit")
 		return
 	hud_controller.refresh_control_mode(controlled_citizen)
 

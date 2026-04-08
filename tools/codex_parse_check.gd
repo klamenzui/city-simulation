@@ -23,6 +23,7 @@ const RESOURCES := [
 	"res://tools/codex_economy_test.gd",
 	"res://tools/codex_building_occupancy_test.gd",
 	"res://tools/codex_runtime_lod_conversation_test.gd",
+	"res://tools/codex_dialogue_probe.gd",
 ]
 
 const JSON_CONFIGS := [
@@ -32,6 +33,7 @@ const JSON_CONFIGS := [
 	"res://config/citizen_simulation_lod.json",
 	"res://config/conversation_rules.json",
 	"res://config/dialogue_runtime.json",
+	"res://tools/dialogue_probe_default.json",
 ]
 
 func _initialize() -> void:
