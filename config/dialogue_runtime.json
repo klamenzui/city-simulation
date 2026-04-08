@@ -5,7 +5,7 @@
     "backend": "ollama_or_llama_cpp",
     "max_parallel_jobs": 1,
     "max_queue_size": 2,
-    "request_timeout_sec": 20.0,
+    "request_timeout_sec": 8.0,
     "cancel_if_player_leaves_range": true,
     "temperature": 0.35,
     "num_predict": 70,
@@ -14,17 +14,17 @@
   "runtime_profiles": {
     "player_npc": {
       "profile_model_name": "npc-player:latest",
-      "format": "json",
+      "format": "",
       "force_reply_language": "german",
       "options": {
-        "temperature": 0.35,
-        "top_p": 0.85,
-        "top_k": 30,
+        "temperature": 0.25,
+        "top_p": 0.8,
+        "top_k": 24,
         "min_p": 0.05,
-        "repeat_penalty": 1.12,
-        "repeat_last_n": 64,
-        "num_ctx": 2048,
-        "num_predict": 70,
+        "repeat_penalty": 1.15,
+        "repeat_last_n": 48,
+        "num_ctx": 1024,
+        "num_predict": 40,
         "seed": 42
       }
     },
@@ -88,40 +88,26 @@
         "You are a local NPC in a city simulation.",
         "Stay in character.",
         "Only know what the citizen could reasonably know.",
-        "Reply in short natural everyday dialogue.",
+        "Reply with one short natural spoken answer in everyday German.",
         "Do not sound like a helpful assistant or customer support.",
-        "Do not ask how you can help unless the player explicitly asked for help.",
-        "Do not narrate actions unless asked.",
-        "You may mention provided location, district, nearby places, and known places.",
+        "No JSON. No speaker prefix. No narration.",
+        "Use only provided world facts and ordinary local knowledge.",
         "Do not invent additional landmarks, districts, shops, or routes.",
-        "Respect the citizen needs literally: higher hunger means more hungry, lower energy means more tired.",
-        "If world facts are missing, admit uncertainty briefly.",
-        "If the player says you are repeating yourself, acknowledge it briefly and answer in a different way.",
+        "Respect needs literally: high hunger means hungry, low energy means tired.",
         "All spoken dialogue must be in natural German.",
-        "Output valid JSON only."
+        "If unsure, briefly say you are not sure."
       ],
       "input_fields": [
         "name",
-        "personality",
         "mood",
         "needs",
-        "need_scale",
         "state_hints",
-        "wallet_balance",
-        "budget_state",
         "location",
-        "location_context",
         "district",
-        "weather",
         "current_goal",
-        "current_goal_context",
-        "known_places",
         "nearby_places",
-        "job_context",
         "reply_language",
         "player_flagged_repetition",
-        "relationship_to_player",
-        "grounding_rules",
         "recent_summary",
         "last_turns"
       ]
@@ -147,7 +133,7 @@
   "output_rules": {
     "player_npc": {
       "max_sentences": 2,
-      "max_words": 60,
+      "max_words": 24,
       "allow_questions": true
     },
     "npc_npc": {
@@ -158,8 +144,8 @@
   },
   "memory": {
     "player_npc": {
-      "keep_last_turns": 6,
-      "summarize_after_turns": 4,
+      "keep_last_turns": 4,
+      "summarize_after_turns": 3,
       "keep_world_facts_short": true
     },
     "npc_npc": {

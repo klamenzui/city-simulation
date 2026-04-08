@@ -695,7 +695,7 @@ func _build_prompt(profile: String, payload: Dictionary) -> String:
 		var field_name := str(raw_field)
 		if not payload.has(field_name):
 			continue
-		lines.append("%s: %s" % [field_name, _stringify_prompt_value(payload[field_name])])
+		lines.append("%s: %s" % [field_name, _stringify_prompt_field(profile, field_name, payload[field_name])])
 	if profile == "npc_npc":
 		lines.append("Output JSON with key lines, where lines is an array of 2 to 4 short dialogue lines.")
 		lines.append("Each line must use the format 'Name: text'.")
@@ -704,22 +704,97 @@ func _build_prompt(profile: String, payload: Dictionary) -> String:
 		if not reply_language.is_empty():
 			lines.append("Reply language: %s." % reply_language)
 		lines.append("Reply with one short natural answer in character.")
-		lines.append("Respond directly to the player's latest line.")
-		lines.append("Speak like a citizen in town, never like a helpful assistant or customer support.")
-		lines.append("Do not ask how you can help unless the player explicitly asked for help.")
-		lines.append("Use the provided location, district, nearby_places, and known_places naturally when relevant.")
-		lines.append("Do not invent additional rivers, landmarks, shops, buildings, districts, or routes.")
-		lines.append("Respect the need values literally: high hunger means very hungry, low energy means tired or exhausted.")
-		lines.append("If you do not know a place, say so briefly.")
-		lines.append("Never repeat your previous reply verbatim.")
-		lines.append("Keep the reply to at most 2 short sentences.")
+		lines.append("Answer only with the spoken reply text.")
+		lines.append("No JSON. No speaker name. No narration.")
 		if _player_dialog_has_farewell(payload):
 			lines.append("The player is ending the conversation. Reply with one brief goodbye only.")
 		if bool(payload.get("player_flagged_repetition", false)):
 			lines.append("The player said you are repeating yourself. Acknowledge that briefly once, then answer in a different way.")
 		lines.append("Do not just repeat mood or current_goal unless the player asked about them.")
-		lines.append("Return JSON only with this schema: {\"reply\":\"short text\",\"mood\":\"single_word\",\"intent\":\"single_word\"}.")
 	return "\n".join(lines)
+
+func _stringify_prompt_field(profile: String, field_name: String, value: Variant) -> String:
+	if profile == "player_npc":
+		match field_name:
+			"needs":
+				return _stringify_player_needs(value)
+			"state_hints":
+				return _stringify_prompt_list(value, 3)
+			"nearby_places":
+				return _stringify_prompt_places(value, 2)
+			"known_places":
+				return _stringify_prompt_places(value, 4)
+			"last_turns":
+				return _stringify_prompt_turns(value, 3)
+			"recent_summary":
+				return _truncate_prompt_text(str(value), 140)
+			"player_flagged_repetition":
+				return "yes" if bool(value) else "no"
+	if value is Dictionary or value is Array:
+		return JSON.stringify(value)
+	return str(value)
+
+func _stringify_player_needs(value: Variant) -> String:
+	if value is not Dictionary:
+		return str(value)
+	var typed_value := value as Dictionary
+	return "hunger=%s energy=%s fun=%s health=%s" % [
+		str(typed_value.get("hunger", "")),
+		str(typed_value.get("energy", "")),
+		str(typed_value.get("fun", "")),
+		str(typed_value.get("health", ""))
+	]
+
+func _stringify_prompt_list(value: Variant, max_items: int) -> String:
+	if value is not Array:
+		return str(value)
+	var parts: Array[String] = []
+	for item in value as Array:
+		var text := str(item).strip_edges()
+		if text.is_empty():
+			continue
+		parts.append(text)
+		if parts.size() >= max_items:
+			break
+	return ", ".join(parts)
+
+func _stringify_prompt_places(value: Variant, max_places: int) -> String:
+	var places := _extract_dialogue_places(value)
+	if places.is_empty():
+		return "-"
+	var parts: Array[String] = []
+	for place in places:
+		var name := str(place.get("name", "")).strip_edges()
+		if name.is_empty():
+			continue
+		parts.append(name)
+		if parts.size() >= max_places:
+			break
+	return ", ".join(parts) if not parts.is_empty() else "-"
+
+func _stringify_prompt_turns(value: Variant, max_turns: int) -> String:
+	if value is not Array:
+		return str(value)
+	var raw_turns := value as Array
+	var start_index := maxi(raw_turns.size() - max_turns, 0)
+	var parts: Array[String] = []
+	for idx in range(start_index, raw_turns.size()):
+		var turn_variant: Variant = raw_turns[idx]
+		if turn_variant is not Dictionary:
+			continue
+		var turn := turn_variant as Dictionary
+		var speaker := str(turn.get("speaker", "")).strip_edges()
+		var text := str(turn.get("text", "")).replace("\r", " ").replace("\n", " ").strip_edges()
+		if speaker.is_empty() or text.is_empty():
+			continue
+		parts.append("%s: %s" % [speaker, text])
+	return " | ".join(parts) if not parts.is_empty() else "-"
+
+func _truncate_prompt_text(text: String, max_length: int) -> String:
+	var normalized := text.replace("\r", " ").replace("\n", " ").strip_edges()
+	if normalized.length() <= max_length:
+		return normalized
+	return normalized.substr(0, max_length).strip_edges()
 
 func _stringify_prompt_value(value: Variant) -> String:
 	if value is Dictionary or value is Array:
@@ -1088,7 +1163,7 @@ func _load_config(config_override: Dictionary) -> Dictionary:
 			"backend": "ollama_or_llama_cpp",
 			"max_parallel_jobs": 1,
 			"max_queue_size": 2,
-			"request_timeout_sec": 20.0,
+			"request_timeout_sec": 8.0,
 			"cancel_if_player_leaves_range": true,
 			"temperature": 0.35,
 			"num_predict": 70,
@@ -1097,17 +1172,17 @@ func _load_config(config_override: Dictionary) -> Dictionary:
 		"runtime_profiles": {
 			"player_npc": {
 				"profile_model_name": "npc-player:latest",
-				"format": "json",
+				"format": "",
 				"force_reply_language": "german",
 				"options": {
-					"temperature": 0.35,
-					"top_p": 0.85,
-					"top_k": 30,
+					"temperature": 0.25,
+					"top_p": 0.8,
+					"top_k": 24,
 					"min_p": 0.05,
-					"repeat_penalty": 1.12,
-					"repeat_last_n": 64,
-					"num_ctx": 2048,
-					"num_predict": 70,
+					"repeat_penalty": 1.15,
+					"repeat_last_n": 48,
+					"num_ctx": 1024,
+					"num_predict": 40,
 					"seed": 42
 				}
 			},
@@ -1162,40 +1237,26 @@ func _load_config(config_override: Dictionary) -> Dictionary:
 					"You are a local NPC in a city simulation.",
 					"Stay in character.",
 					"Only know what the citizen could reasonably know.",
-					"Reply in short natural everyday dialogue.",
+					"Reply with one short natural spoken answer in everyday German.",
 					"Do not sound like a helpful assistant or customer support.",
-					"Do not ask how you can help unless the player explicitly asked for help.",
-					"Do not narrate actions unless asked.",
-					"You may mention provided location, district, nearby places, and known places.",
+					"No JSON. No speaker prefix. No narration.",
+					"Use only provided world facts and ordinary local knowledge.",
 					"Do not invent additional landmarks, districts, shops, or routes.",
-					"Respect the citizen needs literally: higher hunger means more hungry, lower energy means more tired.",
-					"If world facts are missing, admit uncertainty briefly.",
-					"If the player says you are repeating yourself, acknowledge it briefly and answer in a different way.",
+					"Respect needs literally: high hunger means hungry, low energy means tired.",
 					"All spoken dialogue must be in natural German.",
-					"Output valid JSON only."
+					"If unsure, briefly say you are not sure."
 				],
 				"input_fields": [
 					"name",
-					"personality",
 					"mood",
 					"needs",
-					"need_scale",
 					"state_hints",
-					"wallet_balance",
-					"budget_state",
 					"location",
-					"location_context",
 					"district",
-					"weather",
 					"current_goal",
-					"current_goal_context",
-					"known_places",
 					"nearby_places",
-					"job_context",
 					"reply_language",
 					"player_flagged_repetition",
-					"relationship_to_player",
-					"grounding_rules",
 					"recent_summary",
 					"last_turns"
 				]
@@ -1208,11 +1269,22 @@ func _load_config(config_override: Dictionary) -> Dictionary:
 		"output_rules": {
 			"player_npc": {
 				"max_sentences": 2,
-				"max_words": 60
+				"max_words": 24
 			},
 			"npc_npc": {
 				"max_lines": 4,
 				"max_words_per_line": 18
+			}
+		},
+		"memory": {
+			"player_npc": {
+				"keep_last_turns": 4,
+				"summarize_after_turns": 3,
+				"keep_world_facts_short": true
+			},
+			"npc_npc": {
+				"cache_generated_block": true,
+				"reuse_until_topic_changes": true
 			}
 		},
 		"fallback": {

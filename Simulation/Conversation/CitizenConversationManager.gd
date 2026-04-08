@@ -1085,9 +1085,11 @@ func _build_player_dialogue_payload(citizen: Citizen, session: Dictionary) -> Di
 		if message is not Dictionary:
 			continue
 		recent_turns.append((message as Dictionary).duplicate(true))
+	if recent_turns.size() > 3:
+		recent_turns = recent_turns.slice(recent_turns.size() - 3)
 	var current_goal_context := _build_player_goal_context(citizen)
-	var nearby_places := _build_player_nearby_places(citizen)
-	var known_places := _build_player_known_places(citizen)
+	var nearby_places := _build_player_nearby_places(citizen, 2)
+	var known_places := _build_player_known_places(citizen, 4)
 	return {
 		"name": citizen.citizen_name,
 		"personality": _describe_player_dialog_personality(citizen),
@@ -1176,7 +1178,7 @@ func _build_player_job_context(citizen: Citizen) -> Dictionary:
 		"preferred_workplace": _get_building_dialogue_name(citizen, citizen.job.preferred_workplace, "preferred_workplace")
 	}
 
-func _build_player_known_places(citizen: Citizen) -> Array:
+func _build_player_known_places(citizen: Citizen, max_places: int = 4) -> Array:
 	var entries: Array = []
 	var known_targets := [
 		{"building": citizen.home, "relation": "home"},
@@ -1197,9 +1199,12 @@ func _build_player_known_places(citizen: Citizen) -> Array:
 		var fact := _build_building_dialogue_fact(citizen, building, citizen.global_position, false, relation)
 		if not fact.is_empty():
 			entries.append(fact)
-	return _dedupe_dialogue_place_facts(entries)
+	var deduped := _dedupe_dialogue_place_facts(entries)
+	if deduped.size() > max_places:
+		deduped.resize(max_places)
+	return deduped
 
-func _build_player_nearby_places(citizen: Citizen, max_places: int = 4) -> Array:
+func _build_player_nearby_places(citizen: Citizen, max_places: int = 2) -> Array:
 	var entries: Array = []
 	if world == null or citizen == null:
 		return entries
