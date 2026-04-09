@@ -13,6 +13,7 @@ const ShopScene = preload("res://Scenes/Shop.tscn")
 const CinemaScene = preload("res://Scenes/Cinema.tscn")
 const UniversityScene = preload("res://Scenes/University.tscn")
 const CityHallScene = preload("res://Scenes/CityHall.tscn")
+const GasStationScene = preload("res://Scenes/CityBuildings/services/services_004_b6d7b717.tscn")
 const FarmScene = preload("res://Scenes/Farm.tscn")
 const FactoryScene = preload("res://Scenes/Factory.tscn")
 
@@ -81,6 +82,8 @@ static func _spawn_missing_core_buildings(root: Node3D) -> void:
 		_spawn_if_missing(root, "University", UniversityScene, Vector3(-14.0, 0.0, 10.0))
 	if not _has_building_type(root, "city_hall"):
 		_spawn_if_missing(root, "CityHall", CityHallScene, Vector3(1.0, 0.0, 15.0))
+	if not _has_building_type(root, "gas_station"):
+		_spawn_if_missing(root, "GasStation", GasStationScene, Vector3(20.0, 0.0, -4.0))
 	if not _has_building_type(root, "farm"):
 		_spawn_if_missing(root, "Farm", FarmScene, Vector3(-24.0, 0.0, 14.0))
 	if not _has_building_type(root, "factory"):
@@ -112,6 +115,8 @@ static func _building_matches_type(building: Building, type_id: String) -> bool:
 			return building is University or building.building_type == BuildingScript.BuildingType.UNIVERSITY
 		"city_hall":
 			return building is CityHall or building.building_type == BuildingScript.BuildingType.CITY_HALL
+		"gas_station":
+			return building is GasStation or building.building_type == BuildingScript.BuildingType.GAS_STATION
 		"farm":
 			return building is Farm or building.building_type == BuildingScript.BuildingType.FARM
 		"factory":

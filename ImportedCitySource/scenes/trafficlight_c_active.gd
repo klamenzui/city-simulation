@@ -1,4 +1,5 @@
 extends Node3D
+
 enum LightColors {
 	GREEN,
 	YELLOW,
@@ -87,3 +88,18 @@ func _get_phase_duration(current_light: LightColors) -> float:
 			return YELLOW_DURATION_SEC
 		_:
 			return RED_DURATION_SEC
+
+func get_current_light_color() -> int:
+	return int(light_color)
+
+func get_current_light_name() -> String:
+	match light_color:
+		LightColors.GREEN:
+			return "green"
+		LightColors.YELLOW:
+			return "yellow"
+		_:
+			return "red"
+
+func is_pedestrian_crossing_allowed() -> bool:
+	return light_color == LightColors.GREEN

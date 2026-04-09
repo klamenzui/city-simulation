@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=4 uid="uid://d180o3e5em11x"]
+[gd_scene format=4 uid="uid://d180o3e5em11x"]
 
 [ext_resource type="Script" uid="uid://bj48dr0vegu14" path="res://Entities/Buildings/ResidentialBuilding.gd" id="1_x4oxa"]
 [ext_resource type="PackedScene" uid="uid://dx57medmq3ji" path="res://ImportedCitySource/assets/city/base.gltf" id="2_5qmiw"]
@@ -43,6 +43,9 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_ht4oy")
 
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_x4oxa"]
+data = PackedVector3Array(-1, 0, -0.9, -1, 0.099999994, -1, -1, 0.099999994, -0.9, -1, 0, -0.9, -1, 0, -1, -1, 0.099999994, -1, 0.9, 0, -1, 1, 0.099999994, -1, 0.9, 0.099999994, -1, 0.9, 0, -1, 1, 0, -1, 1, 0.099999994, -1, 1, 0, 0.9, 1, 0.099999994, 1, 1, 0.099999994, 0.9, 1, 0, 0.9, 1, 0, 1, 1, 0.099999994, 1, -0.9, 0, 1, -1, 0.099999994, 1, -0.9, 0.099999994, 1, -0.9, 0, 1, -1, 0, 1, -1, 0.099999994, 1, 0.9, 0, 0.9, 1, 0, 1, 1, 0, 0.9, 0.9, 0, 0.9, 0.9, 0, 1, 1, 0, 1, 0.9, 0, 0.9, -0.9, 0, 1, 0.9, 0, 1, 0.9, 0, -0.9, 0.9, 0, 0.9, 1, 0, 0.9, 0.9, 0, -0.9, 1, 0, 0.9, 1, 0, -0.9, 0.9, 0, 0.9, -0.9, 0, 0.9, -0.9, 0, 1, 0.9, 0, -0.9, -0.9, 0, 0.9, 0.9, 0, 0.9, -1, 0, 0.9, -0.9, 0, 1, -0.9, 0, 0.9, -1, 0, 0.9, -1, 0, 1, -0.9, 0, 1, -0.9, 0, -0.9, -1, 0, 0.9, -0.9, 0, 0.9, 0.9, 0, -0.9, -0.9, 0, -0.9, -0.9, 0, 0.9, -0.9, 0, -0.9, -1, 0, -0.9, -1, 0, 0.9, -1, 0, -1, -1, 0, -0.9, -0.9, 0, -0.9, -1, 0, -1, -0.9, 0, -0.9, -0.9, 0, -1, 0.9, 0, -1, -0.9, 0, -1, -0.9, 0, -0.9, 0.9, 0, -1, -0.9, 0, -0.9, 0.9, 0, -0.9, 0.9, 0, -1, 0.9, 0, -0.9, 1, 0, -0.9, 0.9, 0, -1, 1, 0, -0.9, 1, 0, -1, -0.9, 0.099999994, 0.9, -1, 0.099999994, 1, -1, 0.099999994, 0.9, -0.9, 0.099999994, 0.9, -0.9, 0.099999994, 1, -1, 0.099999994, 1, 1, 0.099999994, 0.9, 0.9, 0.099999994, 1, 0.9, 0.099999994, 0.9, 1, 0.099999994, 0.9, 1, 0.099999994, 1, 0.9, 0.099999994, 1, 0.9, 0.099999994, 1, -0.9, 0, 1, -0.9, 0.099999994, 1, 0.9, 0.099999994, 1, 0.9, 0, 1, -0.9, 0, 1, 1, 0, 1, 0.9, 0.099999994, 1, 1, 0.099999994, 1, 1, 0, 1, 0.9, 0, 1, 0.9, 0.099999994, 1, -0.9, 0.099999994, -1, 0.9, 0, -1, 0.9, 0.099999994, -1, -0.9, 0.099999994, -1, -0.9, 0, -1, 0.9, 0, -1, 0.9, 0.099999994, -1, -0.9, 0.099999994, -0.9, -0.9, 0.099999994, -1, 0.9, 0.099999994, -1, 0.9, 0.099999994, -0.9, -0.9, 0.099999994, -0.9, 0.9, 0.099999994, -0.9, 1, 0.099999994, -0.9, 1, 0.099999994, 0.9, 0.9, 0.099999994, -0.9, 1, 0.099999994, 0.9, 0.9, 0.099999994, 0.9, -0.9, 0.099999994, -0.9, -1, 0.099999994, 0.9, -1, 0.099999994, -0.9, -0.9, 0.099999994, -0.9, -0.9, 0.099999994, 0.9, -1, 0.099999994, 0.9, 0.9, 0.099999994, 1, -0.9, 0.099999994, 0.9, 0.9, 0.099999994, 0.9, 0.9, 0.099999994, 1, -0.9, 0.099999994, 1, -0.9, 0.099999994, 0.9, -1, 0, -1, -0.9, 0.099999994, -1, -1, 0.099999994, -1, -1, 0, -1, -0.9, 0, -1, -0.9, 0.099999994, -1, -0.9, 0.099999994, -0.9, 0.9, 0.099999994, 0.9, -0.9, 0.099999994, 0.9, -0.9, 0.099999994, -0.9, 0.9, 0.099999994, -0.9, 0.9, 0.099999994, 0.9, 1, 0.099999994, -1, 0.9, 0.099999994, -0.9, 0.9, 0.099999994, -1, 1, 0.099999994, -1, 1, 0.099999994, -0.9, 0.9, 0.099999994, -0.9, -0.9, 0.099999994, -1, -1, 0.099999994, -0.9, -1, 0.099999994, -1, -0.9, 0.099999994, -1, -0.9, 0.099999994, -0.9, -1, 0.099999994, -0.9, 1, 0, -1, 1, 0.099999994, -0.9, 1, 0.099999994, -1, 1, 0, -1, 1, 0, -0.9, 1, 0.099999994, -0.9, 1, 0.099999994, -0.9, 1, 0, 0.9, 1, 0.099999994, 0.9, 1, 0.099999994, -0.9, 1, 0, -0.9, 1, 0, 0.9, -1, 0, 1, -1, 0.099999994, 0.9, -1, 0.099999994, 1, -1, 0, 1, -1, 0, 0.9, -1, 0.099999994, 0.9, -1, 0.099999994, 0.9, -1, 0, -0.9, -1, 0.099999994, -0.9, -1, 0.099999994, 0.9, -1, 0, 0.9, -1, 0, -0.9)
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_mxrdq"]
 resource_name = "colormap"
 cull_mode = 2
@@ -83,23 +86,28 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_l8k1c")
 
-[node name="multilayer_residential_06" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_multilayer", "residential"]]
+[node name="multilayer_residential_06" type="Node3D" unique_id=786726176 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_multilayer", "residential"]]
 script = ExtResource("1_x4oxa")
 building_name = "Residential 06 (Multilayer)"
 building_type = 1
 entrance = NodePath("Entrance")
 
-[node name="base2" parent="." instance=ExtResource("2_5qmiw")]
+[node name="base2" parent="." unique_id=84804629 instance=ExtResource("2_5qmiw")]
 
-[node name="base2_mesh" type="MeshInstance3D" parent="base2"]
+[node name="base2_mesh" type="MeshInstance3D" parent="base2" unique_id=656264989]
 mesh = SubResource("ArrayMesh_rw05s")
 skeleton = NodePath("")
 
-[node name="building-sample-tower-b2" parent="." instance=ExtResource("4_uowhu")]
+[node name="StaticBody3D" type="StaticBody3D" parent="base2/base2_mesh" unique_id=1102538524]
 
-[node name="building-sample-tower-b2_mesh" type="MeshInstance3D" parent="building-sample-tower-b2"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="base2/base2_mesh/StaticBody3D" unique_id=43986791]
+shape = SubResource("ConcavePolygonShape3D_x4oxa")
+
+[node name="building-sample-tower-b2" parent="." unique_id=1735082996 instance=ExtResource("4_uowhu")]
+
+[node name="building-sample-tower-b2_mesh" type="MeshInstance3D" parent="building-sample-tower-b2" unique_id=1354981666]
 mesh = SubResource("ArrayMesh_r2lf2")
 skeleton = NodePath("")
 
-[node name="Entrance" type="Node3D" parent="."]
+[node name="Entrance" type="Node3D" parent="." unique_id=80913411]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
