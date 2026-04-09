@@ -8,6 +8,10 @@ const SOFT_OBSTACLE_KEYWORDS := [
 	"streetlight",
 	"street_light",
 ]
+const FORWARD_SENSOR_HARD_PENALTY := 28.0
+const FORWARD_SENSOR_CITIZEN_PENALTY := 18.0
+const FORWARD_SENSOR_SOFT_PENALTY := 10.0
+const FORWARD_SENSOR_QUERY_MAX_RESULTS := 12
 
 var _clearance_shape := SphereShape3D.new()
 
@@ -58,21 +62,38 @@ func refine_move_direction(citizen: Citizen, current_dir: Vector3, desired_dir: 
 		return planar_current
 
 	var current_context_crosswalk: bool = citizen._is_crosswalk_route_context()
+	var candidates: Array[Vector3] = _build_refine_candidates(citizen, planar_current, desired_dir)
+	var forward_sensor_hits: Array = _collect_forward_sensor_hits(citizen)
+	if not forward_sensor_hits.is_empty():
+		var current_forward_score: float = _score_forward_sensor_candidate(
+			citizen,
+			planar_current,
+			forward_sensor_hits,
+			current_context_crosswalk
+		)
+		var best_forward_dir: Vector3 = planar_current
+		var best_forward_score: float = current_forward_score
+		for candidate in candidates:
+			var normalized_candidate: Vector3 = _normalize_planar(candidate)
+			if normalized_candidate == Vector3.ZERO:
+				continue
+			if not current_context_crosswalk and not citizen._is_move_surface_allowed(normalized_candidate, false):
+				continue
+			var score := _score_forward_sensor_candidate(
+				citizen,
+				normalized_candidate,
+				forward_sensor_hits,
+				current_context_crosswalk
+			)
+			if score < best_forward_score:
+				best_forward_score = score
+				best_forward_dir = normalized_candidate
+		if best_forward_dir != planar_current and best_forward_score + 0.05 < current_forward_score:
+			return best_forward_dir
+
 	var current_score: float = _score_direction(citizen, planar_current, current_context_crosswalk)
 	if current_score < 1000.0:
 		return planar_current
-
-	var candidates: Array[Vector3] = []
-	_append_candidate(candidates, planar_current)
-	_append_candidate(candidates, desired_dir)
-	_append_candidate(candidates, citizen._ray_move_direction(citizen._obstacle_ray_left))
-	_append_candidate(candidates, citizen._ray_move_direction(citizen._obstacle_ray_right))
-	_append_candidate(candidates, citizen._rotate_planar_direction(desired_dir, 18.0))
-	_append_candidate(candidates, citizen._rotate_planar_direction(desired_dir, -18.0))
-	_append_candidate(candidates, citizen._rotate_planar_direction(desired_dir, 32.0))
-	_append_candidate(candidates, citizen._rotate_planar_direction(desired_dir, -32.0))
-	_append_candidate(candidates, citizen._blend_move_direction(desired_dir, citizen._ray_move_direction(citizen._obstacle_ray_left), 0.45))
-	_append_candidate(candidates, citizen._blend_move_direction(desired_dir, citizen._ray_move_direction(citizen._obstacle_ray_right), 0.45))
 
 	var best_dir: Vector3 = planar_current
 	var best_score: float = current_score
@@ -94,6 +115,74 @@ func score_move_direction(citizen: Citizen, direction: Vector3, crosswalk_contex
 	if citizen == null or normalized_direction == Vector3.ZERO:
 		return INF
 	return _score_direction(citizen, normalized_direction, crosswalk_context)
+
+func _build_refine_candidates(citizen: Citizen, current_dir: Vector3, desired_dir: Vector3) -> Array[Vector3]:
+	var candidates: Array[Vector3] = []
+	if citizen == null:
+		return candidates
+	_append_candidate(candidates, current_dir)
+	_append_candidate(candidates, desired_dir)
+	_append_candidate(candidates, citizen._ray_move_direction(citizen._obstacle_ray_left))
+	_append_candidate(candidates, citizen._ray_move_direction(citizen._obstacle_ray_right))
+	_append_candidate(candidates, citizen._rotate_planar_direction(desired_dir, 18.0))
+	_append_candidate(candidates, citizen._rotate_planar_direction(desired_dir, -18.0))
+	_append_candidate(candidates, citizen._rotate_planar_direction(desired_dir, 32.0))
+	_append_candidate(candidates, citizen._rotate_planar_direction(desired_dir, -32.0))
+	_append_candidate(
+		candidates,
+		citizen._blend_move_direction(desired_dir, citizen._ray_move_direction(citizen._obstacle_ray_left), 0.45)
+	)
+	_append_candidate(
+		candidates,
+		citizen._blend_move_direction(desired_dir, citizen._ray_move_direction(citizen._obstacle_ray_right), 0.45)
+	)
+	return candidates
+
+func _score_forward_sensor_candidate(
+	citizen: Citizen,
+	direction: Vector3,
+	hits: Array,
+	crosswalk_context: bool
+) -> float:
+	var normalized_direction := _normalize_planar(direction)
+	if citizen == null or normalized_direction == Vector3.ZERO:
+		return INF
+
+	var score := _score_direction(citizen, normalized_direction, crosswalk_context)
+	if score >= 1000.0:
+		return score
+
+	var sensor_range := _get_forward_sensor_range(citizen)
+	if sensor_range <= 0.01:
+		return score
+
+	for hit in hits:
+		var hit_data: Dictionary = hit as Dictionary
+		var collider: Variant = hit_data.get("collider", null)
+		var info := _classify_collider(citizen, collider)
+		var penalty_weight := _get_forward_sensor_kind_penalty(str(info.get("kind", "clear")))
+		if penalty_weight <= 0.0:
+			continue
+
+		var obstacle_pos := _get_collider_position(collider)
+		var to_obstacle := obstacle_pos - citizen.global_position
+		to_obstacle.y = 0.0
+		var distance := to_obstacle.length()
+		if distance <= 0.001:
+			continue
+
+		var obstacle_dir := to_obstacle / distance
+		var alignment := normalized_direction.dot(obstacle_dir)
+		if alignment <= citizen.forward_avoidance_min_alignment:
+			continue
+
+		var closeness := 1.0 - clampf(distance / sensor_range, 0.0, 1.0)
+		if closeness <= 0.0:
+			continue
+
+		score += penalty_weight * closeness * alignment
+
+	return score
 
 func _score_direction(citizen: Citizen, direction: Vector3, crosswalk_context: bool) -> float:
 	var hits: Array = _collect_clearance_hits(citizen, direction)
@@ -135,6 +224,26 @@ func _collect_clearance_hits(citizen: Citizen, direction: Vector3) -> Array:
 
 	return citizen.get_world_3d().direct_space_state.intersect_shape(query, 8)
 
+func _collect_forward_sensor_hits(citizen: Citizen) -> Array:
+	if citizen == null or not citizen.forward_avoidance_enabled:
+		return []
+	if citizen.get_world_3d() == null:
+		return []
+	if citizen._forward_avoidance_shape == null or citizen._forward_avoidance_shape.shape == null:
+		return []
+	if citizen._forward_avoidance_shape.disabled:
+		return []
+
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = citizen._forward_avoidance_shape.shape
+	query.transform = citizen._forward_avoidance_shape.global_transform
+	query.collision_mask = _get_forward_sensor_collision_mask(citizen)
+	query.collide_with_areas = false
+	query.collide_with_bodies = true
+	query.exclude = [citizen.get_rid()]
+
+	return citizen.get_world_3d().direct_space_state.intersect_shape(query, FORWARD_SENSOR_QUERY_MAX_RESULTS)
+
 func _classify_collider(citizen: Citizen, collider: Variant) -> Dictionary:
 	if collider == null or collider == citizen:
 		return {"kind": "clear"}
@@ -161,6 +270,51 @@ func _get_clearance_collision_mask(citizen: Citizen) -> int:
 	if citizen._obstacle_ray_forward != null and citizen._obstacle_ray_forward.collision_mask != 0:
 		return citizen._obstacle_ray_forward.collision_mask
 	return citizen.collision_mask
+
+func _get_forward_sensor_collision_mask(citizen: Citizen) -> int:
+	if citizen == null:
+		return 0
+	if citizen._forward_avoidance_area != null and citizen._forward_avoidance_area.collision_mask != 0:
+		return citizen._forward_avoidance_area.collision_mask
+	return _get_clearance_collision_mask(citizen)
+
+func _get_forward_sensor_range(citizen: Citizen) -> float:
+	if citizen == null:
+		return 0.0
+
+	var fallback := maxf(
+		citizen.obstacle_probe_length + citizen.obstacle_clearance_probe_distance + citizen.obstacle_clearance_radius,
+		0.45
+	)
+	if citizen._forward_avoidance_shape == null or citizen._forward_avoidance_shape.shape == null:
+		return fallback
+
+	var offset := absf(citizen._forward_avoidance_shape.position.z)
+	var shape: Shape3D = citizen._forward_avoidance_shape.shape
+	if shape is CylinderShape3D:
+		return maxf(offset + (shape as CylinderShape3D).radius, fallback)
+	if shape is CapsuleShape3D:
+		return maxf(offset + (shape as CapsuleShape3D).radius, fallback)
+	if shape is SphereShape3D:
+		return maxf(offset + (shape as SphereShape3D).radius, fallback)
+	if shape is BoxShape3D:
+		return maxf(offset + (shape as BoxShape3D).size.z * 0.5, fallback)
+	return fallback
+
+func _get_forward_sensor_kind_penalty(kind: String) -> float:
+	match kind:
+		"citizen":
+			return FORWARD_SENSOR_CITIZEN_PENALTY
+		"soft_obstacle":
+			return FORWARD_SENSOR_SOFT_PENALTY
+		"solid":
+			return FORWARD_SENSOR_HARD_PENALTY
+	return 0.0
+
+func _get_collider_position(collider: Variant) -> Vector3:
+	if collider is Node3D:
+		return (collider as Node3D).global_position
+	return Vector3.ZERO
 
 func _is_target_building_node(citizen: Citizen, node: Node) -> bool:
 	if citizen == null or node == null or citizen._travel_target_building == null:
