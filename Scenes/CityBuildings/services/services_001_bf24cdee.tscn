@@ -1,6 +1,6 @@
 [gd_scene format=4 uid="uid://bj5iflrv1q80d"]
 
-[ext_resource type="Script" path="res://Entities/Buildings/GasStation.gd" id="1_wpd31"]
+[ext_resource type="Script" uid="uid://bxedem5gnq68r" path="res://Entities/Buildings/GasStation.gd" id="1_wpd31"]
 [ext_resource type="Texture2D" uid="uid://b3b5vu8lonkcv" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="2_7m4lt"]
 [ext_resource type="Texture2D" uid="uid://bia0tqi4a0i3l" path="res://ImportedCitySource/assets/buildings/Cartoon Buildings/Texture/Tex_color.png" id="2_x3xrj"]
 
@@ -289,4 +289,4 @@ transform = Transform3D(1, 0, 3.55271e-15, 0, 1, 0, -3.55271e-15, 0, 1, 0, 0, 0)
 shape = SubResource("ConcavePolygonShape3D_m6jdu")
 
 [node name="Entrance" type="Node3D" parent="." unique_id=1618720360]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.593225, 0.06, 1.5401754)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.78389215, 0.06, -2.1934733)

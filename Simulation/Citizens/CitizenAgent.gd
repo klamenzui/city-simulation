@@ -1,9 +1,12 @@
 extends RefCounted
 class_name CitizenAgent
 
+const CrosswalkAwarenessScript = preload("res://Simulation/Citizens/CitizenCrosswalkAwareness.gd")
 const NeedsComponentScript = preload("res://Simulation/Citizens/CitizenNeedsComponent.gd")
 const LocomotionScript = preload("res://Simulation/Citizens/CitizenLocomotion.gd")
+const ObstacleAvoidanceScript = preload("res://Simulation/Citizens/CitizenObstacleAvoidance.gd")
 const PlannerScript = preload("res://Simulation/Citizens/CitizenPlanner.gd")
+const QueryResolverScript = preload("res://Simulation/Citizens/CitizenQueryResolver.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
 const RelaxAtBenchActionScript = preload("res://Actions/RelaxAtBenchAction.gd")
 const RelaxAtParkActionScript = preload("res://Actions/RelaxAtParkAction.gd")
@@ -14,7 +17,10 @@ static var _coarse_travel_config: Dictionary = {}
 
 var needs_component = NeedsComponentScript.new()
 var locomotion = LocomotionScript.new()
+var obstacle_avoidance = ObstacleAvoidanceScript.new()
+var crosswalk_awareness = CrosswalkAwarenessScript.new()
 var planner = PlannerScript.new()
+var query_resolver = QueryResolverScript.new()
 
 func setup(citizen) -> void:
 	if citizen == null:

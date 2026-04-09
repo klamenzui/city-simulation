@@ -99,6 +99,11 @@ var _debug_once_keys: Dictionary = {}
 @export var obstacle_jump_floor_snap_suppress_sec: float = 0.28
 @export var obstacle_jump_forward_hold_sec: float = 0.22
 @export var obstacle_jump_forward_speed_multiplier: float = 1.2
+@export var obstacle_clearance_probe_distance: float = 0.34
+@export var obstacle_clearance_radius: float = 0.10
+@export var obstacle_clearance_height: float = 0.78
+@export var crosswalk_signal_stop_distance: float = 0.92
+@export var crosswalk_signal_detection_radius: float = 2.35
 @export var surface_probe_forward_distance: float = 0.42
 @export var surface_probe_lateral_offset: float = 0.24
 @export var surface_probe_up: float = 1.4
@@ -1768,6 +1773,28 @@ func _advance_travel_route() -> bool:
 	_repath_time_left = repath_interval_sec
 	return true
 
+func _pause_travel_motion(delta: float, desired_facing: Vector3, reason: String, blocking_area: String = "") -> void:
+	_current_speed = move_toward(_current_speed, 0.0, move_deceleration * delta)
+	if desired_facing != Vector3.ZERO:
+		_update_facing(desired_facing, delta)
+	velocity.x = 0.0
+	velocity.z = 0.0
+	if is_on_floor():
+		if velocity.y < 0.0:
+			velocity.y = 0.0
+	else:
+		velocity.y = maxf(velocity.y - gravity_strength * delta, -max_fall_speed)
+	move_and_slide()
+	_recover_floor_contact()
+	_surface_guard_stop_time = 0.0
+	_stuck_timer = 0.0
+	_stuck_hotspot_label = ""
+	_stuck_hotspot_time = 0.0
+	_last_move_position = global_position
+	if blocking_area != "":
+		_debug_last_blocking_area = blocking_area
+	_update_trace_navigation_state(reason, desired_facing, Vector3.ZERO)
+
 func _move_along_path(delta: float) -> void:
 	if _repath_time_left > 0.0:
 		_repath_time_left = maxf(_repath_time_left - delta, 0.0)
@@ -1829,11 +1856,23 @@ func _move_along_path(delta: float) -> void:
 	var move_delta := move_target - global_position
 	move_delta.y = 0.0
 	var move_distance := move_delta.length()
+	var desired_dir: Vector3 = move_delta / move_distance if move_distance > 0.001 else Vector3.ZERO
 
 	if move_distance <= 0.001:
 		_current_speed = move_toward(_current_speed, 0.0, move_deceleration * delta)
 		_update_trace_navigation_state("arriving", Vector3.ZERO, Vector3.ZERO)
 		return
+
+	if _agent != null and _agent.crosswalk_awareness != null:
+		var crosswalk_wait: Dictionary = _agent.crosswalk_awareness.get_wait_state(self, distance_to_target, desired_dir)
+		if bool(crosswalk_wait.get("should_wait", false)):
+			_pause_travel_motion(
+				delta,
+				desired_dir,
+				str(crosswalk_wait.get("reason", "crosswalk_wait")),
+				str(crosswalk_wait.get("signal", "traffic_light"))
+			)
+			return
 
 	var desired_speed: float = _walk_speed
 	if distance_to_target < 1.2:
@@ -1844,9 +1883,13 @@ func _move_along_path(delta: float) -> void:
 	else:
 		_current_speed = move_toward(_current_speed, desired_speed, move_deceleration * delta)
 
-	var desired_dir: Vector3 = move_delta / move_distance
 	var move_dir := _compute_move_direction(desired_dir)
 	move_dir = _constrain_move_direction_to_pedestrian_surface(move_dir, desired_dir)
+	if _agent != null and _agent.obstacle_avoidance != null and move_dir != Vector3.ZERO:
+		var refined_move_dir: Vector3 = _agent.obstacle_avoidance.refine_move_direction(self, move_dir, desired_dir)
+		if refined_move_dir != move_dir:
+			_update_trace_navigation_state("clearance_refine_%s" % _trace_relative_label(refined_move_dir), desired_dir, refined_move_dir)
+		move_dir = refined_move_dir
 	if move_dir == Vector3.ZERO:
 		_surface_guard_stop_time += delta
 		var blocked_waypoint_reach := reach_distance + maxf(surface_guard_blocked_waypoint_extra_distance, 0.0)
@@ -1996,35 +2039,14 @@ func _refresh_obstacle_sensors(move_dir: Vector3) -> void:
 		_obstacle_ray_right.force_raycast_update()
 
 func _ray_is_blocked(ray: RayCast3D) -> bool:
-	if ray == null or not ray.enabled:
+	if _agent == null or _agent.obstacle_avoidance == null:
 		return false
-	if not ray.is_colliding():
-		return false
-	var collider := ray.get_collider()
-	if collider is Node and _is_entrance_trigger_node(collider as Node):
-		return false
-	if _is_citizen_collider(collider):
-		return false
-	return collider != null and collider != self
+	return _agent.obstacle_avoidance.is_ray_blocked(self, ray)
 
 func _ray_detects_low_obstacle(ray: RayCast3D) -> bool:
-	if ray == null or not ray.enabled or not ray.is_colliding():
+	if _agent == null or _agent.obstacle_avoidance == null:
 		return false
-
-	var collider := ray.get_collider()
-	if collider == null or collider == self:
-		return false
-	if _is_citizen_collider(collider):
-		return false
-	if collider is Node:
-		var node := collider as Node
-		if _is_entrance_trigger_node(node):
-			return false
-	if _ray_hits_target_building(ray):
-		return false
-
-	var hit_normal := ray.get_collision_normal()
-	return hit_normal.dot(Vector3.UP) < 0.55
+	return _agent.obstacle_avoidance.ray_detects_low_obstacle(self, ray)
 
 func _is_citizen_collider(collider: Variant) -> bool:
 	if collider == null or collider == self:
@@ -2194,7 +2216,10 @@ func _compute_escape_direction(preferred_dir: Vector3) -> Vector3:
 
 func _get_stuck_slide_direction(preferred_dir: Vector3) -> Vector3:
 	if _stuck_slide_hold_left > 0.0 and _stuck_slide_hold_dir != Vector3.ZERO:
-		return _stuck_slide_hold_dir
+		if _is_slide_escape_direction_viable(_stuck_slide_hold_dir):
+			return _stuck_slide_hold_dir
+		_stuck_slide_hold_dir = Vector3.ZERO
+		_stuck_slide_hold_left = 0.0
 
 	var slide_dir := _compute_slide_escape_direction(preferred_dir)
 	if slide_dir != Vector3.ZERO:
@@ -2247,8 +2272,10 @@ func _compute_slide_escape_direction(preferred_dir: Vector3) -> Vector3:
 	if collision_count <= 0:
 		return Vector3.ZERO
 
+	var crosswalk_context := _is_crosswalk_route_context()
 	var best_dir := Vector3.ZERO
 	var best_score := INF
+	var candidates: Array[Vector3] = []
 	for i in range(collision_count):
 		var collision := get_slide_collision(i)
 		if collision == null:
@@ -2264,14 +2291,51 @@ func _compute_slide_escape_direction(preferred_dir: Vector3) -> Vector3:
 		for candidate in [tangent_a, tangent_b]:
 			if candidate.length_squared() <= 0.0001:
 				continue
-			var score := _score_direction(candidate)
-			if candidate.dot(preferred_dir) < -0.35:
-				score += 2.5
-			if score < best_score:
-				best_score = score
-				best_dir = candidate
+			_append_surface_candidate(candidates, candidate)
+			_append_surface_candidate(candidates, _blend_move_direction(preferred_dir, candidate, 0.42))
+
+	_append_surface_candidate(candidates, _rotate_planar_direction(preferred_dir, 35.0))
+	_append_surface_candidate(candidates, _rotate_planar_direction(preferred_dir, -35.0))
+	_append_surface_candidate(candidates, _rotate_planar_direction(preferred_dir, 62.0))
+	_append_surface_candidate(candidates, _rotate_planar_direction(preferred_dir, -62.0))
+
+	for candidate in candidates:
+		if not crosswalk_context and not _is_move_surface_allowed(candidate, false):
+			continue
+		var score := _score_slide_escape_direction(candidate, preferred_dir, crosswalk_context)
+		if score < best_score:
+			best_score = score
+			best_dir = candidate
 
 	return best_dir.normalized() if best_dir != Vector3.ZERO else Vector3.ZERO
+
+func _is_slide_escape_direction_viable(candidate: Vector3) -> bool:
+	var planar_candidate := candidate
+	planar_candidate.y = 0.0
+	if planar_candidate.length_squared() <= 0.0001:
+		return false
+	var crosswalk_context := _is_crosswalk_route_context()
+	if not crosswalk_context and not _is_move_surface_allowed(planar_candidate, false):
+		return false
+	if _agent == null or _agent.obstacle_avoidance == null:
+		return true
+	return _agent.obstacle_avoidance.score_move_direction(self, planar_candidate, crosswalk_context) < 1000.0
+
+func _score_slide_escape_direction(candidate: Vector3, preferred_dir: Vector3, crosswalk_context: bool) -> float:
+	var planar_candidate := candidate
+	planar_candidate.y = 0.0
+	if planar_candidate.length_squared() <= 0.0001:
+		return INF
+	planar_candidate = planar_candidate.normalized()
+
+	var score := _score_direction(planar_candidate)
+	if _agent != null and _agent.obstacle_avoidance != null:
+		score = _agent.obstacle_avoidance.score_move_direction(self, planar_candidate, crosswalk_context)
+	if planar_candidate.dot(preferred_dir) < -0.35:
+		score += 2.5
+	elif planar_candidate.dot(preferred_dir) < 0.15:
+		score += 0.3
+	return score
 
 func _ray_move_direction(ray: RayCast3D) -> Vector3:
 	if ray == null:
@@ -2390,36 +2454,14 @@ func _get_stuck_hotspot_label() -> String:
 	return ""
 
 func _is_blocking_hotspot_ray(ray: RayCast3D, require_low_obstacle: bool = false) -> bool:
-	if ray == null or not ray.enabled or not ray.is_colliding():
+	if _agent == null or _agent.obstacle_avoidance == null:
 		return false
-	var collider := ray.get_collider()
-	if collider == null or collider == self:
-		return false
-	if _is_citizen_collider(collider):
-		return false
-	if collider is Node and _is_entrance_trigger_node(collider as Node):
-		return false
-	if require_low_obstacle and not _ray_detects_low_obstacle(ray):
-		return false
-	return true
+	return _agent.obstacle_avoidance.is_blocking_hotspot_ray(self, ray, require_low_obstacle)
 
 func _trace_describe_ray_hit(ray: RayCast3D) -> String:
-	if ray == null or not ray.enabled:
+	if _agent == null or _agent.obstacle_avoidance == null:
 		return "off"
-	if not ray.is_colliding():
-		return "clear"
-
-	var collider := ray.get_collider()
-	if collider == null or collider == self:
-		return "clear"
-	if _is_citizen_collider(collider):
-		return "clear"
-	if collider is Node and _is_entrance_trigger_node(collider as Node):
-		return "clear"
-	var collider_name := _trace_collider_label(collider)
-	var hit_pos := ray.get_collision_point()
-	var distance := ray.global_position.distance_to(hit_pos)
-	return "%s @ %s d=%.2f" % [collider_name, _trace_fmt_vec3(hit_pos), distance]
+	return _agent.obstacle_avoidance.describe_ray_hit(self, ray)
 
 func _get_debug_action_label() -> String:
 	if current_action != null:
@@ -2651,31 +2693,16 @@ func set_world_ref(world: World) -> void:
 		world.notify_citizen_lod_changed(self)
 
 func _get_query_world() -> World:
+	if _agent != null and _agent.query_resolver != null:
+		return _agent.query_resolver.resolve_query_world(self)
 	if _world_ref != null and is_instance_valid(_world_ref):
 		return _world_ref
 	_world_ref = null
-	return _resolve_world_ref_from_tree()
+	return null
 
 func _resolve_world_ref_from_tree() -> World:
-	if not is_inside_tree():
-		return null
-
-	var current := get_parent()
-	while current != null:
-		if current is World:
-			var parent_world := current as World
-			set_world_ref(parent_world)
-			return parent_world
-		current = current.get_parent()
-
-	var tree := get_tree()
-	if tree == null:
-		return null
-	for node in tree.get_nodes_in_group("world"):
-		if node is World:
-			var grouped_world := node as World
-			set_world_ref(grouped_world)
-			return grouped_world
+	if _agent != null and _agent.query_resolver != null:
+		return _agent.query_resolver.resolve_world_ref_from_tree(self)
 	return null
 
 func _connect_time_signals(world: World) -> void:
@@ -2843,131 +2870,53 @@ func _get_fun_cash_reserve(world: World) -> int:
 	return reserve
 
 func _find_first_residential_building(from_pos: Vector3 = Vector3.ZERO) -> ResidentialBuilding:
-	var query_world := _get_query_world()
-	if query_world != null:
-		if query_world.has_method("find_available_residential_building"):
-			return query_world.find_available_residential_building(from_pos)
-		return query_world.find_first_residential_building()
-	return _find_best_tree_residential_building(from_pos)
+	if _agent != null and _agent.query_resolver != null:
+		return _agent.query_resolver.find_first_residential_building(self, from_pos)
+	return null
 
 
 func _find_nearest_restaurant(from_pos: Vector3, require_open: bool = true) -> Restaurant:
-	var query_world := _get_query_world()
-	if query_world != null:
-		if query_world.has_method("find_preferred_restaurant"):
-			return query_world.find_preferred_restaurant(from_pos, self, require_open, self)
-		return query_world.find_nearest_restaurant(from_pos, require_open, self)
-	return _find_nearest_tree_building(
-		from_pos,
-		"buildings",
-		func(building: Building) -> bool:
-			if building is not Restaurant:
-				return false
-			return not require_open or building.is_open(-1)
-	) as Restaurant
+	if _agent != null and _agent.query_resolver != null:
+		return _agent.query_resolver.find_nearest_restaurant(self, from_pos, require_open)
+	return null
 
 
 func _find_nearest_supermarket(from_pos: Vector3, require_open: bool = true) -> Supermarket:
-	var query_world := _get_query_world()
-	if query_world != null:
-		return query_world.find_nearest_supermarket(from_pos, require_open, self)
-	return _find_nearest_tree_building(
-		from_pos,
-		"buildings",
-		func(building: Building) -> bool:
-			if building is not Supermarket:
-				return false
-			return not require_open or building.is_open(-1)
-	) as Supermarket
+	if _agent != null and _agent.query_resolver != null:
+		return _agent.query_resolver.find_nearest_supermarket(self, from_pos, require_open)
+	return null
 
 
 func _find_nearest_shop(from_pos: Vector3, require_open: bool = true) -> Shop:
-	var query_world := _get_query_world()
-	if query_world != null:
-		return query_world.find_nearest_shop(from_pos, require_open, self)
-	return _find_nearest_tree_building(
-		from_pos,
-		"buildings",
-		func(building: Building) -> bool:
-			if building is not Shop or building is Supermarket:
-				return false
-			return not require_open or building.is_open(-1)
-	) as Shop
+	if _agent != null and _agent.query_resolver != null:
+		return _agent.query_resolver.find_nearest_shop(self, from_pos, require_open)
+	return null
 
 
 func _find_nearest_cinema(from_pos: Vector3, require_open: bool = true) -> Cinema:
-	var query_world := _get_query_world()
-	if query_world != null:
-		return query_world.find_nearest_cinema(from_pos, require_open, self)
-	return _find_nearest_tree_building(
-		from_pos,
-		"buildings",
-		func(building: Building) -> bool:
-			if building is not Cinema:
-				return false
-			return not require_open or building.is_open(-1)
-	) as Cinema
+	if _agent != null and _agent.query_resolver != null:
+		return _agent.query_resolver.find_nearest_cinema(self, from_pos, require_open)
+	return null
 
 func _find_nearest_university(from_pos: Vector3, require_open: bool = true) -> University:
-	var query_world := _get_query_world()
-	if query_world != null:
-		return query_world.find_nearest_university(from_pos, require_open, self)
-	return _find_nearest_tree_building(
-		from_pos,
-		"buildings",
-		func(building: Building) -> bool:
-			if building is not University:
-				return false
-			return not require_open or building.is_open(-1)
-	) as University
+	if _agent != null and _agent.query_resolver != null:
+		return _agent.query_resolver.find_nearest_university(self, from_pos, require_open)
+	return null
 
 func _find_nearest_park(from_pos: Vector3) -> Building:
-	var query_world := _get_query_world()
-	if query_world != null:
-		return query_world.find_nearest_park(from_pos, self)
-	return _find_nearest_tree_building(
-		from_pos,
-		"parks",
-		func(building: Building) -> bool:
-			return building != null
-	)
+	if _agent != null and _agent.query_resolver != null:
+		return _agent.query_resolver.find_nearest_park(self, from_pos)
+	return null
 
 func _find_best_tree_residential_building(from_pos: Vector3) -> ResidentialBuilding:
-	if not is_inside_tree():
-		return null
-	var best: ResidentialBuilding = null
-	var best_load := INF
-	var best_dist := INF
-	for node in get_tree().get_nodes_in_group("buildings"):
-		if node is not ResidentialBuilding:
-			continue
-		var residential := node as ResidentialBuilding
-		if not residential.has_free_slot():
-			continue
-		var load := float(residential.tenants.size()) / float(maxi(residential.capacity, 1))
-		var dist := from_pos.distance_to(residential.global_position)
-		if load < best_load or (is_equal_approx(load, best_load) and dist < best_dist):
-			best_load = load
-			best_dist = dist
-			best = residential
-	return best
+	if _agent != null and _agent.query_resolver != null:
+		return _agent.query_resolver.find_best_tree_residential_building(self, from_pos)
+	return null
 
 func _find_nearest_tree_building(from_pos: Vector3, group_name: String, accept: Callable) -> Building:
-	if not is_inside_tree():
-		return null
-	var best: Building = null
-	var best_dist := INF
-	for node in get_tree().get_nodes_in_group(group_name):
-		if node is not Building:
-			continue
-		var building := node as Building
-		if accept.is_valid() and not bool(accept.call(building)):
-			continue
-		var dist := from_pos.distance_to(building.global_position)
-		if dist < best_dist:
-			best_dist = dist
-			best = building
-	return best
+	if _agent != null and _agent.query_resolver != null:
+		return _agent.query_resolver.find_nearest_tree_building(self, from_pos, group_name, accept)
+	return null
 
 func debug_log(message: String) -> void:
 	SimLogger.log("[Citizen %s] %s" % [citizen_name, message])

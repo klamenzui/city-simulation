@@ -94,6 +94,8 @@ func _run_all_tests() -> void:
 		"bark_mode_uses_topic_fallback_lines",
 		"player_dialog_respects_interactive_budget",
 		"dialogue_runtime_ui_state_prefers_setup_when_model_missing",
+		"multilayer_residential_corner_rejects_blocked_slide_cache",
+		"street_furniture_uses_soft_obstacle_layer",
 	]:
 		var error := _run_test(test_name)
 		if error != "":
@@ -170,6 +172,10 @@ func _run_test(test_name: String) -> String:
 			return _test_player_dialog_respects_interactive_budget()
 		"dialogue_runtime_ui_state_prefers_setup_when_model_missing":
 			return _test_dialogue_runtime_ui_state_prefers_setup_when_model_missing()
+		"multilayer_residential_corner_rejects_blocked_slide_cache":
+			return _test_multilayer_residential_corner_rejects_blocked_slide_cache()
+		"street_furniture_uses_soft_obstacle_layer":
+			return _test_street_furniture_uses_soft_obstacle_layer()
 		_:
 			return "unknown test"
 
@@ -1105,6 +1111,135 @@ func _test_dialogue_runtime_ui_state_prefers_setup_when_model_missing() -> Strin
 	_expect(str(ui_state.get("recommended_model", "")) != "", "UI should expose a recommended model for setup")
 
 	runtime_service.queue_free()
+	return _current_error
+
+func _test_multilayer_residential_corner_rejects_blocked_slide_cache() -> String:
+	var residential_scene: PackedScene = load("res://Scenes/CityBuildings/multilayer/multilayer_004_d588520f.tscn")
+	_expect(residential_scene != null, "multilayer residential scene should load for hard-corner movement regression coverage")
+	if residential_scene == null:
+		return _current_error
+
+	var residential_root := residential_scene.instantiate() as Node3D
+	_harness_root.add_child(residential_root)
+	residential_root.global_position = Vector3(14.0, 0.0, -2.0)
+	residential_root.propagate_call("force_update_transform")
+
+	var citizen := _new_citizen("Corner Probe", Vector3(15.08, 0.06, -1.08))
+	citizen._is_travelling = true
+	citizen._travel_target = Vector3(17.0, 0.06, -2.0)
+	citizen._travel_route = PackedVector3Array([
+		citizen.global_position,
+		citizen._travel_target,
+	])
+	citizen._travel_route_index = 1
+
+	var probe_positions: Array[Vector3] = []
+	for x_step in range(7):
+		for z_step in range(8):
+			probe_positions.append(Vector3(
+				14.58 + float(x_step) * 0.08,
+				0.06,
+				-1.58 + float(z_step) * 0.08
+			))
+
+	var blocked_slide := Vector3.ZERO
+	var escape_slide := Vector3.ZERO
+	var selected_probe := Vector3.ZERO
+	var best_blocked_score := -INF
+	var best_open_score := INF
+	for probe_position in probe_positions:
+		citizen.global_position = probe_position
+		citizen.force_update_transform()
+		var preferred_escape := citizen._travel_target - citizen.global_position
+		preferred_escape.y = 0.0
+		if preferred_escape.length_squared() <= 0.0001:
+			continue
+
+		var candidate_blocked := Vector3.ZERO
+		var candidate_open := Vector3.ZERO
+		var candidate_blocked_score := -INF
+		var candidate_open_score := INF
+		for step in range(24):
+			var angle := (TAU / 24.0) * float(step)
+			var candidate := Vector3(cos(angle), 0.0, sin(angle))
+			var score: float = citizen._agent.obstacle_avoidance.score_move_direction(citizen, candidate, false)
+			if citizen._is_slide_escape_direction_viable(candidate):
+				if score < candidate_open_score:
+					candidate_open_score = score
+					candidate_open = candidate
+			elif score >= 1000.0:
+				var alignment_bonus: float = candidate.dot((residential_root.global_position - citizen.global_position).normalized()) * 0.1
+				var weighted_score: float = score + alignment_bonus
+				if weighted_score > candidate_blocked_score:
+					candidate_blocked_score = weighted_score
+					candidate_blocked = candidate
+
+		if candidate_blocked != Vector3.ZERO and candidate_open != Vector3.ZERO:
+			selected_probe = probe_position
+			blocked_slide = candidate_blocked
+			escape_slide = candidate_open
+			best_blocked_score = citizen._agent.obstacle_avoidance.score_move_direction(citizen, blocked_slide, false)
+			best_open_score = candidate_open_score
+			break
+
+	_expect(selected_probe != Vector3.ZERO, "residential corner search should find a probe position with both a hard-blocked slide direction and an open sidewalk escape")
+	if selected_probe == Vector3.ZERO:
+		return _current_error
+
+	citizen.global_position = selected_probe
+	citizen.force_update_transform()
+	_expect(blocked_slide != Vector3.ZERO, "residential corner should expose at least one hard-blocked slide direction into the building edge")
+	_expect(escape_slide != Vector3.ZERO, "residential corner should keep at least one clear escape direction viable along the open sidewalk edge")
+
+	var blocked_score: float = citizen._agent.obstacle_avoidance.score_move_direction(citizen, blocked_slide, false)
+	var escape_score: float = citizen._agent.obstacle_avoidance.score_move_direction(citizen, escape_slide, false)
+	_expect(blocked_score >= 1000.0, "blocked residential-corner direction should be treated as a hard blocker by obstacle scoring")
+	_expect(escape_score < blocked_score, "open residential-corner escape direction should score better than the blocked cached slide")
+	_expect(absf(blocked_score - best_blocked_score) <= 0.001, "blocked residential-corner score should stay stable after reapplying the selected probe")
+	_expect(absf(escape_score - best_open_score) <= 0.001, "open residential-corner score should stay stable after reapplying the selected probe")
+
+	citizen._stuck_slide_hold_dir = blocked_slide
+	citizen._stuck_slide_hold_left = 0.2
+	var reused_slide := citizen._get_stuck_slide_direction(escape_slide)
+	_expect(reused_slide != blocked_slide, "citizen should not reuse a cached blocked slide direction at the residential multilayer corner")
+	_expect(citizen._stuck_slide_hold_dir == Vector3.ZERO, "citizen should clear the cached blocked slide direction after invalidating it")
+
+	return _current_error
+
+func _test_street_furniture_uses_soft_obstacle_layer() -> String:
+	var traffic_scene: PackedScene = load("res://ImportedCitySource/scenes/trafficlight_c_active.tscn")
+	var street_scene: PackedScene = load("res://ImportedCitySource/scenes/streetlight_active.tscn")
+	_expect(traffic_scene != null, "trafficlight active scene should load for movement regression coverage")
+	_expect(street_scene != null, "streetlight active scene should load for movement regression coverage")
+
+	if traffic_scene != null:
+		var traffic_root := traffic_scene.instantiate() as Node3D
+		_harness_root.add_child(traffic_root)
+		_expect(traffic_root.is_in_group("pedestrian_soft_obstacle"), "trafficlights should be tagged as pedestrian soft obstacles")
+		_expect(traffic_root.is_in_group("traffic_lights"), "trafficlights should be discoverable for crosswalk signal awareness")
+		var traffic_body := traffic_root.find_child("StaticBody3D", true, false) as StaticBody3D
+		_expect(traffic_body != null, "trafficlight scene should expose a StaticBody3D collider")
+		if traffic_body != null:
+			_expect_eq(traffic_body.collision_layer, 16, "trafficlight collider should live on the soft obstacle layer")
+		_expect(traffic_root.has_method("is_pedestrian_crossing_allowed"), "trafficlight scene should expose pedestrian crossing signal state")
+		_expect(traffic_root.has_method("get_current_light_name"), "trafficlight scene should expose a readable signal name")
+		if traffic_root.has_method("is_pedestrian_crossing_allowed"):
+			traffic_root.set("light_color", 2)
+			_expect(not bool(traffic_root.call("is_pedestrian_crossing_allowed")), "red trafficlights should block pedestrian crossing")
+			_expect_eq(str(traffic_root.call("get_current_light_name")), "red", "red signal should report its readable name")
+			traffic_root.set("light_color", 0)
+			_expect(bool(traffic_root.call("is_pedestrian_crossing_allowed")), "green trafficlights should allow pedestrian crossing")
+			_expect_eq(str(traffic_root.call("get_current_light_name")), "green", "green signal should report its readable name")
+
+	if street_scene != null:
+		var street_root := street_scene.instantiate() as Node3D
+		_harness_root.add_child(street_root)
+		_expect(street_root.is_in_group("pedestrian_soft_obstacle"), "streetlights should be tagged as pedestrian soft obstacles")
+		var street_body := street_root.find_child("StaticBody3D", true, false) as StaticBody3D
+		_expect(street_body != null, "streetlight scene should expose a StaticBody3D collider")
+		if street_body != null:
+			_expect_eq(street_body.collision_layer, 16, "streetlight collider should live on the soft obstacle layer")
+
 	return _current_error
 
 func _new_world() -> World:
