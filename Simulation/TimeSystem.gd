@@ -23,21 +23,31 @@ func get_minute() -> int:
 	return minutes_total % 60
 
 func advance(minutes: int) -> void:
-	var old_hour := get_hour()
-	minutes_total += minutes
+	if minutes <= 0:
+		time_advanced.emit(day, get_hour(), get_minute())
+		return
 
-	while minutes_total >= 24 * 60:
-		minutes_total -= 24 * 60
-		day += 1
-		day_changed.emit(day)
-		# daily (simple)
-		rent_due.emit()
-		payday.emit()
+	var remaining := minutes
+	while remaining > 0:
+		var minutes_until_next_hour := 60 - get_minute()
+		if minutes_until_next_hour <= 0:
+			minutes_until_next_hour = 60
+		var minutes_until_next_day := 24 * 60 - minutes_total
+		var step := mini(remaining, mini(minutes_until_next_hour, minutes_until_next_day))
+		minutes_total += step
+		remaining -= step
 
-	var new_hour := get_hour()
-	if new_hour != old_hour:
-		hour_changed.emit(new_hour)
-	time_advanced.emit(day, new_hour, get_minute())
+		if minutes_total >= 24 * 60:
+			minutes_total -= 24 * 60
+			day += 1
+			day_changed.emit(day)
+			rent_due.emit()
+			payday.emit()
+
+		if step > 0 and get_minute() == 0:
+			hour_changed.emit(get_hour())
+
+	time_advanced.emit(day, get_hour(), get_minute())
 		
 func get_time_string() -> String:
 	return "%02d:%02d" % [get_hour(), get_minute()]

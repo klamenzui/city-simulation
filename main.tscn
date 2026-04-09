@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" uid="uid://bj5iflrv1q80d" path="res://Scenes/CityBuildings/services/services_001_bf24cdee.tscn" id="9_elw4l"]
 [ext_resource type="PackedScene" uid="uid://c6aq6481iy1ul" path="res://Scenes/CityBuildings/services/services_002_16fa335f.tscn" id="12_05tku"]
 [ext_resource type="PackedScene" uid="uid://d1w6v6f36ay88" path="res://Scenes/CityBuildings/services/services_003_bb6f7293.tscn" id="15_6ibml"]
+[ext_resource type="PackedScene" path="res://Scenes/CityHall.tscn" id="15_sx4hl"]
 [ext_resource type="PackedScene" path="res://Scenes/Farm.tscn" id="15_b1va2"]
 [ext_resource type="PackedScene" uid="uid://bby4h5xvcfpkj" path="res://Scenes/CityBuildings/services/services_004_b6d7b717.tscn" id="17_xnuy3"]
 [ext_resource type="PackedScene" uid="uid://tmijvs5i73a8" path="res://Scenes/CityBuildings/garages/garages_001_59117338.tscn" id="19_hoo0a"]
@@ -787,6 +788,9 @@ transform = Transform3D(0.23, 0, 0, 0, 0.23, 0, 0, 0, 0.23, 7.64447, 0.113774, 3
 building_name = "Gas Station 04 (Services)"
 building_type = 12
 
+[node name="CityHall" parent="World/City/only_people_nav/only_people/Services" unique_id=2085834761 instance=ExtResource("15_sx4hl")]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 22, 0, 16)
+
 [node name="Production" type="Node3D" parent="World/City/only_people_nav/only_people" unique_id=1574422090]
 
 [node name="Farm" parent="World/City/only_people_nav/only_people/Production" unique_id=386220770 instance=ExtResource("15_b1va2")]
@@ -1033,8 +1037,6 @@ transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 16, 0,
 
 [node name="@Node3D@83" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=2102615246 instance=ExtResource("98_xlpjy")]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 22, 0, 16)
-building_name = "City Hall 01 (Services)"
-building_type = 6
 
 [node name="@Node3D@84" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=706584192 instance=ExtResource("102_xpnqb")]
 transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 26, 0, 22)

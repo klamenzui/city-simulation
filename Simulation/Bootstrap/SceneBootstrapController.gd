@@ -1,6 +1,7 @@
 extends RefCounted
 class_name SceneBootstrapController
 
+const BuildingScript = preload("res://Entities/Buildings/Building.gd")
 const ImportedCitySetupScript = preload("res://Simulation/Bootstrap/ImportedCitySetup.gd")
 const NavigationSetupScript = preload("res://Simulation/Bootstrap/NavigationSetup.gd")
 const RoadBuilderScript = preload("res://Simulation/Bootstrap/RoadBuilder.gd")
@@ -91,34 +92,32 @@ static func _has_building_type(root: Node3D, type_id: String) -> bool:
 	for node in root.get_tree().get_nodes_in_group("buildings"):
 		if node is not Building:
 			continue
-		match type_id:
-			"restaurant":
-				if node is Restaurant:
-					return true
-			"supermarket":
-				if node is Supermarket:
-					return true
-			"shop":
-				if node is Shop and node is not Supermarket:
-					return true
-			"cinema":
-				if node is Cinema:
-					return true
-			"university":
-				if node is University:
-					return true
-			"city_hall":
-				if node is CityHall:
-					return true
-			"farm":
-				if node is Farm:
-					return true
-			"factory":
-				if node is Factory:
-					return true
-			_:
-				pass
+		if _building_matches_type(node as Building, type_id):
+			return true
 	return false
+
+static func _building_matches_type(building: Building, type_id: String) -> bool:
+	if building == null:
+		return false
+	match type_id:
+		"restaurant":
+			return building is Restaurant or building.building_type == BuildingScript.BuildingType.RESTAURANT
+		"supermarket":
+			return building is Supermarket or building.building_type == BuildingScript.BuildingType.SUPERMARKET
+		"shop":
+			return (building is Shop and building is not Supermarket) or building.building_type == BuildingScript.BuildingType.SHOP
+		"cinema":
+			return building is Cinema or building.building_type == BuildingScript.BuildingType.CINEMA
+		"university":
+			return building is University or building.building_type == BuildingScript.BuildingType.UNIVERSITY
+		"city_hall":
+			return building is CityHall or building.building_type == BuildingScript.BuildingType.CITY_HALL
+		"farm":
+			return building is Farm or building.building_type == BuildingScript.BuildingType.FARM
+		"factory":
+			return building is Factory or building.building_type == BuildingScript.BuildingType.FACTORY
+		_:
+			return false
 
 static func _spawn_if_missing(root: Node3D, node_name: String, scene: PackedScene, pos: Vector3) -> void:
 	if root.get_node_or_null(node_name) != null:
