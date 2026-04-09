@@ -11,8 +11,8 @@
 [ext_resource type="PackedScene" uid="uid://bj5iflrv1q80d" path="res://Scenes/CityBuildings/services/services_001_bf24cdee.tscn" id="9_elw4l"]
 [ext_resource type="PackedScene" uid="uid://c6aq6481iy1ul" path="res://Scenes/CityBuildings/services/services_002_16fa335f.tscn" id="12_05tku"]
 [ext_resource type="PackedScene" uid="uid://d1w6v6f36ay88" path="res://Scenes/CityBuildings/services/services_003_bb6f7293.tscn" id="15_6ibml"]
-[ext_resource type="PackedScene" path="res://Scenes/CityHall.tscn" id="15_sx4hl"]
 [ext_resource type="PackedScene" path="res://Scenes/Farm.tscn" id="15_b1va2"]
+[ext_resource type="PackedScene" path="res://Scenes/CityHall.tscn" id="15_sx4hl"]
 [ext_resource type="PackedScene" uid="uid://bby4h5xvcfpkj" path="res://Scenes/CityBuildings/services/services_004_b6d7b717.tscn" id="17_xnuy3"]
 [ext_resource type="PackedScene" uid="uid://tmijvs5i73a8" path="res://Scenes/CityBuildings/garages/garages_001_59117338.tscn" id="19_hoo0a"]
 [ext_resource type="PackedScene" uid="uid://cu4dqnf76c0g0" path="res://Scenes/CityBuildings/garages/garages_002_1d40ed03.tscn" id="21_6qke2"]
@@ -571,7 +571,7 @@ transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 14, 0,
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 14)
 
 [node name="_Node3D_47" parent="World/City/only_transport/Road_straight" unique_id=103921346 instance=ExtResource("6_1nwvn")]
-transform = Transform3D(1, 0, 1.0658141e-14, 0, 1, 0, -1.0658141e-14, 0, 1, 16, 0, -2)
+transform = Transform3D(1, 0, 1.0658141e-14, 0, 1, 0, -1.0658141e-14, 0, 1, 16, 0, -20)
 
 [node name="_Node3D_50" parent="World/City/only_transport/Road_straight" unique_id=1807853882 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 16)
@@ -738,6 +738,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -16)
 [node name="road_straight9" parent="World/City/only_transport/Road_straight" unique_id=593757496 instance=ExtResource("6_1nwvn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -18)
 
+[node name="road_straight_crossing" parent="World/City/only_transport/Road_straight" unique_id=1934165070 instance=ExtResource("55_eho1g")]
+transform = Transform3D(1, 0, 0, 0, 0.9999999, 0, 0, 0, 1, 15.999376, 0.00054091215, -1.999968)
+
 [node name="Road_tsplit" type="Node3D" parent="World/City/only_transport" unique_id=217125772 groups=["road_group"]]
 
 [node name="road_tsplit2" parent="World/City/only_transport/Road_tsplit" unique_id=20326055 instance=ExtResource("7_dfq0k")]
@@ -785,8 +788,6 @@ transform = Transform3D(-0.4, 0, -6.03983e-08, 0, 0.4, 0, 6.03983e-08, 0, -0.4, 
 
 [node name="Services004_01" parent="World/City/only_people_nav/only_people/Services" unique_id=1535520016 instance=ExtResource("17_xnuy3")]
 transform = Transform3D(0.23, 0, 0, 0, 0.23, 0, 0, 0, 0.23, 7.64447, 0.113774, 35.1673)
-building_name = "Gas Station 04 (Services)"
-building_type = 12
 
 [node name="CityHall" parent="World/City/only_people_nav/only_people/Services" unique_id=2085834761 instance=ExtResource("15_sx4hl")]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 22, 0, 16)
@@ -795,7 +796,6 @@ transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 22, 0,
 
 [node name="Farm" parent="World/City/only_people_nav/only_people/Production" unique_id=386220770 instance=ExtResource("15_b1va2")]
 transform = Transform3D(1, 0, 0, 0, 0.9999999, 0, 0, 0, 1, 12.292156, 0.20581385, -16.862766)
-building_name = "Farm"
 building_type = 10
 
 [node name="Garages" type="Node3D" parent="World/City/only_people_nav/only_people" unique_id=726476429]
@@ -1866,7 +1866,7 @@ transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 14, 0,
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, -1, 0, 13)
 
 [node name="streetlight62" parent="World/City/Streetlight" unique_id=1158503728 instance=ExtResource("156_6vb1k")]
-transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 16, 0, -1)
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 17.000011, 0, -1)
 
 [node name="streetlight63" parent="World/City/Streetlight" unique_id=879012890 instance=ExtResource("156_6vb1k")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, -1, 0, 15)
@@ -2159,7 +2159,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 84.91101, 1.2723389, 6.922569
 shape = SubResource("ConcavePolygonShape3D_deygs")
 
 [node name="Player" parent="World" unique_id=566366776 instance=ExtResource("102_cxcit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, 14)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.76355, 0.26549387, 15.044247)
 citizen_name = "Player"
 autonomous_simulation_enabled = false
 

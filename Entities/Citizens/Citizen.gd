@@ -102,6 +102,8 @@ var _debug_once_keys: Dictionary = {}
 @export var obstacle_clearance_probe_distance: float = 0.34
 @export var obstacle_clearance_radius: float = 0.10
 @export var obstacle_clearance_height: float = 0.78
+@export var forward_avoidance_enabled: bool = true
+@export var forward_avoidance_min_alignment: float = 0.08
 @export var crosswalk_signal_stop_distance: float = 0.92
 @export var crosswalk_signal_detection_radius: float = 2.35
 @export var surface_probe_forward_distance: float = 0.42
@@ -145,6 +147,8 @@ var _obstacle_ray_down: RayCast3D = null
 var _obstacle_ray_left: RayCast3D = null
 var _obstacle_ray_right: RayCast3D = null
 var _body_collision_shape: CollisionShape3D = null
+var _forward_avoidance_area: Area3D = null
+var _forward_avoidance_shape: CollisionShape3D = null
 var _click_area: Area3D = null
 var _click_area_shape: CollisionShape3D = null
 var _saved_collision_layer: int = 0
@@ -245,6 +249,7 @@ func _ready() -> void:
 	_cheap_path_follow_ground_snap_left = randf() * maxf(cheap_path_follow_ground_snap_interval_sec, 0.01)
 
 	_setup_clickable()
+	_setup_forward_avoidance_sensor()
 	_setup_highlight()
 	_setup_obstacle_sensors()
 	_body_collision_shape = get_node_or_null("CollisionShape3D") as CollisionShape3D
@@ -674,6 +679,40 @@ func _on_area_input_event(_camera: Camera3D, event: InputEvent,
 		clicked.emit()
 		get_viewport().set_input_as_handled()
 
+func _setup_forward_avoidance_sensor() -> void:
+	var area := get_node_or_null("ForwardAvoidanceArea") as Area3D
+	if area == null:
+		area = get_node_or_null("Area3D") as Area3D
+
+	_forward_avoidance_area = area
+	_forward_avoidance_shape = null
+	if area == null:
+		return
+
+	area.input_ray_pickable = false
+	area.monitoring = true
+	area.monitorable = false
+	area.collision_layer = 0
+	if area.collision_mask == 0:
+		area.collision_mask = 9
+
+	var shape_node := area.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if shape_node == null:
+		shape_node = area.get_node_or_null("CollisionShape3D2") as CollisionShape3D
+	if shape_node == null:
+		shape_node = CollisionShape3D.new()
+		shape_node.name = "CollisionShape3D"
+		area.add_child(shape_node)
+
+	if shape_node.shape == null:
+		var fallback_shape := CylinderShape3D.new()
+		fallback_shape.radius = maxf(obstacle_clearance_radius * 2.4, 0.22)
+		fallback_shape.height = maxf(obstacle_clearance_height * 0.55, 0.32)
+		shape_node.shape = fallback_shape
+		shape_node.position = Vector3(0.0, obstacle_sensor_height * 0.3, -maxf(obstacle_probe_length * 0.55, 0.28))
+
+	_forward_avoidance_shape = shape_node
+
 
 # Highlight selection material
 func _setup_highlight() -> void:
@@ -742,6 +781,10 @@ func _apply_local_navigation_raycast_state() -> void:
 		_obstacle_ray_left.enabled = local_navigation_raycast_checks_enabled
 	if _obstacle_ray_right != null:
 		_obstacle_ray_right.enabled = local_navigation_raycast_checks_enabled
+	if _forward_avoidance_area != null:
+		_forward_avoidance_area.monitoring = local_navigation_raycast_checks_enabled and forward_avoidance_enabled
+	if _forward_avoidance_shape != null:
+		_forward_avoidance_shape.disabled = not (local_navigation_raycast_checks_enabled and forward_avoidance_enabled)
 
 func _setup_navigation() -> void:
 	_nav_agent = get_node_or_null("NavigationAgent3D") as NavigationAgent3D
@@ -906,6 +949,10 @@ func _is_crosswalk_route_context() -> bool:
 	if _world_ref == null:
 		return false
 
+	var current_kind := str(_world_ref.get_pedestrian_path_point_kind(global_position))
+	if current_kind.begins_with("crosswalk"):
+		return true
+
 	if _travel_route.is_empty():
 		return false
 
@@ -919,9 +966,16 @@ func _is_crosswalk_route_context() -> bool:
 	var target_kind := str(_world_ref.get_pedestrian_path_point_kind(_travel_target))
 	return target_kind.begins_with("crosswalk")
 
+func _is_surface_edge_kind(kind: String) -> bool:
+	return kind == "boundary" or kind == "corner" \
+		or kind == "crosswalk_entry" or kind == "crosswalk_exit"
+
 func _is_surface_edge_route_context() -> bool:
 	if _world_ref == null:
 		return false
+
+	if _is_surface_edge_kind(str(_world_ref.get_pedestrian_path_point_kind(global_position))):
+		return true
 	if _travel_route.is_empty():
 		return false
 
@@ -929,12 +983,11 @@ func _is_surface_edge_route_context() -> bool:
 	var end_idx := mini(_travel_route_index + 1, _travel_route.size() - 1)
 	for idx in range(start_idx, end_idx + 1):
 		var kind := str(_world_ref.get_pedestrian_path_point_kind(_travel_route[idx]))
-		if kind == "boundary" or kind == "corner" or kind == "crosswalk_entry" or kind == "crosswalk_exit":
+		if _is_surface_edge_kind(kind):
 			return true
 
 	var target_kind := str(_world_ref.get_pedestrian_path_point_kind(_travel_target))
-	return target_kind == "boundary" or target_kind == "corner" \
-		or target_kind == "crosswalk_entry" or target_kind == "crosswalk_exit"
+	return _is_surface_edge_kind(target_kind)
 
 func _is_move_surface_allowed(move_dir: Vector3, crosswalk_context: bool = false) -> bool:
 	if crosswalk_context:
@@ -1538,6 +1591,10 @@ func _apply_presence_hidden_state() -> void:
 
 	if _body_collision_shape != null:
 		_body_collision_shape.disabled = hidden
+	if _forward_avoidance_area != null:
+		_forward_avoidance_area.monitoring = not hidden and local_navigation_raycast_checks_enabled and forward_avoidance_enabled
+	if _forward_avoidance_shape != null:
+		_forward_avoidance_shape.disabled = hidden or not forward_avoidance_enabled or not local_navigation_raycast_checks_enabled
 	if _click_area != null:
 		_click_area.input_ray_pickable = not hidden
 	if _click_area_shape != null:
@@ -2025,10 +2082,14 @@ func _compute_move_direction(desired_dir: Vector3) -> Vector3:
 	return planar_dir
 
 func _refresh_obstacle_sensors(move_dir: Vector3) -> void:
-	if _obstacle_sensor_pivot == null:
+	if _obstacle_sensor_pivot == null and _forward_avoidance_area == null:
 		return
 	var target_yaw := _yaw_from_move_direction(move_dir)
-	_obstacle_sensor_pivot.rotation.y = wrapf(target_yaw - rotation.y, -PI, PI)
+	var local_sensor_yaw := wrapf(target_yaw - rotation.y, -PI, PI)
+	if _obstacle_sensor_pivot != null:
+		_obstacle_sensor_pivot.rotation.y = local_sensor_yaw
+	if _forward_avoidance_area != null:
+		_forward_avoidance_area.rotation.y = local_sensor_yaw
 	if _obstacle_ray_forward != null:
 		_obstacle_ray_forward.force_raycast_update()
 	if _obstacle_ray_down != null:

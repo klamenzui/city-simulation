@@ -13,14 +13,16 @@ roughness = 0.92
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_cbg8l"]
 material = SubResource("StandardMaterial3D_4g7t2")
 
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_duj3k"]
+height = 0.29206848
+radius = 0.24365234
+
 [node name="Citizen" type="CharacterBody3D" unique_id=566366776 groups=["citizens"]]
 script = ExtResource("1_qc8p4")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=719777068]
 transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0.20228906, 0)
 shape = SubResource("CapsuleShape3D_0gsqa")
-
-[node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=1702579198]
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=2025689120]
 transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0.2, 0)
@@ -43,3 +45,12 @@ target_position = Vector3(-0.3, 0, -0.74)
 [node name="ObstacleRayCastRight" type="RayCast3D" parent="ObstacleSensorPivot" unique_id=87889597]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00017493963, 0.00048339367, 0.0024129152)
 target_position = Vector3(0.3, 0, -0.74)
+
+[node name="Area3D" type="Area3D" parent="." unique_id=1860003126]
+collision_layer = 0
+collision_mask = 9
+monitorable = false
+
+[node name="CollisionShape3D2" type="CollisionShape3D" parent="Area3D" unique_id=2146696897]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.22670445, -0.16681525)
+shape = SubResource("CylinderShape3D_duj3k")

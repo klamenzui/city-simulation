@@ -141,7 +141,7 @@ func get_navigation_points(world = null, lateral_lane_offset: float = 0.0, refer
 		sidewalk_access_pos = world.get_pedestrian_access_point(entrance_pos, self)
 	var access_pos := entrance_pos
 	var center_anchor := _get_park_center_anchor()
-	var center_pos := center_anchor.global_position if center_anchor != null else global_position
+	var center_pos := _get_park_center_position()
 	var visit_pos := _get_park_visit_point(entrance_pos, access_pos, center_pos, lateral_lane_offset)
 	return {
 		"entrance": entrance_pos,
@@ -156,7 +156,7 @@ func get_navigation_points(world = null, lateral_lane_offset: float = 0.0, refer
 func get_debug_navigation_entries(world = null) -> Array[Dictionary]:
 	var entries: Array[Dictionary] = []
 	var center_anchor := _get_park_center_anchor()
-	var center_pos := center_anchor.global_position if center_anchor != null else global_position
+	var center_pos := _get_park_center_position()
 	for entrance_node in _get_park_entrance_nodes():
 		if entrance_node == null:
 			continue
@@ -286,26 +286,15 @@ func _prune_invalid_bench_reservations() -> void:
 		_set_park_bench_reservations(reservations)
 
 func _get_park_center_anchor() -> Node3D:
-	var park_root := get_parent()
-	if park_root == null:
-		return self
+	var explicit_anchor := _get_explicit_park_center_anchor()
+	if explicit_anchor != null:
+		return explicit_anchor
 
-	for explicit_name in ["ParkCenter", "_Node3D_187"]:
-		var explicit_anchor := park_root.get_node_or_null(explicit_name) as Node3D
-		if explicit_anchor != null:
-			return explicit_anchor
-
-	var park_tiles: Array[Park] = []
-	var centroid := Vector3.ZERO
-	for child in park_root.get_children():
-		if child is Park:
-			var tile := child as Park
-			park_tiles.append(tile)
-			centroid += tile.global_position
+	var park_tiles := _get_park_tiles()
 	if park_tiles.is_empty():
 		return self
 
-	centroid /= float(park_tiles.size())
+	var center_pos := _get_park_center_position()
 	var center_candidates: Array[Park] = []
 	for tile in park_tiles:
 		if tile != null and not tile.has_navigation_entry():
@@ -314,15 +303,60 @@ func _get_park_center_anchor() -> Node3D:
 		center_candidates = park_tiles
 
 	var best_tile := center_candidates[0]
-	var best_distance := best_tile.global_position.distance_squared_to(centroid)
+	var best_distance := best_tile.global_position.distance_squared_to(center_pos)
 	for tile in center_candidates:
 		if tile == null:
 			continue
-		var distance := tile.global_position.distance_squared_to(centroid)
+		var distance := tile.global_position.distance_squared_to(center_pos)
 		if distance < best_distance:
 			best_distance = distance
 			best_tile = tile
 	return best_tile
+
+func _get_explicit_park_center_anchor() -> Node3D:
+	var park_root := get_parent()
+	if park_root == null:
+		return null
+	return park_root.get_node_or_null("ParkCenter") as Node3D
+
+func _get_park_tiles() -> Array[Park]:
+	var park_tiles: Array[Park] = []
+	var park_root := get_parent()
+	if park_root == null:
+		park_tiles.append(self)
+		return park_tiles
+	for child in park_root.get_children():
+		if child is Park:
+			park_tiles.append(child as Park)
+	return park_tiles
+
+func _get_park_center_position() -> Vector3:
+	var explicit_anchor := _get_explicit_park_center_anchor()
+	if explicit_anchor != null:
+		return explicit_anchor.global_position
+
+	var center_path := _get_park_center_path()
+	if center_path != null and center_path.curve != null:
+		var baked_points := center_path.curve.get_baked_points()
+		if not baked_points.is_empty():
+			var centroid := Vector3.ZERO
+			for local_point in baked_points:
+				centroid += center_path.to_global(local_point)
+			centroid /= float(baked_points.size())
+			centroid.y = global_position.y
+			return centroid
+
+	var park_tiles := _get_park_tiles()
+	if not park_tiles.is_empty():
+		var centroid := Vector3.ZERO
+		for tile in park_tiles:
+			if tile != null:
+				centroid += tile.global_position
+		centroid /= float(park_tiles.size())
+		centroid.y = global_position.y
+		return centroid
+
+	return global_position
 
 func _get_park_center_path() -> Path3D:
 	var park_root := get_parent()
@@ -402,6 +436,8 @@ func _build_park_internal_route(entrance_pos: Vector3, visit_pos: Vector3) -> Pa
 		route = _append_route_points(route, ring_segment)
 
 	if route.is_empty():
+		route.append(visit_pos)
+	elif route[route.size() - 1].distance_to(visit_pos) > 0.15:
 		route.append(visit_pos)
 	return route
 
@@ -499,6 +535,12 @@ func _compute_park_visit_point(
 	access_pos: Vector3,
 	lateral_lane_offset: float = 0.0
 ) -> Vector3:
+	var visit_bench := _get_preferred_park_visit_bench(entrance_pos, center_pos, lateral_lane_offset)
+	if visit_bench != null:
+		var bench_visit := visit_bench.global_position
+		bench_visit.y = center_pos.y
+		return bench_visit
+
 	var inward := center_pos - entrance_pos
 	inward.y = 0.0
 	if inward.length_squared() <= 0.0001:
@@ -510,11 +552,54 @@ func _compute_park_visit_point(
 		inward = inward.normalized()
 
 	var visit_pos := path_visit
+	if inward.length_squared() > 0.0001 and park_visit_inside_distance > 0.01:
+		var max_inside := minf(park_visit_inside_distance, path_visit.distance_to(center_pos) * 0.8)
+		visit_pos += inward * max_inside
 	if inward.length_squared() > 0.0001 and absf(lateral_lane_offset) > 0.001:
 		var lateral := Vector3(-inward.z, 0.0, inward.x)
 		visit_pos += lateral * (lateral_lane_offset * 0.35)
 	visit_pos.y = path_visit.y
 	return visit_pos
+
+func _get_preferred_park_visit_bench(
+	entrance_pos: Vector3,
+	center_pos: Vector3,
+	lateral_lane_offset: float = 0.0
+) -> Node3D:
+	var benches := _get_park_bench_nodes()
+	if benches.is_empty():
+		return null
+
+	var best_bench: Node3D = null
+	var best_score := INF
+	var inward_axis := center_pos - entrance_pos
+	inward_axis.y = 0.0
+	var lateral_axis := Vector3.ZERO
+	if inward_axis.length_squared() > 0.0001:
+		inward_axis = inward_axis.normalized()
+		lateral_axis = Vector3(-inward_axis.z, 0.0, inward_axis.x)
+
+	for bench in benches:
+		if bench == null or not is_instance_valid(bench):
+			continue
+		var score := bench.global_position.distance_squared_to(entrance_pos)
+		if inward_axis.length_squared() > 0.0001:
+			var entrance_side := entrance_pos - center_pos
+			entrance_side.y = 0.0
+			var bench_dir := bench.global_position - center_pos
+			bench_dir.y = 0.0
+			if entrance_side.length_squared() > 0.0001 and bench_dir.length_squared() > 0.0001:
+				score -= entrance_side.normalized().dot(bench_dir.normalized()) * 1.25
+		if absf(lateral_lane_offset) > 0.001 and lateral_axis.length_squared() > 0.0001:
+			var bench_dir := bench.global_position - center_pos
+			bench_dir.y = 0.0
+			if bench_dir.length_squared() > 0.0001:
+				score -= bench_dir.normalized().dot(lateral_axis) * clampf(lateral_lane_offset, -1.0, 1.0) * 0.45
+		if score < best_score:
+			best_score = score
+			best_bench = bench
+
+	return best_bench
 
 func _sample_park_path_segment(path: Path3D, start_offset: float, end_offset: float) -> PackedVector3Array:
 	var route := PackedVector3Array()
