@@ -1,27 +1,34 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://Entities/Buildings/CityHall.gd" id="1"]
+[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/buildings/building_F.gltf" id="2"]
+[ext_resource type="PackedScene" path="res://Entities/Bench.tscn" id="3"]
 
-[sub_resource type="BoxMesh" id="1"]
 [sub_resource type="BoxShape3D" id="BoxShape3D_click"]
-size = Vector3(4.2, 3.6, 4.2)
+size = Vector3(2.05, 2.5, 2.05)
 
-[node name="CityHall" type="Node3D" groups=["buildings"] node_paths=PackedStringArray("entrance")]
+[node name="services_city_hall_01" type="Node3D" groups=["buildings", "city_buildings", "city_services", "work"] node_paths=PackedStringArray("entrance")]
 script = ExtResource("1")
-building_name = "City Hall"
+building_name = "City Hall 01 (Services)"
+building_type = 6
 entrance = NodePath("Entrance")
 capacity = 20
 job_capacity = 5
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-transform = Transform3D(4.2, 0, 0, 0, 3.6, 0, 0, 0, 4.2, 0, 0, 0)
-mesh = SubResource("1")
+[node name="building_F2" parent="." instance=ExtResource("2")]
 
 [node name="ClickArea" type="Area3D" parent="."]
 input_ray_pickable = true
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="ClickArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.175, 0)
 shape = SubResource("BoxShape3D_click")
 
 [node name="Entrance" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.8, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0.46415937)
+
+[node name="Bench" parent="." instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.58469665, 0.20000052, 0.72579104)
+
+[node name="Bench2" parent="." instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.57382077, 0.20000029, 0.70456064)

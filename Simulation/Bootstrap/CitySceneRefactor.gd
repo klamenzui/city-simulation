@@ -1,9 +1,12 @@
 extends SceneTree
 
+const BuildingScript = preload("res://Entities/Buildings/Building.gd")
+
 const MAIN_SCENE_PATH := "res://Main.tscn"
 const OUTPUT_ROOT_DIR := "res://Scenes/CityBuildings"
 const TARGET_CATEGORY_NAMES := [
 	"Services",
+	"Production",
 	"Garages",
 	"Stores",
 	"Multilayer",
@@ -14,8 +17,9 @@ const TARGET_CATEGORY_NAMES := [
 ]
 
 const CATEGORY_ARCHETYPES := {
-	"Services": ["city_hall", "university", "restaurant", "farm"],
-	"Garages": ["factory", "factory", "farm"],
+	"Services": ["city_hall", "university", "restaurant", "gas_station"],
+	"Production": ["farm", "factory"],
+	"Garages": ["gas_station", "factory"],
 	"Stores": ["shop", "restaurant", "supermarket", "cafe", "cinema"],
 	"Multilayer": ["residential"],
 	"Foundation": ["residential", "shop"],
@@ -37,21 +41,23 @@ const ARCHETYPE_SCRIPT_PATH := {
 	"park": "res://Entities/Buildings/Park.gd",
 	"farm": "res://Entities/Buildings/Farm.gd",
 	"factory": "res://Entities/Buildings/Factory.gd",
+	"gas_station": "res://Entities/Buildings/GasStation.gd",
 }
 
 const ARCHETYPE_BUILDING_TYPE := {
-	"generic": 0,
-	"residential": 1,
-	"restaurant": 2,
-	"shop": 3,
-	"supermarket": 4,
-	"cafe": 5,
-	"city_hall": 6,
-	"university": 7,
-	"cinema": 8,
-	"park": 9,
-	"farm": 10,
-	"factory": 11,
+	"generic": BuildingScript.BuildingType.GENERIC,
+	"residential": BuildingScript.BuildingType.RESIDENTIAL,
+	"restaurant": BuildingScript.BuildingType.RESTAURANT,
+	"shop": BuildingScript.BuildingType.SHOP,
+	"supermarket": BuildingScript.BuildingType.SUPERMARKET,
+	"cafe": BuildingScript.BuildingType.CAFE,
+	"city_hall": BuildingScript.BuildingType.CITY_HALL,
+	"university": BuildingScript.BuildingType.UNIVERSITY,
+	"cinema": BuildingScript.BuildingType.CINEMA,
+	"park": BuildingScript.BuildingType.PARK,
+	"farm": BuildingScript.BuildingType.FARM,
+	"factory": BuildingScript.BuildingType.FACTORY,
+	"gas_station": BuildingScript.BuildingType.GAS_STATION,
 }
 
 const ARCHETYPE_LABEL := {
@@ -67,6 +73,7 @@ const ARCHETYPE_LABEL := {
 	"park": "Park",
 	"farm": "Farm",
 	"factory": "Factory",
+	"gas_station": "Gas Station",
 }
 
 var _signature_to_scene_path: Dictionary = {}
@@ -230,9 +237,10 @@ func _apply_archetype(root: Node3D, category_name: String, archetype: String, un
 		root.add_to_group("residential")
 	if archetype == "park" and not root.is_in_group("parks"):
 		root.add_to_group("parks")
-	if archetype in ["shop", "restaurant", "supermarket", "cafe", "cinema"] and not root.is_in_group("commercial"):
+	if archetype in ["shop", "restaurant", "supermarket", "cafe", "cinema", "gas_station"] \
+		and not root.is_in_group("commercial"):
 		root.add_to_group("commercial")
-	if archetype in ["shop", "restaurant", "supermarket", "cafe", "cinema", "factory", "farm", "city_hall", "university"] \
+	if archetype in ["shop", "restaurant", "supermarket", "cafe", "cinema", "factory", "farm", "city_hall", "university", "gas_station"] \
 		and not root.is_in_group("work"):
 		root.add_to_group("work")
 

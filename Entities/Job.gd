@@ -20,6 +20,12 @@ func resolve_nearest(root: Node, from_pos: Vector3) -> void:
 		return
 	if workplace != null and workplace.has_free_job_slots():
 		return
+
+	var world := _resolve_world(root)
+	if world != null and world.has_method("find_best_workplace_for_job"):
+		workplace = world.find_best_workplace_for_job(from_pos, self)
+		if workplace != null:
+			return
 	workplace = _auto_find_workplace(root, from_pos)
 
 func try_get_employed(person: Citizen) -> bool:
@@ -68,3 +74,23 @@ func _auto_find_workplace(root: Node, from_pos: Vector3) -> Building:
 			best = building
 
 	return best
+
+func _resolve_world(root: Node) -> World:
+	if root == null:
+		return null
+	if root is World:
+		return root as World
+
+	var current := root
+	while current != null:
+		if current is World:
+			return current as World
+		current = current.get_parent()
+
+	var tree := root.get_tree()
+	if tree == null:
+		return null
+	for node in tree.get_nodes_in_group("world"):
+		if node is World:
+			return node as World
+	return null

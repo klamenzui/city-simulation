@@ -810,8 +810,20 @@ func _rebuild_city_bench_cache() -> void:
 	if not is_inside_tree():
 		_city_bench_cache_dirty = false
 		return
-	_collect_city_bench_nodes(get_tree().get_root(), _cached_city_bench_nodes)
+	_collect_city_bench_nodes(_get_city_bench_scan_root(), _cached_city_bench_nodes)
 	_city_bench_cache_dirty = false
+
+func _get_city_bench_scan_root() -> Node:
+	var only_people_root := get_node_or_null("City/only_people_nav/only_people")
+	if only_people_root != null:
+		return only_people_root
+	var city_root := get_node_or_null("City")
+	if city_root != null:
+		return city_root
+	var simulation_root := get_parent()
+	if simulation_root != null:
+		return simulation_root
+	return self
 
 func _mark_city_bench_cache_dirty() -> void:
 	_city_bench_cache_dirty = true
