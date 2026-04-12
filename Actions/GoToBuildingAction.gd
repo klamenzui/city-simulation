@@ -2,6 +2,7 @@ extends Action
 class_name GoToBuildingAction
 
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
+const RelaxAtParkActionScript = preload("res://Actions/RelaxAtParkAction.gd")
 
 var target: Building
 var travel_minutes: int = 20
@@ -14,6 +15,7 @@ var _reroute_attempts: int = 0
 
 const MAX_TRAVEL_SIM_MIN := 240
 const MAX_DYNAMIC_REROUTES := 2
+const PARK_ENTRY_ARRIVAL_TOLERANCE := 0.15
 
 func _init(_target: Building = null, _travel: int = 20) -> void:
 	super()
@@ -40,7 +42,10 @@ func start(world: World, citizen: Citizen) -> void:
 
 	var nav_points := citizen.get_navigation_points_for_building(target, world) if citizen != null and citizen.has_method("get_navigation_points_for_building") else {}
 	var is_outdoor := target.has_method("is_outdoor_destination") and target.is_outdoor_destination()
-	if is_outdoor:
+	var is_park_target := _is_park_target(target)
+	if is_park_target:
+		_arrival_target = nav_points.get("access", target.get_entrance_pos())
+	elif is_outdoor:
 		_arrival_target = nav_points.get("visit", nav_points.get("access", target.get_entrance_pos()))
 	else:
 		# Use the pedestrian access point so citizens stop at the sidewalk
@@ -57,7 +62,8 @@ func start(world: World, citizen: Citizen) -> void:
 		_format_entry_endpoint(target, world),
 		_format_point(_arrival_target)
 	])
-	var travel_started := citizen.begin_travel_to(_arrival_target, target)
+	var travel_target_building: Building = null if is_park_target else target
+	var travel_started := citizen.begin_travel_to(_arrival_target, travel_target_building)
 	if not travel_started:
 		_travel_failed = true
 		_release_reserved_park_bench(citizen, target)
@@ -90,7 +96,7 @@ func tick(world: World, citizen: Citizen, dt: int) -> void:
 		finished = true
 		return
 	_update_progress_state(citizen, dt)
-	if citizen.has_reached_travel_target():
+	if _has_arrived_at_destination(citizen):
 		finished = true
 		return
 	if _should_abort_for_unreachable(citizen):
@@ -111,7 +117,7 @@ func finish(world: World, citizen: Citizen) -> void:
 		citizen.decision_cooldown_left = 0
 		_release_reserved_park_bench(citizen, target)
 		return
-	var reached_target := citizen.has_reached_travel_target()
+	var reached_target := _has_arrived_at_destination(citizen)
 	citizen.stop_travel()
 	if not reached_target:
 		citizen.decision_cooldown_left = 0
@@ -119,6 +125,10 @@ func finish(world: World, citizen: Citizen) -> void:
 		return
 	_reserve_park_bench(citizen, target)
 	citizen.enter_building(target, world)
+	if _is_park_target(target) and _should_use_park_bench(citizen, target):
+		citizen.start_action(RelaxAtParkActionScript.new(), world)
+		citizen.decision_cooldown_left = 0
+		return
 	citizen.decision_cooldown_left = 0
 
 func _update_progress_state(citizen: Citizen, dt: int) -> void:
@@ -181,6 +191,23 @@ func _should_use_park_bench(citizen: Citizen, building: Building) -> bool:
 	if citizen.job != null and citizen.job.workplace == building:
 		return false
 	return true
+
+func _is_park_target(building: Building) -> bool:
+	if building == null:
+		return false
+	return building is Park or building.is_in_group("parks")
+
+func _has_arrived_at_destination(citizen: Citizen) -> bool:
+	if citizen == null:
+		return false
+	if not _is_park_target(target) and citizen.has_reached_travel_target():
+		return true
+	var remaining := _arrival_target - citizen.global_position
+	remaining.y = 0.0
+	var tolerance := citizen.final_arrival_distance + 0.05
+	if _is_park_target(target):
+		tolerance = PARK_ENTRY_ARRIVAL_TOLERANCE
+	return remaining.length() <= tolerance
 
 func _format_point(pos: Vector3) -> String:
 	return "(%.1f, %.1f, %.1f)" % [pos.x, pos.y, pos.z]

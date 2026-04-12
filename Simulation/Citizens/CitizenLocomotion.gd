@@ -135,6 +135,56 @@ func begin_travel_to(citizen, target_pos: Vector3, target_building, world) -> bo
 
 	return true
 
+func begin_route(citizen, route_points: PackedVector3Array, target_building = null) -> bool:
+	if citizen == null:
+		return false
+
+	citizen._setup_navigation()
+	if citizen.has_method("reset_travel_debug_state"):
+		citizen.reset_travel_debug_state()
+	citizen._travel_target_building = target_building
+	citizen._arrived_via_entrance_contact = false
+	citizen._surface_guard_stop_time = 0.0
+	if citizen._world_ref != null:
+		citizen._ground_fallback_y = citizen._world_ref.get_ground_fallback_y()
+
+	var route := PackedVector3Array()
+	var start_pos: Vector3 = citizen._project_to_ground(citizen.global_position)
+	route.append(start_pos)
+	for point in route_points:
+		var grounded_point: Vector3 = citizen._project_to_ground(point)
+		if route[route.size() - 1].distance_to(grounded_point) > 0.15:
+			route.append(grounded_point)
+
+	citizen._debug_last_travel_route = route
+	citizen._debug_last_travel_failed = false
+	if route.size() < 2:
+		citizen._is_travelling = false
+		citizen._travel_route = route
+		citizen._travel_route_index = -1
+		citizen._travel_target = start_pos
+		citizen._repath_time_left = 0.0
+		citizen._current_speed = 0.0
+		citizen._debug_last_travel_failed = true
+		if citizen._nav_agent != null:
+			citizen._nav_agent.target_position = citizen.global_position
+		return false
+
+	citizen._travel_route = route
+	citizen._travel_route_index = 0
+	citizen._is_travelling = true
+	citizen._repath_time_left = 0.0
+	citizen._current_speed = 0.0
+
+	if not citizen._advance_travel_route():
+		citizen._travel_target = route[route.size() - 1]
+		if citizen._nav_agent != null:
+			citizen._nav_agent.target_position = citizen._travel_target
+		citizen._debug_last_travel_failed = true
+		return false
+
+	return true
+
 func _append_internal_route_points(route: PackedVector3Array, internal_route: PackedVector3Array) -> PackedVector3Array:
 	if internal_route.is_empty():
 		return route

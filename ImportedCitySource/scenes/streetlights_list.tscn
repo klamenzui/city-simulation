@@ -1,170 +1,170 @@
-[gd_scene load_steps=2 format=3 uid="uid://dbuq281j5rn7b"]
+[gd_scene format=3 uid="uid://dbuq281j5rn7b"]
 
-[ext_resource type="PackedScene" path="res://ImportedCitySource/scenes/streetlight_active.tscn" id="2_1iv35"]
+[ext_resource type="PackedScene" uid="uid://drobpf7wp113n" path="res://ImportedCitySource/scenes/streetlight_active.tscn" id="2_1iv35"]
 
-[node name="Streetlight" type="Node3D"]
+[node name="Streetlight" type="Node3D" unique_id=957625603]
 
-[node name="streetlight0" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight0" parent="." unique_id=1755877234 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, -1, 0, 1)
 
-[node name="streetlight1" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight1" parent="." unique_id=504838703 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 0, -1)
 
-[node name="streetlight2" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight2" parent="." unique_id=322468423 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, -1, 0, 3)
 
-[node name="streetlight3" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight3" parent="." unique_id=1784937816 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 6, 0, -1)
 
-[node name="streetlight4" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight4" parent="." unique_id=1892047455 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, -1, 0, 5)
 
-[node name="streetlight5" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight5" parent="." unique_id=38493575 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 14, 0, -1)
 
-[node name="streetlight6" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight6" parent="." unique_id=205784152 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, -1, 0, 13)
 
-[node name="streetlight7" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight7" parent="." unique_id=795175294 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 16, 0, -1)
 
-[node name="streetlight8" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight8" parent="." unique_id=930255853 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, -1, 0, 15)
 
-[node name="streetlight9" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight9" parent="." unique_id=374656242 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 24, 0, -1)
 
-[node name="streetlight10" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight10" parent="." unique_id=1771560235 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, -1, 0, 23)
 
-[node name="streetlight11" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight11" parent="." unique_id=1213485652 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 26, 0, -1)
 
-[node name="streetlight12" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight12" parent="." unique_id=535962480 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, -1, 0, 25)
 
-[node name="streetlight13" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight13" parent="." unique_id=1742221669 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 28, 0, -1)
 
-[node name="streetlight14" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight14" parent="." unique_id=1689595889 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, -1, 0, 27)
 
-[node name="streetlight15" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight15" parent="." unique_id=166516418 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 0, 9)
 
-[node name="streetlight16" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight16" parent="." unique_id=97464953 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 9, 0, 3)
 
-[node name="streetlight17" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight17" parent="." unique_id=1859497678 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 6, 0, 9)
 
-[node name="streetlight18" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight18" parent="." unique_id=1444109774 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 9, 0, 5)
 
-[node name="streetlight19" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight19" parent="." unique_id=1071576417 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 14, 0, 9)
 
-[node name="streetlight20" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight20" parent="." unique_id=1536704681 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 9, 0, 13)
 
-[node name="streetlight21" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight21" parent="." unique_id=1230218611 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 16, 0, 9)
 
-[node name="streetlight22" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight22" parent="." unique_id=370123490 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 9, 0, 15)
 
-[node name="streetlight23" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight23" parent="." unique_id=1988625851 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 24, 0, 9)
 
-[node name="streetlight24" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight24" parent="." unique_id=1697615785 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 9, 0, 23)
 
-[node name="streetlight25" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight25" parent="." unique_id=383120828 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 26, 0, 9)
 
-[node name="streetlight26" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight26" parent="." unique_id=351484845 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 9, 0, 25)
 
-[node name="streetlight27" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight27" parent="." unique_id=1180607594 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 0, 19)
 
-[node name="streetlight28" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight28" parent="." unique_id=2056399695 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 19, 0, 3)
 
-[node name="streetlight29" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight29" parent="." unique_id=1377010785 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 6, 0, 19)
 
-[node name="streetlight30" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight30" parent="." unique_id=2020233997 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 19, 0, 5)
 
-[node name="streetlight31" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight31" parent="." unique_id=1672640776 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 14, 0, 19)
 
-[node name="streetlight32" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight32" parent="." unique_id=439737118 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 19, 0, 13)
 
-[node name="streetlight33" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight33" parent="." unique_id=99480165 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 16, 0, 19)
 
-[node name="streetlight34" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight34" parent="." unique_id=1317686757 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 24, 0, 19)
 
-[node name="streetlight35" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight35" parent="." unique_id=1624335669 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 19, 0, 23)
 
-[node name="streetlight36" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight36" parent="." unique_id=601288273 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 26, 0, 19)
 
-[node name="streetlight37" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight37" parent="." unique_id=1482098071 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 19, 0, 25)
 
-[node name="streetlight38" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight38" parent="." unique_id=1970282930 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 2, 0, 29)
 
-[node name="streetlight39" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight39" parent="." unique_id=743614644 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 29, 0, 1)
 
-[node name="streetlight40" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight40" parent="." unique_id=1895721151 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 0, 29)
 
-[node name="streetlight41" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight41" parent="." unique_id=133692234 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 29, 0, 3)
 
-[node name="streetlight42" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight42" parent="." unique_id=1237181194 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 6, 0, 29)
 
-[node name="streetlight43" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight43" parent="." unique_id=131039053 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 29, 0, 5)
 
-[node name="streetlight44" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight44" parent="." unique_id=1103891744 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 14, 0, 29)
 
-[node name="streetlight45" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight45" parent="." unique_id=1628191815 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 29, 0, 13)
 
-[node name="streetlight46" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight46" parent="." unique_id=2131630378 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 16, 0, 29)
 
-[node name="streetlight47" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight47" parent="." unique_id=1320875624 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 29, 0, 15)
 
-[node name="streetlight48" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight48" parent="." unique_id=938321740 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 24, 0, 29)
 
-[node name="streetlight49" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight49" parent="." unique_id=151855882 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 29, 0, 23)
 
-[node name="streetlight50" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight50" parent="." unique_id=469868573 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 26, 0, 29)
 
-[node name="streetlight51" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight51" parent="." unique_id=475896330 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 29, 0, 25)
 
-[node name="streetlight52" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight52" parent="." unique_id=835469330 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 28, 0, 29)
 
-[node name="streetlight53" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight53" parent="." unique_id=1279310486 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 29, 0, 27)
 
-[node name="streetlight54" parent="." instance=ExtResource("2_1iv35")]
+[node name="streetlight54" parent="." unique_id=1501802681 instance=ExtResource("2_1iv35")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 2, 0, -1)

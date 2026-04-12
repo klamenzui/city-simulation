@@ -401,14 +401,15 @@ func _get_park_visit_point(
 		var ring_start := connector_match.get("ring_pos", center_pos) as Vector3 if not connector_match.is_empty() else center_pos
 		var curve := center_path.curve
 		var start_offset := curve.get_closest_offset(center_path.to_local(ring_start))
-		var center_offset := curve.get_closest_offset(center_path.to_local(center_pos))
-		var visit_offset := center_offset
-		if curve.closed:
-			var ring_length := curve.get_baked_length()
-			if ring_length > 0.01:
-				var clockwise := fposmod(center_offset - start_offset, ring_length)
-				var counter_clockwise := clockwise - ring_length
-				visit_offset = start_offset + (clockwise if absf(clockwise) <= absf(counter_clockwise) else counter_clockwise)
+		var visit_offset := start_offset
+		var ring_length := curve.get_baked_length()
+		if ring_length > 0.01:
+			var lane_sign := -1.0 if lateral_lane_offset < 0.0 else 1.0
+			var lane_scale := 0.6 + clampf(absf(lateral_lane_offset) * 6.0, 0.0, 0.8)
+			var visit_advance := clampf(park_visit_inside_distance, 0.65, 1.35) * lane_scale
+			visit_offset = start_offset + visit_advance * lane_sign
+			if curve.closed:
+				visit_offset = fposmod(visit_offset, ring_length)
 		visit_pos = center_path.to_global(curve.sample_baked(visit_offset, true))
 		visit_pos.y = center_pos.y
 	return _compute_park_visit_point(visit_pos, center_pos, entrance_pos, access_pos, lateral_lane_offset)
@@ -535,71 +536,9 @@ func _compute_park_visit_point(
 	access_pos: Vector3,
 	lateral_lane_offset: float = 0.0
 ) -> Vector3:
-	var visit_bench := _get_preferred_park_visit_bench(entrance_pos, center_pos, lateral_lane_offset)
-	if visit_bench != null:
-		var bench_visit := visit_bench.global_position
-		bench_visit.y = center_pos.y
-		return bench_visit
-
-	var inward := center_pos - entrance_pos
-	inward.y = 0.0
-	if inward.length_squared() <= 0.0001:
-		inward = entrance_pos - access_pos
-		inward.y = 0.0
-	if inward.length_squared() <= 0.0001:
-		inward = Vector3.ZERO
-	else:
-		inward = inward.normalized()
-
 	var visit_pos := path_visit
-	if inward.length_squared() > 0.0001 and park_visit_inside_distance > 0.01:
-		var max_inside := minf(park_visit_inside_distance, path_visit.distance_to(center_pos) * 0.8)
-		visit_pos += inward * max_inside
-	if inward.length_squared() > 0.0001 and absf(lateral_lane_offset) > 0.001:
-		var lateral := Vector3(-inward.z, 0.0, inward.x)
-		visit_pos += lateral * (lateral_lane_offset * 0.35)
 	visit_pos.y = path_visit.y
 	return visit_pos
-
-func _get_preferred_park_visit_bench(
-	entrance_pos: Vector3,
-	center_pos: Vector3,
-	lateral_lane_offset: float = 0.0
-) -> Node3D:
-	var benches := _get_park_bench_nodes()
-	if benches.is_empty():
-		return null
-
-	var best_bench: Node3D = null
-	var best_score := INF
-	var inward_axis := center_pos - entrance_pos
-	inward_axis.y = 0.0
-	var lateral_axis := Vector3.ZERO
-	if inward_axis.length_squared() > 0.0001:
-		inward_axis = inward_axis.normalized()
-		lateral_axis = Vector3(-inward_axis.z, 0.0, inward_axis.x)
-
-	for bench in benches:
-		if bench == null or not is_instance_valid(bench):
-			continue
-		var score := bench.global_position.distance_squared_to(entrance_pos)
-		if inward_axis.length_squared() > 0.0001:
-			var entrance_side := entrance_pos - center_pos
-			entrance_side.y = 0.0
-			var bench_dir := bench.global_position - center_pos
-			bench_dir.y = 0.0
-			if entrance_side.length_squared() > 0.0001 and bench_dir.length_squared() > 0.0001:
-				score -= entrance_side.normalized().dot(bench_dir.normalized()) * 1.25
-		if absf(lateral_lane_offset) > 0.001 and lateral_axis.length_squared() > 0.0001:
-			var bench_dir := bench.global_position - center_pos
-			bench_dir.y = 0.0
-			if bench_dir.length_squared() > 0.0001:
-				score -= bench_dir.normalized().dot(lateral_axis) * clampf(lateral_lane_offset, -1.0, 1.0) * 0.45
-		if score < best_score:
-			best_score = score
-			best_bench = bench
-
-	return best_bench
 
 func _sample_park_path_segment(path: Path3D, start_offset: float, end_offset: float) -> PackedVector3Array:
 	var route := PackedVector3Array()

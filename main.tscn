@@ -74,6 +74,7 @@
 [ext_resource type="PackedScene" uid="uid://xwf5gxy5g8c" path="res://Entities/Citizens/Citizen.tscn" id="102_cxcit"]
 [ext_resource type="PackedScene" uid="uid://d180o3e5em11x" path="res://Scenes/CityBuildings/multilayer/multilayer_006_51b92887.tscn" id="102_xpnqb"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/multilayer/multilayer_007_8ef7bcee.tscn" id="104_bbw0l"]
+[ext_resource type="PackedScene" uid="uid://cpjwfjfva60al" path="res://Entities/Citizens/CitizenNew.tscn" id="106_llcqu"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/foundation/foundation_001_64613340.tscn" id="107_bcjhn"]
 [ext_resource type="PackedScene" uid="uid://deo16kr38jbmc" path="res://Scenes/CityBuildings/multi_building/multi_building_001_04e25c36.tscn" id="108_k5qk0"]
 [ext_resource type="PackedScene" uid="uid://c3fiy3c1p7yh4" path="res://Scenes/CityBuildings/multi_building/multi_building_002_e2882763.tscn" id="110_vm52a"]
@@ -2165,3 +2166,6 @@ autonomous_simulation_enabled = false
 
 [node name="SkyBridge" type="Node" parent="." unique_id=1781400]
 script = ExtResource("401_skybr")
+
+[node name="Citizen" parent="." unique_id=1850326929 instance=ExtResource("106_llcqu")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.489348, 0.12540579, 14.201809)

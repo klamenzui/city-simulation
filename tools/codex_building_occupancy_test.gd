@@ -30,6 +30,8 @@ func _run_all_tests() -> void:
 		"park_entry_keeps_citizen_visible",
 		"park_reserved_bench_sets_visit_point",
 		"park_arrival_keeps_bench_reserved_without_auto_rest",
+		"go_to_park_finish_chains_relax_for_visitors",
+		"go_to_park_finish_uses_015_entrance_tolerance",
 		"go_to_bench_arrival_keeps_reservation_without_auto_rest",
 		"relax_park_uses_bench_bonus",
 		"relax_park_finish_releases_bench_after_location_change",
@@ -79,6 +81,10 @@ func _run_test(test_name: String) -> String:
 			return _test_park_reserved_bench_sets_visit_point()
 		"park_arrival_keeps_bench_reserved_without_auto_rest":
 			return _test_park_arrival_keeps_bench_reserved_without_auto_rest()
+		"go_to_park_finish_chains_relax_for_visitors":
+			return _test_go_to_park_finish_chains_relax_for_visitors()
+		"go_to_park_finish_uses_015_entrance_tolerance":
+			return _test_go_to_park_finish_uses_015_entrance_tolerance()
 		"go_to_bench_arrival_keeps_reservation_without_auto_rest":
 			return _test_go_to_bench_arrival_keeps_reservation_without_auto_rest()
 		"relax_park_uses_bench_bonus":
@@ -251,6 +257,69 @@ func _test_park_arrival_keeps_bench_reserved_without_auto_rest() -> String:
 	_free_world(world)
 	return _current_error
 
+func _test_go_to_park_finish_chains_relax_for_visitors() -> String:
+	var world: World = _new_world()
+	var park: Park = _new_park("Chain Park")
+	var visitor: Citizen = _new_citizen("Chain Visitor")
+	var worker: Citizen = _new_citizen("Chain Worker")
+	_add_bench(park, "Bench_A", Vector3(1.5, 0.0, 0.5), 0.4)
+
+	visitor.set_world_ref(world)
+	var visitor_action: GoToBuildingAction = GoToBuildingActionScript.new(park, 10)
+	visitor.current_action = visitor_action
+	visitor_action._arrival_target = visitor.get_navigation_points_for_building(park, world).get("access", park.global_position)
+	visitor.set_position_grounded(visitor_action._arrival_target)
+	visitor._travel_target = visitor_action._arrival_target
+	visitor.stop_travel()
+	visitor_action.finish(world, visitor)
+	_expect(visitor.current_action is RelaxAtParkAction, "park arrival should immediately chain into RelaxPark for normal visitors")
+
+	worker.job = Job.new()
+	worker.job.workplace = park
+	worker.set_world_ref(world)
+	var worker_action: GoToBuildingAction = GoToBuildingActionScript.new(park, 10)
+	worker.current_action = worker_action
+	worker_action._arrival_target = worker.get_navigation_points_for_building(park, world).get("access", park.global_position)
+	worker.set_position_grounded(worker_action._arrival_target)
+	worker._travel_target = worker_action._arrival_target
+	worker.stop_travel()
+	worker_action.finish(world, worker)
+	_expect(not (worker.current_action is RelaxAtParkAction), "park workers should enter the park without auto-starting RelaxPark")
+
+	_free_world(world)
+	return _current_error
+
+func _test_go_to_park_finish_uses_015_entrance_tolerance() -> String:
+	var world: World = _new_world()
+	var park: Park = _new_park("Tolerance Park")
+	var within: Citizen = _new_citizen("Tolerance Within")
+	var outside: Citizen = _new_citizen("Tolerance Outside")
+	_add_bench(park, "Bench_A", Vector3(1.5, 0.0, 0.5), 0.4)
+
+	within.set_world_ref(world)
+	var within_action: GoToBuildingAction = GoToBuildingActionScript.new(park, 10)
+	within.current_action = within_action
+	within_action._arrival_target = within.get_navigation_points_for_building(park, world).get("access", park.global_position)
+	within.set_position_grounded(within_action._arrival_target + Vector3(0.14, 0.0, 0.0))
+	within._travel_target = within_action._arrival_target
+	within.stop_travel()
+	within_action.finish(world, within)
+	_expect(within.current_action is RelaxAtParkAction, "park arrival should accept up to 0.15m entrance deviation")
+
+	outside.set_world_ref(world)
+	var outside_action: GoToBuildingAction = GoToBuildingActionScript.new(park, 10)
+	outside.current_action = outside_action
+	outside_action._arrival_target = outside.get_navigation_points_for_building(park, world).get("access", park.global_position)
+	outside.set_position_grounded(outside_action._arrival_target + Vector3(0.16, 0.0, 0.0))
+	outside._travel_target = outside_action._arrival_target
+	outside.stop_travel()
+	outside_action.finish(world, outside)
+	_expect(not (outside.current_action is RelaxAtParkAction), "park arrival should not accept more than 0.15m entrance deviation")
+	_expect(outside.current_location == null, "park arrival outside the 0.15m tolerance should not enter the park yet")
+
+	_free_world(world)
+	return _current_error
+
 func _test_go_to_bench_arrival_keeps_reservation_without_auto_rest() -> String:
 	var world: World = _new_world()
 	var building: Building = _new_building("Bench House")
@@ -285,15 +354,24 @@ func _test_relax_park_uses_bench_bonus() -> String:
 	var bench := _add_bench(park, "Bench_Main", Vector3(1.2, 0.0, 0.8), 1.1)
 	citizen.set_world_ref(world)
 	citizen.enter_building(park, world, false)
+	var nav_points := citizen.get_navigation_points_for_building(park, world)
+	citizen.set_position_grounded(nav_points.get("access", park.global_position))
 	park.reserve_bench_for(citizen, citizen.global_position)
 
 	var action: RelaxAtParkAction = RelaxAtParkActionScript.new()
 	action.start(world, citizen)
-	var modifier := action.get_needs_modifier(world, citizen)
 
 	_expect(action.is_using_bench(), "relaxing in a park with a reserved bench should use the bench flow")
-	_expect(citizen.has_active_rest_pose(), "bench relax should activate a rest pose on the citizen")
-	_expect_planar_vec3_near(citizen.global_position, bench.global_position, 0.001, "citizen should snap to the reserved bench marker")
+	_expect(citizen.is_travelling(), "park relax should first walk from the entrance to the reserved bench")
+	_expect(not citizen.has_active_rest_pose(), "bench relax should wait with the rest pose until the citizen reaches the bench")
+
+	citizen.set_position_grounded(bench.global_position)
+	citizen.stop_travel()
+	action.tick(world, citizen, world.minutes_per_tick)
+	var modifier := action.get_needs_modifier(world, citizen)
+
+	_expect(citizen.has_active_rest_pose(), "bench relax should activate a rest pose after arriving at the reserved bench")
+	_expect_planar_vec3_near(citizen.global_position, bench.global_position, 0.001, "citizen should rest at the reserved bench marker")
 	_expect(float(modifier.get("energy_add", 0.0)) > 0.08, "bench relax should produce a net positive energy gain")
 	_expect(float(modifier.get("fun_add", 0.0)) > 0.22, "bench relax should provide a small extra fun bonus")
 
@@ -312,6 +390,8 @@ func _test_relax_park_finish_releases_bench_after_location_change() -> String:
 	_add_bench(park, "Bench_Main", Vector3(1.2, 0.0, 0.8), 1.1)
 	citizen.set_world_ref(world)
 	citizen.enter_building(park, world, false)
+	var nav_points := citizen.get_navigation_points_for_building(park, world)
+	citizen.set_position_grounded(nav_points.get("access", park.global_position))
 	park.reserve_bench_for(citizen, citizen.global_position)
 
 	var action: RelaxAtParkAction = RelaxAtParkActionScript.new()
@@ -330,6 +410,8 @@ func _test_relax_park_without_bench_stays_fun_only() -> String:
 	var citizen: Citizen = _new_citizen("Standing Visitor")
 	citizen.set_world_ref(world)
 	citizen.enter_building(park, world, false)
+	var nav_points := citizen.get_navigation_points_for_building(park, world)
+	citizen.set_position_grounded(nav_points.get("access", park.global_position))
 
 	var action: RelaxAtParkAction = RelaxAtParkActionScript.new()
 	action.start(world, citizen)
@@ -372,6 +454,8 @@ func _test_agent_finishes_relax_park_without_stale_rest_trace() -> String:
 	_add_bench(park, "Bench", Vector3(0.8, 0.0, 0.6), 0.5)
 	citizen.set_world_ref(world)
 	citizen.enter_building(park, world, false)
+	var nav_points := citizen.get_navigation_points_for_building(park, world)
+	citizen.set_position_grounded(nav_points.get("access", park.global_position))
 
 	var action: RelaxAtParkAction = RelaxAtParkActionScript.new()
 	citizen.current_action = action
