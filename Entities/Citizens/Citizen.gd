@@ -1332,6 +1332,9 @@ func reset_travel_debug_state() -> void:
 func begin_travel_to(target_pos: Vector3, target_building: Building = null) -> bool:
 	return _agent.locomotion.begin_travel_to(self, target_pos, target_building, _world_ref)
 
+func begin_custom_travel_route(route_points: PackedVector3Array, target_building: Building = null) -> bool:
+	return _agent.locomotion.begin_route(self, route_points, target_building)
+
 func begin_click_move_to(target_pos: Vector3, world: World = null) -> bool:
 	var resolved_world := world if world != null else _world_ref
 	if _manual_control_enabled:

@@ -110,7 +110,8 @@ func _sim_tick_coarse(citizen, world) -> void:
 		return
 
 	if citizen.current_action != null:
-		if citizen.current_action is GoToBuildingActionScript:
+		if citizen.current_action is GoToBuildingActionScript \
+			or (citizen.has_method("is_travelling") and citizen.is_travelling()):
 			_tick_coarse_travel_action(citizen, world)
 		else:
 			_tick_current_action(citizen, world)

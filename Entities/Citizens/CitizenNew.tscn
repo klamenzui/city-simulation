@@ -1,0 +1,49 @@
+[gd_scene format=3 uid="uid://cpjwfjfva60al"]
+
+[ext_resource type="Script" uid="uid://b517iuvwr0qrm" path="res://Entities/Citizens/citizen_new.gd" id="1_ic3lm"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_0gsqa"]
+radius = 0.21386719
+height = 1.2990814
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_4g7t2"]
+albedo_color = Color(0.92941177, 0.28235295, 0.3019608, 1)
+roughness = 0.92
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_cbg8l"]
+material = SubResource("StandardMaterial3D_4g7t2")
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_ic3lm"]
+
+[node name="Citizen" type="CharacterBody3D" unique_id=566366776 groups=["citizens"]]
+script = ExtResource("1_ic3lm")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=719777068]
+transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0.20228906, 0)
+shape = SubResource("CapsuleShape3D_0gsqa")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=2025689120]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0.2, 0)
+mesh = SubResource("CapsuleMesh_cbg8l")
+
+[node name="ObstacleSensorPivot" type="Node3D" parent="." unique_id=804207808]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0.31758282, 0)
+
+[node name="ObstacleRayCastForward" type="RayCast3D" parent="ObstacleSensorPivot" unique_id=293945390]
+transform = Transform3D(1, 0, 0, 0, 0.9999149, 0.013054669, 0, -0.013054669, 0.9999149, 0, 0, 0)
+target_position = Vector3(0, 0, -0.95)
+
+[node name="ObstacleRayCastDown" type="RayCast3D" parent="ObstacleSensorPivot" unique_id=1999936410]
+transform = Transform3D(1, 0, 0, 0, 0.8731279, 0.6787953, 0, -0.6937961, 0.8542496, 0, 0, 0)
+target_position = Vector3(0, 0, -0.95)
+
+[node name="ObstacleRayCastLeft" type="RayCast3D" parent="ObstacleSensorPivot" unique_id=1515096413]
+target_position = Vector3(-0.3, 0, -0.74)
+
+[node name="ObstacleRayCastRight" type="RayCast3D" parent="ObstacleSensorPivot" unique_id=87889597]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00017493963, 0.00048339367, 0.0024129152)
+target_position = Vector3(0.3, 0, -0.74)
+
+[node name="ShapeCast3D" type="ShapeCast3D" parent="." unique_id=324814403]
+transform = Transform3D(0.37662584, 0, 0, 0, 0.20022386, 0, 0, 0, 0.37556028, 0, 0.41313088, -0.15551949)
+shape = SubResource("CylinderShape3D_ic3lm")
