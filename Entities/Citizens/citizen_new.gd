@@ -31,12 +31,18 @@ extends CharacterBody3D
 @export var local_astar_goal_reach_distance: float = 0.12
 @export var local_astar_front_row_tolerance: float = 0.24
 @export var local_astar_prefer_right_when_left_open: bool = true
+@export var local_astar_avoid_road_cells: bool = true
+@export_flags_3d_physics var local_astar_surface_collision_mask: int = 3
+@export var local_astar_surface_probe_up: float = 1.4
+@export var local_astar_surface_probe_down: float = 2.2
+@export var local_astar_surface_probe_max_hits: int = 8
 
 @export_group("Low Obstacle Jump")
 @export var jump_low_obstacles: bool = true
 @export_node_path("RayCast3D") var obstacle_down_ray_path: NodePath
-@export var max_jump_obstacle_height: float = 0.1
+@export var max_jump_obstacle_height: float = 0.14
 @export var min_jump_obstacle_height: float = 0.015
+@export var jump_probe_distance: float = 0.45
 @export var jump_velocity: float = 1.8
 @export var jump_cooldown: float = 0.35
 
@@ -57,6 +63,7 @@ var _last_avoidance_side_bias: int = 0
 var _local_avoidance_path: PackedVector3Array = PackedVector3Array()
 var _local_avoidance_path_index: int = 0
 var _local_astar_replan_timer: float = 0.0
+var _local_astar_follow_global_on_fail: bool = false
 var _local_astar_probe_shape: SphereShape3D = SphereShape3D.new()
 var _debug_avoidance_hits: Array[Dictionary] = []
 var _debug_avoidance_status: String = "idle"
@@ -70,6 +77,7 @@ var _debug_avoidance_mesh: ImmediateMesh = ImmediateMesh.new()
 var _debug_avoidance_visual: MeshInstance3D = null
 var _debug_avoidance_material: StandardMaterial3D = null
 var _debug_avoidance_label: Label3D = null
+var _debug_jump_status: String = "-"
 var _debug_local_astar_cells: Array[Dictionary] = []
 var _debug_local_astar_status: String = "-"
 var _debug_local_astar_goal: Vector3 = Vector3.ZERO
@@ -206,7 +214,11 @@ func _get_steered_direction(desired_direction: Vector3, delta: float) -> Vector3
 		_update_obstacle_avoidance(desired_direction)
 		_obstacle_check_timer = obstacle_check_interval
 
-	if _cached_avoidance_blocked and use_local_astar_avoidance and _local_astar_replan_timer <= 0.0:
+	var should_plan_local_path := _cached_avoidance_blocked
+	if not should_plan_local_path and use_local_astar_avoidance and _local_astar_replan_timer <= 0.0:
+		should_plan_local_path = _should_local_astar_escape_surface(_get_local_astar_surface_kind(global_position))
+
+	if should_plan_local_path and use_local_astar_avoidance and _local_astar_replan_timer <= 0.0:
 		_local_astar_replan_timer = maxf(local_astar_replan_interval, 0.02)
 		if _try_build_local_astar_path(desired_direction):
 			local_path_direction = _get_local_avoidance_path_direction()
@@ -214,6 +226,11 @@ func _get_steered_direction(desired_direction: Vector3, delta: float) -> Vector3
 				_cached_avoidance_dir = local_path_direction
 				_debug_avoidance_status = "local path"
 				return local_path_direction
+		elif _local_astar_follow_global_on_fail:
+			_cached_avoidance_blocked = false
+			_cached_avoidance_dir = desired_direction
+			_debug_avoidance_status = "global path"
+			return desired_direction
 	elif not _cached_avoidance_blocked:
 		_clear_local_avoidance_path()
 
@@ -369,6 +386,7 @@ func _smooth_move_direction(target_direction: Vector3, fallback_direction: Vecto
 func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 	_clear_local_avoidance_path()
 	_debug_local_astar_status = "planning"
+	_local_astar_follow_global_on_fail = false
 
 	if not is_inside_tree() or get_world_3d() == null:
 		_debug_local_astar_status = "no world"
@@ -388,7 +406,10 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 	var origin := global_position
 	var start_cell := Vector2i.ZERO
 	var start_id := _local_astar_cell_id(start_cell, cell_radius)
+	var start_surface_kind := _get_local_astar_surface_kind(origin)
+	var start_needs_surface_escape := _should_local_astar_escape_surface(start_surface_kind)
 	var point_ids: Dictionary = {}
+	var cell_surfaces: Dictionary = {}
 	var astar := AStar2D.new()
 
 	_debug_local_astar_cells.clear()
@@ -404,17 +425,26 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 				continue
 
 			var world_point := _local_astar_world_from_offset(origin, right, forward, offset)
-			var blocked := _is_local_astar_probe_blocked(world_point)
+			var surface_kind := _get_local_astar_surface_kind(world_point)
+			var physics_blocked := _is_local_astar_probe_blocked(world_point)
+			var surface_blocked := _is_local_astar_surface_blocked(surface_kind)
+			var blocked := physics_blocked or surface_blocked
+			var blocked_reason := _get_local_astar_blocked_reason(physics_blocked, surface_blocked)
 			if debug_draw_avoidance:
 				_debug_local_astar_cells.append({
 					"point": world_point,
-					"blocked": blocked
+					"blocked": blocked,
+					"blocked_reason": blocked_reason,
+					"surface": surface_kind
 				})
-			if blocked and cell != start_cell:
+			if physics_blocked and cell != start_cell:
+				continue
+			if surface_blocked and cell != start_cell and not start_needs_surface_escape:
 				continue
 
 			var point_id := _local_astar_cell_id(cell, cell_radius)
 			point_ids[cell] = point_id
+			cell_surfaces[cell] = surface_kind
 			astar.add_point(point_id, offset)
 
 	if not point_ids.has(start_cell):
@@ -456,11 +486,19 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 		if cell == start_cell:
 			continue
 
+		var candidate_surface := str(cell_surfaces.get(cell, "unknown"))
+		if _is_local_astar_surface_blocked(candidate_surface):
+			continue
+
 		var candidate_offset := Vector2(float(cell.x) * cell_size, float(cell.y) * cell_size)
-		if candidate_offset.y <= 0.0:
-			continue
-		if candidate_offset.length() < radius - cell_size * 1.5:
-			continue
+		if start_needs_surface_escape:
+			if candidate_offset.length() <= cell_size * 0.5:
+				continue
+		else:
+			if candidate_offset.y <= 0.0:
+				continue
+			if candidate_offset.length() < radius - cell_size * 1.5:
+				continue
 
 		var goal_id: int = point_ids[cell]
 		var candidate_path := astar.get_point_path(start_id, goal_id)
@@ -474,16 +512,22 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 			"path": candidate_path,
 			"offset": candidate_offset,
 			"reference_distance": reference_distance,
-			"path_length": path_length
+			"path_length": path_length,
+			"surface": candidate_surface
 		})
 		front_y = maxf(front_y, candidate_offset.y)
 		if candidate_offset.x < -cell_size:
 			left_open = true
 
+	if candidates.is_empty():
+		_debug_local_astar_status = "all x red global"
+		_local_astar_follow_global_on_fail = true
+		return false
+
 	var front_tolerance := maxf(local_astar_front_row_tolerance, cell_size)
 	var prefer_right := local_astar_prefer_right_when_left_open and left_open
 	var has_right_front_candidate := false
-	if prefer_right:
+	if prefer_right and not start_needs_surface_escape:
 		for candidate_value in candidates:
 			var candidate: Dictionary = candidate_value
 			var candidate_offset: Vector2 = candidate.get("offset", Vector2.ZERO)
@@ -493,19 +537,20 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 
 	var best_path := PackedVector2Array()
 	var best_score := INF
-	var selection_label := "front row"
+	var selection_label := "surface escape" if start_needs_surface_escape else "front row"
 	for candidate_value in candidates:
 		var candidate: Dictionary = candidate_value
 		var candidate_offset: Vector2 = candidate.get("offset", Vector2.ZERO)
-		if candidate_offset.y < front_y - front_tolerance:
-			continue
-		if prefer_right and has_right_front_candidate and candidate_offset.x < 0.0:
-			continue
+		if not start_needs_surface_escape:
+			if candidate_offset.y < front_y - front_tolerance:
+				continue
+			if prefer_right and has_right_front_candidate and candidate_offset.x < 0.0:
+				continue
 
 		var reference_distance: float = candidate.get("reference_distance", INF)
 		var path_length: float = candidate.get("path_length", 0.0)
-		var score := reference_distance + path_length * 0.1
-		if prefer_right:
+		var score := reference_distance + path_length * (0.25 if start_needs_surface_escape else 0.1)
+		if prefer_right and not start_needs_surface_escape:
 			score -= candidate_offset.x * 0.05
 			selection_label = "front row right"
 		if score < best_score:
@@ -578,7 +623,128 @@ func _is_local_astar_probe_blocked(point: Vector3) -> bool:
 	query.collide_with_bodies = true
 	query.exclude = [get_rid()]
 
-	return not get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
+	var hits := get_world_3d().direct_space_state.intersect_shape(query, 8)
+	for hit in hits:
+		if _is_local_astar_probe_hit_blocking(hit):
+			return true
+	return false
+
+func _is_local_astar_probe_hit_blocking(hit: Dictionary) -> bool:
+	return not _is_local_astar_walkable_probe_collider(hit.get("collider", null))
+
+func _is_local_astar_walkable_probe_collider(collider: Variant) -> bool:
+	if not (collider is Node):
+		return false
+
+	var current := collider as Node
+	while current != null:
+		if current.is_in_group("road_group"):
+			return true
+
+		var current_path := ""
+		if current.is_inside_tree():
+			current_path = str(current.get_path()).to_lower()
+		var current_name := current.name.to_lower()
+
+		if current_path.contains("/only_transport/"):
+			return true
+		if current_name.begins_with("park_road"):
+			return true
+
+		current = current.get_parent()
+
+	return false
+
+func _is_local_astar_surface_blocked(surface_kind: String) -> bool:
+	if not local_astar_avoid_road_cells:
+		return false
+	return surface_kind == "road"
+
+func _should_local_astar_escape_surface(surface_kind: String) -> bool:
+	return _is_local_astar_surface_blocked(surface_kind) or surface_kind == "" or surface_kind == "unknown"
+
+func _get_local_astar_blocked_reason(physics_blocked: bool, surface_blocked: bool) -> String:
+	if physics_blocked and surface_blocked:
+		return "physics+road"
+	if physics_blocked:
+		return "physics"
+	if surface_blocked:
+		return "road"
+	return ""
+
+func _get_local_astar_surface_kind(point: Vector3) -> String:
+	var hit := _probe_local_astar_surface(point)
+	var kind := _classify_surface_hit(hit)
+	if kind != "" and kind != "unknown":
+		return kind
+
+	var world := _get_world_node()
+	if world != null and world.has_method("get_pedestrian_path_point_kind"):
+		var graph_kind := str(world.get_pedestrian_path_point_kind(point))
+		if not graph_kind.is_empty():
+			return graph_kind
+	return kind
+
+func _probe_local_astar_surface(point: Vector3) -> Dictionary:
+	if not is_inside_tree() or get_world_3d() == null:
+		return {}
+
+	var from := point + Vector3.UP * maxf(local_astar_surface_probe_up, 0.2)
+	var to := point + Vector3.DOWN * maxf(local_astar_surface_probe_down, 0.2)
+	var exclude: Array[RID] = [get_rid()]
+	var attempts := maxi(local_astar_surface_probe_max_hits, 1)
+
+	for _attempt in range(attempts):
+		var query := PhysicsRayQueryParameters3D.create(from, to)
+		query.collision_mask = local_astar_surface_collision_mask
+		query.collide_with_areas = false
+		query.exclude = exclude
+
+		var hit := get_world_3d().direct_space_state.intersect_ray(query)
+		if hit.is_empty():
+			return {}
+
+		var collider: Variant = hit.get("collider", null)
+		if collider is CharacterBody3D:
+			if not hit.has("rid"):
+				return {}
+			exclude.append(hit["rid"])
+			continue
+		return hit
+
+	return {}
+
+func _classify_surface_hit(hit: Dictionary) -> String:
+	if hit.is_empty():
+		return "unknown"
+
+	var collider: Variant = hit.get("collider", null)
+	if collider is Node:
+		return _classify_surface_node(collider as Node)
+	return "unknown"
+
+func _classify_surface_node(node: Node) -> String:
+	var current := node
+	while current != null:
+		var current_path := ""
+		if current.is_inside_tree():
+			current_path = str(current.get_path()).to_lower()
+		var current_name := current.name.to_lower()
+
+		if current_path.contains("/road_straight_crossing/") \
+				or current_name.contains("crosswalk") \
+				or current_name.contains("crossing"):
+			return "crosswalk"
+		if current.is_in_group("road_group"):
+			return "road"
+		if current_path.contains("/only_transport/"):
+			return "road"
+		if current_path.contains("/only_people_nav/"):
+			return "pedestrian"
+
+		current = current.get_parent()
+
+	return "unknown"
 
 func _get_local_astar_collision_mask() -> int:
 	if _obstacle_cast != null and _obstacle_cast.collision_mask != 0:
@@ -797,36 +963,63 @@ func _update_jump_cooldown(delta: float) -> void:
 
 func _try_jump_low_obstacle(move_direction: Vector3) -> bool:
 	if not jump_low_obstacles:
+		_debug_jump_status = "off"
 		return false
 	if _obstacle_down_ray == null or not _obstacle_down_ray.enabled:
+		_debug_jump_status = "no ray"
 		return false
-	if _jump_cooldown_timer > 0.0 or not is_on_floor():
+
+	var planar_move_direction := move_direction
+	planar_move_direction.y = 0.0
+	if planar_move_direction.length_squared() <= 0.0001:
+		_debug_jump_status = "no move"
 		return false
+	planar_move_direction = planar_move_direction.normalized()
+
+	if _jump_cooldown_timer > 0.0:
+		_debug_jump_status = "cooldown %.2f" % _jump_cooldown_timer
+		return false
+	if not is_on_floor():
+		_debug_jump_status = "air"
+		return false
+
+	_update_obstacle_down_ray_target(planar_move_direction)
+	_obstacle_down_ray.force_raycast_update()
 	if not _obstacle_down_ray.is_colliding():
+		_debug_jump_status = "no hit"
 		return false
 
 	var collider := _obstacle_down_ray.get_collider()
 	if collider == self:
+		_debug_jump_status = "self"
 		return false
 
 	var hit_point := _obstacle_down_ray.get_collision_point()
 	var to_hit := hit_point - global_position
 	to_hit.y = 0.0
-	var planar_move_direction := move_direction
-	planar_move_direction.y = 0.0
-	if planar_move_direction.length_squared() > 0.0001 and to_hit.length_squared() > 0.0001:
-		if planar_move_direction.normalized().dot(to_hit.normalized()) <= 0.0:
-			return false
+	if to_hit.length_squared() > 0.0001 and planar_move_direction.dot(to_hit.normalized()) <= 0.0:
+		_debug_jump_status = "behind"
+		return false
 
 	var obstacle_height := hit_point.y - global_position.y
 	var min_height := maxf(min_jump_obstacle_height, 0.0)
 	var max_height := maxf(max_jump_obstacle_height, min_height)
 	if obstacle_height < min_height or obstacle_height > max_height:
+		_debug_jump_status = "h %.3f" % obstacle_height
 		return false
 
 	velocity.y = maxf(jump_velocity, 0.0)
 	_jump_cooldown_timer = maxf(jump_cooldown, 0.0)
+	_debug_jump_status = "jump h %.3f" % obstacle_height
 	return true
+
+func _update_obstacle_down_ray_target(planar_move_direction: Vector3) -> void:
+	var probe_distance := maxf(jump_probe_distance, 0.05)
+	var drop_distance := maxf(max_jump_obstacle_height + 0.25, 0.3)
+	var target_world := _obstacle_down_ray.global_position \
+			+ planar_move_direction * probe_distance \
+			+ Vector3.DOWN * drop_distance
+	_obstacle_down_ray.target_position = _obstacle_down_ray.to_local(target_world)
 
 func _reset_avoidance_debug_sample(status: String) -> void:
 	_debug_avoidance_hits.clear()
@@ -917,7 +1110,8 @@ func _draw_local_astar_debug() -> void:
 	for cell in _debug_local_astar_cells:
 		var cell_point: Vector3 = cell.get("point", Vector3.ZERO)
 		var cell_blocked := bool(cell.get("blocked", false))
-		var cell_color := Color(1.0, 0.0, 0.0, 1.0) if cell_blocked else Color(0.0, 0.7, 0.25, 1.0)
+		var blocked_reason := str(cell.get("blocked_reason", ""))
+		var cell_color := _get_local_astar_debug_cell_color(cell_blocked, blocked_reason)
 		_add_avoidance_debug_cross(cell_point + Vector3.UP * 0.1, cell_mark_size, cell_color)
 
 	if not _local_avoidance_path.is_empty():
@@ -930,6 +1124,13 @@ func _draw_local_astar_debug() -> void:
 	if _debug_local_astar_has_goal:
 		_add_avoidance_debug_cross(_debug_local_astar_goal + Vector3.UP * 0.22, 0.12, Color(1.0, 1.0, 1.0, 1.0))
 
+func _get_local_astar_debug_cell_color(blocked: bool, blocked_reason: String) -> Color:
+	if not blocked:
+		return Color(0.0, 0.7, 0.25, 1.0)
+	if blocked_reason == "physics":
+		return Color(1.0, 0.55, 0.0, 1.0)
+	return Color(1.0, 0.0, 0.0, 1.0)
+
 func _update_avoidance_debug_label() -> void:
 	var accepted_hits := 0
 	for hit in _debug_avoidance_hits:
@@ -941,11 +1142,12 @@ func _update_avoidance_debug_label() -> void:
 		path_label = "%d/%d" % [path_index, global_path.size() - 1]
 
 	_debug_avoidance_label.global_position = global_position + Vector3.UP * 1.3
-	_debug_avoidance_label.text = "path: %s\navoid: %s\nturn: %s\nlocal: %s\npressure L %.2f R %.2f\nhits %d/%d" % [
+	_debug_avoidance_label.text = "path: %s\navoid: %s\nturn: %s\nlocal: %s\njump: %s\npressure L %.2f R %.2f\nhits %d/%d" % [
 		path_label,
 		_debug_avoidance_status,
 		_debug_avoidance_side_bias,
 		_debug_local_astar_status,
+		_debug_jump_status,
 		_debug_avoidance_left_pressure,
 		_debug_avoidance_right_pressure,
 		accepted_hits,
