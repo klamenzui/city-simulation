@@ -1,7 +1,11 @@
 extends CharacterBody3D
 
 @export var move_speed: float = 0.5
-@export var waypoint_reach_distance: float = 0.18
+@export var waypoint_reach_distance: float = 0.35
+@export var final_waypoint_reach_distance: float = 0.18
+@export var waypoint_pass_distance: float = 0.55
+@export var corner_blend_distance: float = 0.8
+@export var corner_blend_strength: float = 0.45
 @export var click_ray_distance: float = 1000.0
 @export var ignore_ui_clicks: bool = true
 @export_flags_3d_physics var click_collision_mask: int = 0xFFFFFFFF
@@ -25,6 +29,8 @@ extends CharacterBody3D
 @export var local_astar_probe_radius: float = 0.16
 @export var local_astar_replan_interval: float = 0.18
 @export var local_astar_goal_reach_distance: float = 0.12
+@export var local_astar_front_row_tolerance: float = 0.24
+@export var local_astar_prefer_right_when_left_open: bool = true
 
 @export_group("Low Obstacle Jump")
 @export var jump_low_obstacles: bool = true
@@ -76,6 +82,8 @@ func _ready() -> void:
 		_obstacle_cast = get_node_or_null("ShapeCast3D") as ShapeCast3D
 	if use_obstacle_cast and _obstacle_cast == null:
 		push_warning("Citizen: use_obstacle_cast is enabled, but no ShapeCast3D was found.")
+	elif use_obstacle_cast:
+		_obstacle_cast.enabled = true
 
 	if obstacle_down_ray_path != NodePath():
 		_obstacle_down_ray = get_node_or_null(obstacle_down_ray_path) as RayCast3D
@@ -107,8 +115,8 @@ func set_global_target(target: Vector3) -> bool:
 	_last_avoidance_side_bias = 0
 	_clear_local_avoidance_path()
 	_obstacle_check_timer = 0.0
-	if _is_travelling and _is_at_point(global_path[path_index]):
-		path_index += 1
+	if _is_travelling:
+		_is_travelling = _advance_path_progress()
 	_update_global_path_visual()
 	return _is_travelling
 
@@ -127,18 +135,14 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 
-	var waypoint := global_path[path_index]
-	if _is_at_point(waypoint):
-		path_index += 1
-		_clear_local_avoidance_path()
-		if path_index >= global_path.size():
-			_clear_avoidance_debug_visual()
-			_stop_at_target()
-			move_and_slide()
-			return
-		waypoint = global_path[path_index]
+	if not _advance_path_progress():
+		_clear_avoidance_debug_visual()
+		_stop_at_target()
+		move_and_slide()
+		return
 
-	var direction := waypoint - global_position
+	var move_target := _get_path_move_target()
+	var direction := move_target - global_position
 	direction.y = 0.0
 	if direction.length_squared() > 0.0001:
 		var desired_direction := direction.normalized()
@@ -222,7 +226,7 @@ func _update_obstacle_avoidance(desired_direction: Vector3) -> void:
 	_cached_avoidance_blocked = false
 	_reset_avoidance_debug_sample("checking")
 
-	#_obstacle_cast.target_position = desired_direction * obstacle_cast_distance
+	_update_obstacle_cast_target(desired_direction)
 	_debug_avoidance_cast_from = _obstacle_cast.global_position
 	_debug_avoidance_cast_to = _obstacle_cast.to_global(_obstacle_cast.target_position)
 	_debug_avoidance_has_cast = true
@@ -233,8 +237,8 @@ func _update_obstacle_avoidance(desired_direction: Vector3) -> void:
 		_last_avoidance_side_bias = 0
 		return
 
-	var left := desired_direction.cross(Vector3.UP).normalized()
-	var right := -left
+	var right := _get_planar_right(desired_direction)
+	var left := -right
 	var repel := Vector3.ZERO
 	var left_pressure := 0.0
 	var right_pressure := 0.0
@@ -319,6 +323,22 @@ func _update_obstacle_avoidance(desired_direction: Vector3) -> void:
 	else:
 		_cached_avoidance_dir = desired_direction
 
+func _update_obstacle_cast_target(desired_direction: Vector3) -> void:
+	if _obstacle_cast == null:
+		return
+
+	var cast_direction := desired_direction
+	cast_direction.y = 0.0
+	if cast_direction.length_squared() <= 0.0001:
+		cast_direction = -global_transform.basis.z
+		cast_direction.y = 0.0
+	if cast_direction.length_squared() <= 0.0001:
+		return
+
+	var cast_distance := maxf(obstacle_cast_distance, 0.05)
+	var target_world := _obstacle_cast.global_position + cast_direction.normalized() * cast_distance
+	_obstacle_cast.target_position = _obstacle_cast.to_local(target_world)
+
 func _smooth_move_direction(target_direction: Vector3, fallback_direction: Vector3, delta: float) -> Vector3:
 	var target := target_direction
 	target.y = 0.0
@@ -361,7 +381,7 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 		return false
 	forward = forward.normalized()
 
-	var right := -forward.cross(Vector3.UP).normalized()
+	var right := _get_planar_right(forward)
 	var cell_size := maxf(local_astar_cell_size, 0.08)
 	var radius := maxf(local_astar_radius, cell_size * 2.0)
 	var cell_radius := int(ceil(radius / cell_size))
@@ -370,8 +390,6 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 	var start_id := _local_astar_cell_id(start_cell, cell_radius)
 	var point_ids: Dictionary = {}
 	var astar := AStar2D.new()
-	var reference_point := _get_local_astar_global_reference_point(radius)
-	var current_reference_distance := _planar_distance(origin, reference_point)
 
 	_debug_local_astar_cells.clear()
 	_local_astar_probe_shape.radius = maxf(local_astar_probe_radius, 0.03)
@@ -430,8 +448,9 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 			if point_id < neighbor_id:
 				astar.connect_points(point_id, neighbor_id, false)
 
-	var best_path := PackedVector2Array()
-	var best_score := INF
+	var candidates: Array[Dictionary] = []
+	var front_y := -INF
+	var left_open := false
 	for cell_key in point_ids.keys():
 		var cell: Vector2i = cell_key
 		if cell == start_cell:
@@ -449,16 +468,49 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 			continue
 
 		var candidate_world := _local_astar_world_from_offset(origin, right, forward, candidate_offset)
-		var reference_distance := _planar_distance(candidate_world, reference_point)
-		if reference_distance > current_reference_distance + cell_size * 0.25:
+		var reference_distance := _distance_to_global_path_ahead(candidate_world)
+		var path_length := _local_astar_path_length(candidate_path)
+		candidates.append({
+			"path": candidate_path,
+			"offset": candidate_offset,
+			"reference_distance": reference_distance,
+			"path_length": path_length
+		})
+		front_y = maxf(front_y, candidate_offset.y)
+		if candidate_offset.x < -cell_size:
+			left_open = true
+
+	var front_tolerance := maxf(local_astar_front_row_tolerance, cell_size)
+	var prefer_right := local_astar_prefer_right_when_left_open and left_open
+	var has_right_front_candidate := false
+	if prefer_right:
+		for candidate_value in candidates:
+			var candidate: Dictionary = candidate_value
+			var candidate_offset: Vector2 = candidate.get("offset", Vector2.ZERO)
+			if candidate_offset.y >= front_y - front_tolerance and candidate_offset.x >= 0.0:
+				has_right_front_candidate = true
+				break
+
+	var best_path := PackedVector2Array()
+	var best_score := INF
+	var selection_label := "front row"
+	for candidate_value in candidates:
+		var candidate: Dictionary = candidate_value
+		var candidate_offset: Vector2 = candidate.get("offset", Vector2.ZERO)
+		if candidate_offset.y < front_y - front_tolerance:
+			continue
+		if prefer_right and has_right_front_candidate and candidate_offset.x < 0.0:
 			continue
 
-		var path_length := _local_astar_path_length(candidate_path)
-		var forward_progress := candidate_offset.y / radius
-		var score := reference_distance + path_length * 0.2 - forward_progress * 0.15
+		var reference_distance: float = candidate.get("reference_distance", INF)
+		var path_length: float = candidate.get("path_length", 0.0)
+		var score := reference_distance + path_length * 0.1
+		if prefer_right:
+			score -= candidate_offset.x * 0.05
+			selection_label = "front row right"
 		if score < best_score:
 			best_score = score
-			best_path = candidate_path
+			best_path = candidate.get("path", PackedVector2Array())
 
 	if best_path.size() < 2:
 		_debug_local_astar_status = "no reachable edge"
@@ -469,7 +521,7 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 	_local_avoidance_path_index = 0
 	_debug_local_astar_goal = _local_avoidance_path[_local_avoidance_path.size() - 1]
 	_debug_local_astar_has_goal = true
-	_debug_local_astar_status = "path %d" % _local_avoidance_path.size()
+	_debug_local_astar_status = "%s %d" % [selection_label, _local_avoidance_path.size()]
 	return true
 
 func _get_local_avoidance_path_direction() -> Vector3:
@@ -501,6 +553,13 @@ func _local_astar_world_from_offset(origin: Vector3, right: Vector3, forward: Ve
 	point.y = origin.y
 	return point
 
+func _get_planar_right(forward: Vector3) -> Vector3:
+	var planar_forward := forward
+	planar_forward.y = 0.0
+	if planar_forward.length_squared() <= 0.0001:
+		return Vector3.RIGHT
+	return planar_forward.normalized().cross(Vector3.UP).normalized()
+
 func _is_local_astar_probe_blocked(point: Vector3) -> bool:
 	if get_world_3d() == null:
 		return true
@@ -526,17 +585,6 @@ func _get_local_astar_collision_mask() -> int:
 		return _obstacle_cast.collision_mask
 	return collision_mask
 
-func _get_local_astar_global_reference_point(radius: float) -> Vector3:
-	if global_path.is_empty():
-		return target_position
-	var reference_index := clampi(path_index, 0, global_path.size() - 1)
-	var min_distance := maxf(radius, waypoint_reach_distance)
-	while reference_index < global_path.size() - 1:
-		if _planar_distance(global_position, global_path[reference_index]) >= min_distance:
-			break
-		reference_index += 1
-	return global_path[reference_index]
-
 func _local_astar_path_length(path: PackedVector2Array) -> float:
 	var total := 0.0
 	for idx in range(path.size() - 1):
@@ -547,6 +595,33 @@ func _planar_distance(a: Vector3, b: Vector3) -> float:
 	var offset := a - b
 	offset.y = 0.0
 	return offset.length()
+
+func _distance_to_global_path_ahead(point: Vector3) -> float:
+	if global_path.size() < 2:
+		return _planar_distance(point, target_position)
+
+	var best_distance := INF
+	var start_index := clampi(path_index - 1, 0, global_path.size() - 2)
+	for idx in range(start_index, global_path.size() - 1):
+		best_distance = minf(best_distance, _planar_distance_to_segment(point, global_path[idx], global_path[idx + 1]))
+	return best_distance
+
+func _planar_distance_to_segment(point: Vector3, from: Vector3, to: Vector3) -> float:
+	var planar_point := point
+	var planar_from := from
+	var planar_to := to
+	planar_point.y = 0.0
+	planar_from.y = 0.0
+	planar_to.y = 0.0
+
+	var segment := planar_to - planar_from
+	var segment_length_squared := segment.length_squared()
+	if segment_length_squared <= 0.0001:
+		return planar_point.distance_to(planar_from)
+
+	var t := clampf((planar_point - planar_from).dot(segment) / segment_length_squared, 0.0, 1.0)
+	var closest := planar_from + segment * t
+	return planar_point.distance_to(closest)
 
 func _build_global_path(start: Vector3, target: Vector3) -> PackedVector3Array:
 	var world_path := _build_world_pedestrian_path(start, target)
@@ -628,10 +703,74 @@ func _append_path_point(route: PackedVector3Array, point: Vector3) -> void:
 	if route.is_empty() or route[route.size() - 1].distance_to(point) > 0.05:
 		route.append(point)
 
-func _is_at_point(point: Vector3) -> bool:
-	var offset := point - global_position
-	offset.y = 0.0
-	return offset.length() <= waypoint_reach_distance
+func _advance_path_progress() -> bool:
+	while path_index < global_path.size():
+		if not _is_at_path_index(path_index) and not _has_passed_path_index(path_index):
+			break
+		path_index += 1
+		_reset_path_following_state_for_next_waypoint()
+	return path_index < global_path.size()
+
+func _reset_path_following_state_for_next_waypoint() -> void:
+	_cached_avoidance_dir = Vector3.ZERO
+	_cached_avoidance_blocked = false
+	_last_avoidance_side_bias = 0
+	_local_astar_replan_timer = 0.0
+	_obstacle_check_timer = 0.0
+	_clear_local_avoidance_path()
+
+func _is_at_path_index(index: int) -> bool:
+	if index < 0 or index >= global_path.size():
+		return false
+	return _planar_distance(global_position, global_path[index]) <= _get_path_reach_distance(index)
+
+func _has_passed_path_index(index: int) -> bool:
+	if index <= 0 or index >= global_path.size() - 1:
+		return false
+
+	var previous := global_path[index - 1]
+	var waypoint := global_path[index]
+	var segment := waypoint - previous
+	segment.y = 0.0
+	var segment_length_squared := segment.length_squared()
+	if segment_length_squared <= 0.0001:
+		return false
+
+	var to_position := global_position - previous
+	to_position.y = 0.0
+	var progress := to_position.dot(segment) / segment_length_squared
+	if progress < 1.0:
+		return false
+
+	var pass_distance := maxf(waypoint_pass_distance, _get_path_reach_distance(index))
+	return _planar_distance(global_position, waypoint) <= pass_distance
+
+func _get_path_reach_distance(index: int) -> float:
+	if index >= global_path.size() - 1:
+		return maxf(final_waypoint_reach_distance, 0.02)
+	return maxf(waypoint_reach_distance, 0.02)
+
+func _get_path_move_target() -> Vector3:
+	if global_path.is_empty() or path_index < 0 or path_index >= global_path.size():
+		return target_position
+
+	var move_target := global_path[path_index]
+	if path_index >= global_path.size() - 1:
+		return move_target
+
+	var current_delta := move_target - global_position
+	current_delta.y = 0.0
+	var current_distance := current_delta.length()
+	var blend_distance := maxf(corner_blend_distance, 0.05)
+	if current_distance >= blend_distance:
+		return move_target
+
+	var next_point := global_path[path_index + 1]
+	var blend_t := 1.0 - clampf(current_distance / blend_distance, 0.0, 1.0)
+	var blend_weight := clampf(blend_t * corner_blend_strength, 0.0, 0.8)
+	var blended_target := move_target.lerp(next_point, blend_weight)
+	blended_target.y = lerpf(move_target.y, next_point.y, blend_weight)
+	return blended_target
 
 func _stop_at_target() -> void:
 	_is_travelling = false
@@ -797,8 +936,13 @@ func _update_avoidance_debug_label() -> void:
 		if bool(hit.get("accepted", false)):
 			accepted_hits += 1
 
+	var path_label := "-"
+	if _is_travelling and not global_path.is_empty():
+		path_label = "%d/%d" % [path_index, global_path.size() - 1]
+
 	_debug_avoidance_label.global_position = global_position + Vector3.UP * 1.3
-	_debug_avoidance_label.text = "avoid: %s\nturn: %s\nlocal: %s\npressure L %.2f R %.2f\nhits %d/%d" % [
+	_debug_avoidance_label.text = "path: %s\navoid: %s\nturn: %s\nlocal: %s\npressure L %.2f R %.2f\nhits %d/%d" % [
+		path_label,
 		_debug_avoidance_status,
 		_debug_avoidance_side_bias,
 		_debug_local_astar_status,
