@@ -11,21 +11,20 @@ extends CharacterBody3D
 @export_flags_3d_physics var click_collision_mask: int = 0xFFFFFFFF
 
 @export_group("Local Avoidance")
-@export var use_obstacle_cast: bool = true
-@export_node_path("ShapeCast3D") var obstacle_cast_path: NodePath
-@export var obstacle_cast_distance: float = 1.2
+## How often (seconds) the forward probe runs to detect blocking obstacles.
 @export var obstacle_check_interval: float = 0.08
-@export var avoidance_strength: float = 0.9
-@export var avoidance_min_hit_distance: float = 0.1
+## Speed multiplier applied while the citizen follows a local A* detour path.
 @export var avoidance_slowdown_factor: float = 0.65
 @export var steering_smoothing: float = 5.0
-@export var avoidance_side_switch_margin: float = 0.12
 @export var debug_draw_avoidance: bool = true
 
 @export_group("Local AStar Avoidance")
 @export var use_local_astar_avoidance: bool = true
 @export var local_astar_radius: float = 1.2
 @export var local_astar_cell_size: float = 0.24
+## Subdivisions per cell: 1 = original grid, 2 = adds midpoints between each pair
+## (step = cell_size / subdivisions). Higher values find narrow gaps but cost more probes.
+@export var local_astar_grid_subdivisions: int = 2
 @export var local_astar_probe_radius: float = 0.16
 @export var local_astar_replan_interval: float = 0.18
 @export var local_astar_goal_reach_distance: float = 0.12
@@ -52,27 +51,17 @@ var target_position: Vector3 = Vector3.ZERO
 var _is_travelling: bool = false
 
 var _gravity: float = float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8))
-var _obstacle_cast: ShapeCast3D = null
 var _obstacle_down_ray: RayCast3D = null
 var _obstacle_check_timer: float = 0.0
 var _jump_cooldown_timer: float = 0.0
-var _cached_avoidance_dir: Vector3 = Vector3.ZERO
 var _cached_avoidance_blocked: bool = false
 var _smoothed_move_direction: Vector3 = Vector3.ZERO
-var _last_avoidance_side_bias: int = 0
 var _local_avoidance_path: PackedVector3Array = PackedVector3Array()
 var _local_avoidance_path_index: int = 0
 var _local_astar_replan_timer: float = 0.0
 var _local_astar_follow_global_on_fail: bool = false
 var _local_astar_probe_shape: SphereShape3D = SphereShape3D.new()
-var _debug_avoidance_hits: Array[Dictionary] = []
 var _debug_avoidance_status: String = "idle"
-var _debug_avoidance_side_bias: String = "-"
-var _debug_avoidance_left_pressure: float = 0.0
-var _debug_avoidance_right_pressure: float = 0.0
-var _debug_avoidance_cast_from: Vector3 = Vector3.ZERO
-var _debug_avoidance_cast_to: Vector3 = Vector3.ZERO
-var _debug_avoidance_has_cast: bool = false
 var _debug_avoidance_mesh: ImmediateMesh = ImmediateMesh.new()
 var _debug_avoidance_visual: MeshInstance3D = null
 var _debug_avoidance_material: StandardMaterial3D = null
@@ -83,16 +72,24 @@ var _debug_local_astar_status: String = "-"
 var _debug_local_astar_goal: Vector3 = Vector3.ZERO
 var _debug_local_astar_has_goal: bool = false
 
-func _ready() -> void:
-	if obstacle_cast_path != NodePath():
-		_obstacle_cast = get_node_or_null(obstacle_cast_path) as ShapeCast3D
-	else:
-		_obstacle_cast = get_node_or_null("ShapeCast3D") as ShapeCast3D
-	if use_obstacle_cast and _obstacle_cast == null:
-		push_warning("Citizen: use_obstacle_cast is enabled, but no ShapeCast3D was found.")
-	elif use_obstacle_cast:
-		_obstacle_cast.enabled = true
+@export_group("Stuck Recovery")
+## How often (seconds) to check whether the citizen has made progress.
+@export var stuck_detection_interval: float = 1.5
+## Minimum planar distance that counts as "making progress" per check interval.
+@export var stuck_detection_min_distance: float = 0.25
+## How many replan attempts before giving up and emitting stuck.
+@export var stuck_max_recovery_attempts: int = 3
 
+## Emitted when the citizen reaches its target normally.
+signal target_reached()
+## Emitted when all replan recovery attempts are exhausted.
+signal stuck()
+
+var _stuck_check_timer: float = 0.0
+var _stuck_last_pos: Vector3 = Vector3.ZERO
+var _stuck_recovery_attempts: int = 0
+
+func _ready() -> void:
 	if obstacle_down_ray_path != NodePath():
 		_obstacle_down_ray = get_node_or_null(obstacle_down_ray_path) as RayCast3D
 	else:
@@ -117,10 +114,11 @@ func set_global_target(target: Vector3) -> bool:
 	global_path = _build_global_path(global_position, target_position)
 	path_index = 0
 	_is_travelling = global_path.size() >= 2
-	_cached_avoidance_dir = Vector3.ZERO
 	_cached_avoidance_blocked = false
 	_smoothed_move_direction = Vector3.ZERO
-	_last_avoidance_side_bias = 0
+	_stuck_check_timer = 0.0
+	_stuck_recovery_attempts = 0
+	_stuck_last_pos = global_position
 	_clear_local_avoidance_path()
 	_obstacle_check_timer = 0.0
 	if _is_travelling:
@@ -130,6 +128,7 @@ func set_global_target(target: Vector3) -> bool:
 
 func _physics_process(delta: float) -> void:
 	_update_jump_cooldown(delta)
+	_update_stuck_detection(delta)
 
 	if not _is_travelling:
 		_clear_avoidance_debug_visual()
@@ -140,12 +139,14 @@ func _physics_process(delta: float) -> void:
 	if path_index >= global_path.size():
 		_clear_avoidance_debug_visual()
 		_stop_at_target()
+		_apply_idle_gravity(delta)
 		move_and_slide()
 		return
 
 	if not _advance_path_progress():
 		_clear_avoidance_debug_visual()
 		_stop_at_target()
+		_apply_idle_gravity(delta)
 		move_and_slide()
 		return
 
@@ -177,10 +178,10 @@ func stop_travel() -> void:
 	global_path = PackedVector3Array()
 	path_index = 0
 	_is_travelling = false
-	_cached_avoidance_dir = Vector3.ZERO
 	_cached_avoidance_blocked = false
 	_smoothed_move_direction = Vector3.ZERO
-	_last_avoidance_side_bias = 0
+	_stuck_check_timer = 0.0
+	_stuck_recovery_attempts = 0
 	_clear_local_avoidance_path()
 	velocity = Vector3.ZERO
 	_clear_global_path_visual()
@@ -190,171 +191,67 @@ func is_travelling() -> bool:
 	return _is_travelling
 
 func _get_steered_direction(desired_direction: Vector3, delta: float) -> Vector3:
-	if not use_obstacle_cast:
-		_reset_avoidance_debug_sample("avoidance disabled")
-		_last_avoidance_side_bias = 0
-		_clear_local_avoidance_path()
-		return desired_direction
-	if _obstacle_cast == null:
-		_reset_avoidance_debug_sample("missing ShapeCast3D")
-		_last_avoidance_side_bias = 0
+	if not use_local_astar_avoidance:
+		_cached_avoidance_blocked = false
 		_clear_local_avoidance_path()
 		return desired_direction
 
 	_local_astar_replan_timer -= delta
-	var local_path_direction := _get_local_avoidance_path_direction()
-	if local_path_direction != Vector3.ZERO:
-		_cached_avoidance_blocked = true
-		_cached_avoidance_dir = local_path_direction
-		_debug_avoidance_status = "local path"
-		return local_path_direction
 
+	# Follow active local A* path.
+	var local_dir := _get_local_avoidance_path_direction()
+	if local_dir != Vector3.ZERO:
+		_cached_avoidance_blocked = true
+		_debug_avoidance_status = "local path"
+		return local_dir
+
+	# Forward probe: detect whether the path ahead is physically blocked or surface must be escaped.
 	_obstacle_check_timer -= delta
 	if _obstacle_check_timer <= 0.0:
-		_update_obstacle_avoidance(desired_direction)
 		_obstacle_check_timer = obstacle_check_interval
+		var surface_kind := _get_local_astar_surface_kind(global_position)
+		_cached_avoidance_blocked = _is_path_ahead_blocked(desired_direction) \
+				or _should_local_astar_escape_surface(surface_kind)
+		_debug_avoidance_status = "blocked" if _cached_avoidance_blocked else "clear"
 
-	var should_plan_local_path := _cached_avoidance_blocked
-	if not should_plan_local_path and use_local_astar_avoidance and _local_astar_replan_timer <= 0.0:
-		should_plan_local_path = _should_local_astar_escape_surface(_get_local_astar_surface_kind(global_position))
-
-	if should_plan_local_path and use_local_astar_avoidance and _local_astar_replan_timer <= 0.0:
+	if _cached_avoidance_blocked and _local_astar_replan_timer <= 0.0:
 		_local_astar_replan_timer = maxf(local_astar_replan_interval, 0.02)
 		if _try_build_local_astar_path(desired_direction):
-			local_path_direction = _get_local_avoidance_path_direction()
-			if local_path_direction != Vector3.ZERO:
-				_cached_avoidance_dir = local_path_direction
+			local_dir = _get_local_avoidance_path_direction()
+			if local_dir != Vector3.ZERO:
+				_cached_avoidance_blocked = true
 				_debug_avoidance_status = "local path"
-				return local_path_direction
-		elif _local_astar_follow_global_on_fail:
+				return local_dir
+		if _local_astar_follow_global_on_fail:
 			_cached_avoidance_blocked = false
-			_cached_avoidance_dir = desired_direction
-			_debug_avoidance_status = "global path"
-			return desired_direction
+			_debug_avoidance_status = "global fallback"
 	elif not _cached_avoidance_blocked:
 		_clear_local_avoidance_path()
 
-	if _cached_avoidance_dir.length_squared() <= 0.0001:
-		return desired_direction
-	return _cached_avoidance_dir
+	return desired_direction
 
-func _update_obstacle_avoidance(desired_direction: Vector3) -> void:
-	_cached_avoidance_dir = desired_direction
-	_cached_avoidance_blocked = false
-	_reset_avoidance_debug_sample("checking")
-
-	_update_obstacle_cast_target(desired_direction)
-	_debug_avoidance_cast_from = _obstacle_cast.global_position
-	_debug_avoidance_cast_to = _obstacle_cast.to_global(_obstacle_cast.target_position)
-	_debug_avoidance_has_cast = true
-	_obstacle_cast.force_shapecast_update()
-
-	if not _obstacle_cast.is_colliding():
-		_debug_avoidance_status = "clear"
-		_last_avoidance_side_bias = 0
-		return
-
-	var right := _get_planar_right(desired_direction)
-	var left := -right
-	var repel := Vector3.ZERO
-	var left_pressure := 0.0
-	var right_pressure := 0.0
-
-	for i in range(_obstacle_cast.get_collision_count()):
-		var collider := _obstacle_cast.get_collider(i)
-		if collider == self:
-			continue
-
-		var hit_point := _obstacle_cast.get_collision_point(i)
-		var to_hit := hit_point - global_position
-		to_hit.y = 0.0
-		var hit_distance = max(to_hit.length(), avoidance_min_hit_distance)
-		if hit_distance <= 0.0001:
-			continue
-
-		var hit_dir = to_hit / hit_distance
-		var forward_dot := desired_direction.dot(hit_dir)
-		var side := right.dot(hit_dir)
-		var hit_side := "right" if side > 0.0 else "left"
-		var hit_record := {
-			"point": hit_point,
-			"collider": _debug_collider_label(collider),
-			"distance": hit_distance,
-			"forward": forward_dot,
-			"side": hit_side,
-			"accepted": false,
-			"reason": "behind"
-		}
-		if forward_dot <= 0.0:
-			_debug_avoidance_hits.append(hit_record)
-			continue
-
-		_cached_avoidance_blocked = true
-		var weight = (1.0 / hit_distance) * forward_dot
-		repel -= hit_dir * weight
-
-		if side > 0.0:
-			right_pressure += abs(side) * weight
-		else:
-			left_pressure += abs(side) * weight
-		hit_record["accepted"] = true
-		hit_record["reason"] = "blocking"
-		_debug_avoidance_hits.append(hit_record)
-
-	_debug_avoidance_left_pressure = left_pressure
-	_debug_avoidance_right_pressure = right_pressure
-	if not _cached_avoidance_blocked:
-		_debug_avoidance_status = "hits ignored"
-		_last_avoidance_side_bias = 0
-		return
-
-	var side_bias := Vector3.ZERO
-	var pressure_delta := absf(left_pressure - right_pressure)
-	var switch_margin := maxf(avoidance_side_switch_margin, 0.0)
-	if pressure_delta <= switch_margin and _last_avoidance_side_bias != 0:
-		if _last_avoidance_side_bias < 0:
-			side_bias = left
-			_debug_avoidance_side_bias = "left (held)"
-		else:
-			side_bias = right
-			_debug_avoidance_side_bias = "right (held)"
-	elif left_pressure < right_pressure:
-		side_bias = left
-		_debug_avoidance_side_bias = "left"
-		_last_avoidance_side_bias = -1
-	elif right_pressure < left_pressure:
-		side_bias = right
-		_debug_avoidance_side_bias = "right"
-		_last_avoidance_side_bias = 1
-	else:
-		# Prefer a stable default if both sides are equally blocked.
-		side_bias = left
-		_debug_avoidance_side_bias = "left (tie)"
-		_last_avoidance_side_bias = -1
-	_debug_avoidance_status = "blocked"
-
-	var steered := desired_direction + repel + side_bias * avoidance_strength
-	steered.y = 0.0
-	if steered.length_squared() > 0.0001:
-		_cached_avoidance_dir = steered.normalized()
-	else:
-		_cached_avoidance_dir = desired_direction
-
-func _update_obstacle_cast_target(desired_direction: Vector3) -> void:
-	if _obstacle_cast == null:
-		return
-
-	var cast_direction := desired_direction
-	cast_direction.y = 0.0
-	if cast_direction.length_squared() <= 0.0001:
-		cast_direction = -global_transform.basis.z
-		cast_direction.y = 0.0
-	if cast_direction.length_squared() <= 0.0001:
-		return
-
-	var cast_distance := maxf(obstacle_cast_distance, 0.05)
-	var target_world := _obstacle_cast.global_position + cast_direction.normalized() * cast_distance
-	_obstacle_cast.target_position = _obstacle_cast.to_local(target_world)
+## Returns true when a physics obstacle blocks the path at roughly half the local A* radius ahead.
+func _is_path_ahead_blocked(direction: Vector3) -> bool:
+	if not is_inside_tree() or get_world_3d() == null:
+		return false
+	var flat_dir := direction
+	flat_dir.y = 0.0
+	if flat_dir.length_squared() <= 0.0001:
+		return false
+	_local_astar_probe_shape.radius = maxf(local_astar_probe_radius, 0.03)
+	var probe_pos := global_position + flat_dir.normalized() * (local_astar_radius * 0.5)
+	probe_pos.y = global_position.y + 0.35
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = _local_astar_probe_shape
+	query.transform = Transform3D(Basis.IDENTITY, probe_pos)
+	query.collision_mask = collision_mask
+	query.collide_with_areas = false
+	query.collide_with_bodies = true
+	query.exclude = [get_rid()]
+	for hit in get_world_3d().direct_space_state.intersect_shape(query, 4):
+		if _is_local_astar_probe_hit_blocking(hit):
+			return true
+	return false
 
 func _smooth_move_direction(target_direction: Vector3, fallback_direction: Vector3, delta: float) -> Vector3:
 	var target := target_direction
@@ -402,10 +299,17 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 	var right := _get_planar_right(forward)
 	var cell_size := maxf(local_astar_cell_size, 0.08)
 	var radius := maxf(local_astar_radius, cell_size * 2.0)
-	var cell_radius := int(ceil(radius / cell_size))
+	# step is the probe spacing; cell_size is kept for world-space margins below.
+	var step := cell_size / float(maxi(local_astar_grid_subdivisions, 1))
+	var cell_radius := int(ceil(radius / step))
+	# Doubled coordinate space so normal and staggered cells share one ID scheme.
+	#   Normal cells:   Vector2i(x*2,   z*2)   → world offset (x*step,       z*step)
+	#   Staggered cells:Vector2i(x*2+1, z*2+1) → world offset ((x+0.5)*step, (z+0.5)*step)
+	# World offset from any cell: Vector2(cell.x * step * 0.5, cell.y * step * 0.5)
+	var doubled_radius := cell_radius * 2
 	var origin := global_position
 	var start_cell := Vector2i.ZERO
-	var start_id := _local_astar_cell_id(start_cell, cell_radius)
+	var start_id := _local_astar_cell_id(start_cell, doubled_radius)
 	var start_surface_kind := _get_local_astar_surface_kind(origin)
 	var start_needs_surface_escape := _should_local_astar_escape_surface(start_surface_kind)
 	var point_ids: Dictionary = {}
@@ -416,64 +320,36 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 	_local_astar_probe_shape.radius = maxf(local_astar_probe_radius, 0.03)
 
 	for z in range(-cell_radius, cell_radius + 1):
+		# Normal row at z * step
 		for x in range(-cell_radius, cell_radius + 1):
-			var cell := Vector2i(x, z)
-			var offset := Vector2(float(x) * cell_size, float(z) * cell_size)
-			if offset.length() > radius:
-				continue
-			if offset.y < -cell_size:
-				continue
-
-			var world_point := _local_astar_world_from_offset(origin, right, forward, offset)
-			var surface_kind := _get_local_astar_surface_kind(world_point)
-			var physics_blocked := _is_local_astar_probe_blocked(world_point)
-			var surface_blocked := _is_local_astar_surface_blocked(surface_kind)
-			var blocked := physics_blocked or surface_blocked
-			var blocked_reason := _get_local_astar_blocked_reason(physics_blocked, surface_blocked)
-			if debug_draw_avoidance:
-				_debug_local_astar_cells.append({
-					"point": world_point,
-					"blocked": blocked,
-					"blocked_reason": blocked_reason,
-					"surface": surface_kind
-				})
-			if physics_blocked and cell != start_cell:
-				continue
-			if surface_blocked and cell != start_cell and not start_needs_surface_escape:
-				continue
-
-			var point_id := _local_astar_cell_id(cell, cell_radius)
-			point_ids[cell] = point_id
-			cell_surfaces[cell] = surface_kind
-			astar.add_point(point_id, offset)
+			_probe_and_register_cell(Vector2i(x * 2, z * 2), doubled_radius, step, radius,
+					origin, right, forward, start_cell, start_needs_surface_escape,
+					point_ids, cell_surfaces, astar)
+		# Staggered row between z and z+1, shifted by (0.5*step, 0.5*step)
+		if z < cell_radius:
+			for x in range(-cell_radius, cell_radius):
+				_probe_and_register_cell(Vector2i(x * 2 + 1, z * 2 + 1), doubled_radius, step, radius,
+						origin, right, forward, start_cell, start_needs_surface_escape,
+						point_ids, cell_surfaces, astar)
 
 	if not point_ids.has(start_cell):
 		_debug_local_astar_status = "blocked start"
 		return false
 
-	var neighbors := [
-		Vector2i(1, 0),
-		Vector2i(-1, 0),
-		Vector2i(0, 1),
-		Vector2i(0, -1),
-		Vector2i(1, 1),
-		Vector2i(1, -1),
-		Vector2i(-1, 1),
-		Vector2i(-1, -1)
+	# Cross-type diagonals (normal↔staggered) are the primary hex edges.
+	# Same-type direct connections handle row-to-row routing in open areas.
+	# No corner-cut validation needed: diagonals are always valid hex transitions.
+	var neighbors: Array[Vector2i] = [
+		Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1),
+		Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2),
 	]
 	for cell_key in point_ids.keys():
 		var cell: Vector2i = cell_key
 		var point_id: int = point_ids[cell]
-		for neighbor_offset_value in neighbors:
-			var neighbor_offset: Vector2i = neighbor_offset_value
-			var neighbor_cell := cell + neighbor_offset
+		for delta: Vector2i in neighbors:
+			var neighbor_cell := cell + delta
 			if not point_ids.has(neighbor_cell):
 				continue
-			if neighbor_offset.x != 0 and neighbor_offset.y != 0:
-				if not point_ids.has(Vector2i(cell.x + neighbor_offset.x, cell.y)):
-					continue
-				if not point_ids.has(Vector2i(cell.x, cell.y + neighbor_offset.y)):
-					continue
 			var neighbor_id: int = point_ids[neighbor_cell]
 			if point_id < neighbor_id:
 				astar.connect_points(point_id, neighbor_id, false)
@@ -490,7 +366,7 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 		if _is_local_astar_surface_blocked(candidate_surface):
 			continue
 
-		var candidate_offset := Vector2(float(cell.x) * cell_size, float(cell.y) * cell_size)
+		var candidate_offset := Vector2(float(cell.x) * step * 0.5, float(cell.y) * step * 0.5)
 		if start_needs_surface_escape:
 			if candidate_offset.length() <= cell_size * 0.5:
 				continue
@@ -579,6 +455,10 @@ func _get_local_avoidance_path_direction() -> Vector3:
 		_local_avoidance_path_index += 1
 
 	_clear_local_avoidance_path()
+	# Path fully consumed: force a fresh obstacle check so we don't immediately
+	# re-trigger another local plan while the way ahead may now be clear.
+	_cached_avoidance_blocked = false
+	_obstacle_check_timer = 0.0
 	return Vector3.ZERO
 
 func _clear_local_avoidance_path() -> void:
@@ -588,6 +468,36 @@ func _clear_local_avoidance_path() -> void:
 	_debug_local_astar_has_goal = false
 	if _debug_local_astar_status != "planning":
 		_debug_local_astar_status = "-"
+
+func _probe_and_register_cell(
+		cell: Vector2i, doubled_radius: int, step: float, radius: float,
+		origin: Vector3, right: Vector3, forward: Vector3,
+		start_cell: Vector2i, start_needs_surface_escape: bool,
+		point_ids: Dictionary, cell_surfaces: Dictionary, astar: AStar2D) -> void:
+	var offset := Vector2(float(cell.x) * step * 0.5, float(cell.y) * step * 0.5)
+	if offset.length() > radius:
+		return
+	var world_point := _local_astar_world_from_offset(origin, right, forward, offset)
+	var surface_kind := _get_local_astar_surface_kind(world_point)
+	var physics_blocked := _is_local_astar_probe_blocked(world_point)
+	var surface_blocked := _is_local_astar_surface_blocked(surface_kind)
+	if debug_draw_avoidance:
+		_debug_local_astar_cells.append({
+			"point": world_point,
+			"blocked": physics_blocked or surface_blocked,
+			"blocked_reason": _get_local_astar_blocked_reason(physics_blocked, surface_blocked),
+			"surface": surface_kind
+		})
+	# Back-cells are kept as intermediate graph nodes for routing around corners,
+	# but excluded from goal candidates below.
+	if physics_blocked and cell != start_cell:
+		return
+	if surface_blocked and cell != start_cell and not start_needs_surface_escape:
+		return
+	var point_id := _local_astar_cell_id(cell, doubled_radius)
+	point_ids[cell] = point_id
+	cell_surfaces[cell] = surface_kind
+	astar.add_point(point_id, offset)
 
 func _local_astar_cell_id(cell: Vector2i, cell_radius: int) -> int:
 	var width := cell_radius * 2 + 1
@@ -610,10 +520,7 @@ func _is_local_astar_probe_blocked(point: Vector3) -> bool:
 		return true
 
 	var probe_position := point
-	if _obstacle_cast != null:
-		probe_position.y = _obstacle_cast.global_position.y
-	else:
-		probe_position.y = global_position.y + 0.35
+	probe_position.y = global_position.y + 0.35
 
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = _local_astar_probe_shape
@@ -747,8 +654,6 @@ func _classify_surface_node(node: Node) -> String:
 	return "unknown"
 
 func _get_local_astar_collision_mask() -> int:
-	if _obstacle_cast != null and _obstacle_cast.collision_mask != 0:
-		return _obstacle_cast.collision_mask
 	return collision_mask
 
 func _local_astar_path_length(path: PackedVector2Array) -> float:
@@ -870,17 +775,18 @@ func _append_path_point(route: PackedVector3Array, point: Vector3) -> void:
 		route.append(point)
 
 func _advance_path_progress() -> bool:
+	var old_index := path_index
 	while path_index < global_path.size():
 		if not _is_at_path_index(path_index) and not _has_passed_path_index(path_index):
 			break
 		path_index += 1
 		_reset_path_following_state_for_next_waypoint()
+	if path_index != old_index:
+		_update_global_path_visual()
 	return path_index < global_path.size()
 
 func _reset_path_following_state_for_next_waypoint() -> void:
-	_cached_avoidance_dir = Vector3.ZERO
 	_cached_avoidance_blocked = false
-	_last_avoidance_side_bias = 0
 	_local_astar_replan_timer = 0.0
 	_obstacle_check_timer = 0.0
 	_clear_local_avoidance_path()
@@ -939,16 +845,19 @@ func _get_path_move_target() -> Vector3:
 	return blended_target
 
 func _stop_at_target() -> void:
+	var was_travelling := _is_travelling
 	_is_travelling = false
-	_cached_avoidance_dir = Vector3.ZERO
 	_cached_avoidance_blocked = false
 	_smoothed_move_direction = Vector3.ZERO
-	_last_avoidance_side_bias = 0
+	_stuck_check_timer = 0.0
+	_stuck_recovery_attempts = 0
 	velocity.x = 0.0
 	velocity.z = 0.0
 	if clear_global_path_on_arrival:
 		_clear_global_path_visual()
 	_clear_avoidance_debug_visual()
+	if was_travelling:
+		target_reached.emit()
 
 func _apply_idle_gravity(delta: float) -> void:
 	if is_on_floor():
@@ -960,6 +869,55 @@ func _apply_idle_gravity(delta: float) -> void:
 func _update_jump_cooldown(delta: float) -> void:
 	if _jump_cooldown_timer > 0.0:
 		_jump_cooldown_timer = maxf(_jump_cooldown_timer - delta, 0.0)
+
+func _update_stuck_detection(delta: float) -> void:
+	if not _is_travelling:
+		_stuck_check_timer = 0.0
+		_stuck_recovery_attempts = 0
+		_stuck_last_pos = global_position
+		return
+	# Skip stuck detection when already within arrival distance of the target.
+	# At this range the normal arrival logic will fire before the next interval.
+	var dist_to_target := _planar_distance(global_position, target_position)
+	if dist_to_target <= maxf(stuck_detection_min_distance * 2.0, final_waypoint_reach_distance * 2.0):
+		return
+	_stuck_check_timer -= delta
+	if _stuck_check_timer > 0.0:
+		return
+	_stuck_check_timer = maxf(stuck_detection_interval, 0.5)
+	var dist := _planar_distance(global_position, _stuck_last_pos)
+	_stuck_last_pos = global_position
+	if dist < maxf(stuck_detection_min_distance, 0.05):
+		_try_recover_from_stuck()
+
+func _try_recover_from_stuck() -> void:
+	# If we're already very close to the destination, just arrive rather than replan.
+	var dist_to_target := _planar_distance(global_position, target_position)
+	if dist_to_target <= maxf(stuck_detection_min_distance * 2.0, final_waypoint_reach_distance * 2.0):
+		_stop_at_target()
+		return
+	_stuck_recovery_attempts += 1
+	if _stuck_recovery_attempts > maxi(stuck_max_recovery_attempts, 1):
+		stop_travel()
+		stuck.emit()
+		return
+	# Replan from the current position so the path avoids whatever caused
+	# the blockage. This handles cases where navigation geometry shifted or
+	# the original route led into an impassable corner.
+	var rebuilt := _build_global_path(global_position, target_position)
+	if rebuilt.size() < 2:
+		stop_travel()
+		stuck.emit()
+		return
+	global_path = rebuilt
+	path_index = 0
+	_clear_local_avoidance_path()
+	_cached_avoidance_blocked = false
+	_smoothed_move_direction = Vector3.ZERO
+	_obstacle_check_timer = 0.0
+	_local_astar_replan_timer = 0.0
+	_advance_path_progress()
+	_update_global_path_visual()
 
 func _try_jump_low_obstacle(move_direction: Vector3) -> bool:
 	if not jump_low_obstacles:
@@ -1021,21 +979,6 @@ func _update_obstacle_down_ray_target(planar_move_direction: Vector3) -> void:
 			+ Vector3.DOWN * drop_distance
 	_obstacle_down_ray.target_position = _obstacle_down_ray.to_local(target_world)
 
-func _reset_avoidance_debug_sample(status: String) -> void:
-	_debug_avoidance_hits.clear()
-	_debug_avoidance_status = status
-	_debug_avoidance_side_bias = "-"
-	_debug_avoidance_left_pressure = 0.0
-	_debug_avoidance_right_pressure = 0.0
-	_debug_avoidance_cast_from = Vector3.ZERO
-	_debug_avoidance_cast_to = Vector3.ZERO
-	_debug_avoidance_has_cast = false
-	if _local_avoidance_path.is_empty():
-		_debug_local_astar_cells.clear()
-		_debug_local_astar_status = "-"
-		_debug_local_astar_goal = Vector3.ZERO
-		_debug_local_astar_has_goal = false
-
 func _update_avoidance_debug_visual(desired_direction: Vector3, final_direction: Vector3) -> void:
 	if not debug_draw_avoidance:
 		_clear_avoidance_debug_visual()
@@ -1050,18 +993,9 @@ func _update_avoidance_debug_visual(desired_direction: Vector3, final_direction:
 	var base := global_position + Vector3.UP * 0.35
 	_add_avoidance_debug_line(base, base + desired_direction * 1.1, Color(0.824, 0.122, 0.953, 1.0))
 	_add_avoidance_debug_line(base + Vector3.UP * 0.05, base + final_direction * 1.1 + Vector3.UP * 0.05, Color(1.0, 0.85, 0.1, 1.0))
-	if _debug_avoidance_has_cast:
-		var cast_color := Color(1.0, 0.2, 0.1, 1.0) if _cached_avoidance_blocked else Color(0.1, 1.0, 0.25, 1.0)
-		_add_avoidance_debug_line(_debug_avoidance_cast_from, _debug_avoidance_cast_to, cast_color)
-
-	for hit in _debug_avoidance_hits:
-		var hit_point: Vector3 = hit.get("point", Vector3.ZERO)
-		var hit_color := Color(1.0, 0.1, 0.1, 1.0) if bool(hit.get("accepted", false)) else Color(0.55, 0.55, 0.55, 1.0)
-		_add_avoidance_debug_cross(hit_point + Vector3.UP * 0.06, 0.08, hit_color)
 	_draw_local_astar_debug()
 
 	_debug_avoidance_mesh.surface_end()
-	_debug_avoidance_visual.global_transform = Transform3D.IDENTITY
 	_update_avoidance_debug_label()
 
 func _clear_avoidance_debug_visual() -> void:
@@ -1081,14 +1015,12 @@ func _ensure_avoidance_debug_visual() -> void:
 	if _debug_avoidance_visual == null:
 		_debug_avoidance_visual = MeshInstance3D.new()
 		_debug_avoidance_visual.name = "AvoidanceDebugVisual"
-		_debug_avoidance_visual.top_level = true
 		_debug_avoidance_visual.mesh = _debug_avoidance_mesh
 		add_child(_debug_avoidance_visual)
 
 	if _debug_avoidance_label == null:
 		_debug_avoidance_label = Label3D.new()
 		_debug_avoidance_label.name = "AvoidanceDebugLabel"
-		_debug_avoidance_label.top_level = true
 		_debug_avoidance_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		_debug_avoidance_label.font_size = 16
 		_debug_avoidance_label.pixel_size = 0.01
@@ -1096,9 +1028,9 @@ func _ensure_avoidance_debug_visual() -> void:
 
 func _add_avoidance_debug_line(from: Vector3, to: Vector3, color: Color) -> void:
 	_debug_avoidance_mesh.surface_set_color(color)
-	_debug_avoidance_mesh.surface_add_vertex(from)
+	_debug_avoidance_mesh.surface_add_vertex(to_local(from))
 	_debug_avoidance_mesh.surface_set_color(color)
-	_debug_avoidance_mesh.surface_add_vertex(to)
+	_debug_avoidance_mesh.surface_add_vertex(to_local(to))
 
 func _add_avoidance_debug_cross(center: Vector3, size: float, color: Color) -> void:
 	_add_avoidance_debug_line(center - Vector3.RIGHT * size, center + Vector3.RIGHT * size, color)
@@ -1106,7 +1038,8 @@ func _add_avoidance_debug_cross(center: Vector3, size: float, color: Color) -> v
 	_add_avoidance_debug_line(center - Vector3.UP * size, center + Vector3.UP * size, color)
 
 func _draw_local_astar_debug() -> void:
-	var cell_mark_size := maxf(local_astar_cell_size * 0.18, 0.025)
+	var effective_step := maxf(local_astar_cell_size, 0.08) / float(maxi(local_astar_grid_subdivisions, 1))
+	var cell_mark_size := maxf(effective_step * 0.18, 0.012)
 	for cell in _debug_local_astar_cells:
 		var cell_point: Vector3 = cell.get("point", Vector3.ZERO)
 		var cell_blocked := bool(cell.get("blocked", false))
@@ -1132,32 +1065,17 @@ func _get_local_astar_debug_cell_color(blocked: bool, blocked_reason: String) ->
 	return Color(1.0, 0.0, 0.0, 1.0)
 
 func _update_avoidance_debug_label() -> void:
-	var accepted_hits := 0
-	for hit in _debug_avoidance_hits:
-		if bool(hit.get("accepted", false)):
-			accepted_hits += 1
-
 	var path_label := "-"
 	if _is_travelling and not global_path.is_empty():
 		path_label = "%d/%d" % [path_index, global_path.size() - 1]
 
-	_debug_avoidance_label.global_position = global_position + Vector3.UP * 1.3
-	_debug_avoidance_label.text = "path: %s\navoid: %s\nturn: %s\nlocal: %s\njump: %s\npressure L %.2f R %.2f\nhits %d/%d" % [
+	_debug_avoidance_label.position = Vector3.UP * 1.3
+	_debug_avoidance_label.text = "path: %s\navoid: %s\nlocal: %s\njump: %s" % [
 		path_label,
 		_debug_avoidance_status,
-		_debug_avoidance_side_bias,
 		_debug_local_astar_status,
 		_debug_jump_status,
-		_debug_avoidance_left_pressure,
-		_debug_avoidance_right_pressure,
-		accepted_hits,
-		_debug_avoidance_hits.size()
 	]
-
-func _debug_collider_label(collider: Variant) -> String:
-	if collider is Node:
-		return str((collider as Node).name)
-	return str(collider)
 		
 # -------------------------------------
 
@@ -1182,7 +1100,8 @@ func _update_global_path_visual() -> void:
 	_ensure_global_path_visual()
 	_global_path_mesh.clear_surfaces()
 	_global_path_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, _global_path_material)
-	for idx in range(global_path.size() - 1):
+	var draw_from := maxi(path_index, 0)
+	for idx in range(draw_from, global_path.size() - 1):
 		_add_global_path_segment(global_path[idx], global_path[idx + 1])
 	_global_path_mesh.surface_end()
 

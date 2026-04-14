@@ -110,7 +110,6 @@ func tick(world: World, citizen: Citizen, dt: int) -> void:
 
 func finish(world: World, citizen: Citizen) -> void:
 	if target == null:
-		_release_reserved_park_bench(citizen, target)
 		return
 	if _travel_failed:
 		citizen.stop_travel()

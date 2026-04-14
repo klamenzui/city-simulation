@@ -151,9 +151,6 @@ func _fallback_idle(world, citizen, is_night: bool) -> bool:
 	if citizen.home == null:
 		return false
 
-	if _try_survival_override(world, citizen):
-		return true
-
 	if is_night and citizen.needs.energy < citizen.needs.TARGET_ENERGY_MIN:
 		if citizen.current_location != citizen.home:
 			citizen.start_action(GoToBuildingActionScript.new(citizen.home, _fallback_home_travel_minutes), world)
@@ -265,7 +262,11 @@ func _try_work_schedule(world, citizen) -> bool:
 	if citizen.current_location == citizen.job.workplace:
 		if in_work_window:
 			citizen.start_action(WorkActionScript.new(citizen.job), world)
-		return true
+			return true
+		# Already at workplace but shift hasn't started yet (commute buffer).
+		# Release control so the planner can find a short activity (eat, relax)
+		# rather than freezing with no active action until the window opens.
+		return false
 
 	citizen.start_action(GoToBuildingActionScript.new(citizen.job.workplace, _work_travel_minutes), world)
 	return true
