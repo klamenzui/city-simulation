@@ -245,8 +245,11 @@ func _run_daily_market_cycle() -> void:
 func _tick_citizen_bucket(bucket: Array[Citizen]) -> void:
 	if bucket.is_empty():
 		return
+	# Iterate over a snapshot so that any mid-tick unregister (future feature)
+	# cannot invalidate the iterator.
+	var snapshot: Array[Citizen] = bucket.duplicate()
 	var invalid: Array[Citizen] = []
-	for citizen in bucket:
+	for citizen in snapshot:
 		if citizen == null or not is_instance_valid(citizen):
 			if citizen != null:
 				invalid.append(citizen)

@@ -5,7 +5,7 @@ func tick_needs(world, citizen) -> float:
 	if world == null or citizen == null:
 		return 0.0
 
-	var mod := Action.DEFAULT_NEEDS_MOD
+	var mod: Dictionary = Action.DEFAULT_NEEDS_MOD.duplicate()
 	if citizen.current_action != null:
 		mod = citizen.current_action.get_needs_modifier(world, citizen)
 

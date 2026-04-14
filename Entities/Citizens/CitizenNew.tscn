@@ -13,8 +13,6 @@ roughness = 0.92
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_cbg8l"]
 material = SubResource("StandardMaterial3D_4g7t2")
 
-[sub_resource type="CylinderShape3D" id="CylinderShape3D_ic3lm"]
-
 [node name="Citizen" type="CharacterBody3D" unique_id=566366776 groups=["citizens"]]
 script = ExtResource("1_ic3lm")
 
@@ -43,7 +41,3 @@ target_position = Vector3(-0.3, 0, -0.74)
 [node name="ObstacleRayCastRight" type="RayCast3D" parent="ObstacleSensorPivot" unique_id=87889597]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00017493963, 0.00048339367, 0.0024129152)
 target_position = Vector3(0.3, 0, -0.74)
-
-[node name="ShapeCast3D" type="ShapeCast3D" parent="." unique_id=324814403]
-transform = Transform3D(0.37662584, 0, 0, 0, 0.20022386, 0, 0, 0, 0.37556028, 0, 0.41313088, -0.15551949)
-shape = SubResource("CylinderShape3D_ic3lm")
