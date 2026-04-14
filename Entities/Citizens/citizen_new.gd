@@ -61,6 +61,7 @@ var _local_avoidance_path_index: int = 0
 var _local_astar_replan_timer: float = 0.0
 var _local_astar_follow_global_on_fail: bool = false
 var _local_astar_probe_shape: SphereShape3D = SphereShape3D.new()
+var _cached_world_node: Node = null
 var _debug_avoidance_status: String = "idle"
 var _debug_avoidance_mesh: ImmediateMesh = ImmediateMesh.new()
 var _debug_avoidance_visual: MeshInstance3D = null
@@ -179,6 +180,7 @@ func stop_travel() -> void:
 	path_index = 0
 	_is_travelling = false
 	_cached_avoidance_blocked = false
+	_local_astar_follow_global_on_fail = false
 	_smoothed_move_direction = Vector3.ZERO
 	_stuck_check_timer = 0.0
 	_stuck_recovery_attempts = 0
@@ -346,13 +348,13 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 	for cell_key in point_ids.keys():
 		var cell: Vector2i = cell_key
 		var point_id: int = point_ids[cell]
-		for delta: Vector2i in neighbors:
-			var neighbor_cell := cell + delta
+		for neighbor_offset: Vector2i in neighbors:
+			var neighbor_cell := cell + neighbor_offset
 			if not point_ids.has(neighbor_cell):
 				continue
 			var neighbor_id: int = point_ids[neighbor_cell]
 			if point_id < neighbor_id:
-				astar.connect_points(point_id, neighbor_id, false)
+				astar.connect_points(point_id, neighbor_id, true)
 
 	var candidates: Array[Dictionary] = []
 	var front_y := -INF
@@ -585,9 +587,11 @@ func _get_local_astar_surface_kind(point: Vector3) -> String:
 	if kind != "" and kind != "unknown":
 		return kind
 
-	var world := _get_world_node()
-	if world != null and world.has_method("get_pedestrian_path_point_kind"):
-		var graph_kind := str(world.get_pedestrian_path_point_kind(point))
+	# Lazily cache world node — traversing the scene tree per cell is expensive.
+	if not is_instance_valid(_cached_world_node):
+		_cached_world_node = _get_world_node()
+	if _cached_world_node != null and _cached_world_node.has_method("get_pedestrian_path_point_kind"):
+		var graph_kind := str(_cached_world_node.get_pedestrian_path_point_kind(point))
 		if not graph_kind.is_empty():
 			return graph_kind
 	return kind
@@ -789,6 +793,7 @@ func _reset_path_following_state_for_next_waypoint() -> void:
 	_cached_avoidance_blocked = false
 	_local_astar_replan_timer = 0.0
 	_obstacle_check_timer = 0.0
+	_local_astar_follow_global_on_fail = false
 	_clear_local_avoidance_path()
 
 func _is_at_path_index(index: int) -> bool:
