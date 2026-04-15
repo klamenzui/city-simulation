@@ -40,7 +40,7 @@ extends CharacterBody3D
 @export var jump_low_obstacles: bool = true
 @export_node_path("RayCast3D") var obstacle_down_ray_path: NodePath
 @export var max_jump_obstacle_height: float = 0.14
-@export var min_jump_obstacle_height: float = 0.015
+@export var min_jump_obstacle_height: float = 0.005
 @export var jump_probe_distance: float = 0.45
 @export var jump_velocity: float = 1.8
 @export var jump_cooldown: float = 0.35
@@ -89,6 +89,22 @@ signal stuck()
 var _stuck_check_timer: float = 0.0
 var _stuck_last_pos: Vector3 = Vector3.ZERO
 var _stuck_recovery_attempts: int = 0
+## Grace window (seconds) after leaving the floor during which jumps are still allowed.
+## Prevents the 1-2 frame floor-gap at step transitions from blocking the jump.
+var _coyote_time: float = 0.0
+## Grace period (seconds) during which surface-escape avoidance is suppressed after
+## a stuck-recovery replan. Prevents the citizen from immediately re-entering a
+## surface-escape loop on the same road section it just replanned from.
+var _surface_escape_cooldown: float = 0.0
+
+@export_group("Logging")
+## Write movement, avoidance and stuck events to a log file for stuck diagnosis.
+## Windows path: %APPDATA%\Godot\app_userdata\<project name>\citizen.log
+@export var enable_file_log: bool = false
+## Also log verbose per-check detail (avoidance probes, jump ray, A* results). Can be noisy.
+@export var log_verbose: bool = false
+## Override log path. Empty = user://citizen.log (Godot user-data folder).
+@export var log_file_path: String = "user://citizen.log"
 
 func _ready() -> void:
 	if obstacle_down_ray_path != NodePath():
@@ -117,19 +133,34 @@ func set_global_target(target: Vector3) -> bool:
 	_is_travelling = global_path.size() >= 2
 	_cached_avoidance_blocked = false
 	_smoothed_move_direction = Vector3.ZERO
-	_stuck_check_timer = 0.0
+	# Start the timer at a full interval so the stuck check does not fire before
+	# the citizen has had any chance to move toward the new target.
+	_stuck_check_timer = maxf(stuck_detection_interval, 0.5)
 	_stuck_recovery_attempts = 0
 	_stuck_last_pos = global_position
+	_surface_escape_cooldown = 0.0
 	_clear_local_avoidance_path()
 	_obstacle_check_timer = 0.0
 	if _is_travelling:
 		_is_travelling = _advance_path_progress()
 	_update_global_path_visual()
+	_log("TARGET_SET", "from=%s to=%s waypoints=%d travelling=%s" % [
+		_fmt_v3(global_position), _fmt_v3(target_position),
+		global_path.size(), str(_is_travelling)])
 	return _is_travelling
 
 func _physics_process(delta: float) -> void:
 	_update_jump_cooldown(delta)
 	_update_stuck_detection(delta)
+	# Track coyote time: is_on_floor() reflects last frame's move_and_slide result,
+	# so we read it here (before this frame's move_and_slide) to keep a grace window
+	# that allows jumping for a few frames after briefly leaving the floor at step edges.
+	if is_on_floor():
+		_coyote_time = 0.1
+	else:
+		_coyote_time = maxf(_coyote_time - delta, 0.0)
+	if _surface_escape_cooldown > 0.0:
+		_surface_escape_cooldown = maxf(_surface_escape_cooldown - delta, 0.0)
 
 	if not _is_travelling:
 		_clear_avoidance_debug_visual()
@@ -163,7 +194,15 @@ func _physics_process(delta: float) -> void:
 			final_speed *= avoidance_slowdown_factor
 		velocity.x = final_direction.x * final_speed
 		velocity.z = final_direction.z * final_speed
-		_try_jump_low_obstacle(final_direction)
+		# Always probe in the direct-to-waypoint direction so the ray faces the
+		# obstacle regardless of which way the avoidance system is currently steering.
+		if _try_jump_low_obstacle(desired_direction):
+			# Jump was triggered: cancel any active avoidance so the citizen
+			# continues straight through the obstacle it just jumped over instead
+			# of being rerouted around it mid-air.
+			_clear_local_avoidance_path()
+			_cached_avoidance_blocked = false
+			_obstacle_check_timer = jump_cooldown
 		look_at(global_position + final_direction, Vector3.UP)
 		_update_avoidance_debug_visual(desired_direction, final_direction)
 	else:
@@ -184,6 +223,7 @@ func stop_travel() -> void:
 	_smoothed_move_direction = Vector3.ZERO
 	_stuck_check_timer = 0.0
 	_stuck_recovery_attempts = 0
+	_surface_escape_cooldown = 0.0
 	_clear_local_avoidance_path()
 	velocity = Vector3.ZERO
 	_clear_global_path_visual()
@@ -212,9 +252,13 @@ func _get_steered_direction(desired_direction: Vector3, delta: float) -> Vector3
 	if _obstacle_check_timer <= 0.0:
 		_obstacle_check_timer = obstacle_check_interval
 		var surface_kind := _get_local_astar_surface_kind(global_position)
+		var _prev_blocked := _cached_avoidance_blocked
 		_cached_avoidance_blocked = _is_path_ahead_blocked(desired_direction) \
 				or _should_local_astar_escape_surface(surface_kind)
 		_debug_avoidance_status = "blocked" if _cached_avoidance_blocked else "clear"
+		if _cached_avoidance_blocked and not _prev_blocked:
+			_log_v("AVOIDANCE_BLOCKED", "surface='%s' pos=%s dir=%s" % [
+				surface_kind, _fmt_v3(global_position), _fmt_v3(desired_direction)])
 
 	if _cached_avoidance_blocked and _local_astar_replan_timer <= 0.0:
 		_local_astar_replan_timer = maxf(local_astar_replan_interval, 0.02)
@@ -227,6 +271,8 @@ func _get_steered_direction(desired_direction: Vector3, delta: float) -> Vector3
 		if _local_astar_follow_global_on_fail:
 			_cached_avoidance_blocked = false
 			_debug_avoidance_status = "global fallback"
+			_log_v("AVOIDANCE_FALLBACK", "A* gave up — resuming global path | pos=%s dir=%s" % [
+				_fmt_v3(global_position), _fmt_v3(desired_direction)])
 	elif not _cached_avoidance_blocked:
 		_clear_local_avoidance_path()
 
@@ -250,10 +296,43 @@ func _is_path_ahead_blocked(direction: Vector3) -> bool:
 	query.collide_with_areas = false
 	query.collide_with_bodies = true
 	query.exclude = [get_rid()]
+	var flat_dir_norm := flat_dir.normalized()
 	for hit in get_world_3d().direct_space_state.intersect_shape(query, 4):
 		if _is_local_astar_probe_hit_blocking(hit):
+			# Don't flag low jumpable obstacles as blocked — the jump system
+			# handles those directly, and avoidance rerouting around a curb
+			# would prevent the jump from ever firing.
+			if jump_low_obstacles and _is_obstacle_below_jump_height(flat_dir_norm):
+				var c = hit.get("collider", null)
+				_log_v("AVOIDANCE_SKIP_JUMPABLE", "low obstacle '%s' pos=%s dir=%s" % [
+					c.name if c is Node else "?", _fmt_v3(global_position), _fmt_v3(flat_dir_norm)])
+				continue
+			var c = hit.get("collider", null)
+			_log_v("PATH_BLOCKED", "collider='%s' pos=%s dir=%s" % [
+				c.name if c is Node else "?", _fmt_v3(global_position), _fmt_v3(flat_dir_norm)])
 			return true
 	return false
+
+## Returns true when the obstacle directly ahead is low enough to be jumped over.
+## Probes at (max_jump_obstacle_height + margin) — if that level is clear the
+## obstacle sits entirely within the jump-height window and avoidance should not
+## treat it as a wall.
+func _is_obstacle_below_jump_height(flat_direction: Vector3) -> bool:
+	if not is_inside_tree() or get_world_3d() == null:
+		return false
+	var probe_pos := global_position + flat_direction * (local_astar_radius * 0.5)
+	probe_pos.y = global_position.y + maxf(max_jump_obstacle_height, 0.0) + 0.06
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = _local_astar_probe_shape
+	query.transform = Transform3D(Basis.IDENTITY, probe_pos)
+	query.collision_mask = collision_mask
+	query.collide_with_areas = false
+	query.collide_with_bodies = true
+	query.exclude = [get_rid()]
+	for hit in get_world_3d().direct_space_state.intersect_shape(query, 4):
+		if _is_local_astar_probe_hit_blocking(hit):
+			return false  # Something above jump height — treat as real wall
+	return true  # Only blocked below jump height — jumpable
 
 func _smooth_move_direction(target_direction: Vector3, fallback_direction: Vector3, delta: float) -> Vector3:
 	var target := target_direction
@@ -336,6 +415,7 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 
 	if not point_ids.has(start_cell):
 		_debug_local_astar_status = "blocked start"
+		_log_v("ASTAR_FAIL", "blocked_start | pos=%s" % _fmt_v3(global_position))
 		return false
 
 	# Cross-type diagonals (normal↔staggered) are the primary hex edges.
@@ -386,12 +466,22 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 		var candidate_world := _local_astar_world_from_offset(origin, right, forward, candidate_offset)
 		var reference_distance := _distance_to_global_path_ahead(candidate_world)
 		var path_length := _local_astar_path_length(candidate_path)
+		# Penalise cells that share an edge with a road cell so the citizen
+		# keeps a one-cell buffer from the pedestrian-zone boundary.  The cell
+		# is still added as a candidate so it acts as a fallback when no
+		# road-free front-row cell exists (e.g. very narrow walkway).
+		var near_road := false
+		for nb_off in neighbors:
+			if _is_local_astar_surface_blocked(str(cell_surfaces.get(cell + nb_off, ""))):
+				near_road = true
+				break
 		candidates.append({
 			"path": candidate_path,
 			"offset": candidate_offset,
 			"reference_distance": reference_distance,
 			"path_length": path_length,
-			"surface": candidate_surface
+			"surface": candidate_surface,
+			"near_road": near_road
 		})
 		front_y = maxf(front_y, candidate_offset.y)
 		if candidate_offset.x < -cell_size:
@@ -400,6 +490,11 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 	if candidates.is_empty():
 		_debug_local_astar_status = "all x red global"
 		_local_astar_follow_global_on_fail = true
+		# Back off for 2 s so the 80 ms replan-interval doesn't spin the citizen
+		# in place while the grid keeps returning no viable cells (e.g. right
+		# after landing on a pedestrian zone whose probe reads as road).
+		_surface_escape_cooldown = maxf(_surface_escape_cooldown, 2.0)
+		_log("ASTAR_NO_CANDIDATES", "all cells blocked — follow global path | pos=%s" % _fmt_v3(global_position))
 		return false
 
 	var front_tolerance := maxf(local_astar_front_row_tolerance, cell_size)
@@ -428,6 +523,10 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 		var reference_distance: float = candidate.get("reference_distance", INF)
 		var path_length: float = candidate.get("path_length", 0.0)
 		var score := reference_distance + path_length * (0.25 if start_needs_surface_escape else 0.1)
+		# Steer away from the road edge: cells adjacent to road get a large
+		# penalty so they are only picked when no cleaner alternative exists.
+		if candidate.get("near_road", false):
+			score += 3.0
 		if prefer_right and not start_needs_surface_escape:
 			score -= candidate_offset.x * 0.05
 			selection_label = "front row right"
@@ -437,6 +536,7 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 
 	if best_path.size() < 2:
 		_debug_local_astar_status = "no reachable edge"
+		_log_v("ASTAR_FAIL", "no_reachable_edge | pos=%s" % _fmt_v3(global_position))
 		return false
 
 	for idx in range(1, best_path.size()):
@@ -445,6 +545,9 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 	_debug_local_astar_goal = _local_avoidance_path[_local_avoidance_path.size() - 1]
 	_debug_local_astar_has_goal = true
 	_debug_local_astar_status = "%s %d" % [selection_label, _local_avoidance_path.size()]
+	_log_v("ASTAR_OK", "status='%s' waypoints=%d goal=%s | pos=%s" % [
+		_debug_local_astar_status, _local_avoidance_path.size(),
+		_fmt_v3(_debug_local_astar_goal), _fmt_v3(global_position)])
 	return true
 
 func _get_local_avoidance_path_direction() -> Vector3:
@@ -559,6 +662,12 @@ func _is_local_astar_walkable_probe_collider(collider: Variant) -> bool:
 			return true
 		if current_name.begins_with("park_road"):
 			return true
+		# Crosswalk / zebra-crossing mesh is walkable — don't treat its raised
+		# markings as a wall that triggers avoidance or jump.
+		if current_path.contains("/road_straight_crossing/") \
+				or current_name.contains("crosswalk") \
+				or current_name.contains("crossing"):
+			return true
 
 		current = current.get_parent()
 
@@ -570,7 +679,18 @@ func _is_local_astar_surface_blocked(surface_kind: String) -> bool:
 	return surface_kind == "road"
 
 func _should_local_astar_escape_surface(surface_kind: String) -> bool:
-	return _is_local_astar_surface_blocked(surface_kind) or surface_kind == "" or surface_kind == "unknown"
+	# Suppressed after a stuck-recovery replan so the citizen can follow the
+	# global path through the road instead of looping in surface-escape mode.
+	if _surface_escape_cooldown > 0.0:
+		return false
+	# Don't trigger surface-escape mid-jump — the probe may read road beneath
+	# a pedestrian zone (thin mesh) and cause spinning right after landing.
+	if _jump_cooldown_timer > 0.0:
+		return false
+	# Only escape confirmed road surfaces.  "" and "unknown" mean the probe
+	# couldn't classify the surface (e.g. probe under a thin pedzone mesh) —
+	# treating those as "road" caused constant escape-looping on pedestrian zones.
+	return _is_local_astar_surface_blocked(surface_kind)
 
 func _get_local_astar_blocked_reason(physics_blocked: bool, surface_blocked: bool) -> String:
 	if physics_blocked and surface_blocked:
@@ -862,6 +982,7 @@ func _stop_at_target() -> void:
 		_clear_global_path_visual()
 	_clear_avoidance_debug_visual()
 	if was_travelling:
+		_log("ARRIVED", "pos=%s target=%s" % [_fmt_v3(global_position), _fmt_v3(target_position)])
 		target_reached.emit()
 
 func _apply_idle_gravity(delta: float) -> void:
@@ -893,6 +1014,9 @@ func _update_stuck_detection(delta: float) -> void:
 	var dist := _planar_distance(global_position, _stuck_last_pos)
 	_stuck_last_pos = global_position
 	if dist < maxf(stuck_detection_min_distance, 0.05):
+		_log("STUCK_CHECK", "moved=%.3f < %.3f | pos=%s avoidance='%s' local='%s' jump='%s'" % [
+			dist, stuck_detection_min_distance, _fmt_v3(global_position),
+			_debug_avoidance_status, _debug_local_astar_status, _debug_jump_status])
 		_try_recover_from_stuck()
 
 func _try_recover_from_stuck() -> void:
@@ -903,14 +1027,27 @@ func _try_recover_from_stuck() -> void:
 		return
 	_stuck_recovery_attempts += 1
 	if _stuck_recovery_attempts > maxi(stuck_max_recovery_attempts, 1):
+		_log("STUCK_FINAL", "pos=%s target=%s | all %d attempts exhausted | avoidance='%s' local='%s'" % [
+			_fmt_v3(global_position), _fmt_v3(target_position),
+			stuck_max_recovery_attempts, _debug_avoidance_status, _debug_local_astar_status])
 		stop_travel()
 		stuck.emit()
 		return
+	_log("STUCK_REPLAN", "attempt=%d/%d | pos=%s target=%s | avoidance='%s' local='%s'" % [
+		_stuck_recovery_attempts, stuck_max_recovery_attempts,
+		_fmt_v3(global_position), _fmt_v3(target_position),
+		_debug_avoidance_status, _debug_local_astar_status])
+	# Suppress surface-escape for a few seconds after replan so the citizen
+	# can follow the rebuilt global path through the road without immediately
+	# re-entering the same surface-escape loop that caused the blockage.
+	_surface_escape_cooldown = 4.0
 	# Replan from the current position so the path avoids whatever caused
 	# the blockage. This handles cases where navigation geometry shifted or
 	# the original route led into an impassable corner.
 	var rebuilt := _build_global_path(global_position, target_position)
 	if rebuilt.size() < 2:
+		_log("STUCK_FINAL", "pos=%s target=%s | replan returned empty path" % [
+			_fmt_v3(global_position), _fmt_v3(target_position)])
 		stop_travel()
 		stuck.emit()
 		return
@@ -942,7 +1079,7 @@ func _try_jump_low_obstacle(move_direction: Vector3) -> bool:
 	if _jump_cooldown_timer > 0.0:
 		_debug_jump_status = "cooldown %.2f" % _jump_cooldown_timer
 		return false
-	if not is_on_floor():
+	if not is_on_floor() and _coyote_time <= 0.0:
 		_debug_jump_status = "air"
 		return false
 
@@ -950,11 +1087,18 @@ func _try_jump_low_obstacle(move_direction: Vector3) -> bool:
 	_obstacle_down_ray.force_raycast_update()
 	if not _obstacle_down_ray.is_colliding():
 		_debug_jump_status = "no hit"
+		_log_v("JUMP_MISS", "ray fired no hit | pos=%s dir=%s" % [
+			_fmt_v3(global_position), _fmt_v3(planar_move_direction)])
 		return false
 
 	var collider := _obstacle_down_ray.get_collider()
 	if collider == self:
 		_debug_jump_status = "self"
+		return false
+	# Don't jump over zebra crossings — the raised stripe geometry sits within
+	# the jump-height window but crossing it on foot is always valid.
+	if collider is Node and _classify_surface_node(collider as Node) == "crosswalk":
+		_debug_jump_status = "crosswalk"
 		return false
 
 	var hit_point := _obstacle_down_ray.get_collision_point()
@@ -962,6 +1106,8 @@ func _try_jump_low_obstacle(move_direction: Vector3) -> bool:
 	to_hit.y = 0.0
 	if to_hit.length_squared() > 0.0001 and planar_move_direction.dot(to_hit.normalized()) <= 0.0:
 		_debug_jump_status = "behind"
+		_log_v("JUMP_BEHIND", "hit behind citizen | hit=%s pos=%s" % [
+			_fmt_v3(hit_point), _fmt_v3(global_position)])
 		return false
 
 	var obstacle_height := hit_point.y - global_position.y
@@ -969,11 +1115,20 @@ func _try_jump_low_obstacle(move_direction: Vector3) -> bool:
 	var max_height := maxf(max_jump_obstacle_height, min_height)
 	if obstacle_height < min_height or obstacle_height > max_height:
 		_debug_jump_status = "h %.3f" % obstacle_height
+		# Only log when the height is at least half the minimum threshold —
+		# values below that are floor-surface noise and would spam the log.
+		if obstacle_height >= min_height * 0.5:
+			_log_v("JUMP_H_OOB", "h=%.3f outside [%.3f,%.3f] collider='%s' | pos=%s" % [
+				obstacle_height, min_height, max_height,
+				collider.name if collider is Node else "?", _fmt_v3(global_position)])
 		return false
 
 	velocity.y = maxf(jump_velocity, 0.0)
 	_jump_cooldown_timer = maxf(jump_cooldown, 0.0)
 	_debug_jump_status = "jump h %.3f" % obstacle_height
+	_log("JUMP_OK", "h=%.3f collider='%s' | pos=%s dir=%s" % [
+		obstacle_height, collider.name if collider is Node else "?",
+		_fmt_v3(global_position), _fmt_v3(planar_move_direction)])
 	return true
 
 func _update_obstacle_down_ray_target(planar_move_direction: Vector3) -> void:
@@ -1082,6 +1237,48 @@ func _update_avoidance_debug_label() -> void:
 		_debug_jump_status,
 	]
 		
+# --- Logging helpers ---
+
+## Writes a timestamped log line to the file.
+## Format: [HH:MM:SS.mmm] [NodeName] EVENT | details
+func _log(event: String, details: String = "") -> void:
+	if not enable_file_log:
+		return
+	var ms := Time.get_ticks_msec()
+	var line := "[%02d:%02d:%02d.%03d] [%s] %s%s\n" % [
+		(ms / 3600000) % 24,
+		(ms / 60000) % 60,
+		(ms / 1000) % 60,
+		ms % 1000,
+		name,
+		event,
+		(" | " + details) if not details.is_empty() else "",
+	]
+	var path := log_file_path if not log_file_path.is_empty() else "user://citizen.log"
+	var file: FileAccess
+	if FileAccess.file_exists(path):
+		file = FileAccess.open(path, FileAccess.READ_WRITE)
+		if file != null:
+			file.seek_end(0)
+	else:
+		file = FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		push_warning("CitizenLog: cannot open '%s' (err %d) — logging disabled" % [
+			path, FileAccess.get_open_error()])
+		enable_file_log = false
+		return
+	file.store_string(line)
+	file.close()
+
+## Log only when log_verbose is enabled (per-check avoidance, jump ray detail).
+func _log_v(event: String, details: String = "") -> void:
+	if log_verbose:
+		_log(event, details)
+
+## Compact Vector3 → "(x.xx, y.yy, z.zz)" for log lines.
+func _fmt_v3(v: Vector3) -> String:
+	return "(%.2f,%.2f,%.2f)" % [v.x, v.y, v.z]
+
 # -------------------------------------
 
 @export var show_global_path: bool = true
