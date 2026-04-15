@@ -1,4 +1,4 @@
-[gd_scene format=4 uid="uid://8ulbjm8vohdc"]
+[gd_scene format=4 uid="uid://bmywdln7jlg3u"]
 
 [ext_resource type="Script" uid="uid://b0nnpitsvn2am" path="res://main.gd" id="1_ig7tw"]
 [ext_resource type="Script" uid="uid://burjatjhmdkuv" path="res://Simulation/World.gd" id="2_0xm2m"]
@@ -2169,3 +2169,6 @@ script = ExtResource("401_skybr")
 
 [node name="Citizen" parent="." unique_id=1850326929 instance=ExtResource("106_llcqu")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.489348, 0.12540579, 14.201809)
+enable_file_log = true
+log_verbose = true
+log_file_path = "res://citizen.log"

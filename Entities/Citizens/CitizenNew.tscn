@@ -32,7 +32,7 @@ transform = Transform3D(1, 0, 0, 0, 0.9999149, 0.013054669, 0, -0.013054669, 0.9
 target_position = Vector3(0, 0, -0.95)
 
 [node name="ObstacleRayCastDown" type="RayCast3D" parent="ObstacleSensorPivot" unique_id=1999936410]
-transform = Transform3D(1, 0, 0, 0, 0.8731279, 0.6787953, 0, -0.6937961, 0.8542496, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 0.83290946, 0.6538976, 0, -0.6618382, 0.8229164, 0, 0, 0)
 target_position = Vector3(0, 0, -0.95)
 
 [node name="ObstacleRayCastLeft" type="RayCast3D" parent="ObstacleSensorPivot" unique_id=1515096413]
