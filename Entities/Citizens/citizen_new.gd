@@ -265,8 +265,8 @@ func _get_steered_direction(desired_direction: Vector3, delta: float) -> Vector3
 				or _should_local_astar_escape_surface(surface_kind)
 		_debug_avoidance_status = "blocked" if _cached_avoidance_blocked else "clear"
 		if _cached_avoidance_blocked and not _prev_blocked:
-			_log_v("AVOIDANCE_BLOCKED", "surface='%s' pos=%s dir=%s" % [
-				surface_kind, _fmt_v3(global_position), _fmt_v3(desired_direction)])
+			_log("AVOIDANCE_BLOCKED", "surface='%s' y=%.3f pos=%s dir=%s" % [
+				surface_kind, global_position.y, _fmt_v3(global_position), _fmt_v3(desired_direction)])
 
 	if _cached_avoidance_blocked and _local_astar_replan_timer <= 0.0:
 		_local_astar_replan_timer = maxf(local_astar_replan_interval, 0.02)
@@ -714,6 +714,16 @@ func _get_local_astar_blocked_reason(physics_blocked: bool, surface_blocked: boo
 func _get_local_astar_surface_kind(point: Vector3) -> String:
 	var hit := _probe_local_astar_surface(point)
 	var kind := _classify_surface_hit(hit)
+	if kind == "road" and not hit.is_empty():
+		# If the probe hit road but the query point is clearly above the hit,
+		# the ray passed through a thin elevated surface (pedestrian zone mesh
+		# on a collision layer the probe skips) and hit the road below.
+		# Pedzone is typically 2–4 cm above road, so 0.025 m is a safe threshold.
+		# Downgrading to "unknown" prevents surface-escape from firing while the
+		# citizen is standing on the pedzone.
+		var hit_y: float = (hit.get("position", point) as Vector3).y
+		if point.y - hit_y > 0.025:
+			kind = "unknown"
 	if kind != "" and kind != "unknown":
 		return kind
 
