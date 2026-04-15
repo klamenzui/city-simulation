@@ -115,6 +115,14 @@ func _ready() -> void:
 		push_warning("Citizen: jump_low_obstacles is enabled, but ObstacleRayCastDown was not found.")
 	elif jump_low_obstacles:
 		_obstacle_down_ray.enabled = true
+	# Truncate the log file at the start of each run so old entries don't
+	# accumulate across play-mode sessions.
+	if enable_file_log:
+		var path := log_file_path if not log_file_path.is_empty() else "user://citizen.log"
+		var file := FileAccess.open(path, FileAccess.WRITE)  # WRITE truncates
+		if file != null:
+			file.store_string("[%s] === session start ===\n" % Time.get_datetime_string_from_system())
+			file.close()
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton \
@@ -593,6 +601,9 @@ func _probe_and_register_cell(
 			"blocked_reason": _get_local_astar_blocked_reason(physics_blocked, surface_blocked),
 			"surface": surface_kind
 		})
+	# Always record the surface so neighbour-adjacency checks (near_road penalty)
+	# can see road cells even when they are excluded from the A* graph.
+	cell_surfaces[cell] = surface_kind
 	# Back-cells are kept as intermediate graph nodes for routing around corners,
 	# but excluded from goal candidates below.
 	if physics_blocked and cell != start_cell:
@@ -601,7 +612,6 @@ func _probe_and_register_cell(
 		return
 	var point_id := _local_astar_cell_id(cell, doubled_radius)
 	point_ids[cell] = point_id
-	cell_surfaces[cell] = surface_kind
 	astar.add_point(point_id, offset)
 
 func _local_astar_cell_id(cell: Vector2i, cell_radius: int) -> int:
