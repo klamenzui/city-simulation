@@ -31,8 +31,15 @@ extends CharacterBody3D
 @export var local_astar_front_row_tolerance: float = 0.24
 @export var local_astar_prefer_right_when_left_open: bool = true
 @export var local_astar_avoid_road_cells: bool = true
+## Extra score added to goal candidates adjacent to a road cell.
+## Raise this to push the citizen further from the pavement edge.
+## When no road-free candidate exists the penalty is irrelevant (near-road cell is the only option).
+@export var local_astar_near_road_penalty: float = 8.0
 @export_flags_3d_physics var local_astar_surface_collision_mask: int = 3
-@export var local_astar_surface_probe_up: float = 1.4
+## Ray start height relative to the probe point (citizen feet level).
+## 0.5 = mid-body — detects walls/hydrants between waist and floor and avoids
+## ceiling false-positives that the old 1.4 m value could produce.
+@export var local_astar_surface_probe_up: float = 0.5
 @export var local_astar_surface_probe_down: float = 2.2
 @export var local_astar_surface_probe_max_hits: int = 8
 
@@ -507,10 +514,27 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 
 	var front_tolerance := maxf(local_astar_front_row_tolerance, cell_size)
 	var prefer_right := local_astar_prefer_right_when_left_open and left_open
+
+	# Two-tier candidate selection: road-free cells are strongly preferred.
+	# near-road candidates are only used as last resort when no road-free cell
+	# exists in the front row, so the citizen never voluntarily hugs the kerb.
+	var has_road_free_front_candidate := false
+	if not start_needs_surface_escape:
+		for candidate_value in candidates:
+			var candidate: Dictionary = candidate_value
+			if candidate.get("near_road", false):
+				continue
+			var candidate_offset: Vector2 = candidate.get("offset", Vector2.ZERO)
+			if candidate_offset.y >= front_y - front_tolerance:
+				has_road_free_front_candidate = true
+				break
+
 	var has_right_front_candidate := false
 	if prefer_right and not start_needs_surface_escape:
 		for candidate_value in candidates:
 			var candidate: Dictionary = candidate_value
+			if has_road_free_front_candidate and candidate.get("near_road", false):
+				continue
 			var candidate_offset: Vector2 = candidate.get("offset", Vector2.ZERO)
 			if candidate_offset.y >= front_y - front_tolerance and candidate_offset.x >= 0.0:
 				has_right_front_candidate = true
@@ -527,14 +551,18 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 				continue
 			if prefer_right and has_right_front_candidate and candidate_offset.x < 0.0:
 				continue
+			# Skip near-road cells entirely when road-free alternatives exist.
+			if has_road_free_front_candidate and candidate.get("near_road", false):
+				continue
 
 		var reference_distance: float = candidate.get("reference_distance", INF)
 		var path_length: float = candidate.get("path_length", 0.0)
 		var score := reference_distance + path_length * (0.25 if start_needs_surface_escape else 0.1)
-		# Steer away from the road edge: cells adjacent to road get a large
-		# penalty so they are only picked when no cleaner alternative exists.
+		# Fallback penalty: only reached when no road-free front-row cell exists
+		# (e.g. very narrow walkway). Keeps near-road cells at the bottom of the
+		# ranking so the widest gap is still preferred.
 		if candidate.get("near_road", false):
-			score += 3.0
+			score += local_astar_near_road_penalty
 		if prefer_right and not start_needs_surface_escape:
 			score -= candidate_offset.x * 0.05
 			selection_label = "front row right"
