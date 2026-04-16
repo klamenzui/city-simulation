@@ -35,6 +35,10 @@ extends CharacterBody3D
 ## Raise this to push the citizen further from the pavement edge.
 ## When no road-free candidate exists the penalty is irrelevant (near-road cell is the only option).
 @export var local_astar_near_road_penalty: float = 8.0
+## How far left/right (metres) to sample for a road cell during normal walking.
+## When a road cell is found within this distance the road-edge escape activates.
+## 0 disables the proximity check.
+@export var local_astar_road_proximity_margin: float = 0.3
 @export_flags_3d_physics var local_astar_surface_collision_mask: int = 3
 ## Ray start height relative to the probe point (citizen feet level).
 ## 0.5 = mid-body — detects walls/hydrants between waist and floor and avoids
@@ -302,30 +306,35 @@ func _is_path_ahead_blocked(direction: Vector3) -> bool:
 	if flat_dir.length_squared() <= 0.0001:
 		return false
 	_local_astar_probe_shape.radius = maxf(local_astar_probe_radius, 0.03)
-	var probe_pos := global_position + flat_dir.normalized() * (local_astar_radius * 0.5)
-	probe_pos.y = global_position.y + 0.35
-	var query := PhysicsShapeQueryParameters3D.new()
-	query.shape = _local_astar_probe_shape
-	query.transform = Transform3D(Basis.IDENTITY, probe_pos)
-	query.collision_mask = collision_mask
-	query.collide_with_areas = false
-	query.collide_with_bodies = true
-	query.exclude = [get_rid()]
 	var flat_dir_norm := flat_dir.normalized()
-	for hit in get_world_3d().direct_space_state.intersect_shape(query, 4):
-		if _is_local_astar_probe_hit_blocking(hit):
-			# Don't flag low jumpable obstacles as blocked — the jump system
-			# handles those directly, and avoidance rerouting around a curb
-			# would prevent the jump from ever firing.
-			if jump_low_obstacles and _is_obstacle_below_jump_height(flat_dir_norm):
+	var probe_base := global_position + flat_dir_norm * (local_astar_radius * 0.5)
+	var space := get_world_3d().direct_space_state
+	# Check waist (0.35 m) and chest (0.8 m) so walls whose collision starts
+	# above floor level are detected before the A* routes the citizen into them.
+	for probe_y_offset in [0.35, 0.8]:
+		var probe_pos := probe_base
+		probe_pos.y = global_position.y + probe_y_offset
+		var query := PhysicsShapeQueryParameters3D.new()
+		query.shape = _local_astar_probe_shape
+		query.transform = Transform3D(Basis.IDENTITY, probe_pos)
+		query.collision_mask = collision_mask
+		query.collide_with_areas = false
+		query.collide_with_bodies = true
+		query.exclude = [get_rid()]
+		for hit in space.intersect_shape(query, 4):
+			if _is_local_astar_probe_hit_blocking(hit):
+				# Don't flag low jumpable obstacles as blocked — the jump system
+				# handles those directly, and avoidance rerouting around a curb
+				# would prevent the jump from ever firing.
+				if probe_y_offset < 0.5 and jump_low_obstacles and _is_obstacle_below_jump_height(flat_dir_norm):
+					var c = hit.get("collider", null)
+					_log_v("AVOIDANCE_SKIP_JUMPABLE", "low obstacle '%s' pos=%s dir=%s" % [
+						c.name if c is Node else "?", _fmt_v3(global_position), _fmt_v3(flat_dir_norm)])
+					continue
 				var c = hit.get("collider", null)
-				_log_v("AVOIDANCE_SKIP_JUMPABLE", "low obstacle '%s' pos=%s dir=%s" % [
+				_log_v("PATH_BLOCKED", "collider='%s' pos=%s dir=%s" % [
 					c.name if c is Node else "?", _fmt_v3(global_position), _fmt_v3(flat_dir_norm)])
-				continue
-			var c = hit.get("collider", null)
-			_log_v("PATH_BLOCKED", "collider='%s' pos=%s dir=%s" % [
-				c.name if c is Node else "?", _fmt_v3(global_position), _fmt_v3(flat_dir_norm)])
-			return true
+				return true
 	return false
 
 ## Returns true when the obstacle directly ahead is low enough to be jumped over.
@@ -619,8 +628,16 @@ func _probe_and_register_cell(
 	if offset.length() > radius:
 		return
 	var world_point := _local_astar_world_from_offset(origin, right, forward, offset)
-	var surface_kind := _get_local_astar_surface_kind(world_point)
+	var surface_hit := _probe_local_astar_surface(world_point)
+	var surface_kind := _surface_kind_from_probe_hit(surface_hit, world_point)
 	var physics_blocked := _is_local_astar_probe_blocked(world_point)
+	# Wall/fence/hydrant: if the surface ray hit a mostly-vertical face (|normal.y| < 0.5)
+	# the sphere probe may have missed it (wrong collision layer / height). Use the
+	# ray normal as a fallback to mark the cell as physics-blocked.
+	if not physics_blocked and not surface_hit.is_empty():
+		var hit_normal: Vector3 = surface_hit.get("normal", Vector3.UP)
+		if abs(hit_normal.y) < 0.5:
+			physics_blocked = true
 	var surface_blocked := _is_local_astar_surface_blocked(surface_kind)
 	if debug_draw_avoidance:
 		_debug_local_astar_cells.append({
@@ -662,21 +679,23 @@ func _is_local_astar_probe_blocked(point: Vector3) -> bool:
 	if get_world_3d() == null:
 		return true
 
-	var probe_position := point
-	probe_position.y = global_position.y + 0.35
-
-	var query := PhysicsShapeQueryParameters3D.new()
-	query.shape = _local_astar_probe_shape
-	query.transform = Transform3D(Basis.IDENTITY, probe_position)
-	query.collision_mask = _get_local_astar_collision_mask()
-	query.collide_with_areas = false
-	query.collide_with_bodies = true
-	query.exclude = [get_rid()]
-
-	var hits := get_world_3d().direct_space_state.intersect_shape(query, 8)
-	for hit in hits:
-		if _is_local_astar_probe_hit_blocking(hit):
-			return true
+	var mask := _get_local_astar_collision_mask()
+	var space := get_world_3d().direct_space_state
+	# Check two heights: waist (0.35 m) catches low obstacles and ground edges;
+	# chest (0.8 m) catches walls whose collision box starts above floor level.
+	for probe_y_offset in [0.35, 0.8]:
+		var probe_position := point
+		probe_position.y = global_position.y + probe_y_offset
+		var query := PhysicsShapeQueryParameters3D.new()
+		query.shape = _local_astar_probe_shape
+		query.transform = Transform3D(Basis.IDENTITY, probe_position)
+		query.collision_mask = mask
+		query.collide_with_areas = false
+		query.collide_with_bodies = true
+		query.exclude = [get_rid()]
+		for hit in space.intersect_shape(query, 8):
+			if _is_local_astar_probe_hit_blocking(hit):
+				return true
 	return false
 
 func _is_local_astar_probe_hit_blocking(hit: Dictionary) -> bool:
@@ -730,6 +749,26 @@ func _should_local_astar_escape_surface(surface_kind: String) -> bool:
 	# treating those as "road" caused constant escape-looping on pedestrian zones.
 	return _is_local_astar_surface_blocked(surface_kind)
 
+## Returns true when the citizen is walking too close to a road edge even though
+## they are not yet on the road.  Samples lateral points at road_proximity_margin
+## distance left and right of the current movement direction.
+func _is_too_close_to_road() -> bool:
+	if not local_astar_avoid_road_cells:
+		return false
+	if local_astar_road_proximity_margin <= 0.0:
+		return false
+	if _surface_escape_cooldown > 0.0 or _jump_cooldown_timer > 0.0:
+		return false
+	var move_dir := _smoothed_move_direction
+	if move_dir.length_squared() <= 0.0001:
+		return false
+	var right := _get_planar_right(move_dir)
+	var margin := maxf(local_astar_road_proximity_margin, 0.1)
+	for side in [right * margin, -right * margin]:
+		if _get_local_astar_surface_kind(global_position + side) == "road":
+			return true
+	return false
+
 func _get_local_astar_blocked_reason(physics_blocked: bool, surface_blocked: bool) -> String:
 	if physics_blocked and surface_blocked:
 		return "physics+road"
@@ -741,6 +780,12 @@ func _get_local_astar_blocked_reason(physics_blocked: bool, surface_blocked: boo
 
 func _get_local_astar_surface_kind(point: Vector3) -> String:
 	var hit := _probe_local_astar_surface(point)
+	return _surface_kind_from_probe_hit(hit, point)
+
+## Classifies a raw surface probe hit, applying the pedzone-over-road fixup and
+## the pedestrian-graph fallback.  Separated from _get_local_astar_surface_kind
+## so _probe_and_register_cell can reuse the already-fired probe result.
+func _surface_kind_from_probe_hit(hit: Dictionary, point: Vector3) -> String:
 	var kind := _classify_surface_hit(hit)
 	if kind == "road" and not hit.is_empty():
 		# If the probe hit road but the query point is clearly above the hit,
