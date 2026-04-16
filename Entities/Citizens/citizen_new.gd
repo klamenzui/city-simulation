@@ -34,11 +34,17 @@ extends CharacterBody3D
 ## Extra score added to goal candidates adjacent to a road cell.
 ## Raise this to push the citizen further from the pavement edge.
 ## When no road-free candidate exists the penalty is irrelevant (near-road cell is the only option).
-@export var local_astar_near_road_penalty: float = 8.0
+@export var local_astar_near_road_penalty: float = 16.0
 ## How far left/right (metres) to sample for a road cell during normal walking.
 ## When a road cell is found within this distance the road-edge escape activates.
 ## 0 disables the proximity check.
 @export var local_astar_road_proximity_margin: float = 0.3
+## Hard safety buffer around road cells. 1 = immediate neighbour cells are treated as unsafe.
+@export var local_astar_road_buffer_cells: int = 1
+## Probe heights are sampled from foot level upwards so hydrants, low walls and other citizens are detected.
+@export var local_astar_probe_min_height: float = 0.08
+@export var local_astar_probe_max_height: float = 0.9
+@export var local_astar_probe_height_steps: int = 4
 @export_flags_3d_physics var local_astar_surface_collision_mask: int = 3
 ## Ray start height relative to the probe point (citizen feet level).
 ## 0.5 = mid-body — detects walls/hydrants between waist and floor and avoids
@@ -271,13 +277,18 @@ func _get_steered_direction(desired_direction: Vector3, delta: float) -> Vector3
 	if _obstacle_check_timer <= 0.0:
 		_obstacle_check_timer = obstacle_check_interval
 		var surface_kind := _get_local_astar_surface_kind(global_position)
+		var too_close_to_road := _is_too_close_to_road()
 		var _prev_blocked := _cached_avoidance_blocked
 		_cached_avoidance_blocked = _is_path_ahead_blocked(desired_direction) \
-				or _should_local_astar_escape_surface(surface_kind)
-		_debug_avoidance_status = "blocked" if _cached_avoidance_blocked else "clear"
+				or _should_local_astar_escape_surface(surface_kind) \
+				or too_close_to_road
+		if too_close_to_road:
+			_debug_avoidance_status = "road edge"
+		else:
+			_debug_avoidance_status = "blocked" if _cached_avoidance_blocked else "clear"
 		if _cached_avoidance_blocked and not _prev_blocked:
-			_log("AVOIDANCE_BLOCKED", "surface='%s' y=%.3f pos=%s dir=%s" % [
-				surface_kind, global_position.y, _fmt_v3(global_position), _fmt_v3(desired_direction)])
+			_log("AVOIDANCE_BLOCKED", "surface='%s' road_edge=%s y=%.3f pos=%s dir=%s" % [
+				surface_kind, str(too_close_to_road), global_position.y, _fmt_v3(global_position), _fmt_v3(desired_direction)])
 
 	if _cached_avoidance_blocked and _local_astar_replan_timer <= 0.0:
 		_local_astar_replan_timer = maxf(local_astar_replan_interval, 0.02)
@@ -311,7 +322,7 @@ func _is_path_ahead_blocked(direction: Vector3) -> bool:
 	var space := get_world_3d().direct_space_state
 	# Check waist (0.35 m) and chest (0.8 m) so walls whose collision starts
 	# above floor level are detected before the A* routes the citizen into them.
-	for probe_y_offset in [0.35, 0.8]:
+	for probe_y_offset in _get_local_astar_probe_heights():
 		var probe_pos := probe_base
 		probe_pos.y = global_position.y + probe_y_offset
 		var query := PhysicsShapeQueryParameters3D.new()
@@ -357,6 +368,19 @@ func _is_obstacle_below_jump_height(flat_direction: Vector3) -> bool:
 		if _is_local_astar_probe_hit_blocking(hit):
 			return false  # Something above jump height — treat as real wall
 	return true  # Only blocked below jump height — jumpable
+
+func _get_local_astar_probe_heights() -> Array[float]:
+	var min_h := maxf(local_astar_probe_min_height, 0.0)
+	var max_h := maxf(local_astar_probe_max_height, min_h)
+	var steps := maxi(local_astar_probe_height_steps, 1)
+	var heights: Array[float] = []
+	if steps == 1:
+		heights.append(min_h)
+		return heights
+	for i in range(steps):
+		var t := float(i) / float(steps - 1)
+		heights.append(lerpf(min_h, max_h, t))
+	return heights
 
 func _smooth_move_direction(target_direction: Vector3, fallback_direction: Vector3, delta: float) -> Vector3:
 	var target := target_direction
@@ -639,21 +663,23 @@ func _probe_and_register_cell(
 		if abs(hit_normal.y) < 0.5:
 			physics_blocked = true
 	var surface_blocked := _is_local_astar_surface_blocked(surface_kind)
+	# Record the surface first so subsequent cells can respect a hard buffer around road cells.
+	cell_surfaces[cell] = surface_kind
+	var near_road_buffer := _is_point_within_road_buffer(world_point, right, forward, step)
 	if debug_draw_avoidance:
 		_debug_local_astar_cells.append({
 			"point": world_point,
-			"blocked": physics_blocked or surface_blocked,
-			"blocked_reason": _get_local_astar_blocked_reason(physics_blocked, surface_blocked),
+			"blocked": physics_blocked or surface_blocked or near_road_buffer,
+			"blocked_reason": _get_local_astar_blocked_reason(physics_blocked, surface_blocked, near_road_buffer),
 			"surface": surface_kind
 		})
-	# Always record the surface so neighbour-adjacency checks (near_road penalty)
-	# can see road cells even when they are excluded from the A* graph.
-	cell_surfaces[cell] = surface_kind
 	# Back-cells are kept as intermediate graph nodes for routing around corners,
 	# but excluded from goal candidates below.
 	if physics_blocked and cell != start_cell:
 		return
 	if surface_blocked and cell != start_cell and not start_needs_surface_escape:
+		return
+	if near_road_buffer and cell != start_cell and not start_needs_surface_escape:
 		return
 	var point_id := _local_astar_cell_id(cell, doubled_radius)
 	point_ids[cell] = point_id
@@ -683,7 +709,7 @@ func _is_local_astar_probe_blocked(point: Vector3) -> bool:
 	var space := get_world_3d().direct_space_state
 	# Check two heights: waist (0.35 m) catches low obstacles and ground edges;
 	# chest (0.8 m) catches walls whose collision box starts above floor level.
-	for probe_y_offset in [0.35, 0.8]:
+	for probe_y_offset in _get_local_astar_probe_heights():
 		var probe_position := point
 		probe_position.y = global_position.y + probe_y_offset
 		var query := PhysicsShapeQueryParameters3D.new()
@@ -769,13 +795,30 @@ func _is_too_close_to_road() -> bool:
 			return true
 	return false
 
-func _get_local_astar_blocked_reason(physics_blocked: bool, surface_blocked: bool) -> String:
+func _is_point_within_road_buffer(point: Vector3, right: Vector3, forward: Vector3, step: float) -> bool:
+	var buffer_cells := maxi(local_astar_road_buffer_cells, 0)
+	if not local_astar_avoid_road_cells or buffer_cells <= 0:
+		return false
+	for dz in range(-buffer_cells, buffer_cells + 1):
+		for dx in range(-buffer_cells, buffer_cells + 1):
+			if dx == 0 and dz == 0:
+				continue
+			var sample_point := point + right * (float(dx) * step) + forward * (float(dz) * step)
+			if _get_local_astar_surface_kind(sample_point) == "road":
+				return true
+	return false
+
+func _get_local_astar_blocked_reason(physics_blocked: bool, surface_blocked: bool, near_road_buffer: bool = false) -> String:
 	if physics_blocked and surface_blocked:
 		return "physics+road"
-	if physics_blocked:
-		return "physics"
+	if physics_blocked and near_road_buffer:
+		return "physics+road_buffer"
 	if surface_blocked:
 		return "road"
+	if near_road_buffer:
+		return "road_buffer"
+	if physics_blocked:
+		return "physics"
 	return ""
 
 func _get_local_astar_surface_kind(point: Vector3) -> String:
@@ -1315,6 +1358,8 @@ func _get_local_astar_debug_cell_color(blocked: bool, blocked_reason: String) ->
 		return Color(0.0, 0.7, 0.25, 1.0)
 	if blocked_reason == "physics":
 		return Color(1.0, 0.55, 0.0, 1.0)
+	if blocked_reason == "road_buffer" or blocked_reason == "physics+road_buffer":
+		return Color(1.0, 0.2, 0.2, 1.0)
 	return Color(1.0, 0.0, 0.0, 1.0)
 
 func _update_avoidance_debug_label() -> void:
