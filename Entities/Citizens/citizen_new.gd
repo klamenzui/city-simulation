@@ -814,9 +814,15 @@ func _is_local_astar_walkable_probe_collider(collider: Variant) -> bool:
 		# Static props near the road (hydrants, lamps, walls, fences) must stay blocking.
 		if current_path.contains("/only_people_nav/"):
 			return true
-		if current_path.contains("/road_straight_crossing/") 				or current_name.contains("crosswalk") 				or current_name.contains("crossing"):
+		if current_path.contains("/road_straight_crossing/") \
+				or current_name.contains("crosswalk") \
+				or current_name.contains("crossing"):
 			return true
 		if current.is_in_group("walkable_surface"):
+			return true
+		# Park internal paths and base ground tiles are walkable surfaces.
+		# Park WALLS (park_wall_*) intentionally have no match here so they stay blocking.
+		if current_name.begins_with("park_road") or current_name.begins_with("park_base"):
 			return true
 
 		current = current.get_parent()
@@ -1015,6 +1021,12 @@ func _classify_surface_node(node: Node) -> String:
 		if current_path.contains("/only_transport/"):
 			return "road"
 		if current_path.contains("/only_people_nav/"):
+			return "pedestrian"
+		# Park tiles (base, paths, walls) all live under a node in the "parks" group.
+		# Walls are physically blocking via the sphere probe but their surface is still
+		# pedestrian territory — marking them "pedestrian" shows teal in the debug
+		# surface layer and keeps them from being misread as road.
+		if current.is_in_group("parks") or current.is_in_group("city_park"):
 			return "pedestrian"
 
 		current = current.get_parent()
@@ -1477,7 +1489,7 @@ func _draw_local_astar_debug() -> void:
 func _get_local_astar_debug_cell_color(blocked: bool, blocked_reason: String, surface: String) -> Color:
 	if not blocked:
 		match surface:
-			"pedestrian": return Color(0.0, 0.85, 0.80)   # teal  — confirmed pedestrian zone
+			"pedestrian": return Color(0.0, 0.454, 0.0, 1.0)   # teal  — confirmed pedestrian zone
 			"crosswalk":  return Color(0.85, 0.90, 0.05)  # yellow — crosswalk (walkable)
 			"unknown":    return Color(0.55, 0.55, 0.55)  # grey  — not classified confidently
 			_:            return Color(0.10, 0.72, 0.22)   # green  — free / known-safe fallback
@@ -1495,6 +1507,7 @@ func _update_avoidance_debug_label() -> void:
 		path_label = "%d/%d" % [path_index, global_path.size() - 1]
 
 	_debug_avoidance_label.position = Vector3.UP * 1.3
+	_debug_avoidance_label.position.y += 0.1
 	_debug_avoidance_label.text = "path: %s\navoid: %s\nlocal: %s\njump: %s" % [
 		path_label,
 		_debug_avoidance_status,
