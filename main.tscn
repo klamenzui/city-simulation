@@ -2168,7 +2168,8 @@ autonomous_simulation_enabled = false
 script = ExtResource("401_skybr")
 
 [node name="Citizen" parent="." unique_id=1850326929 instance=ExtResource("106_llcqu")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.489348, 0.12540579, 14.201809)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.348106, 1.9736841, 18.510485)
+min_jump_obstacle_height = 0.02
 enable_file_log = true
 log_verbose = true
 log_file_path = "res://citizen.log"

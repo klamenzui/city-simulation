@@ -3,6 +3,10 @@ class_name Park
 
 const BENCH_NAME_HINTS := ["bench", "bank", "seat", "sit"]
 const BENCH_RESERVATIONS_META := "_park_bench_reservations"
+## Child-node name prefixes that mark a walkable park surface (sidewalk, base ground).
+## Park walls intentionally absent — they must stay non-walkable so the avoidance
+## probe still treats them as blockers.
+const WALKABLE_MESH_NAME_PREFIXES := ["park_road", "park_base"]
 
 @export var park_visit_inside_distance: float = 1.25
 @export var park_wall_depth: float = 0.6
@@ -18,6 +22,32 @@ func _ready() -> void:
 	#_rebuild_park_navigation_boundaries()
 	_invalidate_park_bench_cache()
 	add_to_group("parks")
+	_tag_walkable_surfaces()
+
+## Walks the park subtree and tags sidewalk / base-ground meshes (and their
+## StaticBody3D children) with the generic "walkable_surface" group. The citizen
+## avoidance probe uses this group to decide whether a collider blocks movement —
+## this way the name-based knowledge of what's walkable inside a park lives in
+## the park itself rather than leaking into citizen_new.gd.
+func _tag_walkable_surfaces() -> void:
+	_tag_walkable_surfaces_recursive(self)
+
+func _tag_walkable_surfaces_recursive(node: Node) -> void:
+	var name_lower := node.name.to_lower()
+	for prefix in WALKABLE_MESH_NAME_PREFIXES:
+		if name_lower.begins_with(prefix):
+			_mark_subtree_walkable(node)
+			# No recursion into an already-tagged subtree — its children are
+			# either the same walkable surface (mesh, static body, shape).
+			return
+	for child in node.get_children():
+		_tag_walkable_surfaces_recursive(child)
+
+func _mark_subtree_walkable(node: Node) -> void:
+	if not node.is_in_group("walkable_surface"):
+		node.add_to_group("walkable_surface")
+	for child in node.get_children():
+		_mark_subtree_walkable(child)
 
 func _remove_embedded_scene_bodies() -> void:
 	var stale_bodies: Array[StaticBody3D] = []

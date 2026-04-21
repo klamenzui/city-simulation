@@ -49,6 +49,9 @@ extends CharacterBody3D
 ## Draw ground/surface cells separately from real physics-hit markers.
 @export var debug_draw_surface_cells: bool = true
 @export var debug_draw_physics_hits: bool = true
+## Draw a vertical line from each surface mark down to the citizen's foot level.
+## Makes terrain height differences (steps, kerbs, raised pedestrian zones) immediately visible.
+@export var debug_draw_cell_heights: bool = true
 ## Probe heights are sampled from foot level upwards so hydrants, low walls and other citizens are detected.
 @export var local_astar_probe_min_height: float = 0.08
 @export var local_astar_probe_max_height: float = 0.9
@@ -126,11 +129,20 @@ var _surface_escape_cooldown: float = 0.0
 @export_group("Logging")
 ## Write movement, avoidance and stuck events to a log file for stuck diagnosis.
 ## Windows path: %APPDATA%\Godot\app_userdata\<project name>\citizen.log
-@export var enable_file_log: bool = false
+@export var enable_file_log: bool = true
 ## Also log verbose per-check detail (avoidance probes, jump ray, A* results). Can be noisy.
-@export var log_verbose: bool = false
+@export var log_verbose: bool = true
+## Log every local-A* probe hit (surface ray + physics sphere) with height and parent chain.
+## Extremely noisy — enable only when diagnosing why a building is misclassified.
+## Requires enable_file_log. Deduplicated per-rebuild to keep output manageable.
+@export var debug_log_probe_hits: bool = true
 ## Override log path. Empty = user://citizen.log (Godot user-data folder).
 @export var log_file_path: String = "user://citizen.log"
+
+## Per-rebuild dedup set: stringified collider paths already logged this local-A* rebuild.
+## Cleared at the start of every grid rebuild so each rebuild snapshot is complete but
+## repeat hits from the same collider don't flood the log.
+var _probe_hit_log_seen: Dictionary = {}
 
 func _ready() -> void:
 	if obstacle_down_ray_path != NodePath():
@@ -457,6 +469,7 @@ func _try_build_local_astar_path(desired_direction: Vector3) -> bool:
 
 	_debug_local_astar_cells.clear()
 	_debug_local_astar_physics_hits.clear()
+	_probe_hit_log_seen.clear()
 	_local_astar_probe_shape.radius = maxf(local_astar_probe_radius, 0.03)
 
 	# Pass 1: surface probe for ALL cells so the road-buffer check in Pass 2
@@ -771,9 +784,11 @@ func _get_local_astar_probe_block_info(point: Vector3) -> Dictionary:
 		query.collide_with_bodies = true
 		query.exclude = [get_rid()]
 		for hit in space.intersect_shape(query, 8):
-			if not _is_local_astar_probe_hit_blocking(hit):
-				continue
 			var collider: Variant = hit.get("collider", null)
+			var walkable := _is_local_astar_walkable_probe_collider(collider)
+			_log_probe_hit("physics", probe_position, probe_y_offset, collider, walkable)
+			if walkable:
+				continue
 			return {
 				"blocked": true,
 				"hit_pos": _get_probe_hit_debug_position(collider, probe_position),
@@ -819,10 +834,6 @@ func _is_local_astar_walkable_probe_collider(collider: Variant) -> bool:
 				or current_name.contains("crossing"):
 			return true
 		if current.is_in_group("walkable_surface"):
-			return true
-		# Park internal paths and base ground tiles are walkable surfaces.
-		# Park WALLS (park_wall_*) intentionally have no match here so they stay blocking.
-		if current_name.begins_with("park_road") or current_name.begins_with("park_base"):
 			return true
 
 		current = current.get_parent()
@@ -991,6 +1002,7 @@ func _probe_local_astar_surface(point: Vector3) -> Dictionary:
 				return {}
 			exclude.append(hit["rid"])
 			continue
+		_log_probe_hit("surface", point, 0.0, collider, true, hit)
 		return hit
 
 	return {}
@@ -1012,6 +1024,26 @@ func _classify_surface_node(node: Node) -> String:
 			current_path = str(current.get_path()).to_lower()
 		var current_name := current.name.to_lower()
 
+		# PEDESTRIAN FIRST — "only_people_nav" is the authoritative signal that
+		# this collider is a pedestrian surface, regardless of what the parent
+		# road asset happens to be called.  A road asset like
+		# "Road_straight_crossing" contains BOTH a road mesh (under
+		# /only_transport/) AND its sidewalk (under /only_people_nav/). Without
+		# this check, the "crossing" substring in the asset name below wins and
+		# the sidewalk gets misclassified as crosswalk — which then blocks the
+		# low-obstacle jump at the curb and the citizen stalls on the road.
+		if current_path.contains("/only_people_nav/"):
+			return "pedestrian"
+		# Parks are pedestrian territory. Walkable-vs-wall within a park is decided
+		# by the "walkable_surface" group (set in Park.gd for park_road_/park_base_
+		# meshes) — here we only care that a park descendant is NOT road.
+		if current.is_in_group("parks") or current.is_in_group("city_park"):
+			return "pedestrian"
+		if current.is_in_group("walkable_surface"):
+			return "pedestrian"
+		# Zebra crossings — matched by path (dedicated asset) or explicit name.
+		# Kept AFTER the pedestrian check so a sidewalk attached to a
+		# road-with-crossing asset is not misread as the zebra itself.
 		if current_path.contains("/road_straight_crossing/") \
 				or current_name.contains("crosswalk") \
 				or current_name.contains("crossing"):
@@ -1020,14 +1052,6 @@ func _classify_surface_node(node: Node) -> String:
 			return "road"
 		if current_path.contains("/only_transport/"):
 			return "road"
-		if current_path.contains("/only_people_nav/"):
-			return "pedestrian"
-		# Park tiles (base, paths, walls) all live under a node in the "parks" group.
-		# Walls are physically blocking via the sphere probe but their surface is still
-		# pedestrian territory — marking them "pedestrian" shows teal in the debug
-		# surface layer and keeps them from being misread as road.
-		if current.is_in_group("parks") or current.is_in_group("city_park"):
-			return "pedestrian"
 
 		current = current.get_parent()
 
@@ -1456,6 +1480,8 @@ func _add_avoidance_debug_cross(center: Vector3, size: float, color: Color) -> v
 func _draw_local_astar_debug() -> void:
 	var effective_step := maxf(local_astar_cell_size, 0.08) / float(maxi(local_astar_grid_subdivisions, 1))
 	var cell_mark_size := maxf(effective_step * 0.18, 0.012)
+	# Reference Y = citizen feet level, used as the bottom anchor for height stems.
+	var ref_y := global_position.y
 	if debug_draw_surface_cells:
 		for cell_data in _debug_local_astar_cells:
 			var surface_pos: Vector3 = cell_data.get("surface_pos", Vector3.ZERO) as Vector3
@@ -1463,12 +1489,20 @@ func _draw_local_astar_debug() -> void:
 			var blocked_reason := str(cell_data.get("blocked_reason", ""))
 			var surface := str(cell_data.get("surface", ""))
 			var cell_color := _get_local_astar_debug_cell_color(cell_blocked, blocked_reason, surface)
-			_add_avoidance_debug_cross(surface_pos + Vector3.UP * 0.02, cell_mark_size, cell_color)
+			var mark_pos := surface_pos + Vector3.UP * 0.02
+			_add_avoidance_debug_cross(mark_pos, cell_mark_size, cell_color)
+			if debug_draw_cell_heights:
+				# Vertical stem from the mark down (or up) to the citizen's floor plane.
+				# Skips stems less than 1 cm — avoids clutter on flat terrain.
+				var floor_pos := Vector3(surface_pos.x, ref_y + 0.07, surface_pos.z)
+				if absf(surface_pos.y - ref_y) > 0.01:
+					var stem_color := Color(cell_color.r, cell_color.g, cell_color.b, 0.35)
+					_add_avoidance_debug_line(mark_pos, floor_pos, stem_color)
 	if debug_draw_physics_hits:
 		for hit_data in _debug_local_astar_physics_hits:
 			var hit_pos: Vector3 = hit_data.get("pos", Vector3.ZERO) as Vector3
 			var near_road := bool(hit_data.get("near_road", false))
-			var hit_color := Color(0.85, 0.30, 0.00) if near_road else Color(1.00, 0.55, 0.00)
+			var hit_color := Color(0.851, 0.0, 0.0, 1.0) if near_road else Color(1.0, 0.306, 0.0, 1.0)
 			_add_avoidance_debug_cross(hit_pos + Vector3.UP * 0.12, cell_mark_size * 1.5, hit_color)
 
 	if not _local_avoidance_path.is_empty():
@@ -1490,8 +1524,8 @@ func _get_local_astar_debug_cell_color(blocked: bool, blocked_reason: String, su
 	if not blocked:
 		match surface:
 			"pedestrian": return Color(0.0, 0.454, 0.0, 1.0)   # teal  — confirmed pedestrian zone
-			"crosswalk":  return Color(0.85, 0.90, 0.05)  # yellow — crosswalk (walkable)
-			"unknown":    return Color(0.55, 0.55, 0.55)  # grey  — not classified confidently
+			"crosswalk":  return Color(0.0, 0.902, 0.051, 1.0)  # yellow — crosswalk (walkable)
+			"unknown":    return Color(0.085, 0.085, 0.085, 1.0)  # grey  — not classified confidently
 			_:            return Color(0.10, 0.72, 0.22)   # green  — free / known-safe fallback
 	match blocked_reason:
 		"road":                return Color(1.00, 0.00, 0.00)  # bright red    — road surface
@@ -1556,6 +1590,76 @@ func _log_v(event: String, details: String = "") -> void:
 ## Compact Vector3 → "(x.xx, y.yy, z.zz)" for log lines.
 func _fmt_v3(v: Vector3) -> String:
 	return "(%.2f,%.2f,%.2f)" % [v.x, v.y, v.z]
+
+## Log a local-A* probe hit so we can diagnose surface/physics misclassifications
+## (why park sidewalks register as "unknown", why a wall is treated as walkable, …).
+##
+## Dedup scope: one line per unique (probe_kind, collider-path) per grid rebuild.
+## A park with 6 mesh tiles therefore logs ~6 lines, not thousands.
+##
+## probe_kind:   "surface" (downward ray, layer 1+2) or "physics" (sphere, citizen mask).
+## probe_pos:    world-space position where the probe was fired.
+## probe_height: Y offset relative to citizen origin (physics probe); 0 for surface rays.
+## walkable:     what the classifier decided for this hit — makes it easy to scan
+##               the log for "is_in_group? walkable=false" false positives.
+## surface_hit:  optional intersect_ray result so we can show hit_y and normal.
+func _log_probe_hit(probe_kind: String, probe_pos: Vector3, probe_height: float,
+		collider: Variant, walkable: bool, surface_hit: Dictionary = {}) -> void:
+	if not enable_file_log or not debug_log_probe_hits:
+		return
+	if not (collider is Node):
+		return
+	var node := collider as Node
+	var path_key = str(node.get_path()) if node.is_inside_tree() else node.name
+	var dedup_key = probe_kind + "|" + path_key
+	if _probe_hit_log_seen.has(dedup_key):
+		return
+	_probe_hit_log_seen[dedup_key] = true
+
+	var hit_y := probe_pos.y
+	var normal_str := ""
+	if not surface_hit.is_empty():
+		var hit_pos_v: Vector3 = surface_hit.get("position", probe_pos)
+		hit_y = hit_pos_v.y
+		var normal_v: Vector3 = surface_hit.get("normal", Vector3.ZERO)
+		normal_str = " n=%s" % _fmt_v3(normal_v)
+
+	var details := "probe=%s probe_pos=%s probe_h=%.2f hit_y=%.2f%s walkable=%s chain=[%s]" % [
+		probe_kind,
+		_fmt_v3(probe_pos),
+		probe_height,
+		hit_y,
+		normal_str,
+		walkable,
+		_fmt_collider_chain(node),
+	]
+	_log("PROBE_HIT", details)
+
+## Walks a collider's parent chain and returns "name{groups}[->parent{groups}...]".
+## Used by _log_probe_hit so one log line tells us everything we need to know
+## about the node tree (is it a Park descendant? is it in walkable_surface?)
+## without having to open the scene in the editor.
+func _fmt_collider_chain(node: Node) -> String:
+	var out := ""
+	var current := node
+	var depth := 0
+	while current != null and depth < 6:
+		var groups_str := ""
+		var groups_list: Array = current.get_groups()
+		for g in groups_list:
+			if groups_str.is_empty():
+				groups_str = "{" + str(g)
+			else:
+				groups_str += "," + str(g)
+		if not groups_str.is_empty():
+			groups_str += "}"
+		if out.is_empty():
+			out = "%s%s" % [current.name, groups_str]
+		else:
+			out += "->" + ("%s%s" % [current.name, groups_str])
+		current = current.get_parent()
+		depth += 1
+	return out
 
 # -------------------------------------
 
