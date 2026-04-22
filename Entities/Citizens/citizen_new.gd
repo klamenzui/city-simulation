@@ -370,14 +370,46 @@ func _is_path_ahead_blocked(direction: Vector3) -> bool:
 	return false
 
 ## Returns true when the obstacle directly ahead is low enough to be jumped over.
-## Probes at (max_jump_obstacle_height + margin) — if that level is clear the
-## obstacle sits entirely within the jump-height window and avoidance should not
-## treat it as a wall.
+## Combines two probes:
+##   1. The jump down-ray (close range, ~0.45 m) — already used by the jump
+##      system. If it hits an obstacle ABOVE max_jump_obstacle_height, the
+##      citizen can't jump it and avoidance must not skip rerouting.
+##   2. A sphere at (max_jump_obstacle_height + margin) at half-A*-radius
+##      forward — if that level is clear, the obstacle sits within the
+##      jump-height window there.
+## Without probe 1 the citizen would stall against a building wall whose
+## FOUNDATION extends a low stoop further ahead: the sphere (far) sees only
+## the low stoop and calls it jumpable, while the jump ray (near) sees the
+## tall wall and refuses to jump — a permanent stuck.
 func _is_obstacle_below_jump_height(flat_direction: Vector3) -> bool:
 	if not is_inside_tree() or get_world_3d() == null:
 		return false
+
+	var max_h := maxf(max_jump_obstacle_height, 0.0)
+
+	# Probe 1: close-range down-ray.  If it reports a blocking obstacle above
+	# jump height in the near forward corridor, treat as NOT jumpable.  The
+	# ray is force-updated here so avoidance sees the same reality as the
+	# jump system in the same frame.
+	if _obstacle_down_ray != null and _obstacle_down_ray.enabled:
+		_update_obstacle_down_ray_target(flat_direction)
+		_obstacle_down_ray.force_raycast_update()
+		if _obstacle_down_ray.is_colliding():
+			var ray_hit := _obstacle_down_ray.get_collision_point()
+			var ray_collider := _obstacle_down_ray.get_collider()
+			# Crosswalks are always walkable on foot — the raised stripe mesh
+			# sits in the jump-height window but must never gate avoidance.
+			var is_crosswalk := ray_collider is Node \
+					and _classify_surface_node(ray_collider as Node) == "crosswalk"
+			if not is_crosswalk:
+				var ray_h := ray_hit.y - global_position.y
+				if ray_h > max_h:
+					return false  # tall wall ahead — cannot jump, must reroute
+
+	# Probe 2: far-range sphere at jump-height + margin.  Clear here means the
+	# obstacle the ankle sphere hit at the same xz is at most max_h tall.
 	var probe_pos := global_position + flat_direction * (local_astar_radius * 0.5)
-	probe_pos.y = global_position.y + maxf(max_jump_obstacle_height, 0.0) + 0.06
+	probe_pos.y = global_position.y + max_h + 0.06
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = _local_astar_probe_shape
 	query.transform = Transform3D(Basis.IDENTITY, probe_pos)
@@ -838,7 +870,21 @@ func _is_local_astar_walkable_probe_collider(collider: Variant) -> bool:
 			return false
 		current = current.get_parent()
 
-	# Priority 3: owner-mesh heuristic for road-tile sidewalks.  The collider's
+	# Priority 3: world terrain — the ground plane everything else sits on.
+	# Identified by the collider being a DIRECT child of a node in group
+	# "world" (the Main's World MeshInstance3D).  We must NOT check the full
+	# ancestor chain for "world" — every map asset has World as an ancestor,
+	# so that would blanket-allow buildings too.  By requiring the IMMEDIATE
+	# parent, we match only the terrain's own static body, leaving cells
+	# that are "just grass/plaza between road tiles" walkable — previously
+	# these were blocked, stranding citizens at intersection corners.
+	var owner_parent := node.get_parent()
+	if owner_parent == null:
+		return false
+	if owner_parent.is_in_group("world"):
+		return true
+
+	# Priority 4: owner-mesh heuristic for road-tile sidewalks.  The collider's
 	# IMMEDIATE parent is the mesh that owns the collision shape — it's a
 	# sidewalk only when its name is road_* AND it lives on the pedestrian
 	# side of the tile (/only_people_nav/).  Without the path qualifier the
@@ -847,9 +893,6 @@ func _is_local_astar_walkable_probe_collider(collider: Variant) -> bool:
 	# to the direct owner, a hydrant mesh sitting inside a Road_* asset would
 	# inherit walkable from its container via substring match — exactly the
 	# bug that caused the citizen to path through the hydrant and stall.
-	var owner_parent := node.get_parent()
-	if owner_parent == null:
-		return false
 	var owner_name := owner_parent.name.to_lower()
 	var owner_path := ""
 	if owner_parent.is_inside_tree():
