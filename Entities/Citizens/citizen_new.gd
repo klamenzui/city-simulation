@@ -817,27 +817,49 @@ func _get_probe_hit_collider_name(collider: Variant) -> String:
 func _is_local_astar_walkable_probe_collider(collider: Variant) -> bool:
 	if not (collider is Node):
 		return false
+	var node := collider as Node
 
-	var current := collider as Node
+	# Priority 1: explicit "walkable_surface" tag always wins.  Park.gd adds
+	# this to park sidewalks whose park root is ALSO in the "buildings" group;
+	# without this priority they'd be blocked along with the park walls.
+	var current: Node = node
 	while current != null:
-		var current_path := ""
-		if current.is_inside_tree():
-			current_path = str(current.get_path()).to_lower()
-		var current_name := current.name.to_lower()
-
-		# Only true walkable surfaces are ignored by the physics blocker.
-		# Static props near the road (hydrants, lamps, walls, fences) must stay blocking.
-		if current_path.contains("/only_people_nav/"):
-			return true
-		if current_path.contains("/road_straight_crossing/") \
-				or current_name.contains("crosswalk") \
-				or current_name.contains("crossing"):
-			return true
 		if current.is_in_group("walkable_surface"):
 			return true
-
 		current = current.get_parent()
 
+	# Priority 2: anything under a "buildings"-grouped ancestor blocks.  This
+	# covers houses, stores, multi-buildings, and parks — all of them have
+	# wall / prop / fixture collisions the citizen must never pass through,
+	# even though they physically sit underneath /only_people_nav/.
+	current = node
+	while current != null:
+		if current.is_in_group("buildings"):
+			return false
+		current = current.get_parent()
+
+	# Priority 3: owner-mesh heuristic for road-tile sidewalks.  The collider's
+	# IMMEDIATE parent is the mesh that owns the collision shape — it's a
+	# sidewalk only when its name is road_* AND it lives on the pedestrian
+	# side of the tile (/only_people_nav/).  Without the path qualifier the
+	# car-road meshes on /only_transport/ (road_junction, road_straight,
+	# road_tsplit) would be mis-matched as walkable too.  Without restricting
+	# to the direct owner, a hydrant mesh sitting inside a Road_* asset would
+	# inherit walkable from its container via substring match — exactly the
+	# bug that caused the citizen to path through the hydrant and stall.
+	var owner_parent := node.get_parent()
+	if owner_parent == null:
+		return false
+	var owner_name := owner_parent.name.to_lower()
+	var owner_path := ""
+	if owner_parent.is_inside_tree():
+		owner_path = str(owner_parent.get_path()).to_lower()
+	if not owner_path.contains("/only_people_nav/"):
+		return false
+	if owner_name.begins_with("road_"):
+		return true
+	if owner_name.contains("crosswalk") or owner_name.contains("crossing"):
+		return true
 	return false
 
 func _is_local_astar_surface_blocked(surface_kind: String) -> bool:
