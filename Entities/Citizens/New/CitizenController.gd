@@ -1,3 +1,4 @@
+class_name CitizenController
 extends CharacterBody3D
 
 ## Root of the 4-layer citizen navigation stack (Navigation.md).
@@ -29,6 +30,12 @@ extends CharacterBody3D
 
 # ---------------------------------------------------------- Exports: Input
 @export_group("Click Input")
+## When true, a right-click sets a new global target via screen-ray pick.
+## Default false — every CharacterBody3D receives `_input` globally, so leaving
+## this on for all citizens makes a single right-click teleport ALL of them
+## to the same point. Enable per-citizen in the Inspector for the one you
+## want to control with the mouse.
+@export var accept_click_input: bool = false
 @export var click_ray_distance: float = 1000.0
 @export var ignore_ui_clicks: bool = true
 @export_flags_3d_physics var click_collision_mask: int = 0xFFFFFFFF
@@ -47,6 +54,7 @@ extends CharacterBody3D
 @export var local_astar_grid_subdivisions: int = 2
 @export var local_astar_probe_radius: float = 0.16
 @export var local_astar_replan_interval: float = 0.18
+@export var local_astar_fallback_replan_cooldown: float = 1.0
 @export var local_astar_goal_reach_distance: float = 0.12
 @export var local_astar_front_row_tolerance: float = 0.24
 @export var local_astar_prefer_right_when_left_open: bool = true
@@ -180,6 +188,8 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if not accept_click_input:
+		return
 	if not (event is InputEventMouseButton):
 		return
 	if event.button_index != MOUSE_BUTTON_RIGHT or not event.pressed:
@@ -403,6 +413,13 @@ func _apply_local_grid_result(result: Dictionary) -> void:
 	var extra_cooldown: float = result.get(LocalGridPlanner.RESULT_KEY_SURFACE_ESCAPE, 0.0)
 	if extra_cooldown > 0.0:
 		_surface_escape_cooldown = maxf(_surface_escape_cooldown, extra_cooldown)
+	# Failed replans get a longer cooldown so the citizen does not re-enter
+	# `build_detour` 5 times per second on the same blocked corridor.
+	var success := bool(result.get(LocalGridPlanner.RESULT_KEY_SUCCESS, false))
+	if not success or _local_astar_follow_global_on_fail:
+		var fallback_cooldown: float = maxf(_config.local_astar_fallback_replan_cooldown,
+				_config.local_astar_replan_interval)
+		_local_astar_replan_timer = maxf(_local_astar_replan_timer, fallback_cooldown)
 
 
 func _consume_local_avoidance_path() -> Vector3:
@@ -637,60 +654,11 @@ func _draw_debug(desired_direction: Vector3, final_direction: Vector3) -> void:
 # ========================================================================
 
 func _build_config() -> CitizenConfig:
+	# Reflexion via CitizenConfig.FIELD_NAMES — replaces a 50-line manual mirror
+	# of every @export. Drift between Controller @exports and Config fields is
+	# caught at startup by `tools/codex_citizen_config_drift_test.gd`.
 	var c := CitizenConfig.new()
-	c.move_speed = move_speed
-	c.waypoint_reach_distance = waypoint_reach_distance
-	c.final_waypoint_reach_distance = final_waypoint_reach_distance
-	c.waypoint_pass_distance = waypoint_pass_distance
-	c.corner_blend_distance = corner_blend_distance
-	c.corner_blend_strength = corner_blend_strength
-	c.steering_smoothing = steering_smoothing
-	c.avoidance_slowdown_factor = avoidance_slowdown_factor
-	c.obstacle_check_interval = obstacle_check_interval
-	c.use_local_astar_avoidance = use_local_astar_avoidance
-	c.local_astar_radius = local_astar_radius
-	c.local_astar_cell_size = local_astar_cell_size
-	c.local_astar_grid_subdivisions = local_astar_grid_subdivisions
-	c.local_astar_probe_radius = local_astar_probe_radius
-	c.local_astar_replan_interval = local_astar_replan_interval
-	c.local_astar_goal_reach_distance = local_astar_goal_reach_distance
-	c.local_astar_front_row_tolerance = local_astar_front_row_tolerance
-	c.local_astar_prefer_right_when_left_open = local_astar_prefer_right_when_left_open
-	c.local_astar_avoid_road_cells = local_astar_avoid_road_cells
-	c.local_astar_near_road_penalty = local_astar_near_road_penalty
-	c.local_astar_road_proximity_margin = local_astar_road_proximity_margin
-	c.local_astar_road_buffer_cells = local_astar_road_buffer_cells
-	c.local_astar_forward_road_check_distance = local_astar_forward_road_check_distance
-	c.local_astar_physics_near_road_margin = local_astar_physics_near_road_margin
-	c.local_astar_probe_min_height = local_astar_probe_min_height
-	c.local_astar_probe_max_height = local_astar_probe_max_height
-	c.local_astar_probe_height_steps = local_astar_probe_height_steps
-	c.local_astar_surface_collision_mask = local_astar_surface_collision_mask
-	c.local_astar_surface_probe_up = local_astar_surface_probe_up
-	c.local_astar_surface_probe_down = local_astar_surface_probe_down
-	c.local_astar_surface_probe_max_hits = local_astar_surface_probe_max_hits
-	c.jump_low_obstacles = jump_low_obstacles
-	c.max_jump_obstacle_height = max_jump_obstacle_height
-	c.min_jump_obstacle_height = min_jump_obstacle_height
-	c.jump_probe_distance = jump_probe_distance
-	c.jump_velocity = jump_velocity
-	c.jump_cooldown = jump_cooldown
-	c.stuck_detection_interval = stuck_detection_interval
-	c.stuck_detection_min_distance = stuck_detection_min_distance
-	c.stuck_max_recovery_attempts = stuck_max_recovery_attempts
-	c.click_ray_distance = click_ray_distance
-	c.ignore_ui_clicks = ignore_ui_clicks
-	c.click_collision_mask = click_collision_mask
-	c.debug_draw_avoidance = debug_draw_avoidance
-	c.debug_draw_surface_cells = debug_draw_surface_cells
-	c.debug_draw_physics_hits = debug_draw_physics_hits
-	c.debug_draw_cell_heights = debug_draw_cell_heights
-	c.debug_log_probe_hits = debug_log_probe_hits
-	c.show_global_path = show_global_path
-	c.clear_global_path_on_arrival = clear_global_path_on_arrival
-	c.global_path_line_color = global_path_line_color
-	c.global_path_line_y_offset = global_path_line_y_offset
-	c.global_path_line_width = global_path_line_width
+	c.populate_from(self)
 	return c
 
 
