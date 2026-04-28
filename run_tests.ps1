@@ -148,6 +148,21 @@ $availableTests = @(
 		Script = "res://tools/codex_crosswalk_audit.gd"
 	}
 	[pscustomobject]@{
+		Key = "navgrid"
+		Label = "Local Grid Topology"
+		Script = "res://tools/codex_local_grid_topology_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "navconfig"
+		Label = "Citizen Config Drift"
+		Script = "res://tools/codex_citizen_config_drift_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "navroute"
+		Label = "Citizen Navigation Route"
+		Script = "res://tools/codex_navigation_route_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "sky"
 		Label = "Sky Probe"
 		Script = "res://tools/codex_sky_probe.gd"

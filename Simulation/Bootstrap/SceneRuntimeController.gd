@@ -8,6 +8,7 @@ const BuildingStatusStyleResolverScript = preload("res://Simulation/UI/BuildingS
 const HudOverlayControllerScript = preload("res://Simulation/UI/HudOverlayController.gd")
 const SimulationInteractionControllerScript = preload("res://Simulation/UI/SimulationInteractionController.gd")
 const SimulationHudControllerScript = preload("res://Simulation/UI/SimulationHudController.gd")
+const CoordinatePickerControllerScript = preload("res://Simulation/UI/CoordinatePickerController.gd")
 const BuildingStatusBadgeControllerScript = preload("res://Simulation/UI/BuildingStatusBadgeController.gd")
 const CitizenSimulationLodControllerScript = preload("res://Simulation/Citizens/CitizenSimulationLodController.gd")
 const CitizenConversationManagerScript = preload("res://Simulation/Conversation/CitizenConversationManager.gd")
@@ -23,6 +24,7 @@ var interaction_controller = null
 var building_status_badge_controller = null
 var hud_controller = null
 var hud_overlay_controller = null
+var coordinate_picker_controller = null
 var selection_state_controller = null
 var citizen_lod_controller = null
 var citizen_conversation_manager = null
@@ -65,6 +67,7 @@ func setup(
 	_setup_building_status_badge_controller()
 	_bind_building_clicks()
 	_build_hud(search_result_limit, building_overview_refresh_interval_sec)
+	_setup_coordinate_picker()
 	if selection_state_controller != null:
 		selection_state_controller.setup(
 			world,
@@ -103,6 +106,15 @@ func update(delta: float) -> void:
 		interaction_controller.update(delta)
 
 func handle_input(event: InputEvent) -> bool:
+	# Coordinate picker has priority — when active it consumes left-clicks so
+	# the standard interaction controller does not also try to select citizens
+	# or buildings on the same click.
+	if coordinate_picker_controller != null and coordinate_picker_controller.handle_input(event):
+		var picker_viewport := owner_node.get_viewport() if owner_node != null else null
+		if picker_viewport != null:
+			picker_viewport.set_input_as_handled()
+		return true
+
 	if interaction_controller == null:
 		return false
 	if not interaction_controller.handle_input(event):
@@ -196,6 +208,16 @@ func _build_hud(search_result_limit: int, building_overview_refresh_interval_sec
 		search_result_limit,
 		building_overview_refresh_interval_sec
 	)
+
+func _setup_coordinate_picker() -> void:
+	if hud_controller == null or owner_node == null:
+		return
+	var canvas: CanvasLayer = hud_controller.get_canvas()
+	if canvas == null:
+		return
+	coordinate_picker_controller = CoordinatePickerControllerScript.new()
+	coordinate_picker_controller.setup(owner_node, world, city_camera, canvas)
+
 
 func _setup_selection_state_controller() -> void:
 	if selection_state_controller != null:

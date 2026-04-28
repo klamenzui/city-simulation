@@ -32,11 +32,17 @@ var _flush_timer: float = 0.0
 ## Scoped to one local-A* rebuild so each rebuild snapshot is complete but
 ## repeat hits from the same collider don't flood the log.
 var _probe_hit_seen: Dictionary = {}
+## Event counts for headless tests / runtime stats. Counted regardless of
+## `enabled` and `min_level` so tests can assert on counts even when file
+## logging is disabled. Reset on `open()` and via `reset_event_counts()`.
+## Key format: "LAYER|EVENT".
+var _event_counts: Dictionary = {}
 
 
 func open(path: String, owner: String) -> bool:
 	_file_path = path
 	owner_name = owner
+	_event_counts.clear()
 	if not enabled:
 		return false
 	var file := FileAccess.open(path, FileAccess.WRITE)  # WRITE truncates
@@ -61,6 +67,9 @@ func set_level(level: int) -> void:
 ##
 ## Name avoids the GDScript built-in `log(x)` (natural logarithm).
 func write(level: int, layer: String, event: String, data: Dictionary = {}) -> void:
+	# Count regardless of enabled/level — counts are observable for tests.
+	var count_key := "%s|%s" % [layer, event]
+	_event_counts[count_key] = int(_event_counts.get(count_key, 0)) + 1
 	if not enabled or level < min_level:
 		return
 	var ms := Time.get_ticks_msec()
@@ -123,6 +132,21 @@ func probe_hit_seen(key: String) -> bool:
 
 func clear_probe_hit_dedup() -> void:
 	_probe_hit_seen.clear()
+
+
+## Returns how often `LAYER|EVENT` has been written this session. Counts are
+## live and increment on every `write()` call regardless of `enabled`/level.
+func get_event_count(layer: String, event: String) -> int:
+	return int(_event_counts.get("%s|%s" % [layer, event], 0))
+
+
+## Snapshot of all event counts. Useful for test assertions and stats dumps.
+func snapshot_event_counts() -> Dictionary:
+	return _event_counts.duplicate()
+
+
+func reset_event_counts() -> void:
+	_event_counts.clear()
 
 
 ## Compact Vector3 → "(x.xx,y.yy,z.zz)"

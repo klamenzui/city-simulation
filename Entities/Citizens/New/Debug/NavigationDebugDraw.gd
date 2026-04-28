@@ -187,8 +187,21 @@ func update_global_path(global_path: PackedVector3Array, path_index: int) -> voi
 
 	_ensure_global_path_visual()
 	_path_mesh.clear_surfaces()
-	_path_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, _path_material)
+	# Skip if there are no remaining segments to draw — Godot raises
+	# "No vertices were added" if surface_end() is called on an empty surface.
 	var draw_from := maxi(path_index, 0)
+	if draw_from >= global_path.size() - 1:
+		return
+	# Pre-count drawable segments so we never open a surface we can't fill.
+	var drawable_segments := 0
+	for idx in range(draw_from, global_path.size() - 1):
+		var seg := global_path[idx + 1] - global_path[idx]
+		seg.y = 0.0
+		if seg.length_squared() > 0.0001:
+			drawable_segments += 1
+	if drawable_segments == 0:
+		return
+	_path_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, _path_material)
 	for idx in range(draw_from, global_path.size() - 1):
 		_add_path_segment(global_path[idx], global_path[idx + 1])
 	_path_mesh.surface_end()

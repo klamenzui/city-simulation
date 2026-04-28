@@ -3,14 +3,23 @@ extends RefCounted
 
 ## Layer 3 of the 4-layer navigation pipeline (Navigation.md §Local Planner).
 ##
-## Builds a small hex-style A* grid around the citizen, marks cells by
-## (physics_blocked, surface_kind, road_buffer) and finds the best reachable
-## goal candidate that lies in the forward half-circle.
+## Builds a small dual-subdivided 8-connect A* grid around the citizen, marks
+## cells by (physics_blocked, surface_kind, road_buffer) and finds the best
+## reachable goal candidate that lies in the forward half-circle.
 ##
-## Doubled-coordinate grid layout:
+## Doubled-coordinate grid layout (dual-subdivided 8-connect grid):
 ##   Normal cells     Vector2i(x*2,   z*2)   at world offset (x*step,       z*step)
 ##   Staggered cells  Vector2i(x*2+1, z*2+1) at world offset ((x+0.5)*step, (z+0.5)*step)
 ## World offset from any cell: Vector2(cell.x * step * 0.5, cell.y * step * 0.5)
+##
+## NOTE: this is NOT a true hex grid (despite the original "hex" naming). It
+## is a dual-subdivided grid where the staggered cells fill the diagonals
+## between the four corners of each square. The `_GRID_NEIGHBORS` list keeps
+## both diagonal connections (±1,±1) AND axial connections (±2,0)+(0,±2) on
+## purpose: removing the axial connections forces A* to zig-zag between
+## diagonals on long straight runs. Measured by `tools/codex_local_grid_topology_test.gd`:
+##   8-NEIGHBOUR (current):  forward path length 1.165 m, 2 dir changes
+##   6-NEIGHBOUR (pure-hex): forward path length 1.612 m, 6 dir changes (38% worse)
 ##
 ## Output: `BuildResult`-shaped Dictionary (see RESULT_KEY_* constants).
 
@@ -23,7 +32,12 @@ const RESULT_KEY_SURFACE_ESCAPE: String = "surface_escape_cooldown"  # float sec
 const RESULT_KEY_DEBUG_CELLS: String = "debug_cells"
 const RESULT_KEY_DEBUG_HITS: String = "debug_physics_hits"
 
-const _HEX_NEIGHBORS: Array[Vector2i] = [
+## Connectivity for the dual-subdivided grid. 4 diagonals connect each cell
+## to its 4 surrounding "fill" cells; 4 axial connections (±2,0)+(0,±2) keep
+## long straight runs from zig-zagging through the diagonals (see class doc).
+## Do NOT remove the axial entries — `tools/codex_local_grid_topology_test.gd`
+## guards this and will fail if you do.
+const _GRID_NEIGHBORS: Array[Vector2i] = [
 	Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1),
 	Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2),
 ]
@@ -133,7 +147,7 @@ func build_detour(desired_direction: Vector3,
 	for cell_key in point_ids.keys():
 		var cell: Vector2i = cell_key
 		var point_id: int = point_ids[cell]
-		for neighbor_offset: Vector2i in _HEX_NEIGHBORS:
+		for neighbor_offset: Vector2i in _GRID_NEIGHBORS:
 			var neighbor_cell := cell + neighbor_offset
 			if not point_ids.has(neighbor_cell):
 				continue
@@ -174,7 +188,7 @@ func build_detour(desired_direction: Vector3,
 				global_path, path_index, target_position)
 		var path_length := _path_length_2d(candidate_path)
 		var near_road := false
-		for nb_off in _HEX_NEIGHBORS:
+		for nb_off in _GRID_NEIGHBORS:
 			if _is_surface_blocked(str(cell_surfaces.get(cell + nb_off, ""))):
 				near_road = true
 				break
@@ -431,7 +445,7 @@ static func _neighbor_offsets_in_radius(radius_cells: int) -> Array[Vector2i]:
 	while steps < radius_cells and not frontier.is_empty():
 		var next_frontier: Array[Vector2i] = []
 		for current in frontier:
-			for off in _HEX_NEIGHBORS:
+			for off in _GRID_NEIGHBORS:
 				var nxt := current + off
 				if visited.has(nxt):
 					continue
