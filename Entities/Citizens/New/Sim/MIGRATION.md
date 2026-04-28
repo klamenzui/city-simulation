@@ -1,6 +1,6 @@
 # Citizen Sim Layer — Migration Roadmap
 
-**Status (2026-04-27):** Skelett gelegt, eine erste Komponente (`CitizenRestPose`) extrahiert.
+**Status (2026-04-27):** 3 Komponenten extrahiert (`CitizenRestPose`, `CitizenIdentity`, `CitizenLocation`).
 Old `Citizen.gd` (3.350 Zeilen) lebt unverändert weiter — die Migration läuft inkrementell.
 
 ---
@@ -44,8 +44,8 @@ Empfehlung: vom Einfachsten zum Komplexesten, sodass jede extracted Komponente
 | # | Komponente | LOC (geschätzt) | Komplexität | Caller-Impact |
 |---|---|---:|---|---|
 | 1 | **RestPose** ✅ | ~40 | trivial | RelaxAtBenchAction, RelaxAtParkAction |
-| 2 | **Identity** | ~80 | leicht | viele (Lese-Zugriffe auf home/job/wallet/needs) |
-| 3 | **Location** | ~150 | mittel | GoToBuildingAction, World, alle Action-Callbacks |
+| 2 | **Identity** ✅ | ~50 | leicht | viele (Lese-Zugriffe auf home/job/wallet/needs) |
+| 3 | **Location** ✅ | ~80 (+stubs) | mittel | GoToBuildingAction, World, alle Action-Callbacks |
 | 4 | **LodComponent** | ~250 | mittel | CitizenSimulationLodController (zentral) |
 | 5 | **Scheduler** | ~300 | hoch | CitizenAgent, CitizenPlanner |
 | 6 | **DebugFacade** | ~80 | leicht | Action-Skripte (`debug_log_once_per_day`) |
@@ -79,7 +79,16 @@ Nach jeder Migration: `parse`, `navconfig`, `navroute` müssen grün bleiben.
 - **Wann wird die Facade auf `CitizenNew.tscn` aktiv geschaltet?** Variante A: erst
   nach kompletter Migration (Big-Bang). Variante B: sobald genug API-Methoden da sind,
   einen zweiten Test-Citizen mit der Facade aufnehmen und parallel beobachten.
-  Empfehlung: B, sobald Identity + Location migriert sind.
+  **Erreicht: Identity + Location sind durch — Variante B ab jetzt möglich.**
+
+## Stubs in der Facade (TODO bei späteren Migrationen)
+
+Die `CitizenFacade` enthält heute Aufrufe, die als `# TODO` markiert sind, weil
+ihre Komponenten noch nicht extrahiert wurden:
+
+- `release_reserved_benches(world, building)` (in `enter_building`, `leave_current_location`) — wartet auf eine **Bench-Reservation**-Komponente.
+- `_update_trace_navigation_state(...)` (4 Stellen) — wartet auf die **TraceState**-Komponente (#7).
+- `_set_position_grounded()` ist im neuen Stack vereinfacht zu `global_position = pos; velocity = ZERO`. Wenn das Locomotion-Helper-Verhalten zurück muss, gehört es als Movement-Layer-Helper auf den `CitizenController`.
 
 ---
 
@@ -87,10 +96,11 @@ Nach jeder Migration: `parse`, `navconfig`, `navroute` müssen grün bleiben.
 
 | Test-Key | Aufgabe | Sollte FAILen wenn… |
 |---|---|---|
-| `parse` | Syntax | Skript-Parser-Fehler |
+| `parse` | Syntax + Main.tscn-Bootstrap | Skript-Parser-Fehler oder Class-Registry-Bruch |
 | `navconfig` | Drift Controller@exports ↔ Config | neues @export ohne FIELD_NAMES-Eintrag |
 | `navgrid` | LocalGrid-Topologie | jemand `_GRID_NEIGHBORS` reduziert |
-| `navroute` | End-zu-End-Reise | Avoidance/Movement bricht; Indikator-Waypoints werden gerissen |
+| `navsim` | Sim-Komponenten-Smoke (Identity, RestPose) | Komponenten-Defaults driften |
+| `navroute` | End-zu-End-Reise (real Map) | Avoidance/Movement bricht; Indikator-Waypoints werden gerissen |
 
 Migrations-Schutz künftig: ein `navfacade`-Test, der prüft, dass `CitizenFacade` alle
 erwarteten Methoden implementiert (Source-Parsing der `has_method`-Aufrufe in
