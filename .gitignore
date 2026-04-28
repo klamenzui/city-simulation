@@ -3,6 +3,7 @@
 /android/
 *.log
 *.uid
-
+.obsidian/
+.claude/
 # Local AI runtimes, models, and downloaded toolchains should stay machine-local.
 AI/
