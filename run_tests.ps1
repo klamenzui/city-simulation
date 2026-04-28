@@ -158,6 +158,11 @@ $availableTests = @(
 		Script = "res://tools/codex_citizen_config_drift_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "navsim"
+		Label = "Sim Components Smoke"
+		Script = "res://tools/codex_sim_components_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "navroute"
 		Label = "Citizen Navigation Route"
 		Script = "res://tools/codex_navigation_route_test.gd"

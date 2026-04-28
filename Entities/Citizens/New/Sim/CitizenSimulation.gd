@@ -17,9 +17,9 @@ var world: Node = null
 
 # Components — created in `_init`, never reseated. Nullable until extraction.
 var rest_pose: CitizenRestPose = null
+var identity: CitizenIdentity = null
+var location: CitizenLocation = null
 # Future:
-# var identity: CitizenIdentity = null
-# var location: CitizenLocationState = null
 # var scheduler: CitizenScheduler = null
 # var lod: CitizenLodComponent = null
 # var debug_facade: CitizenDebugFacade = null
@@ -29,6 +29,8 @@ func _init(p_owner: Node) -> void:
 	owner_node = p_owner
 	if p_owner is Node3D:
 		rest_pose = CitizenRestPose.new(p_owner as Node3D)
+	identity = CitizenIdentity.new()
+	location = CitizenLocation.new()
 
 
 ## Set by `set_world_ref` from the Facade. Components that need the world
