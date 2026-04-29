@@ -24,10 +24,65 @@ var _probe_shape: SphereShape3D = SphereShape3D.new()
 ## check).  Nullable — Perception still works without a jump system.
 var _jump: JumpController = null
 
+## Reusable physics-query objects. All probe calls reuse these instances and
+## just reset `transform`/`exclude` per call. Allocating fresh
+## PhysicsShapeQueryParameters3D / PhysicsRayQueryParameters3D inside
+## `LocalGridPlanner.build_detour` was a measurable GC source — at ~50 cells
+## × 4 probe heights per replan, every fresh allocation cost adds up.
+var _shape_query: PhysicsShapeQueryParameters3D = null
+var _ray_query: PhysicsRayQueryParameters3D = null
+## Pre-allocated single-element exclude array — reused for every query.
+## `_owner_rid_cache[0]` is filled lazily once the owner RID is valid.
+var _exclude_owner: Array[RID] = []
+## Pre-allocated multi-element exclude array used by `probe_surface` (which
+## adds character-body RIDs as it iterates). Cleared and refilled per call.
+var _exclude_buffer: Array[RID] = []
+## Probe heights are recomputed lazily and cached. Invalidated when the
+## relevant config knobs change. Today the config is built once at _ready;
+## a runtime LOD profile would need to call `_invalidate_probe_heights()`.
+var _cached_probe_heights: Array[float] = []
+var _cached_probe_radius: float = -1.0
+
 
 func _init(context: NavigationContext) -> void:
 	_ctx = context
 	_probe_shape.radius = maxf(_ctx.config.local_astar_probe_radius, 0.03)
+	_shape_query = PhysicsShapeQueryParameters3D.new()
+	_shape_query.shape = _probe_shape
+	_shape_query.collide_with_areas = false
+	_shape_query.collide_with_bodies = true
+	_ray_query = PhysicsRayQueryParameters3D.new()
+	_ray_query.collide_with_areas = false
+
+
+## Lazy probe-heights cache — computed once, returned by reference.
+func _get_probe_heights() -> Array[float]:
+	if _cached_probe_heights.is_empty():
+		_cached_probe_heights = _ctx.config.get_probe_heights()
+	return _cached_probe_heights
+
+
+## Reuses the cached single-RID exclude array. Owner RID may not be valid
+## at construction time, so we set it lazily.
+func _get_exclude_owner() -> Array[RID]:
+	if _exclude_owner.is_empty():
+		_exclude_owner.append(_ctx.get_owner_rid())
+	else:
+		_exclude_owner[0] = _ctx.get_owner_rid()
+	return _exclude_owner
+
+
+## Updates the shape-query members in-place. Returns the cached instance.
+func _prepare_shape_query(transform: Transform3D, mask: int) -> PhysicsShapeQueryParameters3D:
+	# Probe radius can change if config is rebuilt, keep shape in sync.
+	var current_radius := maxf(_ctx.config.local_astar_probe_radius, 0.03)
+	if not is_equal_approx(current_radius, _cached_probe_radius):
+		_probe_shape.radius = current_radius
+		_cached_probe_radius = current_radius
+	_shape_query.transform = transform
+	_shape_query.collision_mask = mask
+	_shape_query.exclude = _get_exclude_owner()
+	return _shape_query
 
 
 func set_jump_controller(jump: JumpController) -> void:
@@ -45,22 +100,15 @@ func is_path_ahead_blocked(flat_direction: Vector3, jump_low_obstacles_enabled: 
 	if flat_direction.length_squared() <= 0.0001:
 		return false
 
-	_probe_shape.radius = maxf(_ctx.config.local_astar_probe_radius, 0.03)
 	var owner_pos := _ctx.get_owner_position()
 	var probe_base := owner_pos + flat_direction * (_ctx.config.local_astar_radius * 0.5)
 	var space := _ctx.get_space_state()
+	var mask := _ctx.get_owner_collision_mask()
 
-	for probe_y_offset in _ctx.config.get_probe_heights():
+	for probe_y_offset in _get_probe_heights():
 		var probe_pos := probe_base
 		probe_pos.y = owner_pos.y + probe_y_offset
-
-		var query := PhysicsShapeQueryParameters3D.new()
-		query.shape = _probe_shape
-		query.transform = Transform3D(Basis.IDENTITY, probe_pos)
-		query.collision_mask = _ctx.get_owner_collision_mask()
-		query.collide_with_areas = false
-		query.collide_with_bodies = true
-		query.exclude = [_ctx.get_owner_rid()]
+		var query := _prepare_shape_query(Transform3D(Basis.IDENTITY, probe_pos), mask)
 
 		for hit in space.intersect_shape(query, 4):
 			if SurfaceClassifier.is_walkable_probe_collider(hit.get("collider", null)):
@@ -113,14 +161,9 @@ func is_obstacle_below_jump_height(flat_direction: Vector3) -> bool:
 	var probe_pos := owner_pos + flat_direction * (cfg.local_astar_radius * 0.5)
 	probe_pos.y = owner_pos.y + max_h + 0.06
 
-	_probe_shape.radius = maxf(cfg.local_astar_probe_radius, 0.03)
-	var query := PhysicsShapeQueryParameters3D.new()
-	query.shape = _probe_shape
-	query.transform = Transform3D(Basis.IDENTITY, probe_pos)
-	query.collision_mask = _ctx.get_owner_collision_mask()
-	query.collide_with_areas = false
-	query.collide_with_bodies = true
-	query.exclude = [_ctx.get_owner_rid()]
+	var query := _prepare_shape_query(
+			Transform3D(Basis.IDENTITY, probe_pos),
+			_ctx.get_owner_collision_mask())
 
 	for hit in _ctx.get_space_state().intersect_shape(query, 4):
 		if not SurfaceClassifier.is_walkable_probe_collider(hit.get("collider", null)):
@@ -139,19 +182,11 @@ func get_probe_block_info(point: Vector3) -> Dictionary:
 	var mask := _ctx.get_owner_collision_mask()
 	var space := _ctx.get_space_state()
 
-	_probe_shape.radius = maxf(_ctx.config.local_astar_probe_radius, 0.03)
-
-	for probe_y_offset in _ctx.config.get_probe_heights():
+	for probe_y_offset in _get_probe_heights():
 		var probe_position := point
 		probe_position.y = owner_pos.y + probe_y_offset
-
-		var query := PhysicsShapeQueryParameters3D.new()
-		query.shape = _probe_shape
-		query.transform = Transform3D(Basis.IDENTITY, probe_position)
-		query.collision_mask = mask
-		query.collide_with_areas = false
-		query.collide_with_bodies = true
-		query.exclude = [_ctx.get_owner_rid()]
+		var query := _prepare_shape_query(
+				Transform3D(Basis.IDENTITY, probe_position), mask)
 
 		for hit in space.intersect_shape(query, 8):
 			var collider: Variant = hit.get("collider", null)
@@ -181,17 +216,21 @@ func probe_surface(point: Vector3) -> Dictionary:
 	var cfg := _ctx.config
 	var from := point + Vector3.UP * maxf(cfg.local_astar_surface_probe_up, 0.2)
 	var to := point + Vector3.DOWN * maxf(cfg.local_astar_surface_probe_down, 0.2)
-	var exclude: Array[RID] = [_ctx.get_owner_rid()]
+	# Reuse the buffer; clear + seed with owner RID. Hits-as-citizens append.
+	_exclude_buffer.clear()
+	_exclude_buffer.append(_ctx.get_owner_rid())
 	var attempts := maxi(cfg.local_astar_surface_probe_max_hits, 1)
 	var space := _ctx.get_space_state()
 
-	for _attempt in range(attempts):
-		var query := PhysicsRayQueryParameters3D.create(from, to)
-		query.collision_mask = cfg.local_astar_surface_collision_mask
-		query.collide_with_areas = false
-		query.exclude = exclude
+	# Configure the cached ray query once; only `exclude` mutates per attempt.
+	_ray_query.from = from
+	_ray_query.to = to
+	_ray_query.collision_mask = cfg.local_astar_surface_collision_mask
 
-		var hit := space.intersect_ray(query)
+	for _attempt in range(attempts):
+		_ray_query.exclude = _exclude_buffer
+
+		var hit := space.intersect_ray(_ray_query)
 		if hit.is_empty():
 			return {}
 
@@ -199,7 +238,7 @@ func probe_surface(point: Vector3) -> Dictionary:
 		if collider is CharacterBody3D:
 			if not hit.has("rid"):
 				return {}
-			exclude.append(hit["rid"])
+			_exclude_buffer.append(hit["rid"])
 			continue
 		_log_probe_hit("surface", point, 0.0, collider, true, hit)
 		return hit
