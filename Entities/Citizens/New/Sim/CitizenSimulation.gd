@@ -19,10 +19,11 @@ var world: Node = null
 var rest_pose: CitizenRestPose = null
 var identity: CitizenIdentity = null
 var location: CitizenLocation = null
-# Future:
-# var scheduler: CitizenScheduler = null
-# var lod: CitizenLodComponent = null
-# var debug_facade: CitizenDebugFacade = null
+var bench_reservation: CitizenBenchReservation = null
+var trace: CitizenTraceState = null
+var debug_facade: CitizenDebugFacade = null
+var lod: CitizenLodComponent = null
+var scheduler: CitizenScheduler = null
 
 
 func _init(p_owner: Node) -> void:
@@ -31,6 +32,11 @@ func _init(p_owner: Node) -> void:
 		rest_pose = CitizenRestPose.new(p_owner as Node3D)
 	identity = CitizenIdentity.new()
 	location = CitizenLocation.new()
+	bench_reservation = CitizenBenchReservation.new(p_owner)
+	trace = CitizenTraceState.new()
+	debug_facade = CitizenDebugFacade.new()
+	lod = CitizenLodComponent.new()
+	scheduler = CitizenScheduler.new()
 
 
 ## Set by `set_world_ref` from the Facade. Components that need the world
