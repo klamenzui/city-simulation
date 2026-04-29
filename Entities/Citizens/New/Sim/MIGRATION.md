@@ -1,7 +1,7 @@
 # Citizen Sim Layer — Migration Roadmap
 
-**Status (2026-04-27):** 3 Komponenten extrahiert (`CitizenRestPose`, `CitizenIdentity`, `CitizenLocation`).
-Old `Citizen.gd` (3.350 Zeilen) lebt unverändert weiter — die Migration läuft inkrementell.
+**Status (2026-04-27):** **8/8 Komponenten extrahiert** (`CitizenRestPose`, `CitizenIdentity`, `CitizenLocation`, `CitizenBenchReservation`, `CitizenTraceState`, `CitizenDebugFacade`, `CitizenLodComponent`, `CitizenScheduler`).
+Old `Citizen.gd` (3.350 Zeilen) lebt unverändert weiter — die Migration ist inhaltlich durch, aber das Aktiv-Schalten der Facade in `Main.tscn` ist eine separate Umstellung mit eigenem Test-Aufwand.
 
 ---
 
@@ -46,10 +46,11 @@ Empfehlung: vom Einfachsten zum Komplexesten, sodass jede extracted Komponente
 | 1 | **RestPose** ✅ | ~40 | trivial | RelaxAtBenchAction, RelaxAtParkAction |
 | 2 | **Identity** ✅ | ~50 | leicht | viele (Lese-Zugriffe auf home/job/wallet/needs) |
 | 3 | **Location** ✅ | ~80 (+stubs) | mittel | GoToBuildingAction, World, alle Action-Callbacks |
-| 4 | **LodComponent** | ~250 | mittel | CitizenSimulationLodController (zentral) |
-| 5 | **Scheduler** | ~300 | hoch | CitizenAgent, CitizenPlanner |
-| 6 | **DebugFacade** | ~80 | leicht | Action-Skripte (`debug_log_once_per_day`) |
-| 7 | **TraceState** | ~60 | leicht | RuntimeDebugLogger (`_update_trace_navigation_state`) |
+| 3.5 | **BenchReservation** ✅ | ~10 | trivial | RelaxAt*Action + Location-Stub-Replace |
+| 4 | **LodComponent** ✅ | ~280 | mittel | CitizenSimulationLodController (zentral). Side-Effects (physics_process, presence, world.notify) bleiben auf der Facade; `_nav_agent.avoidance_enabled` aus Legacy entfällt — neuer Stack hat kein NavigationAgent3D. |
+| 5 | **Scheduler** ✅ | ~200 | hoch | CitizenAgent, CitizenPlanner. `prepare_go_to_target` und `handle_unreachable_target` sind auf der Facade als **vereinfachte Stubs** ohne Building-Discovery-Substitution — die Legacy-`_find_alternative_for_building`-Logik wartet auf einen separaten Building-Discovery-Service. |
+| 6 | **DebugFacade** ✅ | ~50 | leicht | Action-Skripte, GOAP, Planner (`debug_log`, `debug_log_once_per_day`). `get_*_debug_summary` migriert mit Scheduler. |
+| 7 | **TraceState** ✅ | ~50 | leicht | RuntimeDebugLogger (`_update_trace_navigation_state`, `get_trace_debug_summary`) |
 
 Nach jeder Migration: `parse`, `navconfig`, `navroute` müssen grün bleiben.
 
@@ -83,12 +84,17 @@ Nach jeder Migration: `parse`, `navconfig`, `navroute` müssen grün bleiben.
 
 ## Stubs in der Facade (TODO bei späteren Migrationen)
 
-Die `CitizenFacade` enthält heute Aufrufe, die als `# TODO` markiert sind, weil
-ihre Komponenten noch nicht extrahiert wurden:
-
-- `release_reserved_benches(world, building)` (in `enter_building`, `leave_current_location`) — wartet auf eine **Bench-Reservation**-Komponente.
-- `_update_trace_navigation_state(...)` (4 Stellen) — wartet auf die **TraceState**-Komponente (#7).
+- ~~`release_reserved_benches(world, building)`~~ ✅ extrahiert als `CitizenBenchReservation`.
+- ~~`_update_trace_navigation_state(...)`~~ ✅ extrahiert als `CitizenTraceState`. Die alten Sensor-Hit-Felder (`_trace_last_forward_hit` etc.) wurden bewusst NICHT mitgenommen — der neue Stack hat keine entsprechenden RayCasts.
 - `_set_position_grounded()` ist im neuen Stack vereinfacht zu `global_position = pos; velocity = ZERO`. Wenn das Locomotion-Helper-Verhalten zurück muss, gehört es als Movement-Layer-Helper auf den `CitizenController`.
+
+**Status nach 8/8 (2026-04-27):**
+
+- `release_reserved_benches` ✅ extrahiert.
+- `_update_trace_navigation_state` ✅ extrahiert.
+- `_set_position_grounded` weiterhin als simple Variante (`global_position = pos; velocity = ZERO`) — voller Locomotion-Snap kommt mit dem Movement-Helper.
+- `prepare_go_to_target` / `handle_unreachable_target` als **vereinfachte Stubs** auf der Facade: prüfen den Unreachable-Cache, aber substituieren keine Alternative. Building-Discovery-Service ist eigener Refactor.
+- Legacy-Helpers `get_job_debug_summary` / `get_unemployment_debug_reason` / `get_zero_pay_debug_reason` sind NICHT auf der Facade — sie hängen von Job-internen Feldern + Wallet-State ab und gehören eher zu einem `CitizenStatusReporter`-Service als zur Sim-Schicht.
 
 ---
 
