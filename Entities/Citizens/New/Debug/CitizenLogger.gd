@@ -28,6 +28,11 @@ var owner_name: String = "?"
 var _file_path: String = ""
 var _buffer: PackedStringArray = PackedStringArray()
 var _flush_timer: float = 0.0
+## Persistent file handle, kept open from `open()` until the logger is freed.
+## Refactored from per-flush open/seek_end/close (4×/sec × 15 citizens = 60
+## file IOs per second) to single-open + per-flush `_file.flush()` (just an
+## OS write-out, no fd cycling).
+var _file: FileAccess = null
 ## Dedup cache used by `probe_hit_seen` / `clear_probe_hit_dedup`.
 ## Scoped to one local-A* rebuild so each rebuild snapshot is complete but
 ## repeat hits from the same collider don't flood the log.
@@ -43,18 +48,37 @@ func open(path: String, owner: String) -> bool:
 	_file_path = path
 	owner_name = owner
 	_event_counts.clear()
+	# Close any handle from a previous open() call before re-opening.
+	if _file != null:
+		_file.close()
+		_file = null
 	if not enabled:
 		return false
-	var file := FileAccess.open(path, FileAccess.WRITE)  # WRITE truncates
-	if file == null:
+	# WRITE truncates — fresh log per session.
+	_file = FileAccess.open(path, FileAccess.WRITE)
+	if _file == null:
 		push_warning("CitizenLogger: cannot open '%s' (err %d)" % [
 				path, FileAccess.get_open_error()])
 		enabled = false
 		return false
-	file.store_string("=== session start %s | owner=%s ===\n" % [
+	_file.store_string("=== session start %s | owner=%s ===\n" % [
 			Time.get_datetime_string_from_system(), owner_name])
-	file.close()
+	# Don't flush here — it's only one line; the next periodic flush picks it up.
 	return true
+
+
+## Explicit close. Called from tests; production code relies on RefCounted
+## auto-close when the Logger is freed.
+func close() -> void:
+	if _file == null:
+		return
+	# Drain any remaining buffered lines before releasing the handle.
+	if not _buffer.is_empty():
+		for line in _buffer:
+			_file.store_string(line)
+		_buffer.clear()
+	_file.close()
+	_file = null
 
 
 func set_level(level: int) -> void:
@@ -169,22 +193,11 @@ func _fmt_value(v) -> String:
 
 
 func _flush() -> void:
-	if not enabled or _buffer.is_empty() or _file_path.is_empty():
-		return
-	var file: FileAccess
-	if FileAccess.file_exists(_file_path):
-		file = FileAccess.open(_file_path, FileAccess.READ_WRITE)
-		if file != null:
-			file.seek_end(0)
-	else:
-		file = FileAccess.open(_file_path, FileAccess.WRITE)
-	if file == null:
-		push_warning("CitizenLogger: cannot open '%s' for append (err %d)" % [
-				_file_path, FileAccess.get_open_error()])
-		enabled = false
-		_buffer.clear()
+	if not enabled or _buffer.is_empty() or _file == null:
 		return
 	for line in _buffer:
-		file.store_string(line)
-	file.close()
+		_file.store_string(line)
+	# `flush()` forces the OS to write out the buffered data without
+	# releasing the handle — much cheaper than the legacy open/close cycle.
+	_file.flush()
 	_buffer.clear()
