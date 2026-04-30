@@ -45,6 +45,23 @@ const _GRID_NEIGHBORS: Array[Vector2i] = [
 var _ctx: NavigationContext
 var _perception: LocalPerception
 
+# ---------------------------------------------------------- Reusable buffers
+# Replan runs ~0.5–1× per second per citizen during avoidance. Allocating a
+# fresh AStar2D + 3 working dicts + a candidates array each time was the
+# largest remaining GC source in the navigation stack. All five containers
+# below are member-scoped: `clear()` at the start of `build_detour` keeps
+# the backing capacity, only the contents reset.
+var _astar: AStar2D = AStar2D.new()
+var _point_ids: Dictionary = {}
+var _cell_surfaces: Dictionary = {}
+var _cell_hit_positions: Dictionary = {}
+var _candidates: Array[Dictionary] = []
+
+# Cache for `_neighbor_offsets_in_radius(N)` — depends only on N (config-stable),
+# but used to be recomputed once per cell × replan via `_is_cell_within_road_buffer`.
+# Maps radius (int) → frozen offsets list.
+var _neighbor_offsets_cache: Dictionary = {}
+
 
 func _init(context: NavigationContext, perception: LocalPerception) -> void:
 	_ctx = context
@@ -98,11 +115,20 @@ func build_detour(desired_direction: Vector3,
 	var start_id := _cell_id(start_cell, doubled_radius)
 	var start_surface_kind := _perception.get_surface_kind(origin)
 	var start_needs_escape := _is_surface_blocked(start_surface_kind)
-	var point_ids: Dictionary = {}
-	var cell_surfaces: Dictionary = {}
-	var cell_hit_positions: Dictionary = {}
-	var astar := AStar2D.new()
+	# Reuse member buffers — clear keeps backing capacity, only contents reset.
+	_point_ids.clear()
+	_cell_surfaces.clear()
+	_cell_hit_positions.clear()
+	_candidates.clear()
+	_astar.clear()
+	var point_ids: Dictionary = _point_ids
+	var cell_surfaces: Dictionary = _cell_surfaces
+	var cell_hit_positions: Dictionary = _cell_hit_positions
+	var astar: AStar2D = _astar
 
+	# debug_cells/debug_hits are returned to the caller and held until the
+	# next replan — cannot share a member buffer without corrupting the
+	# caller's view. Fresh allocation per replan is fine, they're small.
 	var debug_cells: Array[Dictionary] = []
 	var debug_hits: Array[Dictionary] = []
 
@@ -155,8 +181,8 @@ func build_detour(desired_direction: Vector3,
 			if point_id < neighbor_id:
 				astar.connect_points(point_id, neighbor_id, true)
 
-	# Gather candidate cells in the forward half-circle.
-	var candidates: Array[Dictionary] = []
+	# Gather candidate cells in the forward half-circle. Member buffer reused.
+	var candidates: Array[Dictionary] = _candidates
 	var front_y := -INF
 	var left_open := false
 	for cell_key in point_ids.keys():
@@ -429,12 +455,23 @@ func _is_cell_within_road_buffer(cell: Vector2i, cell_surfaces: Dictionary) -> b
 	var buffer_cells := maxi(_ctx.config.local_astar_road_buffer_cells, 0)
 	if buffer_cells <= 0:
 		return false
-	for offset in _neighbor_offsets_in_radius(buffer_cells):
+	for offset in _get_cached_neighbor_offsets(buffer_cells):
 		if offset == Vector2i.ZERO:
 			continue
 		if _is_surface_blocked(str(cell_surfaces.get(cell + offset, ""))):
 			return true
 	return false
+
+
+## Returns the BFS offsets within `radius_cells`, computed once per radius and
+## cached. Result is owned by this component — callers MUST NOT mutate.
+func _get_cached_neighbor_offsets(radius_cells: int) -> Array[Vector2i]:
+	var key := radius_cells
+	if _neighbor_offsets_cache.has(key):
+		return _neighbor_offsets_cache[key]
+	var offsets := _neighbor_offsets_in_radius(radius_cells)
+	_neighbor_offsets_cache[key] = offsets
+	return offsets
 
 
 static func _neighbor_offsets_in_radius(radius_cells: int) -> Array[Vector2i]:

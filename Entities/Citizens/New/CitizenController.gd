@@ -546,11 +546,12 @@ func _tick_stuck_detection(delta: float) -> void:
 		_stuck.reset_for_idle(global_position)
 		return
 	var dist_to_target := _planar_distance(global_position, _target_position)
-	var action := _stuck.tick(delta, global_position, dist_to_target, {
-		"avoidance": _debug_avoidance_status,
-		"local": _debug_local_grid_status,
-		"jump": _jump.status(),
-	})
+	# Pass status strings directly — no per-frame dict allocation. StuckRecovery
+	# builds a log dict only when a stuck event actually fires.
+	var action := _stuck.tick(delta, global_position, dist_to_target,
+			_debug_avoidance_status,
+			_debug_local_grid_status,
+			_jump.status())
 	match action:
 		StuckRecovery.ACTION_REPLAN:
 			_try_replan_from_stuck()

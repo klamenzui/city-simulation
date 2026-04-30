@@ -38,8 +38,15 @@ func reset_for_idle(pos: Vector3) -> void:
 
 ## Per-physics-tick evaluation. `dist_to_target` is the current planar
 ## distance to the final goal so we can skip the stuck check when very close.
+##
+## Status strings are passed individually instead of as a `Dictionary` so the
+## caller does not allocate a fresh dict every frame just to feed the early-exit
+## paths (which is what happens 99% of the time). At 15 citizens × 60 Hz that
+## was ~900 dict allocations per second; now we build one dict only when a
+## stuck event actually fires (~1× per 1.5 s in the worst case).
 func tick(delta: float, current_pos: Vector3, dist_to_target: float,
-		extra_log_data: Dictionary = {}) -> int:
+		status_avoidance: String = "", status_local: String = "",
+		status_jump: String = "") -> int:
 	var cfg := _ctx.config
 	var too_close := dist_to_target <= maxf(cfg.stuck_detection_min_distance * 2.0,
 			cfg.final_waypoint_reach_distance * 2.0)
@@ -57,18 +64,22 @@ func tick(delta: float, current_pos: Vector3, dist_to_target: float,
 	if dist >= maxf(cfg.stuck_detection_min_distance, 0.05):
 		return ACTION_NONE
 
-	var data := extra_log_data.duplicate()
-	data["moved"] = dist
-	data["threshold"] = cfg.stuck_detection_min_distance
-	data["pos"] = current_pos
-
+	# Stuck detected — only NOW do we build the log dict.
 	_recovery_attempts += 1
+	var attempts_label := "%d/%d" % [_recovery_attempts, cfg.stuck_max_recovery_attempts]
+	var data := {
+		"moved": dist,
+		"threshold": cfg.stuck_detection_min_distance,
+		"pos": current_pos,
+		"attempts": attempts_label,
+		"avoidance": status_avoidance,
+		"local": status_local,
+		"jump": status_jump,
+	}
 	if _recovery_attempts > maxi(cfg.stuck_max_recovery_attempts, 1):
-		data["attempts"] = "%d/%d" % [_recovery_attempts, cfg.stuck_max_recovery_attempts]
 		_ctx.logger.error("STUCK", "EXHAUSTED", data)
 		return ACTION_ABORT
 
-	data["attempts"] = "%d/%d" % [_recovery_attempts, cfg.stuck_max_recovery_attempts]
 	_ctx.logger.warn("STUCK", "REPLAN", data)
 	return ACTION_REPLAN
 
