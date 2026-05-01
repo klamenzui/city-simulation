@@ -49,6 +49,7 @@ Empfehlung: vom Einfachsten zum Komplexesten, sodass jede extracted Komponente
 | 3.5 | **BenchReservation** ✅ | ~10 | trivial | RelaxAt*Action + Location-Stub-Replace |
 | 4 | **LodComponent** ✅ | ~280 | mittel | CitizenSimulationLodController (zentral). Side-Effects (physics_process, presence, world.notify) bleiben auf der Facade; `_nav_agent.avoidance_enabled` aus Legacy entfällt — neuer Stack hat kein NavigationAgent3D. |
 | 5 | **Scheduler** ✅ | ~200 | hoch | CitizenAgent, CitizenPlanner. `prepare_go_to_target` und `handle_unreachable_target` sind auf der Facade als **vereinfachte Stubs** ohne Building-Discovery-Substitution — die Legacy-`_find_alternative_for_building`-Logik wartet auf einen separaten Building-Discovery-Service. |
+| 8 | **ManualControl** ✅ | ~50 | leicht | Player-Control + Click-Move-Mode. Facade orchestriert Side-Effects (rest-pose, building exit, travel stop) bei Mode-Wechsel. Autonomous-Flag direkt auf der Facade als `@export`. |
 | 6 | **DebugFacade** ✅ | ~50 | leicht | Action-Skripte, GOAP, Planner (`debug_log`, `debug_log_once_per_day`). `get_*_debug_summary` migriert mit Scheduler. |
 | 7 | **TraceState** ✅ | ~50 | leicht | RuntimeDebugLogger (`_update_trace_navigation_state`, `get_trace_debug_summary`) |
 

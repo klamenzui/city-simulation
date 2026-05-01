@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cpjwfjfva60al"]
 
-[ext_resource type="Script" path="res://Entities/Citizens/New/CitizenController.gd" id="1_ic3lm"]
+[ext_resource type="Script" path="res://Entities/Citizens/New/CitizenFacade.gd" id="1_ic3lm"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_0gsqa"]
 radius = 0.21386719

@@ -23,6 +23,18 @@ static func build_path(start: Vector3, target: Vector3, ctx: NavigationContext) 
 			"start": start,
 			"target": target,
 		})
+		# Per-waypoint surface kind — diagnoses pedestrian-graph routing through
+		# road geometry. Logged at TRACE so it doesn't pollute INFO.
+		var world := ctx.get_world_node()
+		if world != null and world.has_method("get_pedestrian_path_point_kind"):
+			for i in range(world_path.size()):
+				var wp: Vector3 = world_path[i]
+				var graph_kind := str(world.get_pedestrian_path_point_kind(wp))
+				logger.trace("GLOBAL", "PATH_WAYPOINT", {
+					"idx": i,
+					"pos": wp,
+					"graph_kind": graph_kind if not graph_kind.is_empty() else "-",
+				})
 		return world_path
 
 	var route := PackedVector3Array()

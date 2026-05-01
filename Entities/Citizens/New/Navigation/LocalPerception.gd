@@ -208,7 +208,12 @@ func get_surface_kind(point: Vector3) -> String:
 	return surface_kind_from_hit(hit, point)
 
 
-## Raw surface ray (layers 1+2) at `point`. Returns the first non-citizen hit.
+## Raw surface ray (layers 1+2) at `point`. Walks up to `attempts` hits and
+## **picks the highest-priority surface kind** (pedestrian > crosswalk > unknown
+## > road) — needed because the map has overlapping colliders (pedzone meshes
+## sharing layer with road_straight bodies). Returning the first hit unmodified
+## would mis-classify pedzone positions as road whenever the road collider
+## happens to be hit first.
 func probe_surface(point: Vector3) -> Dictionary:
 	if not _ctx.is_ready_for_physics():
 		return {}
@@ -227,23 +232,61 @@ func probe_surface(point: Vector3) -> Dictionary:
 	_ray_query.to = to
 	_ray_query.collision_mask = cfg.local_astar_surface_collision_mask
 
+	var best_hit: Dictionary = {}
+	var best_priority: int = -1
+
 	for _attempt in range(attempts):
 		_ray_query.exclude = _exclude_buffer
 
 		var hit := space.intersect_ray(_ray_query)
 		if hit.is_empty():
-			return {}
+			break
 
 		var collider: Variant = hit.get("collider", null)
 		if collider is CharacterBody3D:
 			if not hit.has("rid"):
-				return {}
+				break
 			_exclude_buffer.append(hit["rid"])
 			continue
-		_log_probe_hit("surface", point, 0.0, collider, true, hit)
-		return hit
 
-	return {}
+		var priority := _surface_kind_priority(collider)
+		if priority > best_priority:
+			best_priority = priority
+			best_hit = hit
+			# Pedestrian-grade hit found — stop early.
+			if priority >= 3:
+				_log_probe_hit("surface", point, 0.0, collider, true, hit)
+				return best_hit
+
+		# Continue searching: maybe a pedestrian-grade collider sits below this
+		# road/unknown one (rare but happens with stacked map geometry). We
+		# still need a way to advance the ray; exclude the current hit and
+		# try again.
+		if not hit.has("rid"):
+			break
+		_exclude_buffer.append(hit["rid"])
+
+	if not best_hit.is_empty():
+		_log_probe_hit("surface", point, 0.0,
+				best_hit.get("collider", null), true, best_hit)
+	return best_hit
+
+
+## Maps a collider to a surface-classification priority. Higher = preferred.
+##   3 = pedestrian (walkable_surface group, /only_people_nav/ path, parks)
+##   2 = crosswalk
+##   1 = unknown (no classification, but at least not a road)
+##   0 = road
+static func _surface_kind_priority(collider: Variant) -> int:
+	if not (collider is Node):
+		return 0
+	var kind := SurfaceClassifier.classify_node(collider as Node)
+	match kind:
+		SurfaceClassifier.KIND_PEDESTRIAN: return 3
+		SurfaceClassifier.KIND_CROSSWALK: return 2
+		SurfaceClassifier.KIND_UNKNOWN: return 1
+		SurfaceClassifier.KIND_ROAD: return 0
+	return 0
 
 
 ## Applies the pedzone-over-road fixup and pedestrian-graph fallback after a

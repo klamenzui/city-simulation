@@ -30,6 +30,11 @@ extends CitizenController
 ## Display name. Mirrored into `_sim.identity.citizen_name` on `_ready`.
 @export var citizen_name: String = "Alex"
 
+## True when this citizen takes part in autonomous GOAP simulation.
+## Player-controlled NPCs and the lone test-citizen `$Citizen` set this
+## to false in the Inspector. CitizenAgent skips sim_tick when false.
+@export var autonomous_simulation_enabled: bool = true
+
 const SimLoggerScript = preload("res://Simulation/Logging/SimLogger.gd")
 
 var _sim: CitizenSimulation = null
@@ -447,6 +452,103 @@ func _apply_lod_presence_state() -> void:
 
 
 # ========================================================================
+# Manual control + click-move + autonomous flag — orchestrates state
+# changes (rest-pose, building exit, travel stop) when the mode toggles.
+# Component holds the bare flags; Facade owns the side-effect pipeline.
+# ========================================================================
+
+func is_autonomous_simulation_enabled() -> bool:
+	return autonomous_simulation_enabled
+
+
+func is_manual_control_enabled() -> bool:
+	return _sim != null and _sim.manual_control != null and _sim.manual_control.is_manual_enabled()
+
+
+func set_manual_control_enabled(enabled: bool, world: Node = null) -> void:
+	if _sim == null or _sim.manual_control == null:
+		return
+	if _sim.manual_control.is_manual_enabled() == enabled:
+		return
+	_sim.manual_control.set_manual_enabled(enabled)
+	if enabled:
+		clear_rest_pose(true)
+		if is_inside_building():
+			exit_current_building(world)
+		elif current_location != null:
+			leave_current_location(world)
+		stop_travel()
+		release_reserved_benches(world)
+		current_action = null
+		decision_cooldown_left = 0
+		velocity = Vector3.ZERO
+		_sim.manual_control.set_input_locked(false)
+		_update_trace_navigation_state("manual_control", Vector3.ZERO, Vector3.ZERO)
+	else:
+		stop_travel()
+		decision_cooldown_left = 0
+		velocity = Vector3.ZERO
+		_sim.manual_control.set_input_locked(false)
+		_update_trace_navigation_state("manual_control_exit", Vector3.ZERO, Vector3.ZERO)
+
+
+func is_manual_control_input_locked() -> bool:
+	return _sim != null and _sim.manual_control != null and _sim.manual_control.is_input_locked()
+
+
+func set_manual_control_input_locked(locked: bool) -> void:
+	if _sim == null or _sim.manual_control == null:
+		return
+	_sim.manual_control.set_input_locked(locked)
+	if locked:
+		velocity.x = 0.0
+		velocity.z = 0.0
+
+
+func is_click_move_mode_enabled() -> bool:
+	return _sim != null and _sim.manual_control != null and _sim.manual_control.is_click_move_enabled()
+
+
+func set_click_move_mode_enabled(enabled: bool, world: Node = null) -> void:
+	if _sim == null or _sim.manual_control == null:
+		return
+	if _sim.manual_control.is_click_move_enabled() == enabled:
+		return
+	_sim.manual_control.set_click_move_enabled(enabled)
+	if enabled:
+		clear_rest_pose(true)
+		stop_travel()
+		_update_trace_navigation_state("click_move_mode", Vector3.ZERO, Vector3.ZERO)
+	else:
+		stop_travel()
+		_update_trace_navigation_state("click_move_mode_exit", Vector3.ZERO, Vector3.ZERO)
+
+
+## Begins a click-move trip to `target_pos`. Snaps to the world's
+## pedestrian-access-point if available. Returns true iff a path was found.
+func begin_click_move_to(target_pos: Vector3, world: Node = null) -> bool:
+	if _sim == null:
+		return false
+	if is_manual_control_enabled():
+		set_manual_control_enabled(false, world)
+	clear_rest_pose(true)
+	if is_inside_building():
+		exit_current_building(world)
+	elif current_location != null:
+		leave_current_location(world, false)
+	release_reserved_benches(world)
+	current_action = null
+	decision_cooldown_left = 0
+	stop_travel()
+	current_location = null
+
+	var snapped_target := target_pos
+	if world != null and world.has_method("get_pedestrian_access_point"):
+		snapped_target = world.get_pedestrian_access_point(target_pos)
+	return set_global_target(snapped_target)
+
+
+# ========================================================================
 # Bench reservation — delegates to CitizenBenchReservation.
 # ========================================================================
 
@@ -493,7 +595,11 @@ func enter_building(building: Building, world: Node = null, emit_log: bool = tru
 			_set_position_grounded(nav_points["spawn"] as Vector3)
 		_sim.location.set_inside_building(building)
 	if building.has_method("on_citizen_entered"):
-		building.on_citizen_entered(self)
+		# Use dynamic call() to bypass the legacy `Citizen` typed parameter on
+		# Building.on_citizen_entered. The Facade isn't `Citizen` (yet) but
+		# building callbacks only need a Node — type-tightening on Building's
+		# side will happen during the Building-Discovery refactor.
+		building.call("on_citizen_entered", self)
 	_set_interior_presence(not is_outdoor)
 	if emit_log and SimLoggerScript != null:
 		SimLoggerScript.log("[Citizen %s] Entered %s at %s" % [
@@ -525,7 +631,7 @@ func leave_current_location(world: Node = null, emit_log: bool = true) -> void:
 		_set_position_grounded(exit_pos)
 	current_location = null
 	if exit_building.has_method("on_citizen_exited"):
-		exit_building.on_citizen_exited(self)
+		exit_building.call("on_citizen_exited", self)
 	if emit_log and SimLoggerScript != null:
 		SimLoggerScript.log("[Citizen %s] Left %s at %s" % [
 				_get_log_name(),
@@ -548,7 +654,7 @@ func exit_current_building(world: Node = null) -> void:
 
 	_sim.location.clear_inside_building()
 	if exit_building.has_method("on_citizen_exited"):
-		exit_building.on_citizen_exited(self)
+		exit_building.call("on_citizen_exited", self)
 	_set_interior_presence(false)
 	_set_position_grounded(exit_pos)
 	if SimLoggerScript != null:

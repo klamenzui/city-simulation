@@ -163,6 +163,11 @@ $availableTests = @(
 		Script = "res://tools/codex_sim_components_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "navfacade"
+		Label = "Facade Caller Drift"
+		Script = "res://tools/codex_facade_caller_drift_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "navroute"
 		Label = "Citizen Navigation Route"
 		Script = "res://tools/codex_navigation_route_test.gd"
