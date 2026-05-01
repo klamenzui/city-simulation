@@ -71,6 +71,7 @@ shape = SubResource("ConcavePolygonShape3D_wbmcw")
 
 [node name="Entrance" type="Node3D" parent="." unique_id=953316064]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00368011, 0.05999997, 0.7281702)
+visible = false
 
 [node name="Bench2" parent="." unique_id=2036566530 instance=ExtResource("3_vxq1t")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.40156874, 0.20000002, 0.005990196)

@@ -324,6 +324,121 @@ func build_detour(desired_direction: Vector3,
 	return result
 
 
+## Standalone debug scan — runs Pass 1 + Pass 2 at an arbitrary `origin`
+## (instead of the Citizen's own position) and returns the debug cell/hit
+## arrays. Used by the Coord-Picker "Scan Grid" mode.
+##
+## Does NOT register cells in AStar / pick candidates / build a path —
+## purpose is purely to visualize what the grid would see.
+##
+## Returns a Dictionary:
+##   { debug_cells, debug_hits, origin, forward, step, cell_size, cell_radius }
+func scan_at(origin: Vector3, forward: Vector3) -> Dictionary:
+	var planar_forward := forward
+	planar_forward.y = 0.0
+	if planar_forward.length_squared() <= 0.0001:
+		planar_forward = Vector3.FORWARD
+	planar_forward = planar_forward.normalized()
+
+	var cfg := _ctx.config
+	var right := LocalPerception._planar_right(planar_forward)
+	var cell_size := maxf(cfg.local_astar_cell_size, 0.08)
+	var radius := maxf(cfg.local_astar_radius, cell_size * 2.0)
+	var step := cell_size / float(maxi(cfg.local_astar_grid_subdivisions, 1))
+	var cell_radius := int(ceil(radius / step))
+	var doubled_radius := cell_radius * 2
+
+	# Reuse the same member buffers; build_detour always clears at start.
+	_point_ids.clear()
+	_cell_surfaces.clear()
+	_cell_hit_positions.clear()
+	_candidates.clear()
+	_astar.clear()
+
+	var debug_cells: Array[Dictionary] = []
+	var debug_hits: Array[Dictionary] = []
+	var start_cell := Vector2i.ZERO
+
+	# Pass 1: surfaces
+	for z in range(-cell_radius, cell_radius + 1):
+		for x in range(-cell_radius, cell_radius + 1):
+			_fill_cell_surface(Vector2i(x * 2, z * 2), step, radius,
+					origin, right, planar_forward, _cell_surfaces, _cell_hit_positions)
+		if z < cell_radius:
+			for x in range(-cell_radius, cell_radius):
+				_fill_cell_surface(Vector2i(x * 2 + 1, z * 2 + 1), step, radius,
+						origin, right, planar_forward, _cell_surfaces, _cell_hit_positions)
+
+	# Pass 2: physics + register (force debug-output via local override).
+	var force_debug := true
+	for z in range(-cell_radius, cell_radius + 1):
+		for x in range(-cell_radius, cell_radius + 1):
+			_scan_cell_for_debug(Vector2i(x * 2, z * 2), doubled_radius, step, radius,
+					origin, right, planar_forward, start_cell, false, debug_cells, debug_hits)
+		if z < cell_radius:
+			for x in range(-cell_radius, cell_radius):
+				_scan_cell_for_debug(Vector2i(x * 2 + 1, z * 2 + 1), doubled_radius, step, radius,
+						origin, right, planar_forward, start_cell, false, debug_cells, debug_hits)
+
+	return {
+		"debug_cells": debug_cells,
+		"debug_hits": debug_hits,
+		"origin": origin,
+		"forward": planar_forward,
+		"right": right,
+		"step": step,
+		"cell_size": cell_size,
+		"cell_radius": cell_radius,
+		"radius_world": radius,
+	}
+
+
+## Like `_probe_and_register_cell`, but always emits a debug entry
+## (the original is gated by `debug_draw_avoidance`). Does not register
+## the cell with AStar — debug-only.
+func _scan_cell_for_debug(
+		cell: Vector2i, doubled_radius: int, step: float, radius: float,
+		origin: Vector3, right: Vector3, forward: Vector3,
+		start_cell: Vector2i, start_needs_escape: bool,
+		debug_cells: Array[Dictionary], debug_hits: Array[Dictionary]) -> void:
+	var offset := Vector2(float(cell.x) * step * 0.5, float(cell.y) * step * 0.5)
+	if offset.length() > radius:
+		return
+	var world_point := _world_from_offset(origin, right, forward, offset)
+	var surface_kind: String = str(_cell_surfaces.get(cell, SurfaceClassifier.KIND_UNKNOWN))
+	var physics_info := _perception.get_probe_block_info(world_point)
+	var physics_blocked := bool(physics_info.get(LocalPerception.BLOCK_KEY_BLOCKED, false))
+	var physics_hit_pos: Vector3 = physics_info.get(LocalPerception.BLOCK_KEY_HIT_POS, world_point) as Vector3
+	var physics_collider_name := str(physics_info.get(LocalPerception.BLOCK_KEY_COLLIDER, ""))
+	var surface_blocked := _is_surface_blocked(surface_kind)
+	var near_road_buffer := _is_cell_within_road_buffer(cell, _cell_surfaces)
+	var physics_near_road := false
+	if physics_blocked and _ctx.config.local_astar_physics_near_road_margin > 0.0:
+		physics_near_road = _perception.is_point_near_road(physics_hit_pos,
+				_ctx.config.local_astar_physics_near_road_margin)
+
+	var surface_hit_pos: Vector3 = _cell_hit_positions.get(cell, world_point) as Vector3
+	var blocked := physics_blocked or surface_blocked or near_road_buffer or physics_near_road
+	var reason := _blocked_reason(physics_blocked, surface_blocked, near_road_buffer, physics_near_road)
+
+	debug_cells.append({
+		"cell": cell,
+		"world_pos": world_point,
+		"surface_pos": surface_hit_pos,
+		"physics_pos": physics_hit_pos,
+		"blocked": blocked,
+		"blocked_reason": reason,
+		"surface": surface_kind,
+		"collider": physics_collider_name,
+	})
+	if physics_blocked:
+		debug_hits.append({
+			"pos": physics_hit_pos,
+			"collider_name": physics_collider_name,
+			"near_road": physics_near_road,
+		})
+
+
 static func _cell_id(cell: Vector2i, cell_radius: int) -> int:
 	var width := cell_radius * 2 + 1
 	return (cell.y + cell_radius) * width + cell.x + cell_radius + 1

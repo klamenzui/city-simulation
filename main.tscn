@@ -2169,6 +2169,6 @@ script = ExtResource("401_skybr")
 
 [node name="Citizen" parent="." unique_id=1850326929 instance=ExtResource("106_llcqu")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.348106, 1.9736841, 18.510485)
-min_jump_obstacle_height = 0.02
+accept_click_input = true
 log_file_path = "res://citizen.log"
 debug_draw_avoidance = true

@@ -24,6 +24,7 @@ var trace: CitizenTraceState = null
 var debug_facade: CitizenDebugFacade = null
 var lod: CitizenLodComponent = null
 var scheduler: CitizenScheduler = null
+var manual_control: CitizenManualControl = null
 
 
 func _init(p_owner: Node) -> void:
@@ -37,6 +38,7 @@ func _init(p_owner: Node) -> void:
 	debug_facade = CitizenDebugFacade.new()
 	lod = CitizenLodComponent.new()
 	scheduler = CitizenScheduler.new()
+	manual_control = CitizenManualControl.new()
 
 
 ## Set by `set_world_ref` from the Facade. Components that need the world

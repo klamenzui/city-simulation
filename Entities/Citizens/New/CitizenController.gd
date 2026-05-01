@@ -448,13 +448,18 @@ func _clear_local_avoidance_path() -> void:
 
 
 func _should_escape_surface(surface_kind: String) -> bool:
-	if _surface_escape_cooldown > 0.0:
+	var on_road := surface_kind == SurfaceClassifier.KIND_ROAD
+	# The cooldown is meant to prevent escape-spam when the citizen is just
+	# NEAR a road edge. When the citizen is ACTUALLY on the road, the cooldown
+	# would freeze him there for 2 s — fix priority: on-road escape always
+	# fires.
+	if not on_road and _surface_escape_cooldown > 0.0:
 		return false
 	if _jump.is_cooling_down():
 		return false
 	if not _config.local_astar_avoid_road_cells:
 		return false
-	return surface_kind == SurfaceClassifier.KIND_ROAD
+	return on_road
 
 
 # ========================================================================
