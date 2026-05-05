@@ -174,17 +174,36 @@ func is_obstacle_below_jump_height(flat_direction: Vector3) -> bool:
 ## Full grid-style physics probe at `point`. Returns:
 ##   { blocked=true, hit_pos=Vector3, collider_name=String } or
 ##   { blocked=false, hit_pos=point, collider_name="" }
-func get_probe_block_info(point: Vector3) -> Dictionary:
+##
+## `base_y_override` lets the caller pin the probe-height base to the cell's
+## own ground level instead of the live citizen position. Default NAN means
+## "use owner_pos.y", which is correct during normal avoidance runs (the
+## citizen is always near the cells being scanned). The Coord-Picker's
+## standalone scan_at uses the override so it can scan at any point on the
+## map regardless of where the citizen currently stands.
+##
+## `probe_radius_override` (NAN = config) lets debug tools shrink the sphere
+## to expose how aggressively the live config reaches into adjacent meshes.
+func get_probe_block_info(point: Vector3, base_y_override: float = NAN,
+		probe_radius_override: float = NAN) -> Dictionary:
 	if not _ctx.is_ready_for_physics():
 		return {BLOCK_KEY_BLOCKED: true, BLOCK_KEY_HIT_POS: point, BLOCK_KEY_COLLIDER: "no_world"}
 
-	var owner_pos := _ctx.get_owner_position()
+	var base_y: float = base_y_override
+	if is_nan(base_y):
+		base_y = _ctx.get_owner_position().y
 	var mask := _ctx.get_owner_collision_mask()
 	var space := _ctx.get_space_state()
+	# Optional radius override for debug tools.
+	var saved_radius: float = -1.0
+	if not is_nan(probe_radius_override):
+		saved_radius = _probe_shape.radius
+		_probe_shape.radius = maxf(probe_radius_override, 0.03)
+		_cached_probe_radius = -1.0  # force re-sync next non-override call
 
 	for probe_y_offset in _get_probe_heights():
 		var probe_position := point
-		probe_position.y = owner_pos.y + probe_y_offset
+		probe_position.y = base_y + probe_y_offset
 		var query := _prepare_shape_query(
 				Transform3D(Basis.IDENTITY, probe_position), mask)
 
@@ -194,11 +213,16 @@ func get_probe_block_info(point: Vector3) -> Dictionary:
 			_log_probe_hit("physics", probe_position, probe_y_offset, collider, walkable)
 			if walkable:
 				continue
+			# Restore radius before returning.
+			if saved_radius > 0.0:
+				_probe_shape.radius = saved_radius
 			return {
 				BLOCK_KEY_BLOCKED: true,
 				BLOCK_KEY_HIT_POS: _get_probe_hit_debug_position(collider, probe_position),
 				BLOCK_KEY_COLLIDER: _collider_path(collider),
 			}
+	if saved_radius > 0.0:
+		_probe_shape.radius = saved_radius
 	return {BLOCK_KEY_BLOCKED: false, BLOCK_KEY_HIT_POS: point, BLOCK_KEY_COLLIDER: ""}
 
 
@@ -206,6 +230,43 @@ func get_probe_block_info(point: Vector3) -> Dictionary:
 func get_surface_kind(point: Vector3) -> String:
 	var hit := probe_surface(point)
 	return surface_kind_from_hit(hit, point)
+
+
+## Single-hit top-most down-ray at `point`. Returns the FIRST collider the
+## ray meets coming down from `local_astar_surface_probe_up` above. Used by
+## the user's "height-based block" strategy: if the top-most hit Y is well
+## above the citizen's Y, there's an obstacle (post, hydrant, wall, awning).
+## If hit is at the citizen's ground level, the cell is walkable.
+##
+## The ray excludes the owner CharacterBody3D so the citizen does not block
+## its own scan.
+func probe_top_hit(point: Vector3) -> Dictionary:
+	if not _ctx.is_ready_for_physics():
+		return {}
+
+	var cfg := _ctx.config
+	var from := point + Vector3.UP * maxf(cfg.local_astar_surface_probe_up, 0.2)
+	var to := point + Vector3.DOWN * maxf(cfg.local_astar_surface_probe_down, 0.2)
+	_exclude_buffer.clear()
+	_exclude_buffer.append(_ctx.get_owner_rid())
+	var space := _ctx.get_space_state()
+	_ray_query.from = from
+	_ray_query.to = to
+	_ray_query.collision_mask = cfg.local_astar_surface_collision_mask
+	_ray_query.exclude = _exclude_buffer
+	# Walk past character bodies (other citizens) but stop on the first
+	# static hit. That static hit's Y is the obstacle/floor height.
+	for _attempt in range(maxi(cfg.local_astar_surface_probe_max_hits, 1)):
+		var hit: Dictionary = space.intersect_ray(_ray_query)
+		if hit.is_empty():
+			return {}
+		var collider: Variant = hit.get("collider", null)
+		if collider is CharacterBody3D and hit.has("rid"):
+			_exclude_buffer.append(hit["rid"])
+			continue
+		_log_probe_hit("top_hit", point, 0.0, collider, true, hit)
+		return hit
+	return {}
 
 
 ## Raw surface ray (layers 1+2) at `point`. Walks up to `attempts` hits and
@@ -275,8 +336,16 @@ func probe_surface(point: Vector3) -> Dictionary:
 ## Maps a collider to a surface-classification priority. Higher = preferred.
 ##   3 = pedestrian (walkable_surface group, /only_people_nav/ path, parks)
 ##   2 = crosswalk
-##   1 = unknown (no classification, but at least not a road)
-##   0 = road
+##   1 = road       ← important: must outrank unknown, otherwise the
+##                    generic World-Terrain (StaticBody3D under World) acts
+##                    as a "walkable veil" that hides actual road geometry.
+##   0 = unknown
+##
+## Tie-breaking rationale: when a down-ray hits both a Road mesh AND the
+## generic world terrain right below, the citizen is physically standing on
+## the Road — that's the "no-go" answer we want, even if the terrain is
+## present. Pedestrian/Crosswalk meshes still win because they sit ABOVE
+## the road and represent the surface the citizen actually stands on.
 static func _surface_kind_priority(collider: Variant) -> int:
 	if not (collider is Node):
 		return 0
@@ -284,8 +353,8 @@ static func _surface_kind_priority(collider: Variant) -> int:
 	match kind:
 		SurfaceClassifier.KIND_PEDESTRIAN: return 3
 		SurfaceClassifier.KIND_CROSSWALK: return 2
-		SurfaceClassifier.KIND_UNKNOWN: return 1
-		SurfaceClassifier.KIND_ROAD: return 0
+		SurfaceClassifier.KIND_ROAD: return 1
+		SurfaceClassifier.KIND_UNKNOWN: return 0
 	return 0
 
 

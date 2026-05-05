@@ -8,7 +8,7 @@ class_name CityBuilderCamera
 @export var edge_pan_factor: float = 1.0
 
 @export var zoom_step: float = 2.2
-@export var min_distance: float = 8.0
+@export var min_distance: float = 5.0
 @export var max_distance: float = 60.0
 
 @export var mouse_rotate_speed: float = 0.006
