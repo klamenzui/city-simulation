@@ -21,7 +21,43 @@ const GROUND_PROBE_UP: float = 4.0
 const GROUND_PROBE_DOWN: float = 12.0
 const PICK_COLLISION_MASK: int = 0xFFFFFFFF
 
-const SCAN_CROSS_SIZE: float = 0.05   # m
+const SCAN_CELL_FILL: float = 0.85    # 0..1, Anteil der Cell-Größe den das Quad ausfüllt
+const SCAN_CELL_Y_OFFSET: float = 0.04  # m, Quad sitzt knapp über der Geometrie
+
+# Beim Scan-Klick wird der Citizen aus 3 m Höhe auf den Klickpunkt geworfen
+# und fällt zu Boden. Erst nach Landung wird gescannt — so ist die Probe-
+# Höhen-Basis identisch zur echten Citizen-Y wenn er da hingehen würde.
+const SCAN_DROP_HEIGHT: float = 3.0
+const SCAN_DROP_MAX_FRAMES: int = 90  # ~1.5 s Timeout
+
+## Eigener Scan-Radius unabhängig vom Live-Citizen-Wert (`local_astar_radius`).
+## Damit man ohne Inspector-Edit testen kann, wie eng/weit die Probe sein soll.
+## Default 0.6 m — passt zum üblichen Pedzone-Korridor zwischen Park-Mauer
+## und Straße. Erhöhe für Open-Air-Plätze, senke für sehr enge Gassen.
+const SCAN_RADIUS_OVERRIDE: float = 0.6
+const SCAN_CELL_SIZE_OVERRIDE: float = 0.10
+## Wenn true: Sphere-Probe wird übersprungen — die User-„Top-Hit + Height"-
+## Strategie übernimmt (siehe SCAN_MAX_STEP_HEIGHT). Default true: Down-Ray
+## top-hit pro Cell, Y-Diff > Threshold = block. Pfosten, Hydranten, Wände
+## werden über die Höhe erkannt; Sphere-Probe nicht nötig.
+const SCAN_SKIP_PHYSICS: bool = true
+## Höhen-basiertes Block-Kriterium (User-Idee): Cell.y vs. scan_origin.y.
+## NAN = aus. Default 0.25 m = Treppenstufe / Park-Mauer-Schwelle.
+## Wände, Klippen werden so erkannt ohne Sphere-Probe.
+const SCAN_MAX_STEP_HEIGHT: float = 0.25
+## Sphere-Probe-Radius nur für den Scan. Live-Config nutzt 0.16, was über
+## 0.6 m hinaus in benachbarte Meshes greift. 0.08 ist näher an der echten
+## Citizen-Capsule-Breite und macht Pedzonen sichtbar grün.
+const SCAN_PROBE_RADIUS_OVERRIDE: float = 0.08
+## Mindest-Wartezeit bevor `is_on_floor()` als valide gilt. Direkt nach
+## einem Teleport ist der Cache von CharacterBody3D vom alten move_and_slide-
+## Status, returnt also fälschlich `true` wenn der Citizen vor dem Teleport
+## am Boden war.
+const SCAN_DROP_MIN_FRAMES: int = 5
+## Initiale Y-Velocity nach Teleport — zwingt das nächste `move_and_slide()`
+## den Floor-Cache zu invalidieren. Sonst greift `_apply_idle_gravity` nie
+## (denkt is_on_floor=true → keine Gravity).
+const SCAN_DROP_KICKSTART_VELOCITY: float = -1.0
 
 var owner_node: Node = null
 var world: World = null
@@ -70,7 +106,8 @@ func handle_input(event: InputEvent) -> bool:
 		_set_result("(kein Treffer)")
 		return true
 	if _scan_active:
-		_run_scan(picked as Vector3, mouse_button.position)
+		# Scan is async (drop-and-land), kick it off but don't await here.
+		_drop_and_scan(picked as Vector3, mouse_button.position)
 	else:
 		_show_pick(picked as Vector3)
 	return true
@@ -165,23 +202,45 @@ func _pick_coordinate(screen_pos: Vector2) -> Variant:
 	return _ground_snap(hit_pos)
 
 
-## Sondiert den Boden direkt unter `point` und gibt die Boden-Y zurück.
-## Falls kein Boden gefunden wird (Citizen schwebt im Nirgendwo), Original-Y.
+## Sondiert den Boden direkt unter `point` und gibt die echte Boden-Y zurück.
+##
+## Walks ALLE Hits von oben nach unten durch (bis zu 8 Iterationen) und nimmt
+## den **niedrigsten Y**. Das fixt den Bug, dass der erste Hit oft eine
+## Park-Mauer-Top, ein EntranceTrigger oder ein anderer erhöhter Collider
+## ist — dann würde der Citizen "auf der Mauer" landen statt am echten
+## Boden. Falls gar kein Hit gefunden wird → Original-Y.
 func _ground_snap(point: Vector3) -> Vector3:
 	if owner_node == null or not owner_node.is_inside_tree():
 		return point
 	var space: PhysicsDirectSpaceState3D = owner_node.get_world_3d().direct_space_state
 	if space == null:
 		return point
+
 	var from := point + Vector3.UP * GROUND_PROBE_UP
 	var to := point + Vector3.DOWN * GROUND_PROBE_DOWN
-	var query := PhysicsRayQueryParameters3D.create(from, to)
-	query.collision_mask = PICK_COLLISION_MASK
-	query.collide_with_areas = false
-	var hit: Dictionary = space.intersect_ray(query)
-	if hit.is_empty():
+	var exclude: Array[RID] = []
+	var lowest_y: float = INF
+	var lowest_pos: Vector3 = point
+
+	for _attempt in range(8):
+		var query := PhysicsRayQueryParameters3D.create(from, to)
+		query.collision_mask = PICK_COLLISION_MASK
+		query.collide_with_areas = false
+		query.exclude = exclude
+		var hit: Dictionary = space.intersect_ray(query)
+		if hit.is_empty():
+			break
+		var hit_pos: Vector3 = hit.get("position", point) as Vector3
+		if hit_pos.y < lowest_y:
+			lowest_y = hit_pos.y
+			lowest_pos = hit_pos
+		if not hit.has("rid"):
+			break
+		exclude.append(hit["rid"])
+
+	if is_inf(lowest_y):
 		return point
-	return hit.get("position", point) as Vector3
+	return lowest_pos
 
 
 func _show_pick(pos: Vector3) -> void:
@@ -232,9 +291,10 @@ func _set_result(text: String) -> void:
 # Scan-Grid mode
 # ============================================================================
 
-func _run_scan(world_pos: Vector3, screen_pos: Vector2) -> void:
-	# Find the live Citizen-node (Facade or Controller) — borrows its
-	# _local_grid and _perception.
+## Async drop-and-scan with full diagnostics in the HUD so we can see
+## exactly which step inflates the Y value when the visualization ends up
+## in the air.
+func _drop_and_scan(world_pos: Vector3, screen_pos: Vector2) -> void:
 	var citizen := _find_citizen_for_scan()
 	if citizen == null:
 		_set_result("(kein Citizen-Node gefunden — Scan unmöglich)")
@@ -243,17 +303,112 @@ func _run_scan(world_pos: Vector3, screen_pos: Vector2) -> void:
 	if local_grid == null or not local_grid.has_method("scan_at"):
 		_set_result("(Citizen hat kein _local_grid mit scan_at)")
 		return
+	if owner_node == null or not owner_node.is_inside_tree():
+		return
 
-	# Forward direction = camera ray projected onto XZ.
+	# Stop any current travel so the drop position is not immediately overridden.
+	if citizen.has_method("stop_travel"):
+		citizen.stop_travel()
+
+	var citizen_y_before: float = citizen.global_position.y if "global_position" in citizen else NAN
+	var drop_pos := Vector3(world_pos.x, world_pos.y + SCAN_DROP_HEIGHT, world_pos.z)
+	if "global_position" in citizen:
+		citizen.global_position = drop_pos
+	# Kickstart-velocity: forces the next move_and_slide to actually move (down)
+	# which in turn invalidates the cached is_on_floor() value. Without this
+	# the cache from the pre-teleport state stays true and the wait-loop
+	# breaks immediately on frame 1.
+	if "velocity" in citizen:
+		citizen.velocity = Vector3(0.0, SCAN_DROP_KICKSTART_VELOCITY, 0.0)
+
+	# Snapshot citizen capsule + collision configuration ONCE per click — so
+	# the log shows whether global_position is the capsule center or bottom,
+	# whether collision is enabled, and what gravity is applied.
+	if "_logger" in citizen and citizen._logger != null:
+		var col_layer: int = citizen.collision_layer if "collision_layer" in citizen else -1
+		var col_mask: int = citizen.collision_mask if "collision_mask" in citizen else -1
+		var grav: float = citizen._gravity if "_gravity" in citizen else NAN
+		var capsule_radius: float = NAN
+		var capsule_height: float = NAN
+		var capsule_y_offset: float = NAN
+		var collision_shape: Variant = citizen.get_node_or_null("CollisionShape3D")
+		if collision_shape != null:
+			capsule_y_offset = collision_shape.position.y
+			var shape: Variant = collision_shape.shape
+			if shape != null and shape is CapsuleShape3D:
+				capsule_radius = (shape as CapsuleShape3D).radius
+				capsule_height = (shape as CapsuleShape3D).height
+		citizen._logger.info("DEBUG_SCAN", "DROP_INIT", {
+			"click_world_pos": world_pos,
+			"drop_from": drop_pos,
+			"citizen_y_before": citizen_y_before,
+			"collision_layer": col_layer,
+			"collision_mask": col_mask,
+			"gravity": grav,
+			"capsule_radius": capsule_radius,
+			"capsule_height": capsule_height,
+			"capsule_y_offset_local": capsule_y_offset,
+			"physics_process_enabled": citizen.is_processing_physics() if citizen.has_method("is_processing_physics") else true,
+		})
+	_set_result("Drop läuft … von Y=%.2f, warte auf Boden" % drop_pos.y)
+
+	# Wait for landing. Skip is_on_floor() checks for the first MIN_FRAMES
+	# frames because the cache from the pre-teleport state can lie. Log
+	# every 10th frame so the citizen.log shows the fall trajectory.
+	var tree := owner_node.get_tree()
+	var landed := false
+	var landing_frame := 0
+	for i in range(SCAN_DROP_MAX_FRAMES):
+		await tree.physics_frame
+		landing_frame = i + 1
+		if landing_frame >= SCAN_DROP_MIN_FRAMES \
+				and citizen.has_method("is_on_floor") and citizen.is_on_floor():
+			landed = true
+			if "_logger" in citizen and citizen._logger != null:
+				citizen._logger.info("DEBUG_SCAN", "DROP_LANDED", {
+					"frame": landing_frame,
+					"pos": citizen.global_position,
+					"velocity": citizen.velocity if "velocity" in citizen else Vector3.ZERO,
+				})
+			break
+		if (i % 10) == 0 and "_logger" in citizen and citizen._logger != null:
+			citizen._logger.info("DEBUG_SCAN", "DROP_TICK", {
+				"frame": landing_frame,
+				"pos": citizen.global_position,
+				"velocity_y": (citizen.velocity.y if "velocity" in citizen else 0.0),
+				"on_floor": (citizen.has_method("is_on_floor") and citizen.is_on_floor()),
+			})
+
+	var citizen_y_after: float = citizen.global_position.y if "global_position" in citizen else NAN
+	var landed_pos: Vector3 = citizen.global_position if "global_position" in citizen else world_pos
+	var scan_origin: Vector3 = landed_pos if landed else world_pos
 	var forward := _camera_forward_planar(screen_pos)
-	var result: Dictionary = local_grid.scan_at(world_pos, forward)
+	var result: Dictionary = local_grid.scan_at(scan_origin, forward,
+			SCAN_RADIUS_OVERRIDE, SCAN_CELL_SIZE_OVERRIDE, SCAN_SKIP_PHYSICS)
 	_visualize_scan(result)
-	_log_scan(citizen, world_pos, forward, result)
+	_log_scan(citizen, scan_origin, forward, result)
+	_log_per_cell_y_sample(citizen, result, scan_origin)
 
+	# Sample the actual visualized cell-Y so we can SEE if the quads sit
+	# above or at the scan origin.
+	var avg_quad_y: float = NAN
+	var min_quad_y: float = INF
+	var max_quad_y: float = -INF
 	var cells: Array = result.get("debug_cells", [])
+	var n := 0
+	var sum := 0.0
+	for c in cells:
+		var sp: Vector3 = c.get("surface_pos", c.get("world_pos", Vector3.ZERO)) as Vector3
+		sum += sp.y
+		min_quad_y = minf(min_quad_y, sp.y)
+		max_quad_y = maxf(max_quad_y, sp.y)
+		n += 1
+	if n > 0:
+		avg_quad_y = sum / float(n)
+
+	var blocked := 0
 	var by_reason: Dictionary = {}
 	var by_surface: Dictionary = {}
-	var blocked := 0
 	for c in cells:
 		var s := str(c.get("surface", "?"))
 		by_surface[s] = int(by_surface.get(s, 0)) + 1
@@ -262,13 +417,45 @@ func _run_scan(world_pos: Vector3, screen_pos: Vector2) -> void:
 		blocked += 1
 		var r := str(c.get("blocked_reason", "?"))
 		by_reason[r] = int(by_reason.get(r, 0)) + 1
-	_set_result("Scan @ (%.2f, %.2f, %.2f)  fwd=(%.2f,_,%.2f)\n%d cells, %d blocked\nblocked: %s\nsurfaces: %s" % [
-		world_pos.x, world_pos.y, world_pos.z,
-		forward.x, forward.z,
+
+	_set_result(("DROP+SCAN  landed=%s frames=%d\n" \
+			+ "click_pick_Y=%.3f  drop_from_Y=%.3f\n" \
+			+ "citizen_Y before=%.3f after=%.3f\n" \
+			+ "scan_origin_Y=%.3f  quad_Y avg=%.3f min=%.3f max=%.3f\n" \
+			+ "%d cells, %d blocked\n" \
+			+ "blocked: %s\n" \
+			+ "surfaces: %s") % [
+		"YES" if landed else "NO",
+		landing_frame,
+		world_pos.y, drop_pos.y,
+		citizen_y_before if not is_nan(citizen_y_before) else 0.0,
+		citizen_y_after if not is_nan(citizen_y_after) else 0.0,
+		scan_origin.y,
+		avg_quad_y if not is_nan(avg_quad_y) else 0.0,
+		min_quad_y if not is_inf(min_quad_y) else 0.0,
+		max_quad_y if not is_inf(max_quad_y) else 0.0,
 		cells.size(), blocked,
 		_fmt_count_map(by_reason),
 		_fmt_count_map(by_surface),
 	])
+
+	# Diagnostics into the citizen.log too.
+	if "_logger" in citizen and citizen._logger != null \
+			and citizen._logger.has_method("info"):
+		citizen._logger.info("DEBUG_SCAN", "DROP", {
+			"click_world_pos": world_pos,
+			"drop_from": drop_pos,
+			"landed": landed,
+			"frames": landing_frame,
+			"citizen_y_before": citizen_y_before,
+			"citizen_y_after": citizen_y_after,
+			"scan_origin": scan_origin,
+			"avg_quad_y": avg_quad_y,
+			"min_quad_y": min_quad_y,
+			"max_quad_y": max_quad_y,
+		})
+
+	# Result text is produced inside `_drop_and_scan` (it has the diag fields).
 
 
 static func _fmt_count_map(m: Dictionary) -> String:
@@ -316,18 +503,40 @@ func _visualize_scan(result: Dictionary) -> void:
 	_clear_scan_visuals()
 	_ensure_scan_visual()
 	_scan_mesh.clear_surfaces()
-	_scan_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _scan_material)
+	_scan_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, _scan_material)
 
 	var cells: Array = result.get("debug_cells", [])
+	var step: float = float(result.get("step", 0.12))
+	var half: float = step * 0.5 * SCAN_CELL_FILL
+	# Render ALL quads at a uniform Y = scan_origin.y + small offset.
+	# Using each cell's surface_pos.y would scatter the visualization
+	# across 30-40 cm (down-ray hits walls at different heights), which
+	# looks like the disc is glued onto the citizen body.
+	var origin: Vector3 = result.get("origin", Vector3.ZERO) as Vector3
+	var quad_y := origin.y + SCAN_CELL_Y_OFFSET
 	for cell_data in cells:
 		var blocked := bool(cell_data.get("blocked", false))
 		var reason := str(cell_data.get("blocked_reason", ""))
 		var surface := str(cell_data.get("surface", ""))
 		var color := _cell_color(blocked, reason, surface)
-		var center: Vector3 = cell_data.get("surface_pos", cell_data.get("world_pos", Vector3.ZERO)) as Vector3
-		_add_cross(center + Vector3.UP * 0.02, SCAN_CROSS_SIZE, color)
+		var cell_xz: Vector3 = cell_data.get("world_pos", Vector3.ZERO) as Vector3
+		var center := Vector3(cell_xz.x, quad_y, cell_xz.z)
+		_add_quad(center, half, color)
 
 	_scan_mesh.surface_end()
+
+
+## Adds a flat quad (XZ plane) centered at `center` with half-extent `half`.
+## Two triangles, vertex-colored.
+func _add_quad(center: Vector3, half: float, color: Color) -> void:
+	var a := center + Vector3(-half, 0.0, -half)
+	var b := center + Vector3( half, 0.0, -half)
+	var c := center + Vector3( half, 0.0,  half)
+	var d := center + Vector3(-half, 0.0,  half)
+	# Two triangles: a-b-c, a-c-d (CW seen from above; cull is disabled).
+	for v in [a, b, c, a, c, d]:
+		_scan_mesh.surface_set_color(color)
+		_scan_mesh.surface_add_vertex(v)
 
 
 func _ensure_scan_visual() -> void:
@@ -335,7 +544,11 @@ func _ensure_scan_visual() -> void:
 		_scan_material = StandardMaterial3D.new()
 		_scan_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		_scan_material.vertex_color_use_as_albedo = true
+		# Disable depth test so quads stay visible through tiny ground geometry,
+		# disable culling so the quad is visible from below as well.
 		_scan_material.no_depth_test = true
+		_scan_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_scan_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	if _scan_mesh == null:
 		_scan_mesh = ImmediateMesh.new()
 	if _scan_visual == null:
@@ -352,37 +565,71 @@ func _clear_scan_visuals() -> void:
 		_scan_mesh.clear_surfaces()
 
 
-func _add_cross(center: Vector3, size: float, color: Color) -> void:
-	var directions: Array[Vector3] = [Vector3.RIGHT, Vector3.UP, Vector3.FORWARD]
-	for d in directions:
-		_scan_mesh.surface_set_color(color)
-		_scan_mesh.surface_add_vertex(center - d * size)
-		_scan_mesh.surface_set_color(color)
-		_scan_mesh.surface_add_vertex(center + d * size)
-
-
-## Same color logic as NavigationDebugDraw — mirrored here so the picker
-## doesn't depend on a citizen-instance.
+## Strictly green/red color map. Goal: at a glance see where the citizen
+## MAY walk (any green) vs. where it MAY NOT (any red). Sub-shades give a
+## hint about the reason but never cross the green/red boundary.
+##
+## Alpha 0.65 so the underlying ground is still visible.
 static func _cell_color(blocked: bool, reason: String, surface: String) -> Color:
 	if not blocked:
+		# All greens — walkable.
 		if surface == "pedestrian":
-			return Color(0.0, 0.8, 0.2)         # bright green
+			return Color(0.10, 0.95, 0.20, 0.65)  # bright green
 		if surface == "crosswalk":
-			return Color(0.9, 0.9, 0.05)        # yellow
+			return Color(0.15, 0.80, 0.20, 0.65)  # mid green
 		if surface == "unknown":
-			return Color(0.5, 0.5, 0.5)         # grey
-		return Color(0.1, 0.6, 0.2)             # green fallback
-	if reason == "road":
-		return Color(1.0, 0.0, 0.0)             # bright red
-	if reason == "road_buffer":
-		return Color(1.0, 0.4, 0.1)             # orange-red
-	if reason == "physics":
-		return Color(1.0, 0.55, 0.0)            # orange
+			return Color(0.20, 0.60, 0.20, 0.55)  # darker green
+		return Color(0.15, 0.75, 0.20, 0.65)      # green fallback
+	# All reds — not walkable.
+	if reason == "height":
+		return Color(0.55, 0.05, 0.55, 0.70)      # purple = wall/cliff (height-detected)
+	if reason == "height+other":
+		return Color(0.40, 0.00, 0.40, 0.75)      # dark purple = height + other reasons
 	if reason == "physics+road":
-		return Color(0.85, 0.0, 0.0)            # dark red
-	if reason == "physics+road_buffer":
-		return Color(0.85, 0.3, 0.0)            # dark orange
-	return Color(0.7, 0.15, 0.7)                # purple = unexpected
+		return Color(0.70, 0.05, 0.05, 0.70)      # darkest red
+	if reason == "road":
+		return Color(1.00, 0.05, 0.05, 0.70)      # full red
+	if reason == "road_buffer" or reason == "physics+road_buffer":
+		return Color(0.95, 0.20, 0.10, 0.65)      # red, slight orange tint
+	if reason == "physics":
+		return Color(0.90, 0.25, 0.15, 0.65)      # red, more orange tint
+	return Color(0.80, 0.10, 0.40, 0.65)          # magenta = unexpected (still red-side)
+
+
+## Samples up to 6 cells from the result and logs their full Y-trace so we
+## can see whether the visualization Y mismatch comes from `_world_from_offset`
+## (sets cell.y = origin.y), from a missing surface-probe-hit (cell stays at
+## origin.y because no down-ray found anything), or from somewhere else.
+func _log_per_cell_y_sample(citizen: Node, result: Dictionary, scan_origin: Vector3) -> void:
+	if not "_logger" in citizen or citizen._logger == null:
+		return
+	var logger = citizen._logger
+	if not logger.has_method("info"):
+		return
+	var cells: Array = result.get("debug_cells", [])
+	# Pick representative samples: the first cell, the middle, and the last.
+	var sample_indices: Array[int] = []
+	if cells.size() > 0: sample_indices.append(0)
+	if cells.size() > 4: sample_indices.append(cells.size() / 4)
+	if cells.size() > 8: sample_indices.append(cells.size() / 2)
+	if cells.size() > 12: sample_indices.append(3 * cells.size() / 4)
+	if cells.size() > 1: sample_indices.append(cells.size() - 1)
+	for idx in sample_indices:
+		var c: Dictionary = cells[idx]
+		var sp: Vector3 = c.get("surface_pos", Vector3.ZERO) as Vector3
+		var pp: Vector3 = c.get("physics_pos", Vector3.ZERO) as Vector3
+		var wp: Vector3 = c.get("world_pos", Vector3.ZERO) as Vector3
+		logger.info("DEBUG_SCAN", "CELL_Y_TRACE", {
+			"idx": idx,
+			"world_pos_y": wp.y,
+			"surface_pos_y": sp.y,
+			"physics_pos_y": pp.y,
+			"scan_origin_y": scan_origin.y,
+			"surface": str(c.get("surface", "?")),
+			"blocked": bool(c.get("blocked", false)),
+			"reason": str(c.get("blocked_reason", "")),
+			"surface_eq_origin": is_equal_approx(sp.y, scan_origin.y),
+		})
 
 
 func _log_scan(citizen: Node, origin: Vector3, forward: Vector3, result: Dictionary) -> void:
