@@ -70,13 +70,34 @@ func _diagnose_at(citizen: Node, world_pos: Vector3) -> void:
 	print("  citizen landed at: (%.3f, %.3f, %.3f)" % [
 		landed_pos.x, landed_pos.y, landed_pos.z])
 
-	# User's height-based strategy: skip sphere, top-hit down-ray + Y-diff
-	# threshold detects posts/hydrants/walls without overprobing.
+	# Run TWO scans at the same position for A/B comparison:
+	#   A) top-hit + height (user idea, sphere off)
+	#   B) sphere only (legacy)
 	var local_grid = citizen._local_grid
-	var result: Dictionary = local_grid.scan_at(
+	print("  --- A) top-hit + height ---")
+	var result_top: Dictionary = local_grid.scan_at(
 			landed_pos, Vector3.FORWARD,
-			0.6, 0.10,         # radius, cell_size
-			true, 0.25)        # skip_physics=true, max_step_height (enables top-hit mode)
+			0.6, 0.10,
+			true, 0.25)        # skip_physics=true, height threshold
+	_print_scan_summary(result_top)
+
+	print("  --- B) sphere-probe (full radius 0.16) ---")
+	var result_sphere: Dictionary = local_grid.scan_at(
+			landed_pos, Vector3.FORWARD,
+			0.6, 0.10,
+			false, NAN,        # skip_physics=false, no height
+			NAN)               # default sphere radius
+	_print_scan_summary(result_sphere)
+
+	print("  --- C) top-hit + sphere narrow (0.06 = citizen) ---")
+	var result_combined: Dictionary = local_grid.scan_at(
+			landed_pos, Vector3.FORWARD,
+			0.6, 0.10,
+			false, 0.25,       # skip_physics=false (sphere on), height threshold
+			0.06)              # sphere radius matches citizen capsule
+	_print_scan_summary(result_combined)
+	# Use top-hit for the cardinal-probe table below.
+	var result := result_top
 
 	var cells: Array = result.get("debug_cells", [])
 	print("  cells: %d  radius_world: %.2f  step: %.3f" % [
@@ -111,22 +132,28 @@ func _diagnose_at(citizen: Node, world_pos: Vector3) -> void:
 	if not by_collider_top.is_empty():
 		print("  blocking colliders (top): %s" % _fmt_count_top(by_collider_top, 6))
 
-	# Raw down-ray classification for the center point — what does
-	# the multi-hit prefer vs. the first-hit-only?
-	var perception = citizen._perception if "_perception" in citizen else null
-	if perception != null and perception.has_method("probe_surface"):
-		var raw_hit: Dictionary = perception.probe_surface(landed_pos)
-		_dump_raw_hit("  center-raw probe_surface()", raw_hit)
 
-		# Sample the four cardinal directions at the scan radius.
-		var directions: Array[Vector3] = [
-			Vector3(0.5, 0, 0), Vector3(-0.5, 0, 0),
-			Vector3(0, 0, 0.5), Vector3(0, 0, -0.5),
-		]
-		for dir in directions:
-			var p: Vector3 = landed_pos + dir
-			var h: Dictionary = perception.probe_surface(p)
-			_dump_raw_hit("  +%.1f,%.1f,%.1f probe_surface()" % [dir.x, dir.y, dir.z], h)
+func _print_scan_summary(result: Dictionary) -> void:
+	var cells: Array = result.get("debug_cells", [])
+	var blocked := 0
+	var by_reason: Dictionary = {}
+	var by_collider_top: Dictionary = {}
+	for c in cells:
+		if not bool(c.get("blocked", false)):
+			continue
+		blocked += 1
+		var r := str(c.get("blocked_reason", "?"))
+		by_reason[r] = int(by_reason.get(r, 0)) + 1
+		var col := str(c.get("collider", ""))
+		if col.is_empty():
+			continue
+		var parts := col.split("/")
+		var key := parts[parts.size() - 2] if parts.size() >= 2 else col
+		by_collider_top[key] = int(by_collider_top.get(key, 0)) + 1
+	print("    cells: %d  blocked: %d  reasons: %s" % [
+		cells.size(), blocked, _fmt_count(by_reason)])
+	if not by_collider_top.is_empty():
+		print("    colliders: %s" % _fmt_count_top(by_collider_top, 5))
 
 
 func _dump_raw_hit(label: String, hit: Dictionary) -> void:
