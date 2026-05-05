@@ -53,6 +53,9 @@ func _init(context: NavigationContext) -> void:
 	_shape_query.collide_with_bodies = true
 	_ray_query = PhysicsRayQueryParameters3D.new()
 	_ray_query.collide_with_areas = false
+	# Height scans can start inside thin/open concave props (park walls,
+	# hydrants). Returning the exit hit is better than silently seeing through.
+	_ray_query.hit_from_inside = true
 
 
 ## Lazy probe-heights cache — computed once, returned by reference.
@@ -233,26 +236,34 @@ func get_surface_kind(point: Vector3) -> String:
 
 
 ## Single-hit top-most down-ray at `point`. Returns the FIRST collider the
-## ray meets coming down from `local_astar_surface_probe_up` above. Used by
-## the user's "height-based block" strategy: if the top-most hit Y is well
-## above the citizen's Y, there's an obstacle (post, hydrant, wall, awning).
-## If hit is at the citizen's ground level, the cell is walkable.
+## ray meets coming down from `local_astar_surface_probe_up` above (or a
+## caller-provided override). Used by the user's "height-based block"
+## strategy: if the top-most hit Y is well above the citizen's Y, there's an
+## obstacle (post, hydrant, wall, awning). If hit is at the citizen's ground
+## level, the cell is walkable.
 ##
 ## The ray excludes the owner CharacterBody3D so the citizen does not block
-## its own scan.
-func probe_top_hit(point: Vector3) -> Dictionary:
+## its own scan. The collision mask defaults to the citizen's full mask so
+## obstacles on any layer (props like lampposts, hydrants, signs) are
+## detected — not just the narrow surface mask used for floor classification.
+func probe_top_hit(point: Vector3, probe_up_override: float = NAN) -> Dictionary:
 	if not _ctx.is_ready_for_physics():
 		return {}
 
 	var cfg := _ctx.config
-	var from := point + Vector3.UP * maxf(cfg.local_astar_surface_probe_up, 0.2)
+	var probe_up := probe_up_override
+	if is_nan(probe_up):
+		probe_up = cfg.local_astar_surface_probe_up
+	var from := point + Vector3.UP * maxf(probe_up, 0.2)
 	var to := point + Vector3.DOWN * maxf(cfg.local_astar_surface_probe_down, 0.2)
 	_exclude_buffer.clear()
 	_exclude_buffer.append(_ctx.get_owner_rid())
 	var space := _ctx.get_space_state()
 	_ray_query.from = from
 	_ray_query.to = to
-	_ray_query.collision_mask = cfg.local_astar_surface_collision_mask
+	# Use full owner mask so lampposts / hydrants / fences (often on a "props"
+	# layer outside `local_astar_surface_collision_mask` = layer 1+2) are seen.
+	_ray_query.collision_mask = _ctx.get_owner_collision_mask()
 	_ray_query.exclude = _exclude_buffer
 	# Walk past character bodies (other citizens) but stop on the first
 	# static hit. That static hit's Y is the obstacle/floor height.
@@ -267,6 +278,55 @@ func probe_top_hit(point: Vector3) -> Dictionary:
 		_log_probe_hit("top_hit", point, 0.0, collider, true, hit)
 		return hit
 	return {}
+
+
+## Single clearance sphere placed just ABOVE `max_step_height`.
+##
+## Why a second probe at all? Some imported props/walls use open or side-only
+## concave collision. A top-down ray then falls through and only sees the
+## ground below. This sphere catches those vertical blockers while staying
+## high enough above flat road/crosswalk surfaces to avoid the legacy
+## "everything near the curb turns red" problem.
+func get_height_clearance_block_info(point: Vector3, base_y: float,
+		max_step_height: float, probe_radius_override: float = NAN) -> Dictionary:
+	if not _ctx.is_ready_for_physics():
+		return {BLOCK_KEY_BLOCKED: true, BLOCK_KEY_HIT_POS: point, BLOCK_KEY_COLLIDER: "no_world"}
+	if max_step_height <= 0.0:
+		return {BLOCK_KEY_BLOCKED: false, BLOCK_KEY_HIT_POS: point, BLOCK_KEY_COLLIDER: ""}
+
+	var radius := maxf(
+			probe_radius_override if not is_nan(probe_radius_override) \
+			else _ctx.config.local_astar_probe_radius,
+			0.03)
+	var saved_radius: float = -1.0
+	if not is_nan(probe_radius_override):
+		saved_radius = _probe_shape.radius
+		_probe_shape.radius = radius
+		_cached_probe_radius = -1.0  # force re-sync next non-override call
+
+	var probe_position := point
+	probe_position.y = base_y + max_step_height + radius + 0.01
+	var query := _prepare_shape_query(
+			Transform3D(Basis.IDENTITY, probe_position),
+			_ctx.get_owner_collision_mask())
+
+	for hit in _ctx.get_space_state().intersect_shape(query, 8):
+		var collider: Variant = hit.get("collider", null)
+		var walkable := SurfaceClassifier.is_walkable_probe_collider(collider)
+		_log_probe_hit("clearance", probe_position, probe_position.y - base_y, collider, walkable)
+		if walkable:
+			continue
+		if saved_radius > 0.0:
+			_probe_shape.radius = saved_radius
+		return {
+			BLOCK_KEY_BLOCKED: true,
+			BLOCK_KEY_HIT_POS: _get_probe_hit_debug_position(collider, probe_position),
+			BLOCK_KEY_COLLIDER: _collider_path(collider),
+		}
+
+	if saved_radius > 0.0:
+		_probe_shape.radius = saved_radius
+	return {BLOCK_KEY_BLOCKED: false, BLOCK_KEY_HIT_POS: point, BLOCK_KEY_COLLIDER: ""}
 
 
 ## Raw surface ray (layers 1+2) at `point`. Walks up to `attempts` hits and

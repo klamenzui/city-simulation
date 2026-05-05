@@ -384,7 +384,8 @@ func _drop_and_scan(world_pos: Vector3, screen_pos: Vector2) -> void:
 	var scan_origin: Vector3 = landed_pos if landed else world_pos
 	var forward := _camera_forward_planar(screen_pos)
 	var result: Dictionary = local_grid.scan_at(scan_origin, forward,
-			SCAN_RADIUS_OVERRIDE, SCAN_CELL_SIZE_OVERRIDE, SCAN_SKIP_PHYSICS)
+			SCAN_RADIUS_OVERRIDE, SCAN_CELL_SIZE_OVERRIDE, SCAN_SKIP_PHYSICS,
+			SCAN_MAX_STEP_HEIGHT, SCAN_PROBE_RADIUS_OVERRIDE)
 	_visualize_scan(result)
 	_log_scan(citizen, scan_origin, forward, result)
 	_log_per_cell_y_sample(citizen, result, scan_origin)
@@ -585,6 +586,8 @@ static func _cell_color(blocked: bool, reason: String, surface: String) -> Color
 		return Color(0.55, 0.05, 0.55, 0.70)      # purple = wall/cliff (height-detected)
 	if reason == "height+other":
 		return Color(0.40, 0.00, 0.40, 0.75)      # dark purple = height + other reasons
+	if reason == "wall_buffer":
+		return Color(0.75, 0.20, 0.55, 0.65)      # mid purple = neighbour of wall/post
 	if reason == "physics+road":
 		return Color(0.70, 0.05, 0.05, 0.70)      # darkest red
 	if reason == "road":

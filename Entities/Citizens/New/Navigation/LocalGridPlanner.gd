@@ -55,6 +55,16 @@ var _astar: AStar2D = AStar2D.new()
 var _point_ids: Dictionary = {}
 var _cell_surfaces: Dictionary = {}
 var _cell_hit_positions: Dictionary = {}
+## Maps cell → top-hit collider path string (only populated when scan_at runs
+## with `use_top_hit=true`). Lets the debug log identify *what* the ray hit
+## even though Pass 2 is skipped in that mode.
+var _cell_top_colliders: Dictionary = {}
+## Maps cell → height_blocked bool. Used in scan_at for the post-pass that
+## adds a 1-cell wall_buffer around vertically-tall obstacles (posts /
+## hydrants / wall-tops): the citizen capsule can't physically squeeze
+## right next to a wall, so neighbour-cells of a height-blocked cell are
+## marked unwalkable too.
+var _cell_height_blocked: Dictionary = {}
 var _candidates: Array[Dictionary] = []
 
 # Cache for `_neighbor_offsets_in_radius(N)` — depends only on N (config-stable),
@@ -337,8 +347,9 @@ func build_detour(desired_direction: Vector3,
 ##
 ## `skip_physics_probe = true` disables Pass 2's sphere check, so cells
 ## are blocked only if the surface probe (down-ray) classifies them as
-## road / road-buffer. Useful for isolating whether the sphere probe is
-## the culprit when everything goes red.
+## road / road-buffer. The supplemental height-clearance sphere still runs
+## when `max_step_height` is enabled — it replaces the aggressive legacy
+## sphere stack with one targeted "can the capsule fit here?" check.
 ##
 ## `max_step_height` (NAN = disabled) enables the user's height-based
 ## block strategy: a cell is blocked if its detected ground-Y differs
@@ -377,6 +388,8 @@ func scan_at(origin: Vector3, forward: Vector3,
 	_point_ids.clear()
 	_cell_surfaces.clear()
 	_cell_hit_positions.clear()
+	_cell_top_colliders.clear()
+	_cell_height_blocked.clear()
 	_candidates.clear()
 	_astar.clear()
 
@@ -384,21 +397,34 @@ func scan_at(origin: Vector3, forward: Vector3,
 	var debug_hits: Array[Dictionary] = []
 	var start_cell := Vector2i.ZERO
 
-	# Use top-hit probe when height-strategy is requested — gives true
-	# obstacle Y per cell so a single ray can detect posts/hydrants/walls.
+	# Use top-hit probe when height-strategy is requested. The ray start is
+	# lifted above the normal floor-probe origin so overhangs / wall-tops are
+	# reachable, while Pass 2 supplements it with one small clearance sphere
+	# just above `max_step_height`.
 	var use_top_hit := not is_nan(max_step_height) and max_step_height > 0.0
+	var height_probe_radius_override: float = NAN
+	var top_hit_probe_up_override: float = NAN
+	if use_top_hit:
+		height_probe_radius_override = probe_radius_override
+		if is_nan(height_probe_radius_override):
+			# Keep the clearance probe inside roughly one debug-cell footprint.
+			height_probe_radius_override = minf(cfg.local_astar_probe_radius, step * 1.6)
+		var clearance_radius := maxf(height_probe_radius_override, 0.03)
+		top_hit_probe_up_override = maxf(
+				cfg.local_astar_surface_probe_up,
+				cfg.local_astar_probe_max_height + max_step_height + clearance_radius + 0.05)
 
 	# Pass 1: surfaces
 	for z in range(-cell_radius, cell_radius + 1):
 		for x in range(-cell_radius, cell_radius + 1):
 			_fill_cell_surface(Vector2i(x * 2, z * 2), step, radius,
 					origin, right, planar_forward, _cell_surfaces, _cell_hit_positions,
-					use_top_hit)
+					use_top_hit, top_hit_probe_up_override)
 		if z < cell_radius:
 			for x in range(-cell_radius, cell_radius):
 				_fill_cell_surface(Vector2i(x * 2 + 1, z * 2 + 1), step, radius,
 						origin, right, planar_forward, _cell_surfaces, _cell_hit_positions,
-						use_top_hit)
+						use_top_hit, top_hit_probe_up_override)
 
 	# Pass 2: physics + register (force debug-output via local override).
 	var force_debug := true
@@ -406,12 +432,22 @@ func scan_at(origin: Vector3, forward: Vector3,
 		for x in range(-cell_radius, cell_radius + 1):
 			_scan_cell_for_debug(Vector2i(x * 2, z * 2), doubled_radius, step, radius,
 					origin, right, planar_forward, start_cell, false, debug_cells, debug_hits,
-					skip_physics_probe, max_step_height, probe_radius_override)
+					skip_physics_probe, max_step_height,
+					probe_radius_override, height_probe_radius_override)
 		if z < cell_radius:
 			for x in range(-cell_radius, cell_radius):
 				_scan_cell_for_debug(Vector2i(x * 2 + 1, z * 2 + 1), doubled_radius, step, radius,
 						origin, right, planar_forward, start_cell, false, debug_cells, debug_hits,
-						skip_physics_probe, max_step_height, probe_radius_override)
+						skip_physics_probe, max_step_height,
+						probe_radius_override, height_probe_radius_override)
+
+	# Pass 3: wall-buffer — cells that are directly walkable but neighbour a
+	# height-blocked cell get marked as wall_buffer. Captures the case where
+	# a thin vertical obstacle (post, hydrant, wall) is hit by the down-ray
+	# only on a few cells; the citizen capsule still can't squeeze past it
+	# from the adjacent cells.
+	if use_top_hit and not _cell_height_blocked.is_empty():
+		_apply_wall_buffer(debug_cells)
 
 	return {
 		"debug_cells": debug_cells,
@@ -436,13 +472,13 @@ func scan_at(origin: Vector3, forward: Vector3,
 ## reports every cell as physics-blocked (the spheres land in air or
 ## inside arbitrary mesh).
 ##
-## `skip_physics_probe = true` short-circuits Pass 2 so only the surface
-## (down-ray) classification influences the blocked decision.
+## `skip_physics_probe = true` skips the legacy multi-height sphere stack.
+## The height strategy may still run its one-shot clearance sphere.
 ##
 ## `max_step_height` (NAN = disabled) blocks cells whose ground-Y differs
-## from `origin.y` by more than this threshold — the user's height-based
-## strategy: walls and cliffs are caught by the height jump, not by the
-## sphere probe.
+## from `origin.y` by more than this threshold. A small clearance sphere
+## just above this threshold supplements the down-ray and catches open-top /
+## side-only colliders that the ray can miss.
 func _scan_cell_for_debug(
 		cell: Vector2i, doubled_radius: int, step: float, radius: float,
 		origin: Vector3, right: Vector3, forward: Vector3,
@@ -450,7 +486,8 @@ func _scan_cell_for_debug(
 		debug_cells: Array[Dictionary], debug_hits: Array[Dictionary],
 		skip_physics_probe: bool = false,
 		max_step_height: float = NAN,
-		probe_radius_override: float = NAN) -> void:
+		probe_radius_override: float = NAN,
+		height_probe_radius_override: float = NAN) -> void:
 	var offset := Vector2(float(cell.x) * step * 0.5, float(cell.y) * step * 0.5)
 	if offset.length() > radius:
 		return
@@ -464,6 +501,10 @@ func _scan_cell_for_debug(
 		physics_blocked = bool(physics_info.get(LocalPerception.BLOCK_KEY_BLOCKED, false))
 		physics_hit_pos = physics_info.get(LocalPerception.BLOCK_KEY_HIT_POS, world_point) as Vector3
 		physics_collider_name = str(physics_info.get(LocalPerception.BLOCK_KEY_COLLIDER, ""))
+	else:
+		# Top-hit mode: pull the collider name captured during Pass 1 so the
+		# debug log isn't blank.
+		physics_collider_name = str(_cell_top_colliders.get(cell, ""))
 	var surface_blocked := _is_surface_blocked(surface_kind)
 	var near_road_buffer := _is_cell_within_road_buffer(cell, _cell_surfaces)
 	var physics_near_road := false
@@ -476,20 +517,40 @@ func _scan_cell_for_debug(
 	# is the true topmost obstacle/floor at this cell — its Y above origin
 	# means there's a post/hydrant/wall there.
 	var surface_hit_pos: Vector3 = _cell_hit_positions.get(cell, world_point) as Vector3
-	var height_blocked: bool = false
+	var top_height_blocked: bool = false
+	var clearance_blocked: bool = false
 	var height_diff: float = 0.0
 	if not is_nan(max_step_height) and max_step_height > 0.0:
 		var has_surface_hit := _cell_hit_positions.has(cell)
 		if has_surface_hit:
 			height_diff = surface_hit_pos.y - origin.y
 			if absf(height_diff) > max_step_height:
-				height_blocked = true
+				top_height_blocked = true
+		var clearance_info := _perception.get_height_clearance_block_info(
+				world_point, origin.y, max_step_height, height_probe_radius_override)
+		clearance_blocked = bool(clearance_info.get(LocalPerception.BLOCK_KEY_BLOCKED, false))
+		if clearance_blocked and not physics_blocked:
+			physics_hit_pos = clearance_info.get(
+					LocalPerception.BLOCK_KEY_HIT_POS, world_point) as Vector3
+			physics_collider_name = str(clearance_info.get(
+					LocalPerception.BLOCK_KEY_COLLIDER, physics_collider_name))
+		if top_height_blocked and not physics_blocked and not clearance_blocked:
+			physics_hit_pos = surface_hit_pos
+			if physics_collider_name.is_empty():
+				physics_collider_name = str(_cell_top_colliders.get(cell, ""))
+		if clearance_blocked and not top_height_blocked:
+			height_diff = max_step_height + 0.01
+	var height_blocked := top_height_blocked or clearance_blocked
 
 	var blocked := physics_blocked or surface_blocked or near_road_buffer \
 			or physics_near_road or height_blocked
 	var reason := _blocked_reason_with_height(
 			physics_blocked, surface_blocked, near_road_buffer,
 			physics_near_road, height_blocked)
+
+	# Remember height-block decisions so Pass 3 can dilate them into a buffer.
+	if height_blocked:
+		_cell_height_blocked[cell] = true
 
 	debug_cells.append({
 		"cell": cell,
@@ -502,7 +563,7 @@ func _scan_cell_for_debug(
 		"collider": physics_collider_name,
 		"height_diff": height_diff,
 	})
-	if physics_blocked:
+	if physics_blocked or height_blocked:
 		debug_hits.append({
 			"pos": physics_hit_pos,
 			"collider_name": physics_collider_name,
@@ -518,6 +579,30 @@ static func _blocked_reason_with_height(physics_blocked: bool, surface_blocked: 
 	if height_blocked:
 		return "height"
 	return _blocked_reason(physics_blocked, surface_blocked, near_road_buffer, physics_near_road)
+
+
+## Pass 3: dilate height-blocked cells into their immediate neighbours.
+## Iterates `debug_cells` and marks any cell that (a) is currently walkable
+## and (b) has at least one neighbour in `_cell_height_blocked` as
+## `reason="wall_buffer"`. Works in-place; does NOT re-block already-blocked
+## cells (their reason stays whatever the original Pass-2 verdict was).
+func _apply_wall_buffer(debug_cells: Array[Dictionary]) -> void:
+	for entry in debug_cells:
+		var cell: Vector2i = entry.get("cell", Vector2i.ZERO)
+		# Skip cells already blocked — keep their original reason.
+		if bool(entry.get("blocked", false)):
+			continue
+		# Skip the height-blocked cells themselves.
+		if _cell_height_blocked.has(cell):
+			continue
+		var has_height_neighbor := false
+		for offset in _GRID_NEIGHBORS:
+			if _cell_height_blocked.has(cell + offset):
+				has_height_neighbor = true
+				break
+		if has_height_neighbor:
+			entry["blocked"] = true
+			entry["blocked_reason"] = "wall_buffer"
 
 
 static func _cell_id(cell: Vector2i, cell_radius: int) -> int:
@@ -584,7 +669,8 @@ func _fill_cell_surface(
 		cell: Vector2i, step: float, radius: float,
 		origin: Vector3, right: Vector3, forward: Vector3,
 		cell_surfaces: Dictionary, cell_hit_positions: Dictionary,
-		use_top_hit: bool = false) -> void:
+		use_top_hit: bool = false,
+		top_hit_probe_up_override: float = NAN) -> void:
 	var offset := Vector2(float(cell.x) * step * 0.5, float(cell.y) * step * 0.5)
 	if offset.length() > radius:
 		return
@@ -592,14 +678,22 @@ func _fill_cell_surface(
 	var surface_hit: Dictionary
 	if use_top_hit:
 		# User's height-based strategy: top-most non-citizen hit. The Y of
-		# this hit IS the obstacle/floor height — no sphere probing needed.
-		surface_hit = _perception.probe_top_hit(world_point)
+		# this hit is the first half of the clearance decision; Pass 2 adds
+		# one small sphere just above `max_step_height` for open-top colliders.
+		surface_hit = _perception.probe_top_hit(world_point, top_hit_probe_up_override)
 	else:
 		# Walkable-priority multi-hit (legacy live-avoidance behavior).
 		surface_hit = _perception.probe_surface(world_point)
 	cell_surfaces[cell] = _perception.surface_kind_from_hit(surface_hit, world_point)
 	cell_hit_positions[cell] = (surface_hit.get("position", world_point) as Vector3) \
 			if not surface_hit.is_empty() else world_point
+	# Capture the collider for debug logging — only meaningful in top-hit
+	# mode (skip_physics_probe path), where Pass 2 doesn't fill it in.
+	if use_top_hit and not surface_hit.is_empty():
+		var col: Variant = surface_hit.get("collider", null)
+		if col is Node:
+			var n := col as Node
+			_cell_top_colliders[cell] = str(n.get_path()) if n.is_inside_tree() else n.name
 
 
 func _probe_and_register_cell(
