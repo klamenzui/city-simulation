@@ -40,6 +40,14 @@ extends CharacterBody3D
 @export var ignore_ui_clicks: bool = true
 @export_flags_3d_physics var click_collision_mask: int = 0xFFFFFFFF
 
+# ---------------------------------------------------------- Exports: Keyboard Control
+@export_group("Keyboard Control")
+@export var keyboard_control_enabled: bool = false
+@export var keyboard_control_camera_relative: bool = true
+@export var keyboard_control_speed_multiplier: float = 1.0
+@export var keyboard_control_disable_jump: bool = true
+@export var keyboard_control_use_green_corridor: bool = true
+
 # ---------------------------------------------------------- Exports: Avoidance
 @export_group("Local Avoidance")
 @export var obstacle_check_interval: float = 0.08
@@ -67,6 +75,13 @@ extends CharacterBody3D
 @export var local_astar_probe_min_height: float = 0.08
 @export var local_astar_probe_max_height: float = 0.9
 @export var local_astar_probe_height_steps: int = 4
+# Live-steering height/clearance defaults match the Coord-Picker debug scan
+# (`_LIVE_SCAN_STEP_HEIGHT` / `_LIVE_SCAN_PROBE_RADIUS`) so what the player sees
+# in the debug overlay is what `build_detour` actually plans against. 0.25 is
+# the citizen capsule's allowed step-up; anything taller is a wall/post/hydrant
+# and triggers the height block + 1-cell wall_buffer dilation.
+@export var local_astar_height_block_threshold: float = 0.25
+@export var local_astar_height_clearance_probe_radius: float = 0.08
 @export_flags_3d_physics var local_astar_surface_collision_mask: int = 3
 @export var local_astar_surface_probe_up: float = 0.5
 @export var local_astar_surface_probe_down: float = 2.2
@@ -115,6 +130,11 @@ extends CharacterBody3D
 signal target_reached()
 signal stuck()
 
+# Live citizen scan should match CoordinatePicker Drop+Scan semantics even
+# when the heavier local-A* height mode is disabled for path planning.
+const _LIVE_SCAN_STEP_HEIGHT: float = 0.25
+const _LIVE_SCAN_PROBE_RADIUS: float = 0.08
+
 # ---------------------------------------------------------- Modules
 var _config: CitizenConfig = null
 var _ctx: NavigationContext = null
@@ -148,6 +168,12 @@ var _debug_local_grid_goal: Vector3 = Vector3.ZERO
 var _debug_local_grid_has_goal: bool = false
 var _debug_local_grid_cells: Array = []
 var _debug_local_grid_physics_hits: Array = []
+var _debug_live_scan_cells: Array = []
+var _debug_live_scan_physics_hits: Array = []
+var _debug_live_scan_timer: float = 0.0
+var _green_corridor_direction: Vector3 = Vector3.ZERO
+var _green_corridor_timer: float = 0.0
+var _manual_last_direction: Vector3 = Vector3.FORWARD
 
 # Surface-escape suppression (set after stuck replan + after no-candidates)
 var _surface_escape_cooldown: float = 0.0
@@ -188,6 +214,8 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if keyboard_control_enabled:
+		return
 	if not accept_click_input:
 		return
 	if not (event is InputEventMouseButton):
@@ -215,6 +243,8 @@ func set_global_target(target: Vector3) -> bool:
 	_local_astar_replan_timer = 0.0
 	_local_astar_follow_global_on_fail = false
 	_surface_escape_cooldown = 0.0
+	_green_corridor_direction = Vector3.ZERO
+	_green_corridor_timer = 0.0
 	_steering.reset()
 	_clear_local_avoidance_path()
 	_stuck.reset_for_new_target(global_position)
@@ -244,6 +274,8 @@ func stop_travel() -> void:
 	_cached_avoidance_blocked = false
 	_local_astar_follow_global_on_fail = false
 	_surface_escape_cooldown = 0.0
+	_green_corridor_direction = Vector3.ZERO
+	_green_corridor_timer = 0.0
 	_steering.reset()
 	_stuck.reset_for_idle(global_position)
 	_clear_local_avoidance_path()
@@ -264,15 +296,22 @@ func _physics_process(delta: float) -> void:
 	_logger.tick(delta)
 	_jump.update_timers(delta, is_on_floor())
 	_tick_surface_escape(delta)
+
+	if keyboard_control_enabled:
+		_physics_process_keyboard_control(delta)
+		return
+
 	_tick_stuck_detection(delta)
 
 	if not _is_travelling:
+		_clear_live_debug_scan()
 		_debug.clear_avoidance()
 		_apply_idle_gravity(delta)
 		move_and_slide()
 		return
 
 	if _path_index >= _global_path.size():
+		_clear_live_debug_scan()
 		_debug.clear_avoidance()
 		_stop_at_target()
 		_apply_idle_gravity(delta)
@@ -280,6 +319,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	if not _advance_path_progress():
+		_clear_live_debug_scan()
 		_debug.clear_avoidance()
 		_stop_at_target()
 		_apply_idle_gravity(delta)
@@ -310,6 +350,8 @@ func _physics_process(delta: float) -> void:
 			# Cancel avoidance so the citizen flies straight over what was
 			# just cleared, instead of being rerouted mid-air.
 			_clear_local_avoidance_path()
+			_green_corridor_direction = Vector3.ZERO
+			_green_corridor_timer = 0.0
 			_cached_avoidance_blocked = false
 			_obstacle_check_timer = _config.jump_cooldown
 
@@ -319,10 +361,134 @@ func _physics_process(delta: float) -> void:
 		velocity.x = 0.0
 		velocity.z = 0.0
 		_steering.reset()
+		_clear_live_debug_scan()
 		_debug.clear_avoidance()
 
 	_apply_idle_gravity(delta)
 	move_and_slide()
+
+
+func _physics_process_keyboard_control(delta: float) -> void:
+	if _is_travelling:
+		_global_path = PackedVector3Array()
+		_path_index = 0
+		_is_travelling = false
+		_debug.clear_global_path()
+		_clear_local_avoidance_path()
+		_local_astar_follow_global_on_fail = false
+		_surface_escape_cooldown = 0.0
+
+	var desired_direction := _get_keyboard_control_direction()
+	if desired_direction.length_squared() <= 0.0001:
+		velocity.x = 0.0
+		velocity.z = 0.0
+		_cached_avoidance_blocked = false
+		_debug_avoidance_status = "manual idle"
+		_update_live_debug_scan(_manual_last_direction, delta)
+		_draw_debug(_manual_last_direction, _manual_last_direction)
+		_apply_idle_gravity(delta)
+		move_and_slide()
+		return
+
+	_manual_last_direction = desired_direction
+	var steered_direction := desired_direction
+	if keyboard_control_use_green_corridor:
+		steered_direction = _choose_keyboard_steered_direction(desired_direction, delta)
+	else:
+		_cached_avoidance_blocked = false
+		_debug_avoidance_status = "manual"
+		_update_live_debug_scan(desired_direction, delta)
+
+	var final_direction := _steering.smooth(steered_direction, desired_direction,
+			delta, _config.steering_smoothing)
+	var final_speed := _config.move_speed * maxf(keyboard_control_speed_multiplier, 0.0)
+	if _cached_avoidance_blocked:
+		final_speed *= _config.avoidance_slowdown_factor
+	velocity.x = final_direction.x * final_speed
+	velocity.z = final_direction.z * final_speed
+
+	if not keyboard_control_disable_jump and _can_try_auto_jump(desired_direction, steered_direction):
+		_jump.try_jump(steered_direction, is_on_floor())
+
+	if final_direction.length_squared() > 0.0001:
+		look_at(global_position + final_direction, Vector3.UP)
+	_draw_debug(desired_direction, final_direction)
+	_apply_idle_gravity(delta)
+	move_and_slide()
+
+
+func _get_keyboard_control_direction() -> Vector3:
+	var side := 0.0
+	var forward_amount := 0.0
+	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+		side -= 1.0
+	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+		side += 1.0
+	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+		forward_amount += 1.0
+	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+		forward_amount -= 1.0
+	if absf(side) <= 0.001 and absf(forward_amount) <= 0.001:
+		return Vector3.ZERO
+
+	var basis_forward := Vector3.FORWARD
+	var basis_right := Vector3.RIGHT
+	if keyboard_control_camera_relative:
+		var camera := get_viewport().get_camera_3d()
+		if camera != null:
+			basis_forward = -camera.global_transform.basis.z
+			basis_forward.y = 0.0
+			if basis_forward.length_squared() > 0.0001:
+				basis_forward = basis_forward.normalized()
+			basis_right = camera.global_transform.basis.x
+			basis_right.y = 0.0
+			if basis_right.length_squared() > 0.0001:
+				basis_right = basis_right.normalized()
+
+	var direction := basis_right * side + basis_forward * forward_amount
+	direction.y = 0.0
+	if direction.length_squared() <= 0.0001:
+		return Vector3.ZERO
+	return direction.normalized()
+
+
+func _choose_keyboard_steered_direction(desired_direction: Vector3, delta: float) -> Vector3:
+	_green_corridor_timer = maxf(_green_corridor_timer - delta, 0.0)
+	_update_live_debug_scan(desired_direction, delta)
+	if _debug_live_scan_cells.is_empty():
+		_cached_avoidance_blocked = false
+		_debug_avoidance_status = "manual"
+		return desired_direction
+
+	var surface_kind := _perception.get_surface_kind(global_position)
+	var too_close := _perception.is_too_close_to_road(desired_direction)
+	var corridor_dir := _pick_green_corridor_direction(desired_direction, surface_kind, too_close)
+	if corridor_dir != Vector3.ZERO:
+		_green_corridor_direction = corridor_dir
+		_green_corridor_timer = maxf(_config.obstacle_check_interval, 0.08)
+		_cached_avoidance_blocked = true
+		_debug_avoidance_status = "green corridor"
+		return corridor_dir
+
+	_green_corridor_direction = Vector3.ZERO
+	_green_corridor_timer = 0.0
+	_cached_avoidance_blocked = false
+	_debug_avoidance_status = "manual"
+	return desired_direction
+
+
+func _can_try_auto_jump(desired_direction: Vector3, steered_direction: Vector3) -> bool:
+	if not _config.jump_low_obstacles:
+		return false
+	if _debug_avoidance_status == "green corridor" or _green_corridor_timer > 0.0:
+		return false
+	var desired := desired_direction
+	desired.y = 0.0
+	var steered := steered_direction
+	steered.y = 0.0
+	if desired.length_squared() <= 0.0001 or steered.length_squared() <= 0.0001:
+		return false
+	return true
 
 
 # ========================================================================
@@ -341,27 +507,46 @@ func _choose_steered_direction(desired_direction: Vector3, delta: float) -> Vect
 		return desired_direction
 
 	_local_astar_replan_timer -= delta
+	_green_corridor_timer = maxf(_green_corridor_timer - delta, 0.0)
+	_update_live_debug_scan(desired_direction, delta)
 
 	# Follow active local detour if one exists.
-	var local_dir := _consume_local_avoidance_path()
-	if local_dir != Vector3.ZERO:
-		_cached_avoidance_blocked = true
-		_debug_avoidance_status = "local path"
-		return local_dir
+	if not _local_avoidance_path.is_empty():
+		var local_dir := _consume_local_avoidance_path()
+		if local_dir != Vector3.ZERO:
+			_cached_avoidance_blocked = true
+			_debug_avoidance_status = "local path"
+			return local_dir
 
 	# Forward perception probe (timed).
 	_obstacle_check_timer -= delta
 	if _obstacle_check_timer <= 0.0:
 		_obstacle_check_timer = _config.obstacle_check_interval
 		var surface_kind := _perception.get_surface_kind(global_position)
-		var too_close := _perception.is_too_close_to_road(_steering.last_direction())
+		var too_close := _perception.is_too_close_to_road(desired_direction)
 		var was_blocked := _cached_avoidance_blocked
 		_cached_avoidance_blocked = _perception.is_path_ahead_blocked(desired_direction, _config.jump_low_obstacles) \
 				or _should_escape_surface(surface_kind) \
 				or too_close
+		var corridor_dir := _pick_green_corridor_direction(desired_direction, surface_kind, too_close)
+		if corridor_dir != Vector3.ZERO:
+			_green_corridor_direction = corridor_dir
+			_green_corridor_timer = maxf(_config.obstacle_check_interval, 0.08)
+			_cached_avoidance_blocked = true
+			_debug_avoidance_status = "green corridor"
+			if not was_blocked:
+				_logger.debug("CTRL", "GREEN_CORRIDOR_PICK", {
+					"surface": surface_kind,
+					"road_edge": too_close,
+					"pos": global_position,
+					"dir": corridor_dir,
+				})
+		else:
+			_green_corridor_direction = Vector3.ZERO
+			_green_corridor_timer = 0.0
 		if too_close:
 			_debug_avoidance_status = "road edge"
-		else:
+		elif _green_corridor_timer <= 0.0:
 			_debug_avoidance_status = "blocked" if _cached_avoidance_blocked else "clear"
 		if _cached_avoidance_blocked and not was_blocked:
 			_logger.debug("CTRL", "AVOIDANCE_BLOCKED", {
@@ -376,6 +561,11 @@ func _choose_steered_direction(desired_direction: Vector3, delta: float) -> Vect
 				"pos": global_position,
 				"dir": desired_direction,
 			})
+
+	if _green_corridor_timer > 0.0 and _green_corridor_direction != Vector3.ZERO:
+		_cached_avoidance_blocked = true
+		_debug_avoidance_status = "green corridor"
+		return _green_corridor_direction
 
 	if _cached_avoidance_blocked and _local_astar_replan_timer <= 0.0:
 		_local_astar_replan_timer = maxf(_config.local_astar_replan_interval, 0.02)
@@ -442,9 +632,143 @@ func _clear_local_avoidance_path() -> void:
 	_local_avoidance_path_index = 0
 	_debug_local_grid_goal = Vector3.ZERO
 	_debug_local_grid_has_goal = false
+	_debug_local_grid_cells = []
 	_debug_local_grid_physics_hits = []
 	if _debug_local_grid_status != "planning":
 		_debug_local_grid_status = "-"
+
+
+func _clear_live_debug_scan() -> void:
+	_debug_live_scan_cells = []
+	_debug_live_scan_physics_hits = []
+	_debug_live_scan_timer = 0.0
+	_green_corridor_direction = Vector3.ZERO
+	_green_corridor_timer = 0.0
+
+
+func _update_live_debug_scan(forward: Vector3, delta: float) -> void:
+	if not _config.debug_draw_avoidance:
+		_clear_live_debug_scan()
+		return
+	if not _config.use_local_astar_avoidance:
+		_clear_live_debug_scan()
+		return
+	if forward.length_squared() <= 0.0001:
+		_clear_live_debug_scan()
+		return
+
+	_debug_live_scan_timer -= delta
+	if _debug_live_scan_timer > 0.0 and not _debug_live_scan_cells.is_empty():
+		return
+
+	_debug_live_scan_timer = maxf(minf(_config.obstacle_check_interval, 0.15), 0.05)
+	var height_threshold := _config.local_astar_height_block_threshold
+	if height_threshold <= 0.0:
+		height_threshold = _LIVE_SCAN_STEP_HEIGHT
+	var probe_radius := _config.local_astar_height_clearance_probe_radius
+	if probe_radius <= 0.0:
+		probe_radius = _LIVE_SCAN_PROBE_RADIUS
+	var result := _local_grid.scan_at(
+			global_position,
+			forward,
+			_config.local_astar_radius,
+			_config.local_astar_cell_size,
+			true,
+			height_threshold,
+			probe_radius)
+	_debug_live_scan_cells = result.get(LocalGridPlanner.RESULT_KEY_DEBUG_CELLS, [])
+	_debug_live_scan_physics_hits = result.get(LocalGridPlanner.RESULT_KEY_DEBUG_HITS, [])
+
+
+func _pick_green_corridor_direction(desired_direction: Vector3, _surface_kind: String,
+		_too_close_to_road: bool) -> Vector3:
+	if _debug_live_scan_cells.is_empty():
+		return Vector3.ZERO
+
+	var forward := desired_direction
+	forward.y = 0.0
+	if forward.length_squared() <= 0.0001:
+		return Vector3.ZERO
+	forward = forward.normalized()
+	var right := LocalPerception._planar_right(forward)
+	var origin := global_position
+	var cell_size := maxf(_config.local_astar_cell_size, 0.08)
+	var lane_width := maxf(cell_size * 0.9, 0.18)
+	var lookahead := maxf(_config.local_astar_radius * 0.75, cell_size * 2.0)
+	var direct_lane_blocked := false
+	var direct_lane_road := false
+	var first_direct_block_forward := 1000000.0
+
+	for cell_data in _debug_live_scan_cells:
+		var world_pos: Vector3 = cell_data.get("world_pos", Vector3.ZERO) as Vector3
+		var offset := world_pos - origin
+		offset.y = 0.0
+		var forward_dist := offset.dot(forward)
+		if forward_dist < 0.0 or forward_dist > lookahead:
+			continue
+		var lateral_dist := absf(offset.dot(right))
+		if lateral_dist > lane_width:
+			continue
+		var blocked := bool(cell_data.get("blocked", false))
+		var reason := str(cell_data.get("blocked_reason", ""))
+		var surface := str(cell_data.get("surface", ""))
+		if blocked:
+			direct_lane_blocked = true
+			first_direct_block_forward = minf(first_direct_block_forward, forward_dist)
+		if surface == SurfaceClassifier.KIND_ROAD or reason.contains("road"):
+			direct_lane_road = true
+
+	var needs_corridor := direct_lane_blocked \
+			or direct_lane_road
+	if not needs_corridor:
+		return Vector3.ZERO
+
+	var best_score := -1000000.0
+	var best_direction := Vector3.ZERO
+	for cell_data in _debug_live_scan_cells:
+		if bool(cell_data.get("blocked", false)):
+			continue
+		var surface := str(cell_data.get("surface", ""))
+		if surface == SurfaceClassifier.KIND_ROAD:
+			continue
+		var world_pos: Vector3 = cell_data.get("world_pos", Vector3.ZERO) as Vector3
+		var offset := world_pos - origin
+		offset.y = 0.0
+		var distance := offset.length()
+		if distance < cell_size * 0.45:
+			continue
+		var forward_dist := offset.dot(forward)
+		if forward_dist < -cell_size * 0.25:
+			continue
+		var lateral_dist := absf(offset.dot(right))
+		var near_road := bool(cell_data.get("near_road_buffer", false)) \
+				or bool(cell_data.get("physics_near_road", false))
+		var score := forward_dist * 1.15 - lateral_dist * 0.18 + distance * 0.08
+		if surface == SurfaceClassifier.KIND_PEDESTRIAN:
+			score += 3.0
+		elif surface == SurfaceClassifier.KIND_CROSSWALK:
+			score += 2.4
+		elif surface == SurfaceClassifier.KIND_UNKNOWN:
+			score += 0.5
+		if near_road:
+			score -= 2.4
+		if direct_lane_blocked and forward_dist >= first_direct_block_forward - cell_size \
+				and lateral_dist < lane_width * 0.65:
+			score -= 4.0
+		if direct_lane_road and lateral_dist < lane_width * 0.65:
+			score -= 2.0
+		if score > best_score:
+			best_score = score
+			best_direction = offset.normalized()
+
+	if best_direction == Vector3.ZERO:
+		return Vector3.ZERO
+	# A corridor correction may bend around a blocker, but it must still move
+	# materially toward the current global waypoint. Pure sideways road escape
+	# stays with LocalGridPlanner, which has path context and stuck recovery.
+	if best_direction.dot(forward) < 0.25:
+		return Vector3.ZERO
+	return best_direction
 
 
 func _should_escape_surface(surface_kind: String) -> bool:
@@ -644,9 +968,15 @@ func _get_click_world_position(screen_pos: Vector2) -> Variant:
 
 
 func _draw_debug(desired_direction: Vector3, final_direction: Vector3) -> void:
+	var debug_cells := _debug_live_scan_cells
+	if debug_cells.is_empty():
+		debug_cells = _debug_local_grid_cells
+	var debug_hits := _debug_live_scan_physics_hits
+	if debug_hits.is_empty():
+		debug_hits = _debug_local_grid_physics_hits
 	_debug.update_avoidance(desired_direction, final_direction,
 			_local_avoidance_path, _debug_local_grid_goal, _debug_local_grid_has_goal,
-			_debug_local_grid_cells, _debug_local_grid_physics_hits,
+			debug_cells, debug_hits,
 			{
 				"path": "%d/%d" % [_path_index, _global_path.size() - 1] if not _global_path.is_empty() else "-",
 				"avoidance": _debug_avoidance_status,
@@ -665,6 +995,8 @@ func _build_config() -> CitizenConfig:
 	# caught at startup by `tools/codex_citizen_config_drift_test.gd`.
 	var c := CitizenConfig.new()
 	c.populate_from(self)
+	if (accept_click_input or keyboard_control_enabled) and not c.debug_draw_avoidance:
+		c.debug_draw_avoidance = true
 	return c
 
 

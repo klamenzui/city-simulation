@@ -19,6 +19,11 @@ const CONFIG_PATH: String = "res://Entities/Citizens/New/Navigation/CitizenConfi
 ## supposed to be mirrored into CitizenConfig (scene-bound runtime knobs).
 const CONTROLLER_ONLY_EXPORTS: Array[String] = [
 	"accept_click_input",      # input gate, scene-instance flag, see C1 fix
+	"keyboard_control_enabled",
+	"keyboard_control_camera_relative",
+	"keyboard_control_speed_multiplier",
+	"keyboard_control_disable_jump",
+	"keyboard_control_use_green_corridor",
 	"obstacle_down_ray_path",  # NodePath, resolved into JumpController directly
 	"enable_file_log",         # logger toggle, separate from navigation config
 	"log_min_level",           # logger level, separate

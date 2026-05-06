@@ -53,6 +53,12 @@ var local_astar_physics_near_road_margin: float = 0.22
 var local_astar_probe_min_height: float = 0.08
 var local_astar_probe_max_height: float = 0.9
 var local_astar_probe_height_steps: int = 4
+## Live-steering hybrid threshold. Matches CoordPicker `_LIVE_SCAN_STEP_HEIGHT`
+## so the debug visualization and the planner agree on what counts as a wall
+## vs. a step. >0 enables the top-hit + clearance-sphere + wall-buffer pipeline
+## inside `build_detour`; 0 falls back to the legacy multi-height sphere stack.
+var local_astar_height_block_threshold: float = 0.25
+var local_astar_height_clearance_probe_radius: float = 0.08
 var local_astar_surface_collision_mask: int = 3
 var local_astar_surface_probe_up: float = 0.5
 var local_astar_surface_probe_down: float = 2.2
@@ -127,6 +133,8 @@ const FIELD_NAMES: Array[String] = [
 	"local_astar_probe_min_height",
 	"local_astar_probe_max_height",
 	"local_astar_probe_height_steps",
+	"local_astar_height_block_threshold",
+	"local_astar_height_clearance_probe_radius",
 	"local_astar_surface_collision_mask",
 	"local_astar_surface_probe_up",
 	"local_astar_surface_probe_down",
