@@ -2169,7 +2169,19 @@ script = ExtResource("401_skybr")
 
 [node name="Citizen" parent="." unique_id=1850326929 instance=ExtResource("106_llcqu")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.348106, 1.9736841, 18.510485)
-accept_click_input = true
 local_astar_radius = 0.6
 log_file_path = "res://citizen.log"
+
+[node name="ControlledCitizen" parent="." instance=ExtResource("106_llcqu")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.04, 0.156, 18.66)
+collision_layer = 0
+move_speed = 0.9
+keyboard_control_enabled = true
+keyboard_control_speed_multiplier = 1.2
+keyboard_control_disable_jump = true
+keyboard_control_use_green_corridor = true
+local_astar_radius = 0.6
+jump_low_obstacles = false
+show_global_path = false
+log_file_path = "res://controlled_citizen.log"
 debug_draw_avoidance = true

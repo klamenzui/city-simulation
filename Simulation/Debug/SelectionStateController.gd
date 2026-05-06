@@ -328,6 +328,9 @@ func refresh_debug_panel_mode_controls() -> void:
 func _resolve_player_avatar() -> Citizen:
 	if world == null:
 		return null
+	var scene_root := world.get_parent()
+	if scene_root != null and scene_root.get_node_or_null("ControlledCitizen") != null:
+		return null
 	var candidate := world.get_node_or_null("Player")
 	return candidate as Citizen
 

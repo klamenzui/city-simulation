@@ -26,6 +26,14 @@ static func classify_hit(hit: Dictionary) -> String:
 	return KIND_UNKNOWN
 
 
+static func _is_park_walkable_name(name_lower: String, path_lower: String) -> bool:
+	return name_lower.begins_with("park_road") or path_lower.contains("/park_road_")
+
+
+static func _is_park_blocker_name(name_lower: String, path_lower: String) -> bool:
+	return name_lower.begins_with("park_wall") or path_lower.contains("/park_wall_")
+
+
 ## Walks the parent chain and returns the first match.
 ##
 ## Priority order matters — see inline comments.  In particular "pedestrian"
@@ -44,11 +52,13 @@ static func classify_node(node: Node) -> String:
 		if current_path.contains("/only_people_nav/"):
 			return KIND_PEDESTRIAN
 
-		# Priority 2: park + walkable_surface groups are pedestrian.
-		if current.is_in_group("parks") or current.is_in_group("city_park"):
-			return KIND_PEDESTRIAN
+		# Priority 2: explicit walkable tags and named park floor pieces.
 		if current.is_in_group("walkable_surface"):
 			return KIND_PEDESTRIAN
+		if _is_park_walkable_name(current_name, current_path):
+			return KIND_PEDESTRIAN
+		if _is_park_blocker_name(current_name, current_path):
+			return KIND_UNKNOWN
 
 		# Priority 3: zebra crossings — matched only after pedestrian check
 		# so sidewalks attached to a crossing-road asset are not misread.
@@ -82,11 +92,19 @@ static func is_walkable_probe_collider(collider: Variant) -> bool:
 		return false
 	var node := collider as Node
 
-	# Priority 1: explicit walkable_surface tag always wins.
+	# Priority 1: explicit walkable tags and named park floor pieces always win.
 	var current: Node = node
 	while current != null:
+		var current_name := current.name.to_lower()
+		var current_path := ""
+		if current.is_inside_tree():
+			current_path = str(current.get_path()).to_lower()
 		if current.is_in_group("walkable_surface"):
 			return true
+		if _is_park_walkable_name(current_name, current_path):
+			return true
+		if _is_park_blocker_name(current_name, current_path):
+			return false
 		current = current.get_parent()
 
 	# Priority 2: buildings-grouped ancestors always block — walls, props, fixtures.

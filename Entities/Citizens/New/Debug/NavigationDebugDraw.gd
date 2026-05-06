@@ -10,10 +10,12 @@ extends RefCounted
 ##   - Local A* physics-hit markers
 ##   - Status label (path progress, avoidance/local/jump status)
 ##
-## Attaches its visuals as children of the owner body.  All meshes are
+## Attaches its visuals as children of the owner body. All meshes are
 ## ImmediateMesh so frame-to-frame rebuilding is cheap.
 
 var _ctx: NavigationContext
+const _SCAN_CELL_FILL: float = 0.85
+const _SCAN_CELL_Y_OFFSET: float = 0.04
 
 # Avoidance visual (local space)
 var _avoid_mesh: ImmediateMesh = ImmediateMesh.new()
@@ -46,13 +48,20 @@ func update_avoidance(desired_direction: Vector3, final_direction: Vector3,
 	_avoid_visual.visible = true
 	_avoid_label.visible = true
 	_avoid_mesh.clear_surfaces()
+
+	if _ctx.config.debug_draw_surface_cells and not grid_cells.is_empty():
+		_avoid_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, _avoid_material)
+		_draw_grid_quads(grid_cells)
+		_avoid_mesh.surface_end()
+
 	_avoid_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _avoid_material)
 
 	var base := _ctx.get_owner_position() + Vector3.UP * 0.35
 	_add_line(base, base + desired_direction * 1.1, Color(0.824, 0.122, 0.953, 1.0))
 	_add_line(base + Vector3.UP * 0.05, base + final_direction * 1.1 + Vector3.UP * 0.05,
 			Color(1.0, 0.85, 0.1, 1.0))
-	_draw_grid(local_path, local_goal, has_goal, grid_cells, grid_physics_hits)
+	_draw_scan_radius()
+	_draw_grid_lines(local_path, local_goal, has_goal, grid_cells, grid_physics_hits)
 
 	_avoid_mesh.surface_end()
 	_update_label(labels)
@@ -72,6 +81,9 @@ func _ensure_avoidance_visual() -> void:
 		_avoid_material = StandardMaterial3D.new()
 		_avoid_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		_avoid_material.vertex_color_use_as_albedo = true
+		_avoid_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_avoid_material.no_depth_test = true
+		_avoid_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 
 	if _avoid_visual == null:
 		_avoid_visual = MeshInstance3D.new()
@@ -98,33 +110,54 @@ func _update_label(labels: Dictionary) -> void:
 	]
 
 
-func _draw_grid(local_path: PackedVector3Array, local_goal: Vector3,
+func _draw_grid_quads(grid_cells: Array) -> void:
+	var cfg := _ctx.config
+	var effective_step := maxf(cfg.local_astar_cell_size, 0.08) \
+			/ float(maxi(cfg.local_astar_grid_subdivisions, 1))
+	var cell_half := effective_step * 0.5 * _SCAN_CELL_FILL
+	var ref_y := _ctx.get_owner_position().y
+	var quad_y := ref_y + _SCAN_CELL_Y_OFFSET
+
+	for cell_data in grid_cells:
+		var world_pos: Vector3 = cell_data.get("world_pos", Vector3.ZERO) as Vector3
+		var blocked := bool(cell_data.get("blocked", false))
+		var reason := str(cell_data.get("blocked_reason", ""))
+		var surface := str(cell_data.get("surface", ""))
+		var color := _cell_color(blocked, reason, surface)
+		var mark_pos := Vector3(world_pos.x, quad_y, world_pos.z)
+		_add_quad(mark_pos, cell_half, color)
+
+
+func _draw_grid_lines(local_path: PackedVector3Array, local_goal: Vector3,
 		has_goal: bool, grid_cells: Array, grid_physics_hits: Array) -> void:
 	var cfg := _ctx.config
 	var effective_step := maxf(cfg.local_astar_cell_size, 0.08) \
 			/ float(maxi(cfg.local_astar_grid_subdivisions, 1))
 	var cell_mark_size := maxf(effective_step * 0.18, 0.012)
 	var ref_y := _ctx.get_owner_position().y
+	var quad_y := ref_y + _SCAN_CELL_Y_OFFSET
 
-	if cfg.debug_draw_surface_cells:
+	if cfg.debug_draw_surface_cells and cfg.debug_draw_cell_heights:
 		for cell_data in grid_cells:
+			var world_pos: Vector3 = cell_data.get("world_pos", Vector3.ZERO) as Vector3
 			var surface_pos: Vector3 = cell_data.get("surface_pos", Vector3.ZERO) as Vector3
+			if absf(surface_pos.y - ref_y) <= 0.01:
+				continue
 			var blocked := bool(cell_data.get("blocked", false))
 			var reason := str(cell_data.get("blocked_reason", ""))
 			var surface := str(cell_data.get("surface", ""))
 			var color := _cell_color(blocked, reason, surface)
-			var mark_pos := surface_pos + Vector3.UP * 0.02
-			_add_cross(mark_pos, cell_mark_size, color)
-			if cfg.debug_draw_cell_heights and absf(surface_pos.y - ref_y) > 0.01:
-				var floor_pos := Vector3(surface_pos.x, ref_y + 0.07, surface_pos.z)
-				var stem_color := Color(color.r, color.g, color.b, 0.35)
-				_add_line(mark_pos, floor_pos, stem_color)
+			var mark_pos := Vector3(world_pos.x, quad_y, world_pos.z)
+			var floor_pos := Vector3(surface_pos.x, surface_pos.y + 0.02, surface_pos.z)
+			var stem_color := Color(color.r, color.g, color.b, 0.35)
+			_add_line(mark_pos, floor_pos, stem_color)
 
 	if cfg.debug_draw_physics_hits:
 		for hit_data in grid_physics_hits:
 			var hit_pos: Vector3 = hit_data.get("pos", Vector3.ZERO) as Vector3
 			var near_road := bool(hit_data.get("near_road", false))
-			var color := Color(0.851, 0.0, 0.0, 1.0) if near_road else Color(1.0, 0.306, 0.0, 1.0)
+			var reason := str(hit_data.get("reason", ""))
+			var color := _hit_color(reason, near_road)
 			_add_cross(hit_pos + Vector3.UP * 0.12, cell_mark_size * 1.5, color)
 
 	if not local_path.is_empty():
@@ -138,31 +171,60 @@ func _draw_grid(local_path: PackedVector3Array, local_goal: Vector3,
 		_add_cross(local_goal + Vector3.UP * 0.22, 0.12, Color.WHITE)
 
 
-## Colour scheme:
-##   pedestrian (navigable)  → teal / green shades
-##   road                    → red shades
-##   physics (wall/object)   → orange shades
-##   free / crosswalk        → green / yellow
+func _draw_scan_radius() -> void:
+	var radius := maxf(_ctx.config.local_astar_radius, 0.05)
+	var center := _ctx.get_owner_position() + Vector3.UP * _SCAN_CELL_Y_OFFSET
+	var segments := 64
+	var previous := center + Vector3(radius, 0.0, 0.0)
+	var color := Color(0.35, 0.85, 1.0, 0.95)
+	for i in range(1, segments + 1):
+		var angle := TAU * float(i) / float(segments)
+		var next := center + Vector3(cos(angle) * radius, 0.0, sin(angle) * radius)
+		_add_line(previous, next, color)
+		previous = next
+
+
+## Shared palette with the Coordinate Picker scan:
+##   walkable             -> green family
+##   road / road buffer   -> red family
+##   physics blockers     -> orange-red family
+##   height / wall buffer -> purple family
 static func _cell_color(blocked: bool, reason: String, surface: String) -> Color:
 	if not blocked:
 		if surface == SurfaceClassifier.KIND_PEDESTRIAN:
-			return Color(0.0, 0.454, 0.0, 1.0)   # teal — pedestrian zone
+			return Color(0.10, 0.95, 0.20, 0.65)
 		if surface == SurfaceClassifier.KIND_CROSSWALK:
-			return Color(0.0, 0.902, 0.051, 1.0) # yellow — crosswalk
+			return Color(0.15, 0.80, 0.20, 0.65)
 		if surface == SurfaceClassifier.KIND_UNKNOWN:
-			return Color(0.085, 0.085, 0.085, 1.0) # grey — not classified
-		return Color(0.10, 0.72, 0.22)           # green — free fallback
-	if reason == "road":
-		return Color(1.00, 0.00, 0.00)           # bright red — road
-	if reason == "road_buffer":
-		return Color(1.00, 0.38, 0.10)           # orange-red — road safety ring
-	if reason == "physics":
-		return Color(1.00, 0.55, 0.00)           # orange — wall/hydrant/citizen
+			return Color(0.20, 0.60, 0.20, 0.55)
+		return Color(0.15, 0.75, 0.20, 0.65)
+	if reason == "height":
+		return Color(0.55, 0.05, 0.55, 0.70)
+	if reason == "height+other":
+		return Color(0.40, 0.00, 0.40, 0.72)
+	if reason == "wall_buffer":
+		return Color(0.75, 0.20, 0.55, 0.70)
 	if reason == "physics+road":
-		return Color(0.85, 0.00, 0.00)           # dark red
-	if reason == "physics+road_buffer":
-		return Color(0.85, 0.30, 0.00)           # dark orange — object near road
-	return Color(0.70, 0.15, 0.70)               # purple — unexpected state
+		return Color(0.70, 0.05, 0.05, 0.70)
+	if reason == "road":
+		return Color(1.00, 0.05, 0.05, 0.70)
+	if reason == "road_buffer" or reason == "physics+road_buffer":
+		return Color(0.95, 0.20, 0.10, 0.70)
+	if reason == "physics":
+		return Color(0.90, 0.25, 0.15, 0.70)
+	return Color(0.80, 0.10, 0.40, 0.70)
+
+
+static func _hit_color(reason: String, near_road: bool) -> Color:
+	if reason == "height":
+		return Color(0.65, 0.15, 0.80, 1.0)
+	if reason == "height+other":
+		return Color(0.50, 0.05, 0.60, 1.0)
+	if reason == "physics+road":
+		return Color(0.75, 0.05, 0.05, 1.0)
+	if near_road or reason == "road_buffer" or reason == "physics+road_buffer":
+		return Color(0.95, 0.20, 0.10, 1.0)
+	return Color(1.0, 0.35, 0.0, 1.0)
 
 
 func _add_line(from: Vector3, to: Vector3, color: Color) -> void:
@@ -178,6 +240,16 @@ func _add_cross(center: Vector3, size: float, color: Color) -> void:
 	_add_line(center - Vector3.UP * size, center + Vector3.UP * size, color)
 
 
+func _add_quad(center: Vector3, half: float, color: Color) -> void:
+	var a := center + Vector3(-half, 0.0, -half)
+	var b := center + Vector3(half, 0.0, -half)
+	var c := center + Vector3(half, 0.0, half)
+	var d := center + Vector3(-half, 0.0, half)
+	for v in [a, b, c, a, c, d]:
+		_avoid_mesh.surface_set_color(color)
+		_avoid_mesh.surface_add_vertex(_ctx.owner_body.to_local(v))
+
+
 # ---------------------------------------------------------- Global path ribbon
 
 func update_global_path(global_path: PackedVector3Array, path_index: int) -> void:
@@ -187,12 +259,12 @@ func update_global_path(global_path: PackedVector3Array, path_index: int) -> voi
 
 	_ensure_global_path_visual()
 	_path_mesh.clear_surfaces()
-	# Skip if there are no remaining segments to draw — Godot raises
+	# Skip if there are no remaining segments to draw - Godot raises
 	# "No vertices were added" if surface_end() is called on an empty surface.
 	var draw_from := maxi(path_index, 0)
 	if draw_from >= global_path.size() - 1:
 		return
-	# Pre-count drawable segments so we never open a surface we can't fill.
+	# Pre-count drawable segments so we never open a surface we cannot fill.
 	var drawable_segments := 0
 	for idx in range(draw_from, global_path.size() - 1):
 		var seg := global_path[idx + 1] - global_path[idx]

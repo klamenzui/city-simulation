@@ -329,6 +329,53 @@ func get_height_clearance_block_info(point: Vector3, base_y: float,
 	return {BLOCK_KEY_BLOCKED: false, BLOCK_KEY_HIT_POS: point, BLOCK_KEY_COLLIDER: ""}
 
 
+## Single narrow sphere near ankle height for ambiguous floor cells.
+##
+## Height-only + top-hit works well for tall blockers, but side-only low
+## bases/foundations can still slip through because their top is near the
+## floor and their wall starts beside the ray. This one-shot probe restores
+## just enough "is there really room for the capsule's feet?" checking
+## without bringing back the old multi-height sphere stack.
+func get_low_obstacle_block_info(point: Vector3, base_y: float,
+		probe_height: float, probe_radius_override: float = NAN) -> Dictionary:
+	if not _ctx.is_ready_for_physics():
+		return {BLOCK_KEY_BLOCKED: true, BLOCK_KEY_HIT_POS: point, BLOCK_KEY_COLLIDER: "no_world"}
+
+	var radius := maxf(
+			probe_radius_override if not is_nan(probe_radius_override) \
+			else _ctx.config.local_astar_probe_radius,
+			0.03)
+	var saved_radius: float = -1.0
+	if not is_nan(probe_radius_override):
+		saved_radius = _probe_shape.radius
+		_probe_shape.radius = radius
+		_cached_probe_radius = -1.0  # force re-sync next non-override call
+
+	var probe_position := point
+	probe_position.y = base_y + maxf(probe_height, 0.02)
+	var query := _prepare_shape_query(
+			Transform3D(Basis.IDENTITY, probe_position),
+			_ctx.get_owner_collision_mask())
+
+	for hit in _ctx.get_space_state().intersect_shape(query, 8):
+		var collider: Variant = hit.get("collider", null)
+		var walkable := SurfaceClassifier.is_walkable_probe_collider(collider)
+		_log_probe_hit("low_clearance", probe_position, probe_position.y - base_y, collider, walkable)
+		if walkable:
+			continue
+		if saved_radius > 0.0:
+			_probe_shape.radius = saved_radius
+		return {
+			BLOCK_KEY_BLOCKED: true,
+			BLOCK_KEY_HIT_POS: _get_probe_hit_debug_position(collider, probe_position),
+			BLOCK_KEY_COLLIDER: _collider_path(collider),
+		}
+
+	if saved_radius > 0.0:
+		_probe_shape.radius = saved_radius
+	return {BLOCK_KEY_BLOCKED: false, BLOCK_KEY_HIT_POS: point, BLOCK_KEY_COLLIDER: ""}
+
+
 ## Raw surface ray (layers 1+2) at `point`. Walks up to `attempts` hits and
 ## **picks the highest-priority surface kind** (pedestrian > crosswalk > unknown
 ## > road) — needed because the map has overlapping colliders (pedzone meshes
