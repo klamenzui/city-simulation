@@ -55,10 +55,26 @@ func _log_initial_debug_snapshot() -> void:
 func _activate_controlled_citizen_debug_target() -> void:
 	if _controlled_citizen == null:
 		return
-	_controlled_citizen.set("keyboard_control_enabled", true)
-	_controlled_citizen.set("debug_draw_avoidance", true)
 	_disable_legacy_player_control()
-	_city_camera.set_follow_target(_controlled_citizen)
+	_controlled_citizen.set("accept_click_input", true)
+	if _controlled_citizen.has_method("enter_keyboard_control_mode"):
+		_controlled_citizen.call("enter_keyboard_control_mode", true)
+	else:
+		_controlled_citizen.set("keyboard_control_enabled", true)
+		_controlled_citizen.set("debug_draw_avoidance", true)
+		_city_camera.set_follow_target(_controlled_citizen)
+
+func _deactivate_controlled_citizen_debug_target() -> void:
+	if _controlled_citizen == null:
+		return
+	_controlled_citizen.set("accept_click_input", true)
+	if _controlled_citizen.has_method("exit_keyboard_control_mode"):
+		_controlled_citizen.call("exit_keyboard_control_mode")
+	else:
+		_controlled_citizen.set("keyboard_control_enabled", false)
+		if _controlled_citizen is CharacterBody3D:
+			(_controlled_citizen as CharacterBody3D).velocity = Vector3.ZERO
+		_city_camera.clear_follow_target()
 
 func _disable_legacy_player_control() -> void:
 	if world == null:
@@ -72,5 +88,27 @@ func _disable_legacy_player_control() -> void:
 		legacy_player.call("set_manual_control_input_locked", true)
 
 func _input(event: InputEvent) -> void:
+	if _handle_controlled_citizen_shortcuts(event):
+		return
 	if _runtime_controller != null:
 		_runtime_controller.handle_input(event)
+
+func _handle_controlled_citizen_shortcuts(event: InputEvent) -> bool:
+	if _controlled_citizen == null:
+		return false
+	if event is not InputEventKey:
+		return false
+	var key_event := event as InputEventKey
+	if not key_event.pressed or key_event.echo:
+		return false
+	if key_event.keycode != KEY_F8:
+		return false
+	var active := bool(_controlled_citizen.get("keyboard_control_enabled"))
+	if active:
+		_deactivate_controlled_citizen_debug_target()
+	else:
+		_activate_controlled_citizen_debug_target()
+	var viewport := get_viewport()
+	if viewport != null:
+		viewport.set_input_as_handled()
+	return true

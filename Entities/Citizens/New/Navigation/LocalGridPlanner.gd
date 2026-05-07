@@ -137,10 +137,11 @@ func build_detour(desired_direction: Vector3,
 	var start_needs_escape := _is_surface_blocked(start_surface_kind)
 	var max_step_height := maxf(cfg.local_astar_height_block_threshold, 0.0)
 	var use_height_clearance := max_step_height > 0.0
-	var height_probe_radius := maxf(cfg.local_astar_height_clearance_probe_radius, 0.03)
+	var height_probe_radius := maxf(cfg.local_astar_height_clearance_probe_radius, 0.0)
 	var top_hit_probe_up := maxf(
 			cfg.local_astar_surface_probe_up,
-			cfg.local_astar_probe_max_height + max_step_height + height_probe_radius + 0.05)
+			cfg.local_astar_probe_max_height + max_step_height
+					+ maxf(height_probe_radius, 0.03) + 0.05)
 	# Reuse member buffers — clear keeps backing capacity, only contents reset.
 	_point_ids.clear()
 	_cell_surfaces.clear()
@@ -543,7 +544,8 @@ func _collect_cell_probe_info(
 			height_diff = top_hit_pos.y - origin_y
 			if absf(height_diff) > max_step_height:
 				top_height_blocked = true
-		if not top_height_blocked:
+		if not top_height_blocked \
+				and (is_nan(height_probe_radius_override) or height_probe_radius_override > 0.0):
 			var clearance_info := _perception.get_height_clearance_block_info(
 					world_point, origin_y, max_step_height, height_probe_radius_override)
 			clearance_blocked = bool(clearance_info.get(
@@ -682,12 +684,7 @@ func _apply_wall_buffer(debug_cells: Array[Dictionary]) -> void:
 		# Skip the height-blocked cells themselves.
 		if _cell_height_blocked.has(cell):
 			continue
-		var has_height_neighbor := false
-		for offset in _GRID_NEIGHBORS:
-			if _cell_height_blocked.has(cell + offset):
-				has_height_neighbor = true
-				break
-		if has_height_neighbor:
+		if _cell_has_height_neighbor(cell):
 			entry["blocked"] = true
 			entry["blocked_reason"] = "wall_buffer"
 
@@ -885,9 +882,14 @@ func _register_live_cell(
 
 
 func _cell_has_height_neighbor(cell: Vector2i) -> bool:
+	var buffer_cells := maxi(_ctx.config.local_astar_wall_buffer_cells, 0)
+	if buffer_cells <= 0:
+		return false
 	if _cell_height_blocked.has(cell):
 		return false
-	for offset in _GRID_NEIGHBORS:
+	for offset in _get_cached_neighbor_offsets(buffer_cells):
+		if offset == Vector2i.ZERO:
+			continue
 		if _cell_height_blocked.has(cell + offset):
 			return true
 	return false

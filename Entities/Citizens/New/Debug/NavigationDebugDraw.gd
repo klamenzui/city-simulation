@@ -14,7 +14,7 @@ extends RefCounted
 ## ImmediateMesh so frame-to-frame rebuilding is cheap.
 
 var _ctx: NavigationContext
-const _SCAN_CELL_FILL: float = 0.85
+const _SCAN_CELL_FILL: float = 0.72
 const _SCAN_CELL_Y_OFFSET: float = 0.04
 
 # Avoidance visual (local space)
@@ -27,6 +27,9 @@ var _avoid_label: Label3D = null
 var _path_mesh: ImmediateMesh = ImmediateMesh.new()
 var _path_visual: MeshInstance3D = null
 var _path_material: StandardMaterial3D = null
+var _target_mesh: ImmediateMesh = ImmediateMesh.new()
+var _target_visual: MeshInstance3D = null
+var _target_material: StandardMaterial3D = null
 
 
 func _init(context: NavigationContext) -> void:
@@ -203,7 +206,7 @@ static func _cell_color(blocked: bool, reason: String, surface: String) -> Color
 	if reason == "height+other":
 		return Color(0.40, 0.00, 0.40, 0.72)
 	if reason == "wall_buffer":
-		return Color(0.75, 0.20, 0.55, 0.70)
+		return Color(0.82, 0.30, 0.70, 0.45)
 	if reason == "physics+road":
 		return Color(0.70, 0.05, 0.05, 0.70)
 	if reason == "road":
@@ -284,6 +287,40 @@ func clear_global_path() -> void:
 		_path_mesh.clear_surfaces()
 
 
+func update_target_marker(target: Vector3, visible: bool = true) -> void:
+	if not visible or not _ctx.config.show_global_path:
+		clear_target_marker()
+		return
+
+	_ensure_target_visual()
+	_target_visual.visible = true
+	_target_mesh.clear_surfaces()
+	_target_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _target_material)
+
+	var y_off := maxf(_ctx.config.global_path_line_y_offset * 0.5, 0.05)
+	var center := target + Vector3.UP * y_off
+	var radius := 0.28
+	var segments := 48
+	var previous := center + Vector3(radius, 0.0, 0.0)
+	for i in range(1, segments + 1):
+		var angle := TAU * float(i) / float(segments)
+		var next := center + Vector3(cos(angle) * radius, 0.0, sin(angle) * radius)
+		_add_target_line(previous, next)
+		previous = next
+
+	var arm := radius * 0.75
+	_add_target_line(center - Vector3.RIGHT * arm, center + Vector3.RIGHT * arm)
+	_add_target_line(center - Vector3.FORWARD * arm, center + Vector3.FORWARD * arm)
+	_target_mesh.surface_end()
+
+
+func clear_target_marker() -> void:
+	if _target_mesh != null:
+		_target_mesh.clear_surfaces()
+	if _target_visual != null:
+		_target_visual.visible = false
+
+
 func _ensure_global_path_visual() -> void:
 	if _path_material == null:
 		_path_material = StandardMaterial3D.new()
@@ -298,6 +335,23 @@ func _ensure_global_path_visual() -> void:
 		_path_visual.mesh = _path_mesh
 		_ctx.owner_body.add_child(_path_visual)
 	_path_visual.global_transform = Transform3D.IDENTITY
+
+
+func _ensure_target_visual() -> void:
+	if _target_material == null:
+		_target_material = StandardMaterial3D.new()
+		_target_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_target_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_target_material.no_depth_test = true
+		_target_material.albedo_color = Color(1.0, 0.82, 0.15, 1.0)
+
+	if _target_visual == null:
+		_target_visual = MeshInstance3D.new()
+		_target_visual.name = "TargetMarkerVisual"
+		_target_visual.top_level = true
+		_target_visual.mesh = _target_mesh
+		_ctx.owner_body.add_child(_target_visual)
+	_target_visual.global_transform = Transform3D.IDENTITY
 
 
 func _add_path_segment(from: Vector3, to: Vector3) -> void:
@@ -320,3 +374,8 @@ func _add_path_segment(from: Vector3, to: Vector3) -> void:
 	_path_mesh.surface_add_vertex(a)
 	_path_mesh.surface_add_vertex(c)
 	_path_mesh.surface_add_vertex(d)
+
+
+func _add_target_line(from: Vector3, to: Vector3) -> void:
+	_target_mesh.surface_add_vertex(from)
+	_target_mesh.surface_add_vertex(to)
