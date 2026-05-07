@@ -16,6 +16,9 @@ var _down_ray: RayCast3D = null
 var _cooldown_timer: float = 0.0
 var _coyote_time: float = 0.0
 var _last_status: String = "-"
+const _STEP_UP_MIN_HEIGHT: float = 0.02
+const _STEP_UP_MAX_HEIGHT: float = 0.04
+const _STEP_UP_VERTICAL_VELOCITY: float = 0.9
 
 
 func _init(context: NavigationContext) -> void:
@@ -80,7 +83,7 @@ func near_ray_blocks_above_height(flat_direction: Vector3) -> bool:
 ## Tries to fire a jump.  If fired, mutates `owner.velocity.y` and returns true.
 ## `move_direction` must be the direct-to-waypoint direction (NOT the steered
 ## avoidance direction) — see class note.
-func try_jump(move_direction: Vector3, is_on_floor: bool) -> bool:
+func try_jump(move_direction: Vector3, is_on_floor: bool, allow_road_collider: bool = false) -> bool:
 	var cfg := _ctx.config
 	var logger := _ctx.logger
 	if not cfg.jump_low_obstacles:
@@ -118,9 +121,14 @@ func try_jump(move_direction: Vector3, is_on_floor: bool) -> bool:
 	if collider == _ctx.owner_body:
 		_last_status = "self"
 		return false
-	if collider is Node and SurfaceClassifier.classify_node(collider as Node) == SurfaceClassifier.KIND_CROSSWALK:
-		_last_status = "crosswalk"
-		return false
+	if collider is Node:
+		var surface_kind := SurfaceClassifier.classify_node(collider as Node)
+		if surface_kind == SurfaceClassifier.KIND_CROSSWALK:
+			_last_status = "crosswalk"
+			return false
+		if surface_kind == SurfaceClassifier.KIND_ROAD and not allow_road_collider:
+			_last_status = "road"
+			return false
 
 	var hit_point := _down_ray.get_collision_point()
 	var owner_pos := _ctx.get_owner_position()
@@ -136,7 +144,8 @@ func try_jump(move_direction: Vector3, is_on_floor: bool) -> bool:
 
 	var obstacle_height := hit_point.y - owner_pos.y
 	var min_h := maxf(cfg.min_jump_obstacle_height, 0.0)
-	var max_h := maxf(cfg.max_jump_obstacle_height, min_h)
+	var max_h := maxf(minf(cfg.max_jump_obstacle_height,
+			cfg.local_astar_height_block_threshold), min_h)
 	if obstacle_height < min_h or obstacle_height > max_h:
 		_last_status = "h %.3f" % obstacle_height
 		# Only log above half the minimum threshold — below is floor noise.
@@ -149,6 +158,36 @@ func try_jump(move_direction: Vector3, is_on_floor: bool) -> bool:
 				"pos": owner_pos,
 			})
 		return false
+
+	if obstacle_height < _STEP_UP_MIN_HEIGHT:
+		_last_status = "seam h %.3f" % obstacle_height
+		logger.trace("JUMP", "SEAM_IGNORED", {
+			"h": obstacle_height,
+			"collider": (collider as Node).name if collider is Node else "?",
+			"pos": owner_pos,
+		})
+		return false
+
+	if obstacle_height < _STEP_UP_MAX_HEIGHT:
+		if not allow_road_collider:
+			_last_status = "low step ignored h %.3f" % obstacle_height
+			logger.trace("JUMP", "LOW_STEP_IGNORED", {
+				"h": obstacle_height,
+				"collider": (collider as Node).name if collider is Node else "?",
+				"pos": owner_pos,
+			})
+			return false
+		var step_velocity := minf(_STEP_UP_VERTICAL_VELOCITY, maxf(cfg.jump_velocity, 0.0))
+		_ctx.owner_body.velocity.y = maxf(_ctx.owner_body.velocity.y, step_velocity)
+		_cooldown_timer = minf(maxf(cfg.jump_cooldown, 0.0), 0.12)
+		_last_status = "step h %.3f" % obstacle_height
+		logger.debug("JUMP", "STEP_UP", {
+			"h": obstacle_height,
+			"collider": (collider as Node).name if collider is Node else "?",
+			"pos": owner_pos,
+			"dir": planar,
+		})
+		return true
 
 	_ctx.owner_body.velocity.y = maxf(cfg.jump_velocity, 0.0)
 	_cooldown_timer = maxf(cfg.jump_cooldown, 0.0)

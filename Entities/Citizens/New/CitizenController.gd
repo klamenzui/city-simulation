@@ -81,7 +81,8 @@ extends CharacterBody3D
 # the citizen capsule's allowed step-up; anything taller is a wall/post/hydrant
 # and triggers the height block + 1-cell wall_buffer dilation.
 @export var local_astar_height_block_threshold: float = 0.25
-@export var local_astar_height_clearance_probe_radius: float = 0.08
+@export var local_astar_height_clearance_probe_radius: float = 0.0
+@export_range(0, 4, 1) var local_astar_wall_buffer_cells: int = 0
 @export_flags_3d_physics var local_astar_surface_collision_mask: int = 3
 @export var local_astar_surface_probe_up: float = 0.5
 @export var local_astar_surface_probe_down: float = 2.2
@@ -134,6 +135,10 @@ signal stuck()
 # when the heavier local-A* height mode is disabled for path planning.
 const _LIVE_SCAN_STEP_HEIGHT: float = 0.25
 const _LIVE_SCAN_PROBE_RADIUS: float = 0.08
+const _TARGET_GROUND_PROBE_UP: float = 6.0
+const _TARGET_GROUND_PROBE_DOWN: float = 12.0
+const _TARGET_GROUND_MAX_HITS: int = 16
+const _TARGET_GROUND_Y_TOLERANCE: float = 0.35
 
 # ---------------------------------------------------------- Modules
 var _config: CitizenConfig = null
@@ -173,7 +178,9 @@ var _debug_live_scan_physics_hits: Array = []
 var _debug_live_scan_timer: float = 0.0
 var _green_corridor_direction: Vector3 = Vector3.ZERO
 var _green_corridor_timer: float = 0.0
+var _last_corridor_kind: String = ""
 var _manual_last_direction: Vector3 = Vector3.FORWARD
+var _keyboard_jump_was_pressed: bool = false
 
 # Surface-escape suppression (set after stuck replan + after no-candidates)
 var _surface_escape_cooldown: float = 0.0
@@ -215,6 +222,11 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	if keyboard_control_enabled:
+		if event.is_action_pressed("ui_cancel"):
+			exit_keyboard_control_mode()
+			var viewport := get_viewport()
+			if viewport != null:
+				viewport.set_input_as_handled()
 		return
 	if not accept_click_input:
 		return
@@ -227,6 +239,9 @@ func _input(event: InputEvent) -> void:
 	var click_pos: Variant = _get_click_world_position(event.position)
 	if click_pos != null:
 		set_global_target(click_pos as Vector3)
+		var viewport := get_viewport()
+		if viewport != null:
+			viewport.set_input_as_handled()
 
 
 # ========================================================================
@@ -234,7 +249,8 @@ func _input(event: InputEvent) -> void:
 # ========================================================================
 
 func set_global_target(target: Vector3) -> bool:
-	_target_position = target
+	var requested_target := target
+	_target_position = _resolve_navigation_target(target)
 	_global_path = GlobalPathPlanner.build_path(global_position, _target_position, _ctx)
 	_path_index = 0
 	_is_travelling = _global_path.size() >= 2
@@ -253,9 +269,11 @@ func set_global_target(target: Vector3) -> bool:
 		_is_travelling = _advance_path_progress()
 
 	_debug.update_global_path(_global_path, _path_index)
+	_debug.update_target_marker(_target_position, true)
 
 	_logger.info("CTRL", "TARGET_SET", {
 		"from": global_position,
+		"requested": requested_target,
 		"to": _target_position,
 		"waypoints": _global_path.size(),
 		"travelling": _is_travelling,
@@ -281,11 +299,48 @@ func stop_travel() -> void:
 	_clear_local_avoidance_path()
 	velocity = Vector3.ZERO
 	_debug.clear_global_path()
+	_debug.clear_target_marker()
 	_debug.clear_avoidance()
 
 
 func is_travelling() -> bool:
 	return _is_travelling
+
+
+func enter_keyboard_control_mode(follow_camera: bool = true) -> void:
+	keyboard_control_enabled = true
+	debug_draw_avoidance = true
+	if _config != null:
+		_config.debug_draw_avoidance = true
+	_is_travelling = false
+	_global_path = PackedVector3Array()
+	_path_index = 0
+	_keyboard_jump_was_pressed = false
+	_cached_avoidance_blocked = false
+	_local_astar_follow_global_on_fail = false
+	_clear_local_avoidance_path()
+	_clear_live_debug_scan()
+	_debug.clear_target_marker()
+	if follow_camera:
+		var camera := get_viewport().get_camera_3d()
+		if camera != null and camera.has_method("set_follow_target"):
+			camera.call("set_follow_target", self)
+
+
+func exit_keyboard_control_mode() -> void:
+	keyboard_control_enabled = false
+	_keyboard_jump_was_pressed = false
+	_cached_avoidance_blocked = false
+	_local_astar_follow_global_on_fail = false
+	velocity.x = 0.0
+	velocity.z = 0.0
+	_steering.reset()
+	_clear_local_avoidance_path()
+	_clear_live_debug_scan()
+	_debug.clear_avoidance()
+	var camera := get_viewport().get_camera_3d()
+	if camera != null and camera.has_method("clear_follow_target"):
+		camera.call("clear_follow_target")
 
 
 # ========================================================================
@@ -346,7 +401,9 @@ func _physics_process(delta: float) -> void:
 
 		# Jump uses DIRECT-TO-WAYPOINT direction so the ray faces the obstacle
 		# regardless of how avoidance is steering.
-		if _jump.try_jump(desired_direction, is_on_floor()):
+		var allow_road_jump := _is_direction_leaving_road(desired_direction)
+		if _can_try_auto_jump(desired_direction, steered_direction) \
+				and _jump.try_jump(desired_direction, is_on_floor(), allow_road_jump):
 			# Cancel avoidance so the citizen flies straight over what was
 			# just cleared, instead of being rerouted mid-air.
 			_clear_local_avoidance_path()
@@ -407,8 +464,7 @@ func _physics_process_keyboard_control(delta: float) -> void:
 	velocity.x = final_direction.x * final_speed
 	velocity.z = final_direction.z * final_speed
 
-	if not keyboard_control_disable_jump and _can_try_auto_jump(desired_direction, steered_direction):
-		_jump.try_jump(steered_direction, is_on_floor())
+	_try_keyboard_jump(desired_direction, steered_direction)
 
 	if final_direction.length_squared() > 0.0001:
 		look_at(global_position + final_direction, Vector3.UP)
@@ -467,7 +523,7 @@ func _choose_keyboard_steered_direction(desired_direction: Vector3, delta: float
 		_green_corridor_direction = corridor_dir
 		_green_corridor_timer = maxf(_config.obstacle_check_interval, 0.08)
 		_cached_avoidance_blocked = true
-		_debug_avoidance_status = "green corridor"
+		_debug_avoidance_status = "%s corridor" % _last_corridor_kind
 		return corridor_dir
 
 	_green_corridor_direction = Vector3.ZERO
@@ -477,10 +533,43 @@ func _choose_keyboard_steered_direction(desired_direction: Vector3, delta: float
 	return desired_direction
 
 
+func _try_keyboard_jump(desired_direction: Vector3, steered_direction: Vector3) -> void:
+	if keyboard_control_disable_jump:
+		_keyboard_jump_was_pressed = false
+		return
+	var pressed := Input.is_key_pressed(KEY_SPACE)
+	if not pressed:
+		_keyboard_jump_was_pressed = false
+		return
+	if _keyboard_jump_was_pressed:
+		return
+	_keyboard_jump_was_pressed = true
+	if not is_on_floor():
+		return
+
+	var jump_direction := steered_direction
+	jump_direction.y = 0.0
+	if jump_direction.length_squared() <= 0.0001:
+		jump_direction = desired_direction
+		jump_direction.y = 0.0
+	if jump_direction.length_squared() <= 0.0001:
+		jump_direction = _manual_last_direction
+		jump_direction.y = 0.0
+	if jump_direction.length_squared() > 0.0001 \
+			and _can_try_auto_jump(desired_direction, jump_direction) \
+			and _jump.try_jump(jump_direction.normalized(), is_on_floor(),
+					_is_direction_leaving_road(jump_direction)):
+		return
+
+	velocity.y = maxf(_config.jump_velocity, 0.0)
+	_logger.info("JUMP", "MANUAL", {
+		"velocity": velocity.y,
+		"pos": global_position,
+	})
+
+
 func _can_try_auto_jump(desired_direction: Vector3, steered_direction: Vector3) -> bool:
 	if not _config.jump_low_obstacles:
-		return false
-	if _debug_avoidance_status == "green corridor" or _green_corridor_timer > 0.0:
 		return false
 	var desired := desired_direction
 	desired.y = 0.0
@@ -488,7 +577,46 @@ func _can_try_auto_jump(desired_direction: Vector3, steered_direction: Vector3) 
 	steered.y = 0.0
 	if desired.length_squared() <= 0.0001 or steered.length_squared() <= 0.0001:
 		return false
+	var on_road := _perception != null \
+			and _perception.get_surface_kind(global_position) == SurfaceClassifier.KIND_ROAD
+	var leaving_road := on_road and _is_direction_leaving_road(desired)
+	if _debug_avoidance_status.ends_with("corridor") \
+			or _debug_avoidance_status == "local path" \
+			or _debug_avoidance_status == "road edge" \
+			or _green_corridor_timer > 0.0:
+		return leaving_road
+	if on_road and not leaving_road:
+		return false
 	return true
+
+
+func _is_direction_leaving_road(direction: Vector3) -> bool:
+	if _perception == null:
+		return false
+	if _perception.get_surface_kind(global_position) != SurfaceClassifier.KIND_ROAD:
+		return false
+	var planar := direction
+	planar.y = 0.0
+	if planar.length_squared() <= 0.0001:
+		return false
+	planar = planar.normalized()
+
+	var base_dist := maxf(_config.jump_probe_distance,
+			maxf(_config.local_astar_forward_road_check_distance, 0.35))
+	for dist in [base_dist, base_dist * 1.6, base_dist + _config.local_astar_road_proximity_margin]:
+		var sample_kind := _perception.get_surface_kind(global_position + planar * float(dist))
+		if _is_walkable_exit_surface_kind(sample_kind):
+			return true
+	return false
+
+
+func _is_walkable_exit_surface_kind(kind: String) -> bool:
+	if kind == SurfaceClassifier.KIND_PEDESTRIAN or kind == SurfaceClassifier.KIND_CROSSWALK:
+		return true
+	return kind == "boundary" \
+			or kind == "corner" \
+			or kind == "access" \
+			or kind.begins_with("crosswalk")
 
 
 # ========================================================================
@@ -533,9 +661,9 @@ func _choose_steered_direction(desired_direction: Vector3, delta: float) -> Vect
 			_green_corridor_direction = corridor_dir
 			_green_corridor_timer = maxf(_config.obstacle_check_interval, 0.08)
 			_cached_avoidance_blocked = true
-			_debug_avoidance_status = "green corridor"
+			_debug_avoidance_status = "%s corridor" % _last_corridor_kind
 			if not was_blocked:
-				_logger.debug("CTRL", "GREEN_CORRIDOR_PICK", {
+				_logger.debug("CTRL", "%s_CORRIDOR_PICK" % _last_corridor_kind.to_upper(), {
 					"surface": surface_kind,
 					"road_edge": too_close,
 					"pos": global_position,
@@ -564,7 +692,7 @@ func _choose_steered_direction(desired_direction: Vector3, delta: float) -> Vect
 
 	if _green_corridor_timer > 0.0 and _green_corridor_direction != Vector3.ZERO:
 		_cached_avoidance_blocked = true
-		_debug_avoidance_status = "green corridor"
+		_debug_avoidance_status = "%s corridor" % _last_corridor_kind
 		return _green_corridor_direction
 
 	if _cached_avoidance_blocked and _local_astar_replan_timer <= 0.0:
@@ -647,9 +775,6 @@ func _clear_live_debug_scan() -> void:
 
 
 func _update_live_debug_scan(forward: Vector3, delta: float) -> void:
-	if not _config.debug_draw_avoidance:
-		_clear_live_debug_scan()
-		return
 	if not _config.use_local_astar_avoidance:
 		_clear_live_debug_scan()
 		return
@@ -666,8 +791,6 @@ func _update_live_debug_scan(forward: Vector3, delta: float) -> void:
 	if height_threshold <= 0.0:
 		height_threshold = _LIVE_SCAN_STEP_HEIGHT
 	var probe_radius := _config.local_astar_height_clearance_probe_radius
-	if probe_radius <= 0.0:
-		probe_radius = _LIVE_SCAN_PROBE_RADIUS
 	var result := _local_grid.scan_at(
 			global_position,
 			forward,
@@ -682,6 +805,7 @@ func _update_live_debug_scan(forward: Vector3, delta: float) -> void:
 
 func _pick_green_corridor_direction(desired_direction: Vector3, _surface_kind: String,
 		_too_close_to_road: bool) -> Vector3:
+	_last_corridor_kind = ""
 	if _debug_live_scan_cells.is_empty():
 		return Vector3.ZERO
 
@@ -723,10 +847,41 @@ func _pick_green_corridor_direction(desired_direction: Vector3, _surface_kind: S
 	if not needs_corridor:
 		return Vector3.ZERO
 
+	var green_direction := _pick_corridor_candidate(
+			desired_direction, forward, right, origin, cell_size, lane_width,
+			first_direct_block_forward, direct_lane_blocked, direct_lane_road, false)
+	if green_direction != Vector3.ZERO:
+		_last_corridor_kind = "green"
+		return green_direction
+
+	var orange_direction := _pick_corridor_candidate(
+			desired_direction, forward, right, origin, cell_size, lane_width,
+			first_direct_block_forward, direct_lane_blocked, direct_lane_road, true)
+	if orange_direction != Vector3.ZERO:
+		_last_corridor_kind = "orange"
+		return orange_direction
+	return Vector3.ZERO
+
+
+func _pick_corridor_candidate(
+		_desired_direction: Vector3,
+		forward: Vector3,
+		right: Vector3,
+		origin: Vector3,
+		cell_size: float,
+		lane_width: float,
+		first_direct_block_forward: float,
+		direct_lane_blocked: bool,
+		direct_lane_road: bool,
+		allow_orange_fallback: bool) -> Vector3:
 	var best_score := -1000000.0
 	var best_direction := Vector3.ZERO
 	for cell_data in _debug_live_scan_cells:
-		if bool(cell_data.get("blocked", false)):
+		var blocked := bool(cell_data.get("blocked", false))
+		if allow_orange_fallback:
+			if not _is_orange_corridor_cell(cell_data):
+				continue
+		elif blocked:
 			continue
 		var surface := str(cell_data.get("surface", ""))
 		if surface == SurfaceClassifier.KIND_ROAD:
@@ -751,7 +906,9 @@ func _pick_green_corridor_direction(desired_direction: Vector3, _surface_kind: S
 		elif surface == SurfaceClassifier.KIND_UNKNOWN:
 			score += 0.5
 		if near_road:
-			score -= 2.4
+			score -= 0.6 if allow_orange_fallback else 2.4
+		if allow_orange_fallback:
+			score -= 0.8
 		if direct_lane_blocked and forward_dist >= first_direct_block_forward - cell_size \
 				and lateral_dist < lane_width * 0.65:
 			score -= 4.0
@@ -769,6 +926,19 @@ func _pick_green_corridor_direction(desired_direction: Vector3, _surface_kind: S
 	if best_direction.dot(forward) < 0.25:
 		return Vector3.ZERO
 	return best_direction
+
+
+func _is_orange_corridor_cell(cell_data: Dictionary) -> bool:
+	var reason := str(cell_data.get("blocked_reason", ""))
+	if reason != "road_buffer":
+		return false
+	if bool(cell_data.get("physics_blocked", false)):
+		return false
+	if bool(cell_data.get("height_blocked", false)):
+		return false
+	if bool(cell_data.get("surface_blocked", false)):
+		return false
+	return str(cell_data.get("surface", "")) != SurfaceClassifier.KIND_ROAD
 
 
 func _should_escape_surface(surface_kind: String) -> bool:
@@ -793,7 +963,9 @@ func _should_escape_surface(surface_kind: String) -> bool:
 func _advance_path_progress() -> bool:
 	var old_index := _path_index
 	while _path_index < _global_path.size():
-		if not _is_at_path_index(_path_index) and not _has_passed_path_index(_path_index):
+		if not _is_at_path_index(_path_index) \
+				and not _has_passed_path_index(_path_index) \
+				and not _is_already_on_next_segment(_path_index):
 			break
 		_path_index += 1
 		_reset_path_following_state_for_next_waypoint()
@@ -841,9 +1013,30 @@ func _has_passed_path_index(index: int) -> bool:
 	return _planar_distance(global_position, waypoint) <= pass_distance
 
 
+func _is_already_on_next_segment(index: int) -> bool:
+	if index <= 0 or index >= _global_path.size() - 1:
+		return false
+	var waypoint := _global_path[index]
+	var next := _global_path[index + 1]
+	var segment := next - waypoint
+	segment.y = 0.0
+	var seg_len_sq := segment.length_squared()
+	if seg_len_sq <= 0.0001:
+		return false
+	var to_pos := global_position - waypoint
+	to_pos.y = 0.0
+	var progress := to_pos.dot(segment) / seg_len_sq
+	if progress <= 0.03:
+		return false
+	var lateral_distance := _planar_distance_to_segment(global_position, waypoint, next)
+	var corridor_width := maxf(_config.waypoint_reach_distance, _config.waypoint_pass_distance * 0.5)
+	return lateral_distance <= corridor_width
+
+
 func _get_path_reach_distance(index: int) -> float:
 	if index >= _global_path.size() - 1:
-		return maxf(_config.final_waypoint_reach_distance, 0.02)
+		return maxf(_config.final_waypoint_reach_distance,
+				minf(_config.waypoint_reach_distance, 0.35))
 	return maxf(_config.waypoint_reach_distance, 0.02)
 
 
@@ -857,6 +1050,7 @@ func _stop_at_target() -> void:
 	velocity.z = 0.0
 	if _config.clear_global_path_on_arrival:
 		_debug.clear_global_path()
+	_debug.clear_target_marker()
 	_debug.clear_avoidance()
 	if was_travelling:
 		_logger.info("CTRL", "ARRIVED", {
@@ -921,10 +1115,49 @@ func _try_replan_from_stuck() -> void:
 	_local_astar_replan_timer = 0.0
 	_advance_path_progress()
 	_debug.update_global_path(_global_path, _path_index)
+	_try_local_replan_from_stuck()
 	_logger.info("CTRL", "STUCK_REPLAN_OK", {
 		"waypoints": _global_path.size(),
 		"pos": global_position,
 	})
+
+
+func _try_local_replan_from_stuck() -> void:
+	if not _config.use_local_astar_avoidance:
+		return
+	if _path_index >= _global_path.size():
+		return
+
+	var desired_direction := _global_path[_path_index] - global_position
+	desired_direction.y = 0.0
+	if desired_direction.length_squared() <= 0.0001:
+		return
+	desired_direction = desired_direction.normalized()
+
+	_green_corridor_direction = Vector3.ZERO
+	_green_corridor_timer = 0.0
+	_local_astar_replan_timer = 0.0
+	var result := _local_grid.build_detour(desired_direction,
+			_global_path, _path_index, _target_position)
+	_apply_local_grid_result(result)
+	var success := bool(result.get(LocalGridPlanner.RESULT_KEY_SUCCESS, false))
+	var path: PackedVector3Array = result.get(LocalGridPlanner.RESULT_KEY_PATH, PackedVector3Array())
+	if success and not path.is_empty():
+		_cached_avoidance_blocked = true
+		_debug_avoidance_status = "local path"
+		_local_astar_replan_timer = maxf(_config.local_astar_replan_interval, 0.02)
+		_logger.info("CTRL", "STUCK_LOCAL_REPLAN_OK", {
+			"status": _debug_local_grid_status,
+			"points": path.size(),
+			"pos": global_position,
+			"dir": desired_direction,
+		})
+	else:
+		_logger.warn("CTRL", "STUCK_LOCAL_REPLAN_FAIL", {
+			"status": _debug_local_grid_status,
+			"pos": global_position,
+			"dir": desired_direction,
+		})
 
 
 # ========================================================================
@@ -948,6 +1181,135 @@ func _planar_distance(a: Vector3, b: Vector3) -> float:
 	var off := a - b
 	off.y = 0.0
 	return off.length()
+
+
+func _planar_distance_to_segment(point: Vector3, from: Vector3, to: Vector3) -> float:
+	var planar_point := point
+	var planar_from := from
+	var planar_to := to
+	planar_point.y = 0.0
+	planar_from.y = 0.0
+	planar_to.y = 0.0
+	var segment := planar_to - planar_from
+	var len_sq := segment.length_squared()
+	if len_sq <= 0.0001:
+		return planar_point.distance_to(planar_from)
+	var t := clampf((planar_point - planar_from).dot(segment) / len_sq, 0.0, 1.0)
+	return planar_point.distance_to(planar_from + segment * t)
+
+
+func _resolve_navigation_target(target: Vector3) -> Vector3:
+	var projected := _project_navigation_target_to_ground(target)
+	var surface_kind := _get_navigation_surface_kind(projected)
+	var graph_kind := _get_pedestrian_graph_kind(projected)
+	var access: Variant = _get_pedestrian_access_point(projected)
+	var resolved := projected
+	var reason := "ground_projection" if target.distance_to(projected) > 0.03 else ""
+
+	if access is Vector3:
+		var access_point := access as Vector3
+		if surface_kind == SurfaceClassifier.KIND_ROAD:
+			resolved = access_point
+			reason = "road_to_pedestrian_access"
+		elif not _is_walkable_exit_surface_kind(surface_kind) and graph_kind.is_empty():
+			resolved = access_point
+			reason = "non_walkable_to_pedestrian_access"
+		elif absf(target.y - projected.y) > _get_target_ground_y_tolerance() \
+				and not _is_walkable_exit_surface_kind(surface_kind):
+			resolved = access_point
+			reason = "high_hit_to_pedestrian_access"
+
+	if not reason.is_empty() and _logger != null:
+		_logger.info("CTRL", "TARGET_NORMALIZED", {
+			"requested": target,
+			"projected": projected,
+			"resolved": resolved,
+			"surface": surface_kind,
+			"graph_kind": graph_kind if not graph_kind.is_empty() else "-",
+			"reason": reason,
+		})
+	return resolved
+
+
+func _project_navigation_target_to_ground(target: Vector3) -> Vector3:
+	if not is_inside_tree() or get_world_3d() == null:
+		return target
+
+	var from := target + Vector3.UP * _TARGET_GROUND_PROBE_UP
+	var to := target + Vector3.DOWN * _TARGET_GROUND_PROBE_DOWN
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.collision_mask = _config.click_collision_mask
+	query.collide_with_areas = false
+	query.collide_with_bodies = true
+
+	var excludes: Array[RID] = [get_rid()]
+	var space := get_world_3d().direct_space_state
+	for _attempt in range(_TARGET_GROUND_MAX_HITS):
+		query.exclude = excludes
+		var hit := space.intersect_ray(query)
+		if hit.is_empty():
+			break
+
+		var collider: Variant = hit.get("collider", null)
+		if collider is CharacterBody3D and hit.has("rid"):
+			excludes.append(hit["rid"])
+			continue
+
+		var hit_pos := hit.get("position", target) as Vector3
+		var kind := _classify_navigation_target_hit(hit, hit_pos)
+		if _is_walkable_exit_surface_kind(kind) or kind == SurfaceClassifier.KIND_ROAD:
+			return hit_pos
+
+		var normal := hit.get("normal", Vector3.UP) as Vector3
+		var near_citizen_ground := absf(hit_pos.y - global_position.y) <= _get_target_ground_y_tolerance()
+		if normal.dot(Vector3.UP) >= 0.65 and near_citizen_ground:
+			return hit_pos
+
+		if not hit.has("rid"):
+			break
+		excludes.append(hit["rid"])
+
+	var ground_y := _get_world_ground_fallback_y()
+	var fallback := target
+	fallback.y = ground_y
+	return fallback
+
+
+func _classify_navigation_target_hit(hit: Dictionary, point: Vector3) -> String:
+	if _perception != null:
+		return _perception.surface_kind_from_hit(hit, point)
+	return SurfaceClassifier.classify_hit(hit)
+
+
+func _get_navigation_surface_kind(point: Vector3) -> String:
+	if _perception != null:
+		return _perception.get_surface_kind(point)
+	return SurfaceClassifier.KIND_UNKNOWN
+
+
+func _get_pedestrian_graph_kind(point: Vector3) -> String:
+	var world := _ctx.get_world_node()
+	if world != null and world.has_method("get_pedestrian_path_point_kind"):
+		return str(world.get_pedestrian_path_point_kind(point))
+	return ""
+
+
+func _get_pedestrian_access_point(point: Vector3) -> Variant:
+	var world := _ctx.get_world_node()
+	if world != null and world.has_method("get_pedestrian_access_point"):
+		return world.get_pedestrian_access_point(point)
+	return null
+
+
+func _get_world_ground_fallback_y() -> float:
+	var world := _ctx.get_world_node()
+	if world != null and world.has_method("get_ground_fallback_y"):
+		return float(world.get_ground_fallback_y())
+	return global_position.y
+
+
+func _get_target_ground_y_tolerance() -> float:
+	return maxf(_config.local_astar_height_block_threshold, _TARGET_GROUND_Y_TOLERANCE)
 
 
 func _get_click_world_position(screen_pos: Vector2) -> Variant:

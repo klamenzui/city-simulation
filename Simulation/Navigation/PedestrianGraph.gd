@@ -575,10 +575,9 @@ func _build_crosswalk_links() -> void:
 				"road": road,
 				"axis": axis,
 			}
-		for corner_idx in _get_crosswalk_side_corner_indices(road, cross_dir, false):
-			_connect_nodes(entry_idx, corner_idx)
-		for corner_idx in _get_crosswalk_side_corner_indices(road, cross_dir, true):
-			_connect_nodes(exit_idx, corner_idx)
+		# Crosswalk traversal must stay on the zebra centerline. Connecting
+		# entry/exit directly to corners lets A* cut diagonally across road
+		# edges and skip the middle of the crossing.
 		_connect_nodes(entry_anchor_idx, entry_idx)
 		_connect_nodes(entry_idx, center_idx)
 		_connect_nodes(center_idx, exit_idx)

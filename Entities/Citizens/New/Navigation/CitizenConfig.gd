@@ -58,7 +58,10 @@ var local_astar_probe_height_steps: int = 4
 ## vs. a step. >0 enables the top-hit + clearance-sphere + wall-buffer pipeline
 ## inside `build_detour`; 0 falls back to the legacy multi-height sphere stack.
 var local_astar_height_block_threshold: float = 0.25
-var local_astar_height_clearance_probe_radius: float = 0.08
+var local_astar_height_clearance_probe_radius: float = 0.0
+## Extra blocked rings around height-blocked cells. This is separate from the
+## clearance sphere radius: 0 = no extra distance, 1 = immediate neighbors.
+var local_astar_wall_buffer_cells: int = 0
 var local_astar_surface_collision_mask: int = 3
 var local_astar_surface_probe_up: float = 0.5
 var local_astar_surface_probe_down: float = 2.2
@@ -135,6 +138,7 @@ const FIELD_NAMES: Array[String] = [
 	"local_astar_probe_height_steps",
 	"local_astar_height_block_threshold",
 	"local_astar_height_clearance_probe_radius",
+	"local_astar_wall_buffer_cells",
 	"local_astar_surface_collision_mask",
 	"local_astar_surface_probe_up",
 	"local_astar_surface_probe_down",

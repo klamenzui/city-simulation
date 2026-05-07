@@ -62,6 +62,7 @@ func tick(delta: float, current_pos: Vector3, dist_to_target: float,
 	_last_pos = current_pos
 
 	if dist >= maxf(cfg.stuck_detection_min_distance, 0.05):
+		_recovery_attempts = 0
 		return ACTION_NONE
 
 	# Stuck detected — only NOW do we build the log dict.
