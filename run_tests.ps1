@@ -173,6 +173,11 @@ $availableTests = @(
 		Script = "res://tools/codex_navigation_route_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "navedge"
+		Label = "Citizen Edge Step"
+		Script = "res://tools/codex_navigation_edge_step_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "navscandiag"
 		Label = "Scan Diagnostic"
 		Script = "res://tools/codex_scan_diagnose_test.gd"
