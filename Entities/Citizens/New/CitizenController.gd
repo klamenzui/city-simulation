@@ -139,6 +139,17 @@ const _TARGET_GROUND_PROBE_UP: float = 6.0
 const _TARGET_GROUND_PROBE_DOWN: float = 12.0
 const _TARGET_GROUND_MAX_HITS: int = 16
 const _TARGET_GROUND_Y_TOLERANCE: float = 0.35
+const _TARGET_WALKABLE_SEARCH_RADII: Array[float] = [0.25, 0.5, 0.8, 1.15]
+const _TARGET_WALKABLE_SEARCH_DIRECTIONS: Array[Vector3] = [
+	Vector3.RIGHT,
+	Vector3.LEFT,
+	Vector3.FORWARD,
+	Vector3.BACK,
+	Vector3(0.70710678, 0.0, 0.70710678),
+	Vector3(-0.70710678, 0.0, 0.70710678),
+	Vector3(0.70710678, 0.0, -0.70710678),
+	Vector3(-0.70710678, 0.0, -0.70710678),
+]
 
 # ---------------------------------------------------------- Modules
 var _config: CitizenConfig = null
@@ -381,8 +392,9 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 
-	var move_target := SteeringController.blend_corner(_global_path, _path_index,
-			global_position, _config.corner_blend_distance, _config.corner_blend_strength)
+	var move_target := _global_path[_path_index] if _is_crosswalk_path_context(_path_index) \
+			else SteeringController.blend_corner(_global_path, _path_index,
+					global_position, _config.corner_blend_distance, _config.corner_blend_strength)
 	var direction := move_target - global_position
 	direction.y = 0.0
 
@@ -1016,6 +1028,8 @@ func _has_passed_path_index(index: int) -> bool:
 func _is_already_on_next_segment(index: int) -> bool:
 	if index <= 0 or index >= _global_path.size() - 1:
 		return false
+	if _is_crosswalk_path_context(index):
+		return false
 	var waypoint := _global_path[index]
 	var next := _global_path[index + 1]
 	var segment := next - waypoint
@@ -1038,6 +1052,19 @@ func _get_path_reach_distance(index: int) -> float:
 		return maxf(_config.final_waypoint_reach_distance,
 				minf(_config.waypoint_reach_distance, 0.35))
 	return maxf(_config.waypoint_reach_distance, 0.02)
+
+
+func _is_crosswalk_path_context(index: int) -> bool:
+	if index < 0 or index >= _global_path.size():
+		return false
+	for candidate_index in [index - 1, index, index + 1]:
+		var candidate := int(candidate_index)
+		if candidate < 0 or candidate >= _global_path.size():
+			continue
+		var kind := _get_pedestrian_graph_kind(_global_path[candidate])
+		if kind.begins_with("crosswalk"):
+			return true
+	return false
 
 
 func _stop_at_target() -> void:
@@ -1205,17 +1232,22 @@ func _resolve_navigation_target(target: Vector3) -> Vector3:
 	var access: Variant = _get_pedestrian_access_point(projected)
 	var resolved := projected
 	var reason := "ground_projection" if target.distance_to(projected) > 0.03 else ""
+	var high_hit := absf(target.y - projected.y) > _get_target_ground_y_tolerance()
+	var needs_walkable_snap := surface_kind == SurfaceClassifier.KIND_ROAD \
+			or (high_hit and not _is_walkable_exit_surface_kind(surface_kind))
 
-	if access is Vector3:
+	if needs_walkable_snap:
+		var nearby_walkable: Variant = _find_nearby_walkable_navigation_target(projected)
+		if nearby_walkable is Vector3:
+			resolved = nearby_walkable as Vector3
+			reason = "nearby_walkable_ground"
+
+	if resolved == projected and access is Vector3:
 		var access_point := access as Vector3
 		if surface_kind == SurfaceClassifier.KIND_ROAD:
 			resolved = access_point
 			reason = "road_to_pedestrian_access"
-		elif not _is_walkable_exit_surface_kind(surface_kind) and graph_kind.is_empty():
-			resolved = access_point
-			reason = "non_walkable_to_pedestrian_access"
-		elif absf(target.y - projected.y) > _get_target_ground_y_tolerance() \
-				and not _is_walkable_exit_surface_kind(surface_kind):
+		elif high_hit and not _is_walkable_exit_surface_kind(surface_kind):
 			resolved = access_point
 			reason = "high_hit_to_pedestrian_access"
 
@@ -1229,6 +1261,36 @@ func _resolve_navigation_target(target: Vector3) -> Vector3:
 			"reason": reason,
 		})
 	return resolved
+
+
+func _find_nearby_walkable_navigation_target(origin: Vector3) -> Variant:
+	var best := Vector3.ZERO
+	var best_score := INF
+	var has_best := false
+
+	for radius in _TARGET_WALKABLE_SEARCH_RADII:
+		for direction in _TARGET_WALKABLE_SEARCH_DIRECTIONS:
+			var sample_seed := origin + direction * radius
+			var sample := _project_navigation_target_to_ground(sample_seed)
+			var surface_kind := _get_navigation_surface_kind(sample)
+			if not _is_walkable_exit_surface_kind(surface_kind):
+				continue
+
+			var score := sample.distance_squared_to(origin)
+			var graph_kind := _get_pedestrian_graph_kind(sample)
+			if graph_kind == "crosswalk" or graph_kind.begins_with("crosswalk"):
+				score -= 0.2
+			elif graph_kind == "boundary" or graph_kind == "corner" or graph_kind == "access":
+				score -= 0.05
+
+			if not has_best or score < best_score:
+				best = sample
+				best_score = score
+				has_best = true
+
+	if has_best:
+		return best
+	return null
 
 
 func _project_navigation_target_to_ground(target: Vector3) -> Vector3:
