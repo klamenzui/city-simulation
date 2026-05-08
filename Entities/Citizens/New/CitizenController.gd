@@ -413,9 +413,9 @@ func _physics_process(delta: float) -> void:
 
 		# Jump uses DIRECT-TO-WAYPOINT direction so the ray faces the obstacle
 		# regardless of how avoidance is steering.
-		var allow_road_jump := _is_direction_leaving_road(desired_direction)
-		if _can_try_auto_jump(desired_direction, steered_direction) \
-				and _jump.try_jump(desired_direction, is_on_floor(), allow_road_jump):
+		var allow_low_step := _should_allow_low_step_to_walkable(desired_direction)
+		if _can_try_auto_jump(desired_direction, steered_direction, allow_low_step) \
+				and _jump.try_jump(desired_direction, is_on_floor(), allow_low_step):
 			# Cancel avoidance so the citizen flies straight over what was
 			# just cleared, instead of being rerouted mid-air.
 			_clear_local_avoidance_path()
@@ -567,10 +567,10 @@ func _try_keyboard_jump(desired_direction: Vector3, steered_direction: Vector3) 
 	if jump_direction.length_squared() <= 0.0001:
 		jump_direction = _manual_last_direction
 		jump_direction.y = 0.0
+	var allow_low_step := _should_allow_low_step_to_walkable(jump_direction)
 	if jump_direction.length_squared() > 0.0001 \
-			and _can_try_auto_jump(desired_direction, jump_direction) \
-			and _jump.try_jump(jump_direction.normalized(), is_on_floor(),
-					_is_direction_leaving_road(jump_direction)):
+			and _can_try_auto_jump(desired_direction, jump_direction, allow_low_step) \
+			and _jump.try_jump(jump_direction.normalized(), is_on_floor(), allow_low_step):
 		return
 
 	velocity.y = maxf(_config.jump_velocity, 0.0)
@@ -580,7 +580,8 @@ func _try_keyboard_jump(desired_direction: Vector3, steered_direction: Vector3) 
 	})
 
 
-func _can_try_auto_jump(desired_direction: Vector3, steered_direction: Vector3) -> bool:
+func _can_try_auto_jump(desired_direction: Vector3, steered_direction: Vector3,
+		allow_low_step: bool = false) -> bool:
 	if not _config.jump_low_obstacles:
 		return false
 	var desired := desired_direction
@@ -591,13 +592,12 @@ func _can_try_auto_jump(desired_direction: Vector3, steered_direction: Vector3) 
 		return false
 	var on_road := _perception != null \
 			and _perception.get_surface_kind(global_position) == SurfaceClassifier.KIND_ROAD
-	var leaving_road := on_road and _is_direction_leaving_road(desired)
 	if _debug_avoidance_status.ends_with("corridor") \
 			or _debug_avoidance_status == "local path" \
 			or _debug_avoidance_status == "road edge" \
 			or _green_corridor_timer > 0.0:
-		return leaving_road
-	if on_road and not leaving_road:
+		return allow_low_step
+	if on_road and not allow_low_step:
 		return false
 	return true
 
@@ -620,6 +620,55 @@ func _is_direction_leaving_road(direction: Vector3) -> bool:
 		if _is_walkable_exit_surface_kind(sample_kind):
 			return true
 	return false
+
+
+func _should_allow_low_step_to_walkable(direction: Vector3) -> bool:
+	if _perception == null:
+		return false
+	var planar := direction
+	planar.y = 0.0
+	if planar.length_squared() <= 0.0001:
+		return false
+	planar = planar.normalized()
+
+	if _is_direction_leaving_road(planar):
+		return true
+
+	var current_kind := _perception.get_surface_kind(global_position)
+	var graph_kind := _get_pedestrian_graph_kind(global_position)
+	if not _is_walkable_exit_surface_kind(current_kind) \
+			and not _is_walkable_exit_surface_kind(graph_kind):
+		return false
+	if not _is_pedestrian_edge_route_context():
+		return false
+	if _is_pedestrian_edge_kind(graph_kind):
+		return true
+
+	var near_road_margin := maxf(_config.local_astar_road_proximity_margin + 0.15, 0.35)
+	if not _perception.is_point_near_road(global_position, near_road_margin):
+		return false
+	return true
+
+
+func _is_pedestrian_edge_route_context() -> bool:
+	if _global_path.is_empty():
+		return false
+	if _is_pedestrian_edge_kind(_get_pedestrian_graph_kind(global_position)):
+		return true
+
+	var first_index := maxi(_path_index - 1, 0)
+	var last_index := mini(_path_index + 2, _global_path.size() - 1)
+	for index in range(first_index, last_index + 1):
+		if _is_pedestrian_edge_kind(_get_pedestrian_graph_kind(_global_path[index])):
+			return true
+	return false
+
+
+func _is_pedestrian_edge_kind(kind: String) -> bool:
+	return kind == "boundary" \
+			or kind == "corner" \
+			or kind == "access" \
+			or kind.begins_with("crosswalk")
 
 
 func _is_walkable_exit_surface_kind(kind: String) -> bool:
