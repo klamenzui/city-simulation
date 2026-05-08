@@ -98,7 +98,9 @@ func rebuild_from_scene(root: Node3D, _buildings: Array = []) -> void:
 	_initialize_neighbor_buckets()
 	_build_side_links()
 	_build_corner_links()
-	_build_corner_perimeter_links()
+	# Do not add corner-to-corner perimeter shortcuts around crossing tiles.
+	# Those edges let A* skirt the zebra at road corners instead of entering
+	# through crosswalk_entry -> crosswalk center -> crosswalk_exit.
 	_build_crosswalk_links()
 	_rebuild_components()
 
@@ -406,10 +408,14 @@ func _get_crosswalk_geometry(crosswalk: Node3D) -> Dictionary:
 
 	var local_aabb := mesh_instance.get_aabb()
 	var local_center := local_aabb.position + local_aabb.size * 0.5
+	var local_cross_axis := Vector3.FORWARD
 	var local_half_cross := local_aabb.size.z * 0.5
+	if local_aabb.size.x > local_aabb.size.z:
+		local_cross_axis = Vector3.RIGHT
+		local_half_cross = local_aabb.size.x * 0.5
 	var world_center := mesh_instance.to_global(local_center)
-	var world_entry := mesh_instance.to_global(local_center - Vector3(0.0, 0.0, local_half_cross))
-	var world_exit := mesh_instance.to_global(local_center + Vector3(0.0, 0.0, local_half_cross))
+	var world_entry := mesh_instance.to_global(local_center - local_cross_axis * local_half_cross)
+	var world_exit := mesh_instance.to_global(local_center + local_cross_axis * local_half_cross)
 	world_center.y = 0.0
 	world_entry.y = 0.0
 	world_exit.y = 0.0
@@ -527,16 +533,14 @@ func _build_corner_perimeter_links() -> void:
 func _build_crosswalk_links() -> void:
 	for key in _crosswalk_cells.keys():
 		var road := _crosswalk_cells[key] as Vector3
-		var axis: String = str(_crosswalk_axes.get(key, "x"))
 		var cross_meta := _crosswalk_meta.get(key, {}) as Dictionary
 		var center := cross_meta.get("center", road) as Vector3
-		var cross_dir := cross_meta.get("cross_dir", Vector3.RIGHT if axis == "x" else Vector3.FORWARD) as Vector3
+		var visual_dir := cross_meta.get("cross_dir", Vector3.ZERO) as Vector3
+		var cross_dir := _resolve_crosswalk_direction(road, visual_dir)
+		var axis := "x" if absf(cross_dir.x) >= absf(cross_dir.z) else "z"
 		var half_span := float(cross_meta.get("half_span", HALF_ROAD_WIDTH))
-		cross_dir.y = 0.0
-		if cross_dir.length_squared() <= 0.0001:
-			cross_dir = Vector3.RIGHT if axis == "x" else Vector3.FORWARD
-		else:
-			cross_dir = cross_dir.normalized()
+		_crosswalk_axes[key] = axis
+		cross_meta["cross_dir"] = cross_dir
 
 		var entry_point := center - cross_dir * half_span
 		var exit_point := center + cross_dir * half_span
@@ -547,6 +551,17 @@ func _build_crosswalk_links() -> void:
 		var exit_anchor_idx := _resolve_crosswalk_anchor_index(road, center, cross_dir, true, exit_point)
 		if entry_anchor_idx < 0 or exit_anchor_idx < 0:
 			continue
+		var anchor_dir := nodes[exit_anchor_idx] - nodes[entry_anchor_idx]
+		anchor_dir.y = 0.0
+		if anchor_dir.length_squared() > 0.0001:
+			cross_dir = anchor_dir.normalized()
+			axis = "x" if absf(cross_dir.x) >= absf(cross_dir.z) else "z"
+			_crosswalk_axes[key] = axis
+			cross_meta["cross_dir"] = cross_dir
+			entry_point = center - cross_dir * half_span
+			exit_point = center + cross_dir * half_span
+			entry_point.y = 0.0
+			exit_point.y = 0.0
 		cross_meta["entry_point"] = entry_point
 		cross_meta["exit_point"] = exit_point
 		cross_meta["entry_anchor"] = nodes[entry_anchor_idx]
@@ -582,6 +597,43 @@ func _build_crosswalk_links() -> void:
 		_connect_nodes(entry_idx, center_idx)
 		_connect_nodes(center_idx, exit_idx)
 		_connect_nodes(exit_idx, exit_anchor_idx)
+
+func _resolve_crosswalk_direction(road: Vector3, visual_dir: Vector3) -> Vector3:
+	var x_pair_score := _crosswalk_side_pair_score(road, 0, 1)
+	var z_pair_score := _crosswalk_side_pair_score(road, 2, 3)
+	if x_pair_score > z_pair_score:
+		return Vector3.RIGHT
+	if z_pair_score > x_pair_score:
+		return Vector3.FORWARD
+
+	var x_neighbor_count := _road_neighbor_count(road, Vector3(CELL_STEP, 0.0, 0.0))
+	var z_neighbor_count := _road_neighbor_count(road, Vector3(0.0, 0.0, CELL_STEP))
+	if x_neighbor_count > z_neighbor_count:
+		return Vector3.FORWARD
+	if z_neighbor_count > x_neighbor_count:
+		return Vector3.RIGHT
+
+	visual_dir.y = 0.0
+	if visual_dir.length_squared() <= 0.0001:
+		return Vector3.FORWARD
+	visual_dir = visual_dir.normalized()
+	return Vector3.RIGHT if absf(visual_dir.x) >= absf(visual_dir.z) else Vector3.FORWARD
+
+func _crosswalk_side_pair_score(road: Vector3, negative_side_id: int, positive_side_id: int) -> int:
+	var score := 0
+	if _boundary_node_by_side.has(_side_key(road, negative_side_id)):
+		score += 1
+	if _boundary_node_by_side.has(_side_key(road, positive_side_id)):
+		score += 1
+	return score
+
+func _road_neighbor_count(road: Vector3, axis_step: Vector3) -> int:
+	var count := 0
+	if _road_cells.has(_grid_key(road + axis_step)):
+		count += 1
+	if _road_cells.has(_grid_key(road - axis_step)):
+		count += 1
+	return count
 
 func _resolve_crosswalk_anchor_index(road: Vector3, center: Vector3, cross_dir: Vector3, forward_side: bool, fallback_point: Vector3) -> int:
 	var exact_side_idx := _get_crosswalk_side_boundary_index(road, cross_dir, forward_side)
