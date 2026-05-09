@@ -1,34 +1,18 @@
-class_name CitizenFacade
+class_name Citizen
 extends CitizenController
 
-## Migration scaffold: extends the Movement-only `CitizenController` with a
-## composed Sim layer (`CitizenSimulation`) and re-exposes the API surface
-## that callers (`CitizenAgent`, `CitizenPlanner`, GOAP Actions, `World`,
-## `CitizenSimulationLodController`, Factory) currently expect from the
-## legacy `Citizen.gd`.
-##
-## **Today's status:** scaffold only. The first migrated component is
-## `CitizenRestPose`. As more components are extracted out of `Citizen.gd`,
-## new pass-through methods are added here.
-##
-## **Why a Facade and not just adding methods to `CitizenController`?**
-## Movement is a self-contained subsystem with its own test-coverage and a
-## clear public API (`set_global_target`, `stop_travel`, `is_travelling`).
-## Stuffing Sim concerns into the same class would re-create the
-## 3000-line monolith we are migrating away from.
-##
-## **Why a separate file from the legacy `Entities/Citizens/Citizen.gd`?**
-## `class_name Citizen` is currently owned by the legacy file and many
-## callers reference it. Renaming/replacing in one go would break the
-## simulation while migration is in progress. When all components are
-## migrated, the legacy file can be archived and this class renamed to
-## `Citizen` (and `CitizenNew.tscn` repointed accordingly).
+## Production Citizen stack: `CitizenController` owns navigation/movement,
+## `CitizenSimulation` owns composed sim state, and this class keeps the
+## legacy API surface expected by World, Buildings, GOAP Actions and UI.
 ##
 ## See `Sim/MIGRATION.md` for the full roadmap.
+
+signal clicked
 
 @export_group("Identity")
 ## Display name. Mirrored into `_sim.identity.citizen_name` on `_ready`.
 @export var citizen_name: String = "Alex"
+@export var debug_panel: DebugPanel
 
 ## True when this citizen takes part in autonomous GOAP simulation.
 ## Player-controlled NPCs and the lone test-citizen `$Citizen` set this
@@ -36,18 +20,62 @@ extends CitizenController
 @export var autonomous_simulation_enabled: bool = true
 
 const SimLoggerScript = preload("res://Simulation/Logging/SimLogger.gd")
+const CitizenAgentScript = preload("res://Simulation/Citizens/CitizenAgent.gd")
 
 var _sim: CitizenSimulation = null
+var _world_ref: World = null
+var _agent = CitizenAgentScript.new()
+
+var _click_area: Area3D = null
+var _click_area_shape: CollisionShape3D = null
+var _mesh_instance: MeshInstance3D = null
+var _original_material: Material = null
+var _highlight_material: StandardMaterial3D = null
+var _selection_active: bool = false
+var _auto_resolved_refs: bool = false
 
 # Saved at _ready so Presence-Toggle can restore them on building exit.
 var _saved_collision_layer: int = 0
 var _saved_collision_mask: int = 0
 var _interior_presence_hidden: bool = false
+var _debug_repath_count: int = 0
+var _debug_last_travel_route: PackedVector3Array = PackedVector3Array()
+var _debug_last_travel_failed: bool = false
+var _debug_travel_target_building: Building = null
+var _travel_target: Vector3 = Vector3.ZERO
+var _travel_target_building: Building = null
+var _stuck_slide_hold_dir: Vector3 = Vector3.ZERO
+var _stuck_slide_hold_left: float = 0.0
+var _walk_speed: float = 0.5
+var _home_rotation_candidate_day: int = -1
+var _runtime_conversation_mode: String = ""
+var _runtime_conversation_partner: String = ""
+var _runtime_conversation_topic: String = ""
+var cheap_path_follow_lod_enabled: bool = true
+var cheap_path_follow_camera_distance: float = 80.0
+var obstacle_sensor_height: float = 0.9
+var obstacle_probe_length: float = 0.95
+var obstacle_clearance_probe_distance: float = 0.34
+var obstacle_clearance_radius: float = 0.10
+var obstacle_clearance_height: float = 0.78
+var forward_avoidance_enabled: bool = true
+var forward_avoidance_min_alignment: float = 0.08
+var _obstacle_ray_forward: RayCast3D = null
+var _obstacle_ray_left: RayCast3D = null
+var _obstacle_ray_right: RayCast3D = null
+var _forward_avoidance_area: Area3D = null
+var _forward_avoidance_shape: CollisionShape3D = null
+var unreachable_target_retry_limit: int = 2
+var unreachable_target_no_progress_minutes: int = 30
+
+
+func _init() -> void:
+	_ensure_sim_initialized()
 
 
 func _ready() -> void:
 	super._ready()
-	_sim = CitizenSimulation.new(self)
+	_ensure_sim_initialized()
 	# Mirror Inspector-set @export values into Identity.
 	if _sim != null and _sim.identity != null:
 		_sim.identity.citizen_name = citizen_name
@@ -58,6 +86,84 @@ func _ready() -> void:
 	# Snapshot collision layers so building entry/exit can toggle them.
 	_saved_collision_layer = collision_layer
 	_saved_collision_mask = collision_mask
+	_walk_speed = maxf(move_speed, 0.01)
+	_setup_clickable()
+	_setup_selection_visual()
+	call_deferred("_auto_resolve_refs")
+
+
+func _ensure_sim_initialized() -> void:
+	if _sim != null:
+		return
+	_sim = CitizenSimulation.new(self)
+	if _sim.identity != null:
+		_sim.identity.citizen_name = citizen_name
+
+
+func _setup_clickable() -> void:
+	var area := get_node_or_null("ClickArea") as Area3D
+	if area == null:
+		area = Area3D.new()
+		area.name = "ClickArea"
+		add_child(area)
+	area.input_ray_pickable = true
+
+	var col := area.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if col == null:
+		col = CollisionShape3D.new()
+		col.name = "CollisionShape3D"
+		area.add_child(col)
+	var body_col := get_node_or_null("CollisionShape3D") as CollisionShape3D
+	var body_shape := body_col.shape as CapsuleShape3D if body_col != null else null
+	var shape := col.shape as CapsuleShape3D
+	if shape == null:
+		shape = CapsuleShape3D.new()
+		col.shape = shape
+	if body_shape != null:
+		shape.radius = body_shape.radius
+		shape.height = body_shape.height
+		col.transform = body_col.transform
+	else:
+		shape.radius = 0.45
+		shape.height = 2.1
+		col.position = Vector3(0, 1.05, 0)
+
+	_click_area = area
+	_click_area_shape = col
+	if not area.input_event.is_connected(_on_click_area_input_event):
+		area.input_event.connect(_on_click_area_input_event)
+
+
+func _on_click_area_input_event(_camera: Camera3D, event: InputEvent,
+		_position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
+	if event is InputEventMouseButton \
+			and event.button_index == MOUSE_BUTTON_LEFT \
+			and event.pressed:
+		clicked.emit()
+		var viewport := get_viewport()
+		if viewport != null:
+			viewport.set_input_as_handled()
+
+
+func _setup_selection_visual() -> void:
+	_mesh_instance = get_node_or_null("MeshInstance3D") as MeshInstance3D
+	if _mesh_instance != null:
+		_original_material = _mesh_instance.material_overlay
+	_highlight_material = StandardMaterial3D.new()
+	_highlight_material.albedo_color = Color(1.0, 0.84, 0.25, 0.55)
+	_highlight_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+
+
+func select(panel) -> void:
+	debug_panel = panel
+	set_selected(panel != null)
+
+
+func set_selected(selected: bool) -> void:
+	_selection_active = selected
+	if _mesh_instance == null:
+		return
+	_mesh_instance.material_overlay = _highlight_material if selected else _original_material
 
 
 # ========================================================================
@@ -134,6 +240,75 @@ var education_level: int:
 # Favorites — accessed via getters/setters rather than property forwarding to
 # keep the @export-property cluster small. Plain helpers, identical effect.
 
+var favorite_restaurant: Restaurant:
+	get: return get_favorite_restaurant()
+	set(value): set_favorite_restaurant(value)
+
+var favorite_supermarket: Supermarket:
+	get: return get_favorite_supermarket()
+	set(value): set_favorite_supermarket(value)
+
+var favorite_shop: Shop:
+	get: return get_favorite_shop()
+	set(value): set_favorite_shop(value)
+
+var favorite_cinema: Cinema:
+	get: return get_favorite_cinema()
+	set(value): set_favorite_cinema(value)
+
+var favorite_park: Building:
+	get: return get_favorite_park()
+	set(value): set_favorite_park(value)
+
+var final_arrival_distance: float:
+	get: return final_waypoint_reach_distance
+	set(value): final_waypoint_reach_distance = value
+
+var local_navigation_raycast_checks_enabled: bool:
+	get: return use_local_astar_avoidance
+	set(value): use_local_astar_avoidance = value
+
+var repath_interval_sec: float:
+	get: return local_astar_replan_interval
+	set(value): local_astar_replan_interval = maxf(value, 0.05)
+
+var _simulation_lod_tick_phase_seed: int:
+	get:
+		return _sim.lod.tick_phase_seed if _sim != null and _sim.lod != null else 0
+	set(value):
+		if _sim != null and _sim.lod != null:
+			_sim.lod.tick_phase_seed = value
+
+var _simulation_lod_path_mode: String:
+	get:
+		return _sim.lod.path_mode if _sim != null and _sim.lod != null else "default"
+	set(value):
+		if _sim != null and _sim.lod != null:
+			_sim.lod.path_mode = value
+
+var _travel_route: PackedVector3Array:
+	get:
+		return PackedVector3Array(_global_path)
+	set(value):
+		_global_path = PackedVector3Array(value)
+		_debug_last_travel_route = PackedVector3Array(value)
+		if not _global_path.is_empty():
+			_target_position = _global_path[_global_path.size() - 1]
+		_is_travelling = _global_path.size() >= 2 if _is_travelling else _is_travelling
+
+var _travel_route_index: int:
+	get:
+		return _path_index
+	set(value):
+		_path_index = value
+		if _global_path.is_empty():
+			return
+		var clamped_index := clampi(value, 0, _global_path.size() - 1)
+		_path_index = clamped_index
+		_travel_target = _global_path[clamped_index]
+		_target_position = _global_path[_global_path.size() - 1]
+
+
 func get_favorite_restaurant() -> Restaurant:
 	return _sim.identity.favorite_restaurant if _sim != null and _sim.identity != null else null
 
@@ -201,6 +376,43 @@ var schedule_offset_max: int:
 	set(v):
 		if _sim != null and _sim.scheduler != null:
 			_sim.scheduler.schedule_offset_max = v
+
+func _auto_resolve_refs() -> void:
+	if _auto_resolved_refs or _agent == null or _agent.query_resolver == null:
+		return
+	if not is_inside_tree():
+		return
+	_auto_resolved_refs = true
+
+	var origin := global_position
+	var query: CitizenQueryResolver = _agent.query_resolver
+	if home == null:
+		home = query.find_first_residential_building(self, origin)
+		if home != null:
+			var added := home.add_tenant(self)
+			if not added:
+				var full_home := home
+				home = query.find_first_residential_building(self, origin)
+				if home != null and home != full_home:
+					home.add_tenant(self)
+	if favorite_restaurant == null:
+		favorite_restaurant = query.find_nearest_restaurant(self, origin, false)
+	if favorite_supermarket == null:
+		favorite_supermarket = query.find_nearest_supermarket(self, origin, false)
+	if favorite_shop == null:
+		favorite_shop = query.find_nearest_shop(self, origin, false)
+	if favorite_cinema == null:
+		favorite_cinema = query.find_nearest_cinema(self, origin, false)
+	if favorite_park == null:
+		favorite_park = query.find_nearest_park(self, origin)
+
+	if job != null:
+		job.resolve_nearest(self, origin)
+		if job.workplace != null:
+			job.try_get_employed(self)
+			if _world_ref != null and _world_ref.has_method("register_job"):
+				_world_ref.register_job(job)
+
 
 var decision_cooldown_left: int:
 	get: return _sim.scheduler.decision_cooldown_left if _sim != null and _sim.scheduler != null else 0
@@ -430,6 +642,91 @@ func get_active_lod_commitments(world: Node) -> Array:
 	return _sim.lod.get_active_commitments(world)
 
 
+func set_runtime_conversation_state(mode: String, partner_name: String = "", topic: String = "") -> void:
+	_runtime_conversation_mode = mode
+	_runtime_conversation_partner = partner_name
+	_runtime_conversation_topic = topic
+
+
+func clear_runtime_conversation_state() -> void:
+	_runtime_conversation_mode = ""
+	_runtime_conversation_partner = ""
+	_runtime_conversation_topic = ""
+
+
+func get_runtime_conversation_label() -> String:
+	if _runtime_conversation_mode == "":
+		return "-"
+	var parts: Array[String] = [_runtime_conversation_mode]
+	if _runtime_conversation_partner != "":
+		parts.append("with %s" % _runtime_conversation_partner)
+	if _runtime_conversation_topic != "":
+		parts.append("topic=%s" % _runtime_conversation_topic)
+	return " ".join(parts)
+
+
+func is_active_player_dialog_session() -> bool:
+	return _runtime_conversation_mode == "interactive" \
+		and _runtime_conversation_partner == "Player" \
+		and _runtime_conversation_topic == "player_dialog"
+
+
+func face_position_horizontal(target_position: Vector3) -> void:
+	var facing_dir := target_position - global_position
+	facing_dir.y = 0.0
+	if facing_dir.length_squared() <= 0.0001:
+		return
+	rotation.y = atan2(-facing_dir.x, -facing_dir.z)
+
+
+func get_home_rotation_candidate_day() -> int:
+	return _home_rotation_candidate_day
+
+
+func is_safe_home_rotation_candidate(world: World) -> bool:
+	var at_home_idle := home != null \
+		and current_location == home \
+		and current_action == null \
+		and not is_travelling() \
+		and not is_manual_control_enabled() \
+		and not is_click_move_mode_enabled()
+	if at_home_idle:
+		if _home_rotation_candidate_day < 0 and world != null:
+			_home_rotation_candidate_day = world.world_day()
+	else:
+		_home_rotation_candidate_day = -1
+	return at_home_idle and not has_active_lod_commitment(world)
+
+
+func _is_eligible_for_cheap_lod() -> bool:
+	if is_manual_control_enabled() or is_click_move_mode_enabled():
+		return false
+	if _selection_active:
+		return false
+	var path_mode := _simulation_lod_path_mode
+	if path_mode == "full":
+		return false
+	if path_mode == "cheap":
+		return true
+	if not cheap_path_follow_lod_enabled:
+		return false
+	var tier := get_simulation_lod_tier()
+	if tier == CitizenLodComponent.TIER_ACTIVE or tier == CitizenLodComponent.TIER_COARSE:
+		return true
+	var viewport := get_viewport()
+	if viewport == null:
+		return false
+	var camera := viewport.get_camera_3d()
+	if camera == null:
+		return false
+	var threshold := maxf(cheap_path_follow_camera_distance, 0.0)
+	if threshold <= 0.0:
+		return true
+	var planar_camera_delta := global_position - camera.global_position
+	planar_camera_delta.y = 0.0
+	return planar_camera_delta.length_squared() >= threshold * threshold
+
+
 ## Combines LOD-presence-flag and indoor-presence-flag — both can hide the
 ## body. The order matters: indoor presence is set via `_set_interior_presence`
 ## above; LOD presence reuses the same toggle but ORs the flag.
@@ -571,8 +868,11 @@ func get_navigation_points_for_building(building: Building, world: Node = null) 
 	if _sim == null or _sim.location == null:
 		return {}
 	var name_for_offset := _sim.identity.citizen_name if _sim.identity != null else citizen_name
+	var reserved_bench: Dictionary = {}
+	if building != null and building.has_method("get_reserved_bench_for"):
+		reserved_bench = building.get_reserved_bench_for(self)
 	return CitizenLocation.resolve_navigation_points(
-			building, world, name_for_offset, global_position)
+			building, world, name_for_offset, global_position, reserved_bench)
 
 
 func enter_building(building: Building, world: Node = null, emit_log: bool = true) -> void:
@@ -711,6 +1011,28 @@ func _update_trace_navigation_state(reason: String, desired_dir: Vector3, move_d
 	_sim.trace.update_navigation(reason, desired_dir, move_dir)
 
 
+var _trace_last_decision_reason: String:
+	get:
+		return _sim.trace.last_decision_reason if _sim != null and _sim.trace != null else "idle"
+	set(value):
+		if _sim != null and _sim.trace != null:
+			_sim.trace.last_decision_reason = value
+
+var _trace_last_desired_dir: Vector3:
+	get:
+		return _sim.trace.last_desired_dir if _sim != null and _sim.trace != null else Vector3.ZERO
+	set(value):
+		if _sim != null and _sim.trace != null:
+			_sim.trace.last_desired_dir = value
+
+var _trace_last_move_dir: Vector3:
+	get:
+		return _sim.trace.last_move_dir if _sim != null and _sim.trace != null else Vector3.ZERO
+	set(value):
+		if _sim != null and _sim.trace != null:
+			_sim.trace.last_move_dir = value
+
+
 # ========================================================================
 # Debug logging — delegates to CitizenDebugFacade. Kept on the Facade as
 # `debug_log` / `debug_log_once_per_day` because callers (Actions, GOAP,
@@ -769,13 +1091,486 @@ func get_trace_debug_summary() -> String:
 # ========================================================================
 
 func set_world_ref(p_world: Node) -> void:
+	_world_ref = p_world as World
 	if _sim != null:
 		_sim.set_world(p_world)
+	_auto_resolved_refs = false
+	call_deferred("_auto_resolve_refs")
 
 
 func sim_tick(p_world: Node) -> void:
+	if not should_run_simulation_lod_tick(p_world):
+		return
 	if _sim != null:
 		_sim.tick(p_world)
+	if _agent != null:
+		_agent.sim_tick(self, p_world)
+
+
+func notify_job_lost(_old_workplace: Building = null, reason: String = "") -> void:
+	var world := _resolve_world_ref()
+	var origin := global_position if is_inside_tree() else position
+
+	if _try_reassign_existing_job(world, origin):
+		return
+	if _try_assign_best_job_offer(world, origin):
+		return
+
+	if job != null:
+		SimLoggerScript.log("[Citizen %s] job lost (%s), no replacement found: %s" % [
+			citizen_name,
+			reason,
+			get_unemployment_debug_reason()
+		])
+
+
+func _try_reassign_existing_job(world: World, origin: Vector3) -> bool:
+	if job == null:
+		return false
+	if job.workplace != null and job.workplace.has_free_job_slots():
+		return _try_hire_current_job(world)
+	var replacement: Building = null
+	if world != null and world.has_method("find_best_workplace_for_job"):
+		replacement = world.find_best_workplace_for_job(origin, job, self)
+	if replacement == null:
+		if not is_inside_tree():
+			return false
+		job.resolve_nearest(self, origin)
+	else:
+		job.workplace = replacement
+	return _try_hire_current_job(world)
+
+
+func _try_assign_best_job_offer(world: World, origin: Vector3) -> bool:
+	if world == null or not world.has_method("find_best_job_offer_for_citizen"):
+		return false
+	var offer: Dictionary = world.find_best_job_offer_for_citizen(origin, self, false)
+	if offer.is_empty():
+		return false
+	var new_job := _build_job_from_offer(offer)
+	if new_job == null:
+		return false
+	job = new_job
+	return _try_hire_current_job(world)
+
+
+func _build_job_from_offer(offer: Dictionary) -> Job:
+	var target_building := offer.get("building", null) as Building
+	if target_building == null:
+		return null
+	var job_title := str(offer.get("title", "Worker"))
+	var new_job := Job.new()
+	new_job.title = job_title
+	new_job.wage_per_hour = int(offer.get("wage_per_hour", CitizenFactory.get_wage_for_job_title(job_title)))
+	new_job.shift_hours = int(offer.get("shift_hours", 8))
+	new_job.required_education_level = int(offer.get(
+		"required_education_level",
+		CitizenFactory.get_required_education_for_job_title(job_title)
+	))
+	var expected_service_type := CitizenFactory.get_service_type_for_job_title(job_title)
+	new_job.workplace_service_type = expected_service_type \
+		if expected_service_type != "" and target_building.get_service_type() == expected_service_type \
+		else ""
+	new_job.allowed_building_types = []
+	for type_id in offer.get("allowed_building_types", CitizenFactory.get_allowed_building_types_for_job_title(job_title)):
+		new_job.allowed_building_types.append(int(type_id))
+	new_job.workplace = target_building
+	new_job.preferred_workplace = target_building
+	return new_job
+
+
+func _try_hire_current_job(world: World) -> bool:
+	if job == null:
+		return false
+	if not job.try_get_employed(self):
+		return false
+	if world != null and world.has_method("register_job"):
+		world.register_job(job)
+	return true
+
+
+func _resolve_world_ref() -> World:
+	if _world_ref != null:
+		return _world_ref
+	var current: Node = get_parent()
+	while current != null:
+		if current is World:
+			_world_ref = current as World
+			return _world_ref
+		current = current.get_parent()
+	if not is_inside_tree():
+		return null
+	var tree := get_tree()
+	if tree == null:
+		return null
+	for node in tree.get_nodes_in_group("world"):
+		if node is World:
+			_world_ref = node as World
+			return _world_ref
+	return null
+
+
+func plan_next_action(world: World) -> void:
+	if _agent != null and _agent.planner != null:
+		_agent.planner.plan_next_action(world, self)
+
+
+func start_action(a: Action, world: World) -> void:
+	if a == null:
+		return
+	clear_rest_pose(true)
+	if a is GoToBuildingAction and is_inside_building():
+		exit_current_building(world)
+	elif a is GoToBuildingAction and current_location != null:
+		leave_current_location(world)
+
+	current_action = a
+	current_action.start(world, self)
+
+	if world != null and world.time != null:
+		var loc := _building_label(current_location) if current_location != null else "travelling"
+		if a is GoToBuildingAction:
+			var target := (a as GoToBuildingAction).target
+			if target != null:
+				loc = "-> " + _building_label(target)
+		SimLoggerScript.log("[%s] %02d:%02d (%s) | %-10s | H:%.0f E:%.0f F:%.0f HP:%.0f | $%d | at=%s" % [
+			citizen_name,
+			world.time.get_hour(),
+			world.time.get_minute(),
+			world.time.get_weekday_name(),
+			a.label,
+			needs.hunger if needs != null else 0.0,
+			needs.energy if needs != null else 0.0,
+			needs.fun if needs != null else 0.0,
+			needs.health if needs != null else 0.0,
+			wallet.balance if wallet != null else 0,
+			loc
+		])
+
+
+func begin_travel_to(target_pos: Vector3, target_building: Building = null) -> bool:
+	_debug_travel_target_building = target_building
+	_travel_target = target_pos
+	_travel_target_building = target_building
+	_debug_last_travel_failed = false
+	var ok := set_global_target(target_pos)
+	_debug_last_travel_route = PackedVector3Array(_global_path)
+	if not ok:
+		_debug_last_travel_failed = true
+	return ok
+
+
+func begin_custom_travel_route(route_points: PackedVector3Array,
+		target_building: Building = null) -> bool:
+	var route := PackedVector3Array()
+	route.append(global_position)
+	for point in route_points:
+		if route[route.size() - 1].distance_to(point) > 0.15:
+			route.append(point)
+
+	if route.size() < 2:
+		_debug_last_travel_failed = true
+		return false
+	_debug_travel_target_building = target_building
+	_travel_target = route[route.size() - 1]
+	_travel_target_building = target_building
+	_debug_last_travel_failed = false
+	_global_path = route
+	_path_index = 1
+	_target_position = route[route.size() - 1]
+	_is_travelling = true
+	_debug_last_travel_route = PackedVector3Array(route)
+	_stuck.reset_for_new_target(global_position)
+	_debug.update_global_path(_global_path, _path_index)
+	return true
+
+
+func has_reached_travel_target() -> bool:
+	if _debug_last_travel_failed:
+		return false
+	if _is_travelling:
+		return false
+	var final_target := _target_position
+	if _travel_target != Vector3.ZERO or _travel_target_building != null:
+		final_target = _travel_target
+	return _planar_distance(global_position, final_target) <= final_arrival_distance + 0.05
+
+
+func did_debug_last_travel_fail() -> bool:
+	return _debug_last_travel_failed
+
+
+func get_debug_travel_route_points() -> PackedVector3Array:
+	if not _global_path.is_empty():
+		return PackedVector3Array(_global_path)
+	return PackedVector3Array(_debug_last_travel_route)
+
+
+func get_debug_travel_target_building() -> Building:
+	return _debug_travel_target_building
+
+
+func has_debug_travel_route() -> bool:
+	return get_debug_travel_route_points().size() >= 2
+
+
+func is_debug_travelling() -> bool:
+	return _is_travelling
+
+
+func get_debug_travel_current_target() -> Vector3:
+	if not _global_path.is_empty() and _path_index >= 0 and _path_index < _global_path.size():
+		return _global_path[_path_index]
+	return _target_position
+
+
+func get_debug_travel_route_index() -> int:
+	return _path_index
+
+
+func get_remaining_travel_distance() -> float:
+	if _global_path.is_empty():
+		return 0.0
+	var total := 0.0
+	var cursor := global_position
+	for index in range(maxi(_path_index, 0), _global_path.size()):
+		var point := _global_path[index]
+		total += _planar_distance(cursor, point)
+		cursor = point
+	return total
+
+
+func can_afford_restaurant(world: World) -> bool:
+	if favorite_restaurant == null or wallet == null:
+		return false
+	var price: int = favorite_restaurant.meal_price
+	if favorite_restaurant.has_method("get_meal_price"):
+		price = int(favorite_restaurant.get_meal_price(world))
+	return wallet.balance >= price
+
+
+func can_afford_groceries(world: World) -> bool:
+	if favorite_supermarket == null or wallet == null:
+		return false
+	var price: int = favorite_supermarket.grocery_price
+	if favorite_supermarket.has_method("get_grocery_price"):
+		price = int(favorite_supermarket.get_grocery_price(world))
+	return wallet.balance >= price
+
+
+func can_afford_shop_item(_world: World) -> bool:
+	if favorite_shop == null or wallet == null:
+		return false
+	var price: int = favorite_shop.item_price
+	if favorite_shop.has_method("get_item_price_quote"):
+		price = int(favorite_shop.get_item_price_quote(1.0))
+	return wallet.balance >= price
+
+
+func can_afford_cinema(_world: World) -> bool:
+	if favorite_cinema == null or wallet == null:
+		return false
+	return wallet.balance >= favorite_cinema.ticket_price
+
+
+func set_position_grounded(pos: Vector3) -> void:
+	_set_position_grounded(pos)
+
+
+func _find_nearest_restaurant(from_pos: Vector3, require_open: bool = true) -> Restaurant:
+	if _agent == null or _agent.query_resolver == null:
+		return null
+	return _agent.query_resolver.find_nearest_restaurant(self, from_pos, require_open)
+
+
+func _find_nearest_supermarket(from_pos: Vector3, require_open: bool = true) -> Supermarket:
+	if _agent == null or _agent.query_resolver == null:
+		return null
+	return _agent.query_resolver.find_nearest_supermarket(self, from_pos, require_open)
+
+
+func _find_nearest_shop(from_pos: Vector3, require_open: bool = true) -> Shop:
+	if _agent == null or _agent.query_resolver == null:
+		return null
+	return _agent.query_resolver.find_nearest_shop(self, from_pos, require_open)
+
+
+func _find_nearest_cinema(from_pos: Vector3, require_open: bool = true) -> Cinema:
+	if _agent == null or _agent.query_resolver == null:
+		return null
+	return _agent.query_resolver.find_nearest_cinema(self, from_pos, require_open)
+
+
+func _find_nearest_university(from_pos: Vector3, require_open: bool = true) -> University:
+	if _agent == null or _agent.query_resolver == null:
+		return null
+	return _agent.query_resolver.find_nearest_university(self, from_pos, require_open)
+
+
+func _find_nearest_park(from_pos: Vector3) -> Building:
+	if _agent == null or _agent.query_resolver == null:
+		return null
+	return _agent.query_resolver.find_nearest_park(self, from_pos)
+
+
+func _get_stuck_slide_direction(direction: Vector3) -> Vector3:
+	_stuck_slide_hold_dir = Vector3.ZERO
+	_stuck_slide_hold_left = 0.0
+	if direction.length_squared() <= 0.0001:
+		return Vector3.ZERO
+	return direction.normalized()
+
+
+func _is_slide_escape_direction_viable(candidate: Vector3) -> bool:
+	var planar_candidate := candidate
+	planar_candidate.y = 0.0
+	if planar_candidate.length_squared() <= 0.0001:
+		return false
+	if not _is_crosswalk_route_context() and not _is_move_surface_allowed(planar_candidate, false):
+		return false
+	if _agent == null or _agent.obstacle_avoidance == null:
+		return true
+	return _agent.obstacle_avoidance.score_move_direction(
+		self,
+		planar_candidate.normalized(),
+		_is_crosswalk_route_context()
+	) < 1000.0
+
+
+func _is_crosswalk_route_context() -> bool:
+	if _global_path.is_empty():
+		return false
+	var start_idx := maxi(_path_index - 1, 0)
+	var end_idx := mini(_path_index + 1, _global_path.size() - 1)
+	for idx in range(start_idx, end_idx + 1):
+		if _is_crosswalk_path_context(idx):
+			return true
+	return false
+
+
+func _is_move_surface_allowed(_planar_direction: Vector3, _allow_road: bool = false) -> bool:
+	return true
+
+
+func _is_citizen_collider(collider: Variant) -> bool:
+	return collider is Citizen or (collider is Node and (collider as Node).is_in_group("citizens"))
+
+
+func _is_entrance_trigger_node(node: Node) -> bool:
+	return node != null and (node.is_in_group("building_entrance_trigger") or node.name.to_lower().contains("entrance"))
+
+
+func _is_target_entrance_trigger(node: Node) -> bool:
+	return _is_entrance_trigger_node(node)
+
+
+func _is_walkable_step_surface(collider: Variant) -> bool:
+	if collider is not Node:
+		return false
+	var kind := SurfaceClassifier.classify_node(collider as Node)
+	return kind == SurfaceClassifier.KIND_PEDESTRIAN or kind == SurfaceClassifier.KIND_CROSSWALK
+
+
+func _ray_move_direction(ray: RayCast3D) -> Vector3:
+	if ray == null:
+		return Vector3.ZERO
+	var world_target := ray.to_global(ray.target_position)
+	var direction := world_target - ray.global_position
+	direction.y = 0.0
+	return direction.normalized() if direction.length_squared() > 0.0001 else Vector3.ZERO
+
+
+func _rotate_planar_direction(direction: Vector3, angle_rad: float) -> Vector3:
+	var planar := direction
+	planar.y = 0.0
+	if planar.length_squared() <= 0.0001:
+		return Vector3.ZERO
+	return planar.normalized().rotated(Vector3.UP, angle_rad)
+
+
+func _blend_move_direction(a: Vector3, b: Vector3, weight: float) -> Vector3:
+	var blended := a.lerp(b, clampf(weight, 0.0, 1.0))
+	blended.y = 0.0
+	return blended.normalized() if blended.length_squared() > 0.0001 else Vector3.ZERO
+
+
+func _trace_collider_label(collider: Variant) -> String:
+	if collider == null:
+		return "-"
+	if collider is Node:
+		return (collider as Node).name
+	return str(collider)
+
+
+func _trace_fmt_vec3(v: Vector3) -> String:
+	return "(%.2f, %.2f, %.2f)" % [v.x, v.y, v.z]
+
+
+func _update_debug(world: World, h_delta: float) -> void:
+	if debug_panel == null:
+		return
+	if absf(h_delta) >= 0.5:
+		var reason := "recovering" if h_delta > 0.0 else "declining"
+		SimLoggerScript.log("[%s] Health %+0.1f -> %.1f [%s]" % [
+			citizen_name,
+			h_delta,
+			needs.health if needs != null else 0.0,
+			reason
+		])
+	debug_panel.update_debug({
+		"Citizen": citizen_name,
+		"Location": current_location.building_name if current_location != null else "travelling...",
+		"Action": current_action.label if current_action != null else "idle",
+		"Hunger": "%.1f / 100" % (needs.hunger if needs != null else 0.0),
+		"Energy": "%.1f / 100" % (needs.energy if needs != null else 0.0),
+		"Fun": "%.1f / 100" % (needs.fun if needs != null else 0.0),
+		"Health": "%.1f / 100" % (needs.health if needs != null else 0.0),
+		"Money": "%d EUR" % (wallet.balance if wallet != null else 0),
+		"Groceries": str(home_food_stock),
+		"Education": "%d" % education_level,
+		"Workplace": job.workplace.building_name if (job != null and job.workplace != null) else "unemployed",
+		"Position": "%d, %d, %d" % [global_position.x, global_position.y, global_position.z],
+		"LOD": get_simulation_lod_tier(),
+		"TravelState": "moving" if is_travelling() else "idle",
+	})
+
+
+func get_job_debug_summary() -> String:
+	if job == null:
+		return "job=none"
+	return "job=%s workplace=%s edu=%d/%d wage=%d" % [
+		job.title,
+		_building_label(job.workplace),
+		education_level,
+		job.required_education_level,
+		job.wage_per_hour
+	]
+
+
+func get_unemployment_debug_reason() -> String:
+	if job == null:
+		return "no job"
+	if job.workplace == null:
+		return "no workplace"
+	if education_level < job.required_education_level:
+		return "education %d/%d" % [education_level, job.required_education_level]
+	return "unknown"
+
+
+func get_zero_pay_debug_reason() -> String:
+	if job == null:
+		return "no job"
+	if job.wage_per_hour <= 0:
+		return "zero wage"
+	return ""
+
+
+func _building_label(building: Building) -> String:
+	if building == null:
+		return "Unknown"
+	if building.has_method("get_display_name"):
+		return building.get_display_name()
+	return building.building_name
 
 
 # --- Rest pose (delegated to CitizenRestPose) ---
@@ -788,6 +1583,7 @@ func set_rest_pose(target_pos: Vector3, yaw: float = 0.0) -> void:
 	if _sim == null or _sim.rest_pose == null:
 		return
 	_sim.rest_pose.set_pose(target_pos, yaw)
+	_sim.rest_pose.apply()
 
 
 func clear_rest_pose(snap_to_ground: bool = false) -> void:

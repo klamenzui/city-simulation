@@ -111,10 +111,10 @@ func _update_selected_citizen_path_debug(selected_citizen: Citizen) -> void:
 		_clear_selected_citizen_path_debug()
 		return
 
-	var is_active_route := selected_citizen.is_debug_travelling()
-	var route_failed := selected_citizen.did_debug_last_travel_fail()
-	var current_target := selected_citizen.get_debug_travel_current_target()
-	var current_target_idx := selected_citizen.get_debug_travel_route_index()
+	var is_active_route: bool = selected_citizen.is_debug_travelling()
+	var route_failed: bool = selected_citizen.did_debug_last_travel_fail()
+	var current_target: Vector3 = selected_citizen.get_debug_travel_current_target()
+	var current_target_idx: int = selected_citizen.get_debug_travel_route_index()
 	var route_material := _citizen_path_failed_material if route_failed else _citizen_path_line_material
 
 	_citizen_path_debug.visible = true
@@ -200,9 +200,9 @@ func _draw_selected_citizen_nav_debug(citizen: Citizen, world: World) -> bool:
 	var has_debug := false
 	var source_building: Building = citizen.get_debug_source_building() if citizen.has_method("get_debug_source_building") else citizen.current_location
 	if source_building != null:
-		var source_entrance := source_building.get_entrance_pos()
-		var source_access := citizen.get_debug_access_pos(source_building, world) if citizen.has_method("get_debug_access_pos") else source_entrance
-		var source_spawn := citizen.get_debug_exit_spawn_pos(source_building, world) if citizen.has_method("get_debug_exit_spawn_pos") else source_access
+		var source_entrance: Vector3 = source_building.get_entrance_pos()
+		var source_access: Vector3 = citizen.get_debug_access_pos(source_building, world) if citizen.has_method("get_debug_access_pos") else source_entrance
+		var source_spawn: Vector3 = citizen.get_debug_exit_spawn_pos(source_building, world) if citizen.has_method("get_debug_exit_spawn_pos") else source_access
 		_draw_building_nav_triplet(
 			source_entrance,
 			source_access,

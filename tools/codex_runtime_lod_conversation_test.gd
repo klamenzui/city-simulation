@@ -1,6 +1,6 @@
 extends SceneTree
 
-const CitizenScript = preload("res://Entities/Citizens/Citizen.gd")
+const CitizenScript = preload("res://Entities/Citizens/New/Citizen.gd")
 const ResidentialBuildingScript = preload("res://Entities/Buildings/ResidentialBuilding.gd")
 const RestaurantScript = preload("res://Entities/Buildings/Restaurant.gd")
 const WorldScript = preload("res://Simulation/World.gd")
@@ -1150,7 +1150,7 @@ func _test_multilayer_residential_corner_rejects_blocked_slide_cache() -> String
 	for probe_position in probe_positions:
 		citizen.global_position = probe_position
 		citizen.force_update_transform()
-		var preferred_escape := citizen._travel_target - citizen.global_position
+		var preferred_escape: Vector3 = citizen._travel_target - citizen.global_position
 		preferred_escape.y = 0.0
 		if preferred_escape.length_squared() <= 0.0001:
 			continue
@@ -1200,7 +1200,7 @@ func _test_multilayer_residential_corner_rejects_blocked_slide_cache() -> String
 
 	citizen._stuck_slide_hold_dir = blocked_slide
 	citizen._stuck_slide_hold_left = 0.2
-	var reused_slide := citizen._get_stuck_slide_direction(escape_slide)
+	var reused_slide: Vector3 = citizen._get_stuck_slide_direction(escape_slide)
 	_expect(reused_slide != blocked_slide, "citizen should not reuse a cached blocked slide direction at the residential multilayer corner")
 	_expect(citizen._stuck_slide_hold_dir == Vector3.ZERO, "citizen should clear the cached blocked slide direction after invalidating it")
 

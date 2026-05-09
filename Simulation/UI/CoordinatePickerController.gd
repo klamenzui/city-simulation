@@ -13,7 +13,7 @@ class_name CoordinatePickerController
 ##      gegenseitig) — stattdessen als aggregierte Counts im HUD-Panel und
 ##      per-Cell ins citizen.log.
 ##
-## Sucht den `$Citizen`-Node (CitizenFacade/Controller) zur Laufzeit für den
+## Sucht den `$Citizen`-Node (Citizen/Controller) zur Laufzeit für den
 ## Scan — die Komponenten `_local_grid` und `_perception` werden geliehen.
 
 const RAY_LENGTH: float = 1000.0

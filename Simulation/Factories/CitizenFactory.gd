@@ -3,7 +3,7 @@ class_name CitizenFactory
 
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const BuildingScript = preload("res://Entities/Buildings/Building.gd")
-const CITIZEN_SCENE_PATH := "res://Entities/Citizens/Citizen.tscn"
+const CITIZEN_SCENE_PATH := "res://Entities/Citizens/CitizenNew.tscn"
 
 const FIRST_NAMES := [
 	"Alex", "Maria", "Jonas", "Sophie", "Luca", "Emma", "Finn", "Mia",
