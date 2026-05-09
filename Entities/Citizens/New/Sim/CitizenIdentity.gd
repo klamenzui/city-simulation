@@ -5,8 +5,8 @@ extends RefCounted
 ## Extracted from old `Citizen.gd` lines 11-32.
 ##
 ## RefCounted, no behaviour beyond construction defaults. Anything that needs
-## logic (validation, NodePath resolution, persistence) lives in the Facade
-## (`CitizenFacade.gd`) — Identity is just the bag.
+## logic (validation, NodePath resolution, persistence) lives in `Citizen.gd`;
+## Identity is just the bag.
 ##
 ## Slot ownership convention:
 ##   - `wallet`, `needs` are constructed eagerly so callers never see null.

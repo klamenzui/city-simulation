@@ -52,7 +52,7 @@ func start(world: World, citizen: Citizen) -> void:
 		# instead of trying to clip into the building footprint.
 		_arrival_target = nav_points.get("access", target.get_entrance_pos())
 	var source_building := citizen.current_location
-	var source_spawn := citizen.get_debug_exit_spawn_pos(source_building, world) if source_building != null and citizen.has_method("get_debug_exit_spawn_pos") else citizen.global_position
+	var source_spawn: Vector3 = citizen.get_debug_exit_spawn_pos(source_building, world) if source_building != null and citizen.has_method("get_debug_exit_spawn_pos") else citizen.global_position
 	SimLogger.log("[Citizen %s] GoTo route start=%s start_pos=%s exit=%s -> target=%s entry=%s arrival=%s" % [
 		citizen.citizen_name,
 		_format_building_endpoint(source_building, world, citizen.global_position),

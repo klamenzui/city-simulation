@@ -3,7 +3,7 @@ extends SceneTree
 const BuildingScript = preload("res://Entities/Buildings/Building.gd")
 const ParkScript = preload("res://Entities/Buildings/Park.gd")
 const UniversityScript = preload("res://Entities/Buildings/University.gd")
-const CitizenScript = preload("res://Entities/Citizens/Citizen.gd")
+const CitizenScript = preload("res://Entities/Citizens/New/Citizen.gd")
 const WorldScript = preload("res://Simulation/World.gd")
 const ActionScript = preload("res://Actions/Action.gd")
 const StudyAtUniversityActionScript = preload("res://Actions/StudyAtUniversityAction.gd")
@@ -559,7 +559,7 @@ func _test_citizen_auto_resolves_world_for_queries() -> String:
 	var park: Park = _new_park("Query Park")
 	var citizen: Citizen = _new_citizen("Query Citizen")
 
-	var found_park := citizen._find_nearest_park(Vector3.ZERO)
+	var found_park: Building = citizen._find_nearest_park(Vector3.ZERO)
 
 	_expect_eq(found_park, park, "citizen should still find the nearest park through the world service")
 	_expect_eq(citizen._world_ref, world, "citizen query helpers should auto-resolve and retain the world reference")

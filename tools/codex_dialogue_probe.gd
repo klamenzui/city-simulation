@@ -1,7 +1,7 @@
 extends SceneTree
 
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
-const CitizenScript = preload("res://Entities/Citizens/Citizen.gd")
+const CitizenScript = preload("res://Entities/Citizens/New/Citizen.gd")
 const ResidentialBuildingScript = preload("res://Entities/Buildings/ResidentialBuilding.gd")
 const RestaurantScript = preload("res://Entities/Buildings/Restaurant.gd")
 const SupermarketScript = preload("res://Entities/Buildings/Supermarket.gd")

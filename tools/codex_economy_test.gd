@@ -6,7 +6,7 @@ const AccountScript = preload("res://Entities/Account.gd")
 const JobScript = preload("res://Entities/Job.gd")
 const BuildingScript = preload("res://Entities/Buildings/Building.gd")
 const CityHallScript = preload("res://Entities/Buildings/CityHall.gd")
-const CitizenScript = preload("res://Entities/Citizens/Citizen.gd")
+const CitizenScript = preload("res://Entities/Citizens/New/Citizen.gd")
 const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
 
 var _checks_run: int = 0

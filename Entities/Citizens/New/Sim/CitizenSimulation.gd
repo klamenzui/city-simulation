@@ -4,8 +4,8 @@ extends RefCounted
 ## Top-level orchestrator for the Sim layer of the new Citizen stack.
 ##
 ## Holds every Sim component as a member, dispatches `tick()` to them in
-## a stable order, and exposes a single API surface for the Facade
-## (`CitizenFacade.gd`) to forward into.
+## a stable order, and exposes a single API surface for `Citizen.gd`
+## to forward into.
 ##
 ## Migration note: this class starts small — only the components that have
 ## been extracted from old `Citizen.gd` are wired in. Each tick adds whatever

@@ -71,7 +71,6 @@
 [ext_resource type="PackedScene" uid="uid://blprlwgfny7m" path="res://Scenes/CityBuildings/multilayer/multilayer_004_d588520f.tscn" id="98_xlpjy"]
 [ext_resource type="PackedScene" uid="uid://c2sjyx3wuxudg" path="res://environment/sky/Cycle.tscn" id="99_deygs"]
 [ext_resource type="PackedScene" uid="uid://cib1b468oy5er" path="res://Scenes/CityBuildings/multilayer/multilayer_005_ae5226aa.tscn" id="100_inxc5"]
-[ext_resource type="PackedScene" uid="uid://xwf5gxy5g8c" path="res://Entities/Citizens/Citizen.tscn" id="102_cxcit"]
 [ext_resource type="PackedScene" uid="uid://d180o3e5em11x" path="res://Scenes/CityBuildings/multilayer/multilayer_006_51b92887.tscn" id="102_xpnqb"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/multilayer/multilayer_007_8ef7bcee.tscn" id="104_bbw0l"]
 [ext_resource type="PackedScene" uid="uid://cpjwfjfva60al" path="res://Entities/Citizens/CitizenNew.tscn" id="106_llcqu"]
@@ -2159,7 +2158,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -84.91101, -1.2723389, -6.922
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 84.91101, 1.2723389, 6.9225693)
 shape = SubResource("ConcavePolygonShape3D_deygs")
 
-[node name="Player" parent="World" unique_id=566366776 instance=ExtResource("102_cxcit")]
+[node name="Player" parent="World" unique_id=566366776 instance=ExtResource("106_llcqu")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.76355, 0.26549387, 15.044247)
 citizen_name = "Player"
 autonomous_simulation_enabled = false
@@ -2169,12 +2168,14 @@ script = ExtResource("401_skybr")
 
 [node name="Citizen" parent="." unique_id=1850326929 instance=ExtResource("106_llcqu")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.348106, 1.9736841, 18.510485)
+autonomous_simulation_enabled = false
 local_astar_radius = 0.6
 log_file_path = "res://citizen.log"
 
 [node name="ControlledCitizen" parent="." instance=ExtResource("106_llcqu")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.04, 0.156, 18.66)
 collision_layer = 0
+autonomous_simulation_enabled = false
 move_speed = 0.9
 accept_click_input = true
 keyboard_control_enabled = true
