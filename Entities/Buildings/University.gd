@@ -3,6 +3,14 @@ class_name University
 
 @export var education_gain: int = 1
 
+const TEACHING_ROLE_TITLES: Array[String] = [
+	"Professor",
+	"Teacher",
+	"Lecturer",
+	"Dozent",
+	"Lehrer",
+]
+
 func _ready() -> void:
 	super._ready()
 	building_type = BuildingType.UNIVERSITY
@@ -14,7 +22,18 @@ func get_service_type() -> String:
 	return "education"
 
 func has_teaching_staff() -> bool:
-	return not get_workers_by_titles(["Professor", "Teacher"]).is_empty()
+	return not get_teaching_staff().is_empty()
+
+func get_teaching_staff() -> Array[Citizen]:
+	var matches := get_workers_by_titles(TEACHING_ROLE_TITLES)
+	for worker in workers:
+		if worker == null or worker.job == null:
+			continue
+		if matches.has(worker):
+			continue
+		if worker.job.workplace_service_type.strip_edges().to_lower() == "education":
+			matches.append(worker)
+	return matches
 
 func has_required_staff() -> bool:
 	return has_teaching_staff()
@@ -53,7 +72,7 @@ func study_session(_world: World, citizen: Citizen) -> bool:
 func _get_extra_info(_world = null) -> Dictionary:
 	return {
 		"Education gain": "+%d" % education_gain,
-		"Teaching staff": "%d" % get_workers_by_titles(["Professor", "Teacher"]).size(),
+		"Teaching staff": "%d" % get_teaching_staff().size(),
 		"Base operating cost": "%d EUR" % get_base_operating_cost_per_day(),
 		"Payroll due": "%d EUR" % get_payroll_due_today(),
 	}

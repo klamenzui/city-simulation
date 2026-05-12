@@ -689,7 +689,8 @@ func requires_staff_to_operate() -> bool:
 	if job_capacity <= 0:
 		return false
 	match building_type:
-		BuildingType.RESIDENTIAL, BuildingType.PARK:
+		BuildingType.RESIDENTIAL, BuildingType.PARK, \
+		BuildingType.RESTAURANT, BuildingType.SUPERMARKET, BuildingType.CAFE:
 			return false
 		_:
 			return true
@@ -972,13 +973,19 @@ func get_maintenance_role_titles() -> Array[String]:
 			return ["MaintenanceWorker", "Janitor", "Technician", "Gardener"]
 
 func get_workers_by_titles(job_titles: Array[String]) -> Array[Citizen]:
+	var normalized_titles := {}
+	for title in job_titles:
+		normalized_titles[_normalize_job_title(title)] = true
 	var matches: Array[Citizen] = []
 	for worker in workers:
 		if worker == null or worker.job == null:
 			continue
-		if job_titles.has(worker.job.title):
+		if normalized_titles.has(_normalize_job_title(worker.job.title)):
 			matches.append(worker)
 	return matches
+
+func _normalize_job_title(job_title: String) -> String:
+	return job_title.strip_edges().to_lower()
 
 func has_maintenance_staff() -> bool:
 	return not get_workers_by_titles(get_maintenance_role_titles()).is_empty()

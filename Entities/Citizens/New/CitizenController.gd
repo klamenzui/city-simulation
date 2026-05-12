@@ -103,6 +103,13 @@ extends CharacterBody3D
 @export var stuck_detection_interval: float = 1.5
 @export var stuck_detection_min_distance: float = 0.25
 @export var stuck_max_recovery_attempts: int = 3
+@export var stuck_escape_duration: float = 1.1
+@export var stuck_escape_probe_distance: float = 0.75
+@export var stuck_escape_success_distance: float = 0.45
+@export var stuck_escape_retarget_interval: float = 0.35
+@export var stuck_escape_rejoin_probe_interval: float = 0.22
+@export var stuck_escape_waypoint_skip_distance: float = 1.4
+@export var stuck_detection_jitter: float = 0.45
 
 # ---------------------------------------------------------- Exports: Logging
 @export_group("Logging")
@@ -195,6 +202,12 @@ var _keyboard_jump_was_pressed: bool = false
 
 # Surface-escape suppression (set after stuck replan + after no-candidates)
 var _surface_escape_cooldown: float = 0.0
+var _stuck_escape_direction: Vector3 = Vector3.ZERO
+var _stuck_escape_target: Vector3 = Vector3.ZERO
+var _stuck_escape_timer: float = 0.0
+var _stuck_escape_retarget_timer: float = 0.0
+var _stuck_escape_rejoin_probe_timer: float = 0.0
+var _stuck_escape_start_pos: Vector3 = Vector3.ZERO
 
 
 # ========================================================================
@@ -274,6 +287,7 @@ func set_global_target(target: Vector3) -> bool:
 	_green_corridor_timer = 0.0
 	_steering.reset()
 	_clear_local_avoidance_path()
+	_clear_stuck_escape()
 	_stuck.reset_for_new_target(global_position)
 
 	if _is_travelling:
@@ -308,6 +322,7 @@ func stop_travel() -> void:
 	_steering.reset()
 	_stuck.reset_for_idle(global_position)
 	_clear_local_avoidance_path()
+	_clear_stuck_escape()
 	velocity = Vector3.ZERO
 	_debug.clear_global_path()
 	_debug.clear_target_marker()
@@ -373,6 +388,7 @@ func exit_keyboard_control_mode() -> void:
 	_steering.reset()
 	_clear_local_avoidance_path()
 	_clear_live_debug_scan()
+	_clear_stuck_escape()
 	_debug.clear_avoidance()
 	var camera := get_viewport().get_camera_3d()
 	if camera != null and camera.has_method("clear_follow_target"):
@@ -471,6 +487,7 @@ func _physics_process_keyboard_control(delta: float) -> void:
 		_clear_local_avoidance_path()
 		_local_astar_follow_global_on_fail = false
 		_surface_escape_cooldown = 0.0
+		_clear_stuck_escape()
 
 	var desired_direction := _get_keyboard_control_direction()
 	if desired_direction.length_squared() <= 0.0001:
@@ -727,6 +744,12 @@ func _is_walkable_exit_surface_kind(kind: String) -> bool:
 ## up.  All transitions are logged so the reason for any heading change is
 ## recoverable from the log.
 func _choose_steered_direction(desired_direction: Vector3, delta: float) -> Vector3:
+	var escape_direction := _get_stuck_escape_direction(desired_direction)
+	if escape_direction != Vector3.ZERO:
+		_cached_avoidance_blocked = true
+		_debug_avoidance_status = "stuck escape"
+		return escape_direction
+
 	if not _config.use_local_astar_avoidance:
 		_cached_avoidance_blocked = false
 		_clear_local_avoidance_path()
@@ -1100,6 +1123,7 @@ func _reset_path_following_state_for_next_waypoint() -> void:
 	_obstacle_check_timer = 0.0
 	_local_astar_follow_global_on_fail = false
 	_clear_local_avoidance_path()
+	_clear_stuck_escape()
 
 
 func _is_at_path_index(index: int) -> bool:
@@ -1175,6 +1199,7 @@ func _stop_at_target() -> void:
 	_cached_avoidance_blocked = false
 	_steering.reset()
 	_stuck.reset_for_idle(global_position)
+	_clear_stuck_escape()
 	velocity.x = 0.0
 	velocity.z = 0.0
 	if _config.clear_global_path_on_arrival:
@@ -1206,24 +1231,296 @@ func _tick_stuck_detection(delta: float) -> void:
 			_jump.status())
 	match action:
 		StuckRecovery.ACTION_REPLAN:
-			_try_replan_from_stuck()
+			var recovered_locally := _try_stuck_escape_recovery(false)
+			if recovered_locally:
+				_stuck.reset_for_new_target(global_position)
+			else:
+				var replan_ok := _try_replan_from_stuck()
+				if replan_ok and _is_travelling:
+					_stuck.reset_for_new_target(global_position)
 		StuckRecovery.ACTION_ABORT:
-			_logger.error("CTRL", "STUCK_FINAL", {
+			var started_escape := _try_stuck_escape_recovery(true)
+			if started_escape and _is_travelling:
+				_logger.warn("CTRL", "STUCK_EXHAUSTED_ESCAPE", {
+					"pos": global_position,
+					"target": _target_position,
+					"escape_target": _stuck_escape_target,
+					"path_index": _path_index,
+				})
+				_stuck.reset_for_new_target(global_position)
+			elif not _is_travelling:
+				return
+			else:
+				var abort_replan_ok := _try_replan_from_stuck()
+				if abort_replan_ok and _is_travelling:
+					_stuck.reset_for_new_target(global_position)
+				else:
+					_logger.error("CTRL", "STUCK_FINAL", {
+						"pos": global_position,
+						"target": _target_position,
+					})
+					stop_travel()
+					stuck.emit()
+
+
+func _try_stuck_escape_recovery(strong: bool) -> bool:
+	if _try_finish_stuck_near_target():
+		return true
+	var skipped := _try_skip_stuck_waypoint()
+	var started := _begin_stuck_escape(strong)
+	if skipped or started:
+		_logger.warn("CTRL", "STUCK_ESCAPE_RECOVERY", {
+			"pos": global_position,
+			"target": _target_position,
+			"path_index": _path_index,
+			"skipped_waypoint": skipped,
+			"escape_started": started,
+			"strong": strong,
+		})
+	return skipped or started
+
+
+func _try_finish_stuck_near_target() -> bool:
+	var dist_to_target := _planar_distance(global_position, _target_position)
+	var arrival_distance := maxf(_config.stuck_detection_min_distance * 2.0,
+			maxf(_config.final_waypoint_reach_distance * 2.0,
+					_config.waypoint_pass_distance + 0.1))
+	if dist_to_target > arrival_distance:
+		return false
+	_stop_at_target()
+	return true
+
+
+func _try_skip_stuck_waypoint() -> bool:
+	if _global_path.size() < 3:
+		return false
+	if _path_index <= 0 or _path_index >= _global_path.size() - 1:
+		return false
+	if _is_crosswalk_path_context(_path_index):
+		return false
+
+	var waypoint := _global_path[_path_index]
+	var distance := _planar_distance(global_position, waypoint)
+	var max_skip_distance := maxf(_config.stuck_escape_waypoint_skip_distance,
+			_config.waypoint_pass_distance)
+	if distance > max_skip_distance:
+		return false
+
+	var old_index := _path_index
+	_path_index += 1
+	_reset_path_following_state_for_next_waypoint()
+	_obstacle_check_timer = 0.0
+	_debug.update_global_path(_global_path, _path_index)
+	_logger.info("CTRL", "STUCK_SKIP_WAYPOINT", {
+		"old": old_index,
+		"new": _path_index,
+		"distance": distance,
+		"pos": global_position,
+	})
+	return true
+
+
+func _begin_stuck_escape(strong: bool) -> bool:
+	var forward := _get_current_global_planar_direction()
+	if forward == Vector3.ZERO:
+		return false
+
+	var picked := _pick_stuck_escape_direction(forward, strong)
+	if picked == Vector3.ZERO:
+		return false
+
+	var distance := maxf(_config.stuck_escape_probe_distance, 0.25)
+	if strong:
+		distance *= 1.45
+	_stuck_escape_direction = picked
+	_stuck_escape_target = global_position + picked * distance
+	_stuck_escape_timer = maxf(_config.stuck_escape_duration * (1.35 if strong else 1.0), 0.2)
+	_stuck_escape_retarget_timer = maxf(_config.stuck_escape_retarget_interval, 0.08)
+	_stuck_escape_rejoin_probe_timer = maxf(_config.stuck_escape_rejoin_probe_interval, 0.05)
+	_stuck_escape_start_pos = global_position
+	_cached_avoidance_blocked = true
+	_debug_avoidance_status = "stuck escape"
+	_local_astar_replan_timer = maxf(_config.local_astar_fallback_replan_cooldown,
+			_config.local_astar_replan_interval)
+	_obstacle_check_timer = 0.0
+	_steering.reset()
+	_clear_local_avoidance_path()
+	_logger.info("CTRL", "STUCK_ESCAPE_BEGIN", {
+		"pos": global_position,
+		"target": _target_position,
+		"escape_target": _stuck_escape_target,
+		"dir": picked,
+		"strong": strong,
+	})
+	return true
+
+
+func _get_stuck_escape_direction(desired_direction: Vector3) -> Vector3:
+	if _stuck_escape_timer <= 0.0:
+		return Vector3.ZERO
+
+	if _is_stuck_escape_ready_to_rejoin(desired_direction):
+		_finish_stuck_escape("rejoin")
+		return Vector3.ZERO
+
+	var to_escape_target := _stuck_escape_target - global_position
+	to_escape_target.y = 0.0
+	if to_escape_target.length() <= 0.12 \
+			or _stuck_escape_retarget_timer <= 0.0 \
+			or _stuck_escape_direction == Vector3.ZERO:
+		var picked := _pick_stuck_escape_direction(desired_direction, false)
+		if picked != Vector3.ZERO:
+			_stuck_escape_direction = picked
+			_stuck_escape_target = global_position + picked * maxf(_config.stuck_escape_probe_distance, 0.25)
+			_stuck_escape_retarget_timer = maxf(_config.stuck_escape_retarget_interval, 0.08)
+			to_escape_target = _stuck_escape_target - global_position
+			to_escape_target.y = 0.0
+			_logger.debug("CTRL", "STUCK_ESCAPE_RETARGET", {
 				"pos": global_position,
-				"target": _target_position,
+				"escape_target": _stuck_escape_target,
+				"dir": picked,
 			})
-			stop_travel()
-			stuck.emit()
+
+	if to_escape_target.length_squared() <= 0.0001:
+		return _stuck_escape_direction
+	return to_escape_target.normalized()
 
 
-func _try_replan_from_stuck() -> void:
+func _is_stuck_escape_ready_to_rejoin(desired_direction: Vector3) -> bool:
+	var moved := _planar_distance(global_position, _stuck_escape_start_pos)
+	if moved < maxf(_config.stuck_escape_success_distance, 0.1):
+		return false
+	if _stuck_escape_rejoin_probe_timer > 0.0:
+		return false
+	_stuck_escape_rejoin_probe_timer = maxf(_config.stuck_escape_rejoin_probe_interval, 0.05)
+	var desired := desired_direction
+	desired.y = 0.0
+	if desired.length_squared() <= 0.0001:
+		return true
+	desired = desired.normalized()
+	if _perception == null:
+		return true
+	if _perception.is_path_ahead_blocked(desired, _config.jump_low_obstacles):
+		return false
+	if _perception.is_too_close_to_road(desired) and not _is_pedestrian_edge_route_context():
+		return false
+	return true
+
+
+func _finish_stuck_escape(reason: String) -> void:
+	if _stuck_escape_direction == Vector3.ZERO and _stuck_escape_target == Vector3.ZERO:
+		return
+	_logger.info("CTRL", "STUCK_ESCAPE_END", {
+		"reason": reason,
+		"pos": global_position,
+		"target": _target_position,
+		"moved": _planar_distance(global_position, _stuck_escape_start_pos),
+	})
+	_clear_stuck_escape()
+	_obstacle_check_timer = 0.0
+
+
+func _clear_stuck_escape() -> void:
+	_stuck_escape_direction = Vector3.ZERO
+	_stuck_escape_target = Vector3.ZERO
+	_stuck_escape_timer = 0.0
+	_stuck_escape_retarget_timer = 0.0
+	_stuck_escape_rejoin_probe_timer = 0.0
+	_stuck_escape_start_pos = Vector3.ZERO
+
+
+func _get_current_global_planar_direction() -> Vector3:
+	var direction := Vector3.ZERO
+	if _path_index >= 0 and _path_index < _global_path.size():
+		direction = _global_path[_path_index] - global_position
+	elif _target_position != Vector3.ZERO:
+		direction = _target_position - global_position
+	else:
+		direction = -global_transform.basis.z
+	direction.y = 0.0
+	if direction.length_squared() <= 0.0001:
+		return Vector3.ZERO
+	return direction.normalized()
+
+
+func _pick_stuck_escape_direction(forward: Vector3, strong: bool) -> Vector3:
+	var base := forward
+	base.y = 0.0
+	if base.length_squared() <= 0.0001:
+		base = _get_current_global_planar_direction()
+	if base.length_squared() <= 0.0001:
+		return Vector3.ZERO
+	base = base.normalized()
+
+	var right := LocalPerception._planar_right(base)
+	var side_sign := 1.0 if randf() >= 0.5 else -1.0
+	var candidates: Array[Vector3] = [
+		(right * side_sign + base * 0.15).normalized(),
+		(-right * side_sign + base * 0.15).normalized(),
+		(right * side_sign - base * 0.35).normalized(),
+		(-right * side_sign - base * 0.35).normalized(),
+		-base,
+		base.rotated(Vector3.UP, deg_to_rad(45.0 * side_sign)).normalized(),
+		base.rotated(Vector3.UP, deg_to_rad(-45.0 * side_sign)).normalized(),
+	]
+	if strong:
+		candidates.append((right * side_sign - base).normalized())
+		candidates.append((-right * side_sign - base).normalized())
+		candidates.append(base.rotated(Vector3.UP, randf_range(-PI, PI)).normalized())
+
+	var best := Vector3.ZERO
+	var best_score := -INF
+	for candidate in candidates:
+		var score := _score_stuck_escape_direction(candidate, base, strong)
+		if score > best_score:
+			best_score = score
+			best = candidate
+	if best_score <= -900.0:
+		return Vector3.ZERO
+	return best.normalized()
+
+
+func _score_stuck_escape_direction(direction: Vector3, forward: Vector3, strong: bool) -> float:
+	var candidate := direction
+	candidate.y = 0.0
+	if candidate.length_squared() <= 0.0001:
+		return -INF
+	candidate = candidate.normalized()
+
+	var score := randf_range(0.0, 0.12)
+	var dot_forward := candidate.dot(forward)
+	# Sideways/backward moves are useful here: the citizen is explicitly stuck
+	# on the forward plan, so the escape should sample another lane first.
+	score += (1.0 - absf(dot_forward)) * 0.8
+	if dot_forward < -0.2:
+		score += 0.35 if strong else 0.15
+	if _perception == null:
+		return score
+
+	var sample_distance := maxf(_config.stuck_escape_probe_distance, 0.25)
+	var sample_kind := _perception.get_surface_kind(global_position + candidate * sample_distance)
+	if _is_walkable_exit_surface_kind(sample_kind):
+		score += 2.5
+	elif sample_kind == SurfaceClassifier.KIND_ROAD:
+		score -= 3.5
+	elif sample_kind == SurfaceClassifier.KIND_UNKNOWN:
+		score -= 0.4
+
+	if _perception.is_path_ahead_blocked(candidate, _config.jump_low_obstacles):
+		score -= 6.0
+	if _perception.is_too_close_to_road(candidate) and not _is_pedestrian_edge_route_context():
+		score -= 2.0
+	return score
+
+
+func _try_replan_from_stuck() -> bool:
 	# Very close to the destination? Just arrive.
 	var dist_to_target := _planar_distance(global_position, _target_position)
 	if dist_to_target <= maxf(_config.stuck_detection_min_distance * 2.0,
 			maxf(_config.final_waypoint_reach_distance * 2.0,
 					_config.waypoint_pass_distance + 0.1)):
 		_stop_at_target()
-		return
+		return true
 	# Suppress surface-escape for a few seconds so the rebuilt global path can
 	# cross a road segment without immediately re-entering escape mode.
 	_surface_escape_cooldown = 4.0
@@ -1235,7 +1532,7 @@ func _try_replan_from_stuck() -> void:
 		})
 		stop_travel()
 		stuck.emit()
-		return
+		return false
 	_global_path = rebuilt
 	_path_index = 0
 	_clear_local_avoidance_path()
@@ -1250,6 +1547,7 @@ func _try_replan_from_stuck() -> void:
 		"waypoints": _global_path.size(),
 		"pos": global_position,
 	})
+	return true
 
 
 func _try_local_replan_from_stuck() -> void:
@@ -1297,6 +1595,12 @@ func _try_local_replan_from_stuck() -> void:
 func _tick_surface_escape(delta: float) -> void:
 	if _surface_escape_cooldown > 0.0:
 		_surface_escape_cooldown = maxf(_surface_escape_cooldown - delta, 0.0)
+	if _stuck_escape_timer > 0.0:
+		_stuck_escape_timer = maxf(_stuck_escape_timer - delta, 0.0)
+		_stuck_escape_retarget_timer = maxf(_stuck_escape_retarget_timer - delta, 0.0)
+		_stuck_escape_rejoin_probe_timer = maxf(_stuck_escape_rejoin_probe_timer - delta, 0.0)
+		if _stuck_escape_timer <= 0.0:
+			_finish_stuck_escape("timeout")
 
 
 func _apply_idle_gravity(delta: float) -> void:

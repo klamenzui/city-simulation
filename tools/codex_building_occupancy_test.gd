@@ -26,6 +26,7 @@ func _run_all_tests() -> void:
 	for test_name in [
 		"building_entry_updates_visitors",
 		"university_requires_worker_for_study",
+		"university_accepts_education_service_staff",
 		"university_unstaffed_label_is_teaching_specific",
 		"park_entry_keeps_citizen_visible",
 		"park_reserved_bench_sets_visit_point",
@@ -73,6 +74,8 @@ func _run_test(test_name: String) -> String:
 			return _test_building_entry_updates_visitors()
 		"university_requires_worker_for_study":
 			return _test_university_requires_worker_for_study()
+		"university_accepts_education_service_staff":
+			return _test_university_accepts_education_service_staff()
 		"university_unstaffed_label_is_teaching_specific":
 			return _test_university_unstaffed_label_is_teaching_specific()
 		"park_entry_keeps_citizen_visible":
@@ -171,6 +174,20 @@ func _test_university_requires_worker_for_study() -> String:
 	_expect_eq(university.visitors.size(), 0, "study finish should clear the university visitor again")
 
 	_free_world(world)
+	return _current_error
+
+func _test_university_accepts_education_service_staff() -> String:
+	var university: University = _new_university("Service Uni")
+	var lecturer: Citizen = _new_citizen("Lecturer One")
+	lecturer.job = Job.new()
+	lecturer.job.title = " visiting lecturer "
+	lecturer.job.workplace = university
+	lecturer.job.workplace_service_type = "education"
+
+	_expect(university.try_hire(lecturer), "university should hire an education-service worker")
+	_expect(university.has_teaching_staff(), "education-service staff should satisfy teaching requirement")
+	_expect_eq(university.get_teaching_staff().size(), 1, "teaching staff count should include the education-service worker")
+	_expect_eq(university.get_open_status_label(10), "OPEN", "university should open with education-service teaching staff")
 	return _current_error
 
 func _test_worker_count_lifecycle() -> String:
@@ -656,6 +673,7 @@ func _new_citizen(citizen_name: String) -> Citizen:
 	var citizen: Citizen = CitizenScript.new()
 	citizen.name = citizen_name
 	citizen.citizen_name = citizen_name
+	citizen.jump_low_obstacles = false
 	_harness_root.add_child(citizen)
 	return citizen
 

@@ -25,7 +25,7 @@ func _init(context: NavigationContext) -> void:
 ## Called from set_global_target — initial full-interval grace so the stuck
 ## check does not fire before the citizen had any chance to move.
 func reset_for_new_target(pos: Vector3) -> void:
-	_check_timer = maxf(_ctx.config.stuck_detection_interval, 0.5)
+	_check_timer = _next_check_interval()
 	_recovery_attempts = 0
 	_last_pos = pos
 
@@ -57,7 +57,7 @@ func tick(delta: float, current_pos: Vector3, dist_to_target: float,
 	if _check_timer > 0.0:
 		return ACTION_NONE
 
-	_check_timer = maxf(cfg.stuck_detection_interval, 0.5)
+	_check_timer = _next_check_interval()
 	var dist := _planar_distance(current_pos, _last_pos)
 	_last_pos = current_pos
 
@@ -89,3 +89,11 @@ static func _planar_distance(a: Vector3, b: Vector3) -> float:
 	var off := a - b
 	off.y = 0.0
 	return off.length()
+
+
+func _next_check_interval() -> float:
+	var base := maxf(_ctx.config.stuck_detection_interval, 0.5)
+	var jitter := maxf(_ctx.config.stuck_detection_jitter, 0.0)
+	if jitter <= 0.0:
+		return base
+	return base + randf_range(0.0, jitter)
