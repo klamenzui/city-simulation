@@ -1,6 +1,8 @@
 extends RefCounted
 class_name CoordinatePickerController
 
+const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
+
 ## Two debug toggles in the top-right of the HUD:
 ##
 ##   1. **Pick Coords** — Linksklick → Camera-Ray + Ground-Snap → Floating
@@ -119,69 +121,83 @@ func _build_panel() -> void:
 	var panel := PanelContainer.new()
 	panel.name = "CoordinatePickerPanel"
 	panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	panel.offset_left = -260
-	panel.offset_top = 10
-	panel.offset_right = -10
-	panel.offset_bottom = 110
+	# Sits below the search panel (search uses ~10..236 from the top).
+	panel.offset_left = -300
+	panel.offset_top = 252
+	panel.offset_right = -12
+	panel.offset_bottom = 440
+	panel.theme = UiThemeScript.get_or_build()
 	hud_canvas.add_child(panel)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 4)
+	vbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
 	panel.add_child(vbox)
 
+	# Small section heading so the panel reads as a named tool.
+	var heading := Label.new()
+	heading.text = "DEBUG TOOLS"
+	heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+	heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+	vbox.add_child(heading)
+
 	_pick_button = Button.new()
-	_pick_button.text = "Pick Coords: OFF"
+	_pick_button.text = "Pick Coordinates"
 	_pick_button.toggle_mode = true
 	_pick_button.focus_mode = Control.FOCUS_NONE
-	_pick_button.custom_minimum_size = Vector2(240, 32)
+	_pick_button.custom_minimum_size = Vector2(266, 36)
 	_pick_button.toggled.connect(_on_pick_toggled)
 	vbox.add_child(_pick_button)
 
 	_scan_button = Button.new()
-	_scan_button.text = "Scan Grid: OFF"
+	_scan_button.text = "Scan Navigation Grid"
 	_scan_button.toggle_mode = true
 	_scan_button.focus_mode = Control.FOCUS_NONE
-	_scan_button.custom_minimum_size = Vector2(240, 32)
+	_scan_button.custom_minimum_size = Vector2(266, 36)
 	_scan_button.toggled.connect(_on_scan_toggled)
 	vbox.add_child(_scan_button)
 
 	_result_label = Label.new()
-	_result_label.text = "Modus aktivieren, dann auf Map klicken"
+	_result_label.text = "Aktiviere einen Modus, dann klicke auf die Map."
 	_result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_result_label.custom_minimum_size = Vector2(260, 100)
-	_result_label.add_theme_font_size_override("font_size", 12)
+	_result_label.custom_minimum_size = Vector2(266, 110)
+	_result_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+	_result_label.add_theme_color_override("font_color", UiThemeScript.TEXT_SECONDARY)
 	vbox.add_child(_result_label)
 
 
 func _on_pick_toggled(toggled_on: bool) -> void:
 	_pick_active = toggled_on
 	if _pick_button != null:
-		_pick_button.text = "Pick Coords: %s" % ("ON" if toggled_on else "OFF")
+		_pick_button.text = "Pick Coordinates  ON" if toggled_on else "Pick Coordinates"
+		UiThemeScript.apply_accent_state(_pick_button, toggled_on)
 	# Mutually exclusive with scan-mode.
 	if toggled_on and _scan_active:
 		_scan_active = false
 		if _scan_button != null:
 			_scan_button.set_pressed_no_signal(false)
-			_scan_button.text = "Scan Grid: OFF"
+			_scan_button.text = "Scan Navigation Grid"
+			UiThemeScript.apply_accent_state(_scan_button, false)
 	if not _pick_active:
 		_hide_marker()
 	if _result_label != null and not is_active():
-		_result_label.text = "Modus aktivieren, dann auf Map klicken"
+		_result_label.text = "Aktiviere einen Modus, dann klicke auf die Map."
 
 
 func _on_scan_toggled(toggled_on: bool) -> void:
 	_scan_active = toggled_on
 	if _scan_button != null:
-		_scan_button.text = "Scan Grid: %s" % ("ON" if toggled_on else "OFF")
+		_scan_button.text = "Scan Navigation Grid  ON" if toggled_on else "Scan Navigation Grid"
+		UiThemeScript.apply_accent_state(_scan_button, toggled_on)
 	if toggled_on and _pick_active:
 		_pick_active = false
 		if _pick_button != null:
 			_pick_button.set_pressed_no_signal(false)
-			_pick_button.text = "Pick Coords: OFF"
+			_pick_button.text = "Pick Coordinates"
+			UiThemeScript.apply_accent_state(_pick_button, false)
 	if not _scan_active:
 		_clear_scan_visuals()
 	if _result_label != null and not is_active():
-		_result_label.text = "Modus aktivieren, dann auf Map klicken"
+		_result_label.text = "Aktiviere einen Modus, dann klicke auf die Map."
 
 
 func _pick_coordinate(screen_pos: Vector2) -> Variant:

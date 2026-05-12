@@ -1,6 +1,8 @@
 extends CanvasLayer
 class_name DebugPanel
 
+const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
+
 signal citizen_control_toggled
 signal citizen_click_move_toggled
 signal citizen_dialog_toggled
@@ -20,6 +22,7 @@ signal ui_interacted
 var dbug_data: Dictionary = {}
 
 func _ready() -> void:
+	_apply_theme_and_layout()
 	if panel_root != null:
 		panel_root.gui_input.connect(_on_panel_gui_input)
 	if citizen_control_button != null:
@@ -51,6 +54,86 @@ func _ready() -> void:
 		citizen_dialog_send_button.gui_input.connect(_on_panel_gui_input)
 		citizen_dialog_send_button.pressed.connect(_on_citizen_dialog_send_button_pressed)
 
+
+## Applies the shared UI theme and reflows the panel so it matches the rest
+## of the HUD (margins, section heading, typography). Called once on _ready.
+##
+## The .tscn defines absolute offsets (360×760, no margin to the screen edge);
+## doing the cleanup in code keeps the scene resource untouched while still
+## letting the panel inherit the project-wide Theme via its root Panel node.
+func _apply_theme_and_layout() -> void:
+	if panel_root == null:
+		return
+
+	# Theme on the root Panel — children (VBox, RichText, Button, LineEdit, …)
+	# inherit it normally via the Control hierarchy.
+	panel_root.theme = UiThemeScript.get_or_build()
+
+	# Reposition: top-left with margin, below the time panel.
+	panel_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	panel_root.position = Vector2(12, 80)
+	panel_root.custom_minimum_size = Vector2(380, 0)
+	panel_root.size = Vector2(380, panel_root.size.y)
+
+	# Internal VBox: anchor full-rect with padding so children breathe.
+	var vbox: VBoxContainer = $Panel/VBoxContainer
+	if vbox != null:
+		vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+		vbox.offset_left = UiThemeScript.PADDING_PANEL_H
+		vbox.offset_top = UiThemeScript.PADDING_PANEL_V
+		vbox.offset_right = -UiThemeScript.PADDING_PANEL_H
+		vbox.offset_bottom = -UiThemeScript.PADDING_PANEL_V
+		vbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
+
+		# Section heading at the top of the VBox.
+		var heading := Label.new()
+		heading.text = "DETAILS"
+		heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+		heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+		vbox.add_child(heading)
+		vbox.move_child(heading, 0)
+
+	# Body typography on the main info RichTextLabel.
+	if label != null:
+		label.add_theme_font_size_override("normal_font_size", UiThemeScript.FONT_SIZE_BODY)
+		label.add_theme_font_size_override("bold_font_size", UiThemeScript.FONT_SIZE_BODY)
+		label.add_theme_color_override("default_color", UiThemeScript.TEXT_PRIMARY)
+		label.add_theme_constant_override("line_separation", 2)
+
+	# Dialog status label — dimmer than primary so it reads as meta-info.
+	if citizen_dialog_status_label != null:
+		citizen_dialog_status_label.add_theme_color_override(
+				"font_color", UiThemeScript.TEXT_SECONDARY)
+		citizen_dialog_status_label.add_theme_font_size_override(
+				"font_size", UiThemeScript.FONT_SIZE_SMALL)
+
+	# Dialog log gets a recessed dark background to separate it from the
+	# panel's main scroll area.
+	if citizen_dialog_log != null:
+		var log_box := StyleBoxFlat.new()
+		log_box.bg_color = UiThemeScript.BG_800
+		log_box.border_color = UiThemeScript.BORDER
+		log_box.border_width_left = UiThemeScript.BORDER_WIDTH
+		log_box.border_width_top = UiThemeScript.BORDER_WIDTH
+		log_box.border_width_right = UiThemeScript.BORDER_WIDTH
+		log_box.border_width_bottom = UiThemeScript.BORDER_WIDTH
+		log_box.corner_radius_top_left = UiThemeScript.RADIUS_INPUT
+		log_box.corner_radius_top_right = UiThemeScript.RADIUS_INPUT
+		log_box.corner_radius_bottom_left = UiThemeScript.RADIUS_INPUT
+		log_box.corner_radius_bottom_right = UiThemeScript.RADIUS_INPUT
+		log_box.content_margin_left = UiThemeScript.PADDING_INPUT_H
+		log_box.content_margin_right = UiThemeScript.PADDING_INPUT_H
+		log_box.content_margin_top = UiThemeScript.PADDING_INPUT_V
+		log_box.content_margin_bottom = UiThemeScript.PADDING_INPUT_V
+		citizen_dialog_log.add_theme_stylebox_override("normal", log_box)
+		citizen_dialog_log.add_theme_font_size_override(
+				"normal_font_size", UiThemeScript.FONT_SIZE_SMALL)
+
+	# Dialog input row — a bit of breathing room between input and send.
+	if citizen_dialog_input_row != null:
+		citizen_dialog_input_row.add_theme_constant_override(
+				"separation", UiThemeScript.SEPARATION_DENSE)
+
 func update_debug(data: Dictionary) -> void:
 	dbug_data = {}
 
@@ -75,6 +158,7 @@ func set_citizen_control_active(is_active: bool) -> void:
 	if citizen_control_button == null:
 		return
 	citizen_control_button.text = "Exit Control Mode" if is_active else "Control Citizen"
+	UiThemeScript.apply_accent_state(citizen_control_button, is_active)
 
 func set_citizen_click_move_button_visible(is_visible: bool) -> void:
 	if citizen_click_move_button == null:
@@ -85,6 +169,7 @@ func set_citizen_click_move_active(is_active: bool) -> void:
 	if citizen_click_move_button == null:
 		return
 	citizen_click_move_button.text = "Exit Click Move" if is_active else "Click Move Citizen"
+	UiThemeScript.apply_accent_state(citizen_click_move_button, is_active)
 
 func update_citizen_dialog(ui_state: Dictionary) -> void:
 	var visible := bool(ui_state.get("visible", false))
