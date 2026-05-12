@@ -79,6 +79,13 @@ var jump_cooldown: float = 0.35
 var stuck_detection_interval: float = 1.5
 var stuck_detection_min_distance: float = 0.25
 var stuck_max_recovery_attempts: int = 3
+var stuck_escape_duration: float = 1.1
+var stuck_escape_probe_distance: float = 0.75
+var stuck_escape_success_distance: float = 0.45
+var stuck_escape_retarget_interval: float = 0.35
+var stuck_escape_rejoin_probe_interval: float = 0.22
+var stuck_escape_waypoint_skip_distance: float = 1.4
+var stuck_detection_jitter: float = 0.45
 
 # Click-to-move
 var click_ray_distance: float = 1000.0
@@ -154,6 +161,13 @@ const FIELD_NAMES: Array[String] = [
 	"stuck_detection_interval",
 	"stuck_detection_min_distance",
 	"stuck_max_recovery_attempts",
+	"stuck_escape_duration",
+	"stuck_escape_probe_distance",
+	"stuck_escape_success_distance",
+	"stuck_escape_retarget_interval",
+	"stuck_escape_rejoin_probe_interval",
+	"stuck_escape_waypoint_skip_distance",
+	"stuck_detection_jitter",
 	# Click-to-move
 	"click_ray_distance",
 	"ignore_ui_clicks",

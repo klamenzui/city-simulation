@@ -143,6 +143,11 @@ $availableTests = @(
 		Script = "res://tools/codex_game_smoke_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "liveeconomy"
+		Label = "Live Economy Food Integration"
+		Script = "res://tools/codex_live_economy_food_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "entry"
 		Label = "Building Entry Travel"
 		Script = "res://tools/codex_building_entry_travel_test.gd"
@@ -171,6 +176,11 @@ $availableTests = @(
 		Key = "navconfig"
 		Label = "Citizen Config Drift"
 		Script = "res://tools/codex_citizen_config_drift_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "stuckescape"
+		Label = "Citizen Stuck Escape"
+		Script = "res://tools/codex_citizen_stuck_escape_test.gd"
 	}
 	[pscustomobject]@{
 		Key = "navsim"

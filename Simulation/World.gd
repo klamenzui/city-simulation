@@ -1178,7 +1178,8 @@ func _score_job_offer_for_citizen(
 	var university_missing_teaching := false
 	var park_missing_gardener := false
 	if building.building_type == Building.BuildingType.UNIVERSITY:
-		university_missing_teaching = building.get_workers_by_titles(["Professor", "Teacher"]).is_empty()
+		var university := building as University
+		university_missing_teaching = university == null or not university.has_teaching_staff()
 	if building.building_type == Building.BuildingType.PARK:
 		park_missing_gardener = building.get_workers_by_titles(["Gardener"]).is_empty()
 
