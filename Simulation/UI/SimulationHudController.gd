@@ -1,14 +1,18 @@
 extends RefCounted
 class_name SimulationHudController
 
+const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
+
 var owner_node: Node = null
 var world: World = null
 var canvas: CanvasLayer = null
 var building_overview_button: Button = null
 
+var _theme: Theme = null
 var _pause_button: Button = null
 var _player_control_button: Button = null
 var _ai_runtime_button: Button = null
+var _speed_buttons: Dictionary = {}  # float speed → Button
 var _speed_label: Label = null
 var _date_label: Label = null
 var _clock_label: Label = null
@@ -64,6 +68,7 @@ func refresh_player_control_button(is_active: bool) -> void:
 	if _player_control_button == null:
 		return
 	_player_control_button.text = "Exit Player" if is_active else "Control Player"
+	UiThemeScript.apply_accent_state(_player_control_button, is_active)
 
 func bind_dialogue_runtime_service(dialogue_runtime_service_ref) -> void:
 	_ai_runtime_service = dialogue_runtime_service_ref
@@ -107,10 +112,24 @@ func _build_hud(
 	canvas = CanvasLayer.new()
 	owner_node.add_child(canvas)
 
+	# CanvasLayer is not a Control, so it cannot hold a Theme — children
+	# attached to it don't automatically inherit theming. Cache one Theme
+	# instance per session and assign it to each top-level Control we build
+	# directly under the canvas. Nested Control children then inherit normally.
+	_theme = UiThemeScript.get_or_build()
+
+	_build_top_time_panel()
+	_build_bottom_action_bar(pause_pressed, speed_pressed, building_overview_pressed,
+			player_control_pressed, ai_runtime_pressed)
+	_build_control_mode_banner()
+
+
+func _build_top_time_panel() -> void:
 	var top_margin := MarginContainer.new()
 	top_margin.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	top_margin.offset_top = 10
-	top_margin.offset_bottom = 54
+	top_margin.offset_top = 12
+	top_margin.offset_bottom = 80
+	top_margin.theme = _theme
 	canvas.add_child(top_margin)
 
 	var top_center := CenterContainer.new()
@@ -121,64 +140,79 @@ func _build_hud(
 	top_center.add_child(time_panel)
 
 	var time_box := HBoxContainer.new()
-	time_box.add_theme_constant_override("separation", 12)
+	time_box.add_theme_constant_override("separation", UiThemeScript.SEPARATION_LOOSE)
 	time_panel.add_child(time_box)
 
 	_date_label = Label.new()
 	_date_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_date_label.custom_minimum_size = Vector2(104, 34)
+	_date_label.add_theme_color_override("font_color", UiThemeScript.TEXT_SECONDARY)
+	_date_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_BODY)
+	_date_label.custom_minimum_size = Vector2(120, 36)
 	time_box.add_child(_date_label)
 
-	var separator := Label.new()
-	separator.text = "|"
-	separator.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	time_box.add_child(separator)
+	time_box.add_child(_make_v_divider())
 
 	_clock_label = Label.new()
 	_clock_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_clock_label.add_theme_font_size_override("font_size", 18)
-	_clock_label.custom_minimum_size = Vector2(66, 34)
+	_clock_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_HEADING)
+	_clock_label.add_theme_color_override("font_color", UiThemeScript.ACCENT)
+	_clock_label.custom_minimum_size = Vector2(78, 36)
 	time_box.add_child(_clock_label)
 
-	var separator2 := Label.new()
-	separator2.text = "|"
-	separator2.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	time_box.add_child(separator2)
+	time_box.add_child(_make_v_divider())
 
 	_citizen_stats_label = Label.new()
 	_citizen_stats_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_citizen_stats_label.custom_minimum_size = Vector2(620, 34)
+	_citizen_stats_label.add_theme_color_override("font_color", UiThemeScript.TEXT_SECONDARY)
+	_citizen_stats_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_BODY)
+	_citizen_stats_label.custom_minimum_size = Vector2(620, 36)
 	time_box.add_child(_citizen_stats_label)
 
+
+func _build_bottom_action_bar(
+	pause_pressed: Callable,
+	speed_pressed: Callable,
+	building_overview_pressed: Callable,
+	player_control_pressed: Callable,
+	ai_runtime_pressed: Callable
+) -> void:
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	panel.position = Vector2(10, -60)
+	panel.position = Vector2(12, -72)
+	panel.theme = _theme
 	canvas.add_child(panel)
 
 	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 8)
+	hbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_NORMAL)
 	panel.add_child(hbox)
 
+	# Pause: prominent toggle on the left.
 	_pause_button = Button.new()
 	_pause_button.text = "Pause"
-	_pause_button.custom_minimum_size = Vector2(100, 36)
+	_pause_button.custom_minimum_size = Vector2(96, 36)
 	_pause_button.focus_mode = Control.FOCUS_NONE
 	if pause_pressed.is_valid():
 		_pause_button.pressed.connect(pause_pressed)
 	hbox.add_child(_pause_button)
 
+	hbox.add_child(_make_v_divider())
+
+	# Speed buttons grouped as one cluster — active multiplier gets accent.
 	for speed in [1, 2, 3, 4]:
 		var btn := Button.new()
-		btn.text = "%.1fx" % speed
-		btn.custom_minimum_size = Vector2(48, 36)
+		btn.text = "%dx" % speed
+		btn.custom_minimum_size = Vector2(44, 36)
 		btn.focus_mode = Control.FOCUS_NONE
 		if speed_pressed.is_valid():
 			btn.pressed.connect(speed_pressed.bind(float(speed)))
 		hbox.add_child(btn)
+		_speed_buttons[float(speed)] = btn
+
+	hbox.add_child(_make_v_divider())
 
 	building_overview_button = Button.new()
 	building_overview_button.text = "Buildings"
-	building_overview_button.custom_minimum_size = Vector2(92, 36)
+	building_overview_button.custom_minimum_size = Vector2(96, 36)
 	building_overview_button.focus_mode = Control.FOCUS_NONE
 	if building_overview_pressed.is_valid():
 		building_overview_button.pressed.connect(building_overview_pressed)
@@ -186,7 +220,7 @@ func _build_hud(
 
 	_player_control_button = Button.new()
 	_player_control_button.text = "Control Player"
-	_player_control_button.custom_minimum_size = Vector2(108, 36)
+	_player_control_button.custom_minimum_size = Vector2(120, 36)
 	_player_control_button.focus_mode = Control.FOCUS_NONE
 	_player_control_button.visible = false
 	if player_control_pressed.is_valid():
@@ -202,33 +236,78 @@ func _build_hud(
 		_ai_runtime_button.pressed.connect(ai_runtime_pressed)
 	hbox.add_child(_ai_runtime_button)
 
+	hbox.add_child(_make_v_divider())
+
 	var hint := Label.new()
-	hint.text = "Click citizen/building -> Info"
+	hint.text = "Click citizen / building for info"
 	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	hint.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+	hint.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
 	hint.custom_minimum_size = Vector2(0, 36)
 	hbox.add_child(hint)
 
 	_ai_runtime_label = Label.new()
 	_ai_runtime_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_ai_runtime_label.add_theme_color_override("font_color", UiThemeScript.TEXT_SECONDARY)
+	_ai_runtime_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
 	_ai_runtime_label.custom_minimum_size = Vector2(220, 36)
 	hbox.add_child(_ai_runtime_label)
 
+	# Compact current-speed indicator at the far right.
 	_speed_label = Label.new()
 	_speed_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_speed_label.custom_minimum_size = Vector2(42, 36)
+	_speed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_speed_label.add_theme_color_override("font_color", UiThemeScript.ACCENT)
+	_speed_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_LABEL)
+	_speed_label.custom_minimum_size = Vector2(50, 36)
 	hbox.add_child(_speed_label)
 
+
+func _build_control_mode_banner() -> void:
 	_control_mode_panel = PanelContainer.new()
 	_control_mode_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_control_mode_panel.position = Vector2(10, 10)
+	_control_mode_panel.position = Vector2(12, 12)
 	_control_mode_panel.visible = false
+	_control_mode_panel.theme = _theme
+	# Accent-tinted banner — clearly different from a passive info panel.
+	var banner_box := StyleBoxFlat.new()
+	banner_box.bg_color = UiThemeScript.BG_900
+	banner_box.border_color = UiThemeScript.ACCENT
+	banner_box.border_width_left = 4
+	banner_box.border_width_top = UiThemeScript.BORDER_WIDTH
+	banner_box.border_width_right = UiThemeScript.BORDER_WIDTH
+	banner_box.border_width_bottom = UiThemeScript.BORDER_WIDTH
+	banner_box.corner_radius_top_left = UiThemeScript.RADIUS_PANEL
+	banner_box.corner_radius_top_right = UiThemeScript.RADIUS_PANEL
+	banner_box.corner_radius_bottom_left = UiThemeScript.RADIUS_PANEL
+	banner_box.corner_radius_bottom_right = UiThemeScript.RADIUS_PANEL
+	banner_box.content_margin_left = 16
+	banner_box.content_margin_right = UiThemeScript.PADDING_PANEL_H
+	banner_box.content_margin_top = UiThemeScript.PADDING_PANEL_V
+	banner_box.content_margin_bottom = UiThemeScript.PADDING_PANEL_V
+	_control_mode_panel.add_theme_stylebox_override("panel", banner_box)
 	canvas.add_child(_control_mode_panel)
 
 	_control_mode_label = Label.new()
 	_control_mode_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_control_mode_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_control_mode_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_LABEL)
 	_control_mode_label.custom_minimum_size = Vector2(520, 32)
 	_control_mode_panel.add_child(_control_mode_label)
+
+
+## 1-px vertical divider with margins — used to group the action bar.
+func _make_v_divider() -> Control:
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(1, 26)
+	spacer.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var divider_panel := PanelContainer.new()
+	divider_panel.custom_minimum_size = Vector2(1, 26)
+	divider_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = UiThemeScript.BORDER
+	divider_panel.add_theme_stylebox_override("panel", sb)
+	return divider_panel
 
 func _on_ai_runtime_status_changed(_status: String, _detail: String) -> void:
 	if _ai_runtime_service != null and _ai_runtime_service.has_method("get_ui_runtime_state"):
@@ -264,11 +343,21 @@ func _refresh_pause_button() -> void:
 	if _pause_button == null or world == null:
 		return
 	_pause_button.text = "Resume" if world.is_paused else "Pause"
+	# Paused = accent-on, so the player always sees the current state.
+	UiThemeScript.apply_accent_state(_pause_button, world.is_paused)
 
 func _refresh_speed_label() -> void:
 	if _speed_label == null or world == null:
 		return
-	_speed_label.text = "%.1fx" % world.speed_multiplier
+	_speed_label.text = "%.0fx" % world.speed_multiplier
+	# Highlight the speed button matching the current multiplier.
+	var current_speed := world.speed_multiplier
+	for speed_key in _speed_buttons.keys():
+		var btn: Button = _speed_buttons[speed_key]
+		if btn == null:
+			continue
+		var is_active := is_equal_approx(float(speed_key), current_speed)
+		UiThemeScript.apply_accent_state(btn, is_active)
 
 func _refresh_time_hud() -> void:
 	if _date_label == null or _clock_label == null or _citizen_stats_label == null or world == null or world.time == null:
