@@ -21,6 +21,7 @@ signal clicked
 
 const SimLoggerScript = preload("res://Simulation/Logging/SimLogger.gd")
 const CitizenAgentScript = preload("res://Simulation/Citizens/CitizenAgent.gd")
+const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 
 var _sim: CitizenSimulation = null
 var _world_ref: World = null
@@ -79,6 +80,7 @@ func _ready() -> void:
 	# Mirror Inspector-set @export values into Identity.
 	if _sim != null and _sim.identity != null:
 		_sim.identity.citizen_name = citizen_name
+		_apply_identity_balance_config()
 	# Initialise personality thresholds from balance.json + jitter.
 	if _sim != null and _sim.scheduler != null:
 		_sim.scheduler.apply_balance_config()
@@ -98,6 +100,16 @@ func _ensure_sim_initialized() -> void:
 	_sim = CitizenSimulation.new(self)
 	if _sim.identity != null:
 		_sim.identity.citizen_name = citizen_name
+
+
+func _apply_identity_balance_config() -> void:
+	if _sim == null or _sim.identity == null:
+		return
+	if wallet != null:
+		wallet.owner_name = citizen_name
+		wallet.balance = BalanceConfig.get_int("citizen.wallet_start_balance", wallet.balance)
+	home_food_stock = BalanceConfig.get_int("citizen.home_food_stock_start", home_food_stock)
+	education_level = BalanceConfig.get_int("citizen.education_level_start", education_level)
 
 
 func _setup_clickable() -> void:
@@ -156,6 +168,7 @@ func _setup_selection_visual() -> void:
 
 func select(panel) -> void:
 	debug_panel = panel
+	set_debug_visualization_enabled(panel != null)
 	set_selected(panel != null)
 
 
@@ -1254,6 +1267,8 @@ func begin_travel_to(target_pos: Vector3, target_building: Building = null) -> b
 	_travel_target_building = target_building
 	_debug_last_travel_failed = false
 	var ok := set_global_target(target_pos)
+	if ok:
+		_travel_target = _target_position
 	_debug_last_travel_route = PackedVector3Array(_global_path)
 	if not ok:
 		_debug_last_travel_failed = true
@@ -1290,10 +1305,13 @@ func has_reached_travel_target() -> bool:
 		return false
 	if _is_travelling:
 		return false
+	if not _global_path.is_empty() and _path_index >= _global_path.size():
+		return true
 	var final_target := _target_position
 	if _travel_target != Vector3.ZERO or _travel_target_building != null:
 		final_target = _travel_target
-	return _planar_distance(global_position, final_target) <= final_arrival_distance + 0.05
+	var tolerance := maxf(final_arrival_distance + 0.05, waypoint_reach_distance + 0.05)
+	return _planar_distance(global_position, final_target) <= tolerance
 
 
 func did_debug_last_travel_fail() -> bool:
@@ -1338,6 +1356,38 @@ func get_remaining_travel_distance() -> float:
 		total += _planar_distance(cursor, point)
 		cursor = point
 	return total
+
+
+func pay_rent(world: World, landlord: ResidentialBuilding, amount: int) -> bool:
+	if landlord == null:
+		return false
+	if amount <= 0:
+		return true
+	if wallet == null:
+		SimLoggerScript.log("[%s] Could not pay rent! Wallet missing." % citizen_name)
+		return false
+	var resolved_world := world if world != null else _resolve_world_ref()
+	if resolved_world == null or resolved_world.economy == null:
+		SimLoggerScript.log("[%s] Could not pay rent! Economy unavailable." % citizen_name)
+		return false
+
+	var before := wallet.balance
+	var success := resolved_world.economy.transfer(wallet, landlord.account, amount)
+	if success:
+		SimLoggerScript.log("[%s] Rent paid: %d EUR (balance: %d -> %d)" % [
+			citizen_name,
+			amount,
+			before,
+			wallet.balance
+		])
+		return true
+
+	SimLoggerScript.log("[%s] Could not pay rent! Need %d EUR, have %d EUR" % [
+		citizen_name,
+		amount,
+		wallet.balance
+	])
+	return false
 
 
 func can_afford_restaurant(world: World) -> bool:

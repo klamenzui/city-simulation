@@ -87,13 +87,13 @@ var click_collision_mask: int = 0xFFFFFFFF
 
 # Debug
 var debug_draw_avoidance: bool = false
-var debug_draw_surface_cells: bool = true
-var debug_draw_physics_hits: bool = true
-var debug_draw_cell_heights: bool = true
-var debug_log_probe_hits: bool = true
+var debug_draw_surface_cells: bool = false
+var debug_draw_physics_hits: bool = false
+var debug_draw_cell_heights: bool = false
+var debug_log_probe_hits: bool = false
 
 # Global path visual
-var show_global_path: bool = true
+var show_global_path: bool = false
 var clear_global_path_on_arrival: bool = false
 var global_path_line_color: Color = Color(0.1, 0.85, 1.0, 1.0)
 var global_path_line_y_offset: float = 0.2

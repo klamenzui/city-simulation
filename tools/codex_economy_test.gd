@@ -6,6 +6,7 @@ const AccountScript = preload("res://Entities/Account.gd")
 const JobScript = preload("res://Entities/Job.gd")
 const BuildingScript = preload("res://Entities/Buildings/Building.gd")
 const CityHallScript = preload("res://Entities/Buildings/CityHall.gd")
+const ResidentialBuildingScript = preload("res://Entities/Buildings/ResidentialBuilding.gd")
 const CitizenScript = preload("res://Entities/Citizens/New/Citizen.gd")
 const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
 
@@ -30,6 +31,7 @@ func _initialize() -> void:
 		"economic_buildings_struggle_before_closure",
 		"teacher_jobs_need_no_degree",
 		"tax_and_welfare",
+		"citizen_pay_rent",
 	]:
 		var error := _run_test(test_name)
 		if error != "":
@@ -76,6 +78,8 @@ func _run_test(test_name: String) -> String:
 			return _test_teacher_jobs_need_no_degree()
 		"tax_and_welfare":
 			return _test_tax_and_welfare()
+		"citizen_pay_rent":
+			return _test_citizen_pay_rent()
 		_:
 			return "unknown test"
 
@@ -475,6 +479,27 @@ func _test_tax_and_welfare() -> String:
 	_expect_eq(world.city_account.balance, 30, "reserve balance should shrink by the transferred amount")
 
 	_free_nodes([citizen, shop, city_hall])
+	_free_world(world)
+	return _current_error
+
+func _test_citizen_pay_rent() -> String:
+	var world = _new_world()
+	var citizen := _new_citizen("Tenant")
+	var landlord: ResidentialBuilding = ResidentialBuildingScript.new()
+	landlord.name = "RentHouse"
+	landlord.building_name = "RentHouse"
+	landlord.account.balance = 100
+	citizen.wallet.balance = 90
+
+	_expect(citizen.pay_rent(world, landlord, 35), "rent should be paid when wallet has enough balance")
+	_expect_eq(citizen.wallet.balance, 55, "citizen wallet after paid rent")
+	_expect_eq(landlord.account.balance, 135, "landlord balance after paid rent")
+
+	_expect(not citizen.pay_rent(world, landlord, 80), "rent should fail when wallet lacks balance")
+	_expect_eq(citizen.wallet.balance, 55, "citizen wallet should stay unchanged after failed rent")
+	_expect_eq(landlord.account.balance, 135, "landlord balance should stay unchanged after failed rent")
+
+	_free_nodes([citizen, landlord])
 	_free_world(world)
 	return _current_error
 

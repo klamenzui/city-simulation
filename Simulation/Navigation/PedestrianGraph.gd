@@ -1,9 +1,20 @@
 extends RefCounted
 class_name PedestrianGraph
 
+const SurfaceClassifier = preload("res://Entities/Citizens/New/Navigation/SurfaceClassifier.gd")
+
 const CELL_STEP := 2.0
 const HALF_ROAD_WIDTH := 0.5
 const SIDEWALK_PATH_OFFSET := 0.8
+const UNKNOWN_SURFACE_NODE_PENALTY := 0.5
+const UNKNOWN_SURFACE_EDGE_PENALTY := 1.0
+const SURFACE_PROBE_COLLISION_MASK := 3
+const SURFACE_PROBE_UP := 0.5
+const SURFACE_PROBE_DOWN := 2.2
+const SURFACE_PROBE_MAX_HITS := 8
+const WALKABLE_PROJECTION_STEP := 0.25
+const WALKABLE_PROJECTION_ATTEMPTS := 6
+const CROSSWALK_SIDEWALK_CONTINUITY_PENALTY := 6.0
 const SIDE_DEFS := [
 	{
 		"id": 0,
@@ -72,6 +83,9 @@ var _crosswalk_axes: Dictionary = {}
 var _crosswalk_meta: Dictionary = {}
 var _boundary_node_by_side: Dictionary = {}
 var _boundary_nodes_by_road: Dictionary = {}
+var _surface_kind_by_node: Dictionary = {}
+var _edge_penalty_by_key: Dictionary = {}
+var _root: Node3D = null
 var _is_ready: bool = false
 
 func rebuild_from_scene(root: Node3D, _buildings: Array = []) -> void:
@@ -87,6 +101,9 @@ func rebuild_from_scene(root: Node3D, _buildings: Array = []) -> void:
 	_crosswalk_meta.clear()
 	_boundary_node_by_side.clear()
 	_boundary_nodes_by_road.clear()
+	_surface_kind_by_node.clear()
+	_edge_penalty_by_key.clear()
+	_root = root
 	_is_ready = false
 
 	if root == null:
@@ -98,9 +115,9 @@ func rebuild_from_scene(root: Node3D, _buildings: Array = []) -> void:
 	_initialize_neighbor_buckets()
 	_build_side_links()
 	_build_corner_links()
-	# Do not add corner-to-corner perimeter shortcuts around crossing tiles.
-	# Those edges let A* skirt the zebra at road corners instead of entering
-	# through crosswalk_entry -> crosswalk center -> crosswalk_exit.
+	# Keep sidewalk continuity along the same side of a zebra tile. Crossing
+	# the road itself still has to go through entry -> center -> exit below.
+	_build_corner_perimeter_links()
 	_build_crosswalk_links()
 	_rebuild_components()
 
@@ -137,7 +154,7 @@ func find_path_points(start_pos: Vector3, end_pos: Vector3, start_building: Buil
 	for idx in index_path:
 		_append_path_point(route, nodes[int(idx)])
 	_append_path_point(route, end_pos)
-	return _remove_close_duplicates(route)
+	return _remove_close_duplicates(_remove_unstable_crosswalk_approach_points(route))
 
 func get_access_point(pos: Vector3, building: Building = null) -> Vector3:
 	if building == null:
@@ -524,11 +541,11 @@ func _build_corner_perimeter_links() -> void:
 		var south_east := _append_corner_node(road + Vector3(SIDEWALK_PATH_OFFSET, 0.0, SIDEWALK_PATH_OFFSET))
 
 		if axis == "x":
-			_connect_nodes(north_west, south_west)
-			_connect_nodes(north_east, south_east)
+			_connect_nodes(north_west, south_west, CROSSWALK_SIDEWALK_CONTINUITY_PENALTY)
+			_connect_nodes(north_east, south_east, CROSSWALK_SIDEWALK_CONTINUITY_PENALTY)
 		else:
-			_connect_nodes(north_west, north_east)
-			_connect_nodes(south_west, south_east)
+			_connect_nodes(north_west, north_east, CROSSWALK_SIDEWALK_CONTINUITY_PENALTY)
+			_connect_nodes(south_west, south_east, CROSSWALK_SIDEWALK_CONTINUITY_PENALTY)
 
 func _build_crosswalk_links() -> void:
 	for key in _crosswalk_cells.keys():
@@ -765,6 +782,8 @@ func _append_unique_node(pos: Vector3, snap_to_grid: bool = true) -> int:
 		0.0,
 		round(pos.z * 100.0) / 100.0
 	)
+	if snap_to_grid:
+		snapped = _project_synthetic_node_to_walkable_surface(snapped, pos)
 	var key := _grid_key(snapped)
 	if _node_index_by_key.has(key):
 		return int(_node_index_by_key[key])
@@ -774,7 +793,69 @@ func _append_unique_node(pos: Vector3, snap_to_grid: bool = true) -> int:
 	_node_index_by_key[key] = idx
 	return idx
 
-func _connect_nodes(a_idx: int, b_idx: int) -> void:
+func _project_synthetic_node_to_walkable_surface(snapped: Vector3, original: Vector3) -> Vector3:
+	var start_surface := _probe_surface_kind(snapped)
+	if start_surface == SurfaceClassifier.KIND_PEDESTRIAN \
+			or start_surface == SurfaceClassifier.KIND_CROSSWALK:
+		return snapped
+
+	var road := _nearest_road_cell(snapped)
+	if road == Vector3.INF:
+		return snapped
+
+	var outward := snapped - road
+	outward.y = 0.0
+	if outward.length_squared() <= 0.0001:
+		outward = original - road
+		outward.y = 0.0
+	if outward.length_squared() <= 0.0001:
+		return snapped
+	outward = outward.normalized()
+
+	var first_non_road := Vector3.INF
+	for step_index in range(1, WALKABLE_PROJECTION_ATTEMPTS + 1):
+		var candidate := snapped + outward * (WALKABLE_PROJECTION_STEP * float(step_index))
+		candidate.y = 0.0
+		candidate = Vector3(
+			round(candidate.x * 100.0) / 100.0,
+			0.0,
+			round(candidate.z * 100.0) / 100.0
+		)
+		var candidate_surface := _probe_surface_kind(candidate)
+		if candidate_surface == SurfaceClassifier.KIND_PEDESTRIAN \
+				or candidate_surface == SurfaceClassifier.KIND_CROSSWALK:
+			return candidate
+		if first_non_road == Vector3.INF and candidate_surface != SurfaceClassifier.KIND_ROAD:
+			first_non_road = candidate
+	if start_surface == SurfaceClassifier.KIND_ROAD and first_non_road != Vector3.INF:
+		return first_non_road
+	return snapped
+
+func _nearest_road_cell(point: Vector3) -> Vector3:
+	var snapped := _snap_to_cell(point)
+	var best := Vector3.INF
+	var best_dist := INF
+	for dz in [-CELL_STEP, 0.0, CELL_STEP]:
+		for dx in [-CELL_STEP, 0.0, CELL_STEP]:
+			var candidate := snapped + Vector3(float(dx), 0.0, float(dz))
+			if not _road_cells.has(_grid_key(candidate)):
+				continue
+			var dist := _xz_distance(candidate, point)
+			if dist < best_dist:
+				best_dist = dist
+				best = candidate
+	if best != Vector3.INF:
+		return best
+
+	for road_pos in _road_cells.values():
+		var road := road_pos as Vector3
+		var dist := _xz_distance(road, point)
+		if dist < best_dist:
+			best_dist = dist
+			best = road
+	return best
+
+func _connect_nodes(a_idx: int, b_idx: int, extra_penalty: float = 0.0) -> void:
 	if a_idx == b_idx:
 		return
 
@@ -787,6 +868,12 @@ func _connect_nodes(a_idx: int, b_idx: int) -> void:
 	if not b_neighbors.has(a_idx):
 		b_neighbors.append(a_idx)
 		neighbors[b_idx] = b_neighbors
+
+	if extra_penalty > 0.0:
+		_edge_penalty_by_key[_edge_key(a_idx, b_idx)] = maxf(
+			float(_edge_penalty_by_key.get(_edge_key(a_idx, b_idx), 0.0)),
+			extra_penalty
+		)
 
 func _a_star(start_idx: int, end_idx: int) -> Array:
 	if start_idx == end_idx:
@@ -817,9 +904,11 @@ func _a_star(start_idx: int, end_idx: int) -> Array:
 	return []
 
 func _has_connections() -> bool:
-	for linked in neighbors.values():
-		if not (linked as Array).is_empty():
-			return true
+	for raw_idx in neighbors.keys():
+		var idx := int(raw_idx)
+		for raw_neighbor in neighbors.get(idx, []):
+			if _edge_cost(idx, int(raw_neighbor)) < INF:
+				return true
 	return false
 
 func _rebuild_components() -> void:
@@ -843,6 +932,8 @@ func _rebuild_components() -> void:
 			for neighbor in neighbors.get(current, []):
 				var neighbor_idx := int(neighbor)
 				if _component_by_node.has(neighbor_idx):
+					continue
+				if _edge_cost(current, neighbor_idx) >= INF:
 					continue
 				_component_by_node[neighbor_idx] = component_id
 				queue.append(neighbor_idx)
@@ -875,7 +966,88 @@ func _heuristic(a_idx: int, b_idx: int) -> float:
 	return _xz_distance(nodes[a_idx], nodes[b_idx])
 
 func _edge_cost(a_idx: int, b_idx: int) -> float:
-	return _heuristic(a_idx, b_idx)
+	var cost := _heuristic(a_idx, b_idx) + float(_edge_penalty_by_key.get(_edge_key(a_idx, b_idx), 0.0))
+	if _is_crosswalk_node(a_idx) or _is_crosswalk_node(b_idx):
+		return cost
+
+	var a_surface := _get_node_surface_kind(a_idx)
+	var b_surface := _get_node_surface_kind(b_idx)
+	var a_on_road := a_surface == SurfaceClassifier.KIND_ROAD
+	var b_on_road := b_surface == SurfaceClassifier.KIND_ROAD
+	if a_on_road or b_on_road:
+		return INF
+
+	var a_unknown := a_surface == SurfaceClassifier.KIND_UNKNOWN
+	var b_unknown := b_surface == SurfaceClassifier.KIND_UNKNOWN
+	if a_unknown and b_unknown:
+		return cost + UNKNOWN_SURFACE_EDGE_PENALTY
+	if a_unknown or b_unknown:
+		return cost + UNKNOWN_SURFACE_NODE_PENALTY
+	return cost
+
+func _edge_key(a_idx: int, b_idx: int) -> String:
+	var lo := mini(a_idx, b_idx)
+	var hi := maxi(a_idx, b_idx)
+	return "%d|%d" % [lo, hi]
+
+func _is_crosswalk_node(idx: int) -> bool:
+	var meta := _node_meta.get(idx, {}) as Dictionary
+	return str(meta.get("kind", "")).begins_with("crosswalk")
+
+func _get_node_surface_kind(idx: int) -> String:
+	if _surface_kind_by_node.has(idx):
+		return str(_surface_kind_by_node[idx])
+	if idx < 0 or idx >= nodes.size():
+		return SurfaceClassifier.KIND_UNKNOWN
+
+	var kind := _probe_surface_kind(nodes[idx])
+	_surface_kind_by_node[idx] = kind
+	return kind
+
+func _probe_surface_kind(point: Vector3) -> String:
+	if _root == null or not _root.is_inside_tree() or _root.get_world_3d() == null:
+		return SurfaceClassifier.KIND_UNKNOWN
+
+	var from := point + Vector3.UP * SURFACE_PROBE_UP
+	var to := point + Vector3.DOWN * SURFACE_PROBE_DOWN
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.collision_mask = SURFACE_PROBE_COLLISION_MASK
+	query.collide_with_areas = false
+	query.collide_with_bodies = true
+
+	var best_kind := SurfaceClassifier.KIND_UNKNOWN
+	var best_priority := 0
+	var excludes: Array[RID] = []
+	var space := _root.get_world_3d().direct_space_state
+	for _i in range(SURFACE_PROBE_MAX_HITS):
+		query.exclude = excludes
+		var hit := space.intersect_ray(query)
+		if hit.is_empty():
+			break
+
+		var collider: Variant = hit.get("collider", null)
+		var priority := _surface_kind_priority(collider)
+		if priority > best_priority and collider is Node:
+			best_kind = SurfaceClassifier.classify_node(collider as Node)
+			best_priority = priority
+			if best_priority >= 3:
+				break
+
+		if not hit.has("rid"):
+			break
+		excludes.append(hit["rid"])
+
+	return best_kind
+
+static func _surface_kind_priority(collider: Variant) -> int:
+	if not (collider is Node):
+		return 0
+	var kind := SurfaceClassifier.classify_node(collider as Node)
+	match kind:
+		SurfaceClassifier.KIND_PEDESTRIAN: return 3
+		SurfaceClassifier.KIND_CROSSWALK: return 2
+		SurfaceClassifier.KIND_ROAD: return 1
+	return 0
 
 func _append_path_point(path: PackedVector3Array, point: Vector3, min_dist: float = 0.05) -> void:
 	if path.is_empty() or path[path.size() - 1].distance_to(point) >= min_dist:
@@ -892,6 +1064,37 @@ func _remove_close_duplicates(path: PackedVector3Array, min_dist: float = 0.05) 
 		if out[out.size() - 1].distance_to(point) >= min_dist:
 			out.append(point)
 	return out
+
+func _remove_unstable_crosswalk_approach_points(path: PackedVector3Array) -> PackedVector3Array:
+	if path.size() < 4:
+		return path
+
+	var out := PackedVector3Array()
+	for i in range(path.size()):
+		var point := path[i]
+		if i > 0 and i < path.size() - 1 and _is_unstable_crosswalk_approach_point(point, path[i + 1]):
+			continue
+		out.append(point)
+	return out
+
+func _is_unstable_crosswalk_approach_point(point: Vector3, next_point: Vector3) -> bool:
+	var idx := find_node_index_for_path_point(point)
+	var next_idx := find_node_index_for_path_point(next_point)
+	if idx < 0 or next_idx < 0:
+		return false
+
+	var meta := _node_meta.get(idx, {}) as Dictionary
+	var next_meta := _node_meta.get(next_idx, {}) as Dictionary
+	var kind := str(meta.get("kind", ""))
+	var next_kind := str(next_meta.get("kind", ""))
+	if not (kind == "boundary" or kind == "corner" or kind == "access"):
+		return false
+	if not next_kind.begins_with("crosswalk"):
+		return false
+
+	var surface := _get_node_surface_kind(idx)
+	return surface != SurfaceClassifier.KIND_PEDESTRIAN \
+			and surface != SurfaceClassifier.KIND_CROSSWALK
 
 func _snap_to_cell(pos: Vector3) -> Vector3:
 	return Vector3(
