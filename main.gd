@@ -61,7 +61,6 @@ func _activate_controlled_citizen_debug_target() -> void:
 		_controlled_citizen.call("enter_keyboard_control_mode", true)
 	else:
 		_controlled_citizen.set("keyboard_control_enabled", true)
-		_controlled_citizen.set("debug_draw_avoidance", true)
 		_city_camera.set_follow_target(_controlled_citizen)
 
 func _deactivate_controlled_citizen_debug_target() -> void:

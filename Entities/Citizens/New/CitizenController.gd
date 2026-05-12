@@ -92,7 +92,7 @@ extends CharacterBody3D
 @export_group("Low Obstacle Jump")
 @export var jump_low_obstacles: bool = true
 @export_node_path("RayCast3D") var obstacle_down_ray_path: NodePath
-@export var max_jump_obstacle_height: float = 0.14
+@export var max_jump_obstacle_height: float = 0.24
 @export var min_jump_obstacle_height: float = 0.005
 @export var jump_probe_distance: float = 0.45
 @export var jump_velocity: float = 1.8
@@ -106,22 +106,22 @@ extends CharacterBody3D
 
 # ---------------------------------------------------------- Exports: Logging
 @export_group("Logging")
-@export var enable_file_log: bool = true
+@export var enable_file_log: bool = false
 ## Minimum log level: 0=TRACE 1=DEBUG 2=INFO 3=WARN 4=ERROR.
 ## For single-citizen bug hunting keep at 0. Multi-citizen: raise to 2.
 @export_range(0, 4, 1) var log_min_level: int = 0
 @export var log_flush_interval: float = 0.25
-@export var debug_log_probe_hits: bool = true
+@export var debug_log_probe_hits: bool = false
 ## Override log file path. Empty → user://logs/citizen_<name>.log
 @export var log_file_path: String = ""
 
 # ---------------------------------------------------------- Exports: Debug
 @export_group("Debug Draw")
 @export var debug_draw_avoidance: bool = false
-@export var debug_draw_surface_cells: bool = true
-@export var debug_draw_physics_hits: bool = true
-@export var debug_draw_cell_heights: bool = true
-@export var show_global_path: bool = true
+@export var debug_draw_surface_cells: bool = false
+@export var debug_draw_physics_hits: bool = false
+@export var debug_draw_cell_heights: bool = false
+@export var show_global_path: bool = false
 @export var clear_global_path_on_arrival: bool = false
 @export var global_path_line_color: Color = Color(0.1, 0.85, 1.0, 1.0)
 @export var global_path_line_y_offset: float = 0.2
@@ -318,11 +318,36 @@ func is_travelling() -> bool:
 	return _is_travelling
 
 
+func set_debug_visualization_enabled(enabled: bool) -> void:
+	debug_draw_avoidance = enabled
+	debug_draw_surface_cells = enabled
+	debug_draw_physics_hits = enabled
+	debug_draw_cell_heights = enabled
+	show_global_path = enabled
+
+	if _config != null:
+		_config.debug_draw_avoidance = enabled
+		_config.debug_draw_surface_cells = enabled
+		_config.debug_draw_physics_hits = enabled
+		_config.debug_draw_cell_heights = enabled
+		_config.show_global_path = enabled
+
+	if _debug == null:
+		return
+	if enabled:
+		_debug.update_global_path(_global_path, _path_index)
+		_debug.update_target_marker(_target_position, _is_travelling)
+		return
+
+	_debug_live_scan_cells = []
+	_debug_live_scan_physics_hits = []
+	_debug.clear_avoidance()
+	_debug.clear_global_path()
+	_debug.clear_target_marker()
+
+
 func enter_keyboard_control_mode(follow_camera: bool = true) -> void:
 	keyboard_control_enabled = true
-	debug_draw_avoidance = true
-	if _config != null:
-		_config.debug_draw_avoidance = true
 	_is_travelling = false
 	_global_path = PackedVector3Array()
 	_path_index = 0
@@ -392,7 +417,7 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 
-	var move_target := _global_path[_path_index] if _is_crosswalk_path_context(_path_index) \
+	var move_target := _global_path[_path_index] if _should_follow_waypoint_directly(_path_index) \
 			else SteeringController.blend_corner(_global_path, _path_index,
 					global_position, _config.corner_blend_distance, _config.corner_blend_strength)
 	var direction := move_target - global_position
@@ -664,6 +689,18 @@ func _is_pedestrian_edge_route_context() -> bool:
 	return false
 
 
+func _should_follow_waypoint_directly(index: int) -> bool:
+	if _is_crosswalk_path_context(index):
+		return true
+	for candidate_index in [index - 1, index, index + 1]:
+		var candidate := int(candidate_index)
+		if candidate < 0 or candidate >= _global_path.size():
+			continue
+		if _is_pedestrian_edge_kind(_get_pedestrian_graph_kind(_global_path[candidate])):
+			return true
+	return false
+
+
 func _is_pedestrian_edge_kind(kind: String) -> bool:
 	return kind == "boundary" \
 			or kind == "corner" \
@@ -712,12 +749,16 @@ func _choose_steered_direction(desired_direction: Vector3, delta: float) -> Vect
 	if _obstacle_check_timer <= 0.0:
 		_obstacle_check_timer = _config.obstacle_check_interval
 		var surface_kind := _perception.get_surface_kind(global_position)
-		var too_close := _perception.is_too_close_to_road(desired_direction)
+		var trust_pedestrian_graph := _should_suppress_road_buffer_for_graph(surface_kind)
+		var too_close := _perception.is_too_close_to_road(desired_direction) \
+				and not trust_pedestrian_graph
 		var was_blocked := _cached_avoidance_blocked
 		_cached_avoidance_blocked = _perception.is_path_ahead_blocked(desired_direction, _config.jump_low_obstacles) \
 				or _should_escape_surface(surface_kind) \
 				or too_close
-		var corridor_dir := _pick_green_corridor_direction(desired_direction, surface_kind, too_close)
+		var corridor_dir := Vector3.ZERO
+		if not trust_pedestrian_graph:
+			corridor_dir = _pick_green_corridor_direction(desired_direction, surface_kind, too_close)
 		if corridor_dir != Vector3.ZERO:
 			_green_corridor_direction = corridor_dir
 			_green_corridor_timer = maxf(_config.obstacle_check_interval, 0.08)
@@ -837,6 +878,10 @@ func _clear_live_debug_scan() -> void:
 
 func _update_live_debug_scan(forward: Vector3, delta: float) -> void:
 	if not _config.use_local_astar_avoidance:
+		_clear_live_debug_scan()
+		return
+	if not _config.debug_draw_avoidance \
+			and not (keyboard_control_enabled and keyboard_control_use_green_corridor):
 		_clear_live_debug_scan()
 		return
 	if forward.length_squared() <= 0.0001:
@@ -989,6 +1034,14 @@ func _pick_corridor_candidate(
 	return best_direction
 
 
+func _should_suppress_road_buffer_for_graph(surface_kind: String) -> bool:
+	if surface_kind == SurfaceClassifier.KIND_ROAD:
+		return false
+	if not _is_walkable_exit_surface_kind(surface_kind):
+		return false
+	return _is_pedestrian_edge_route_context()
+
+
 func _is_orange_corridor_cell(cell_data: Dictionary) -> bool:
 	var reason := str(cell_data.get("blocked_reason", ""))
 	if reason != "road_buffer":
@@ -1077,7 +1130,7 @@ func _has_passed_path_index(index: int) -> bool:
 func _is_already_on_next_segment(index: int) -> bool:
 	if index <= 0 or index >= _global_path.size() - 1:
 		return false
-	if _is_crosswalk_path_context(index):
+	if _get_pedestrian_graph_kind(_global_path[index]).begins_with("crosswalk"):
 		return false
 	var waypoint := _global_path[index]
 	var next := _global_path[index + 1]
@@ -1167,7 +1220,8 @@ func _try_replan_from_stuck() -> void:
 	# Very close to the destination? Just arrive.
 	var dist_to_target := _planar_distance(global_position, _target_position)
 	if dist_to_target <= maxf(_config.stuck_detection_min_distance * 2.0,
-			_config.final_waypoint_reach_distance * 2.0):
+			maxf(_config.final_waypoint_reach_distance * 2.0,
+					_config.waypoint_pass_distance + 0.1)):
 		_stop_at_target()
 		return
 	# Suppress surface-escape for a few seconds so the rebuilt global path can
@@ -1441,6 +1495,8 @@ func _get_click_world_position(screen_pos: Vector2) -> Variant:
 
 
 func _draw_debug(desired_direction: Vector3, final_direction: Vector3) -> void:
+	if _config == null or not _config.debug_draw_avoidance:
+		return
 	var debug_cells := _debug_live_scan_cells
 	if debug_cells.is_empty():
 		debug_cells = _debug_local_grid_cells
@@ -1468,8 +1524,6 @@ func _build_config() -> CitizenConfig:
 	# caught at startup by `tools/codex_citizen_config_drift_test.gd`.
 	var c := CitizenConfig.new()
 	c.populate_from(self)
-	if (accept_click_input or keyboard_control_enabled) and not c.debug_draw_avoidance:
-		c.debug_draw_avoidance = true
 	return c
 
 

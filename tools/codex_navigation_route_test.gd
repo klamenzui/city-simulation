@@ -95,22 +95,31 @@ func _init() -> void:
 		_print_outcome(citizen, false, false, 0.0)
 		quit(1)
 		return
+	_print_global_path(citizen)
 
 	# Tick the physics loop until ARRIVED or timeout. Sample positions for the
 	# indicator-waypoint soft check.
 	var max_frames := int(ceil(MAX_TRAVEL_SECONDS * PHYSICS_HZ))
 	var elapsed_frames := 0
 	var samples: Array[Vector3] = []
+	var path_samples: Array[String] = []
 	while elapsed_frames < max_frames:
 		await physics_frame
 		elapsed_frames += 1
 		if (elapsed_frames % POSITION_SAMPLE_INTERVAL_FRAMES) == 0:
 			samples.append(citizen.global_position)
+		if (elapsed_frames % int(PHYSICS_HZ)) == 0 and "_path_index" in citizen:
+			path_samples.append("t=%.0f idx=%d pos=%s" % [
+				float(elapsed_frames) / PHYSICS_HZ,
+				int(citizen._path_index),
+				_fmt_vec3(citizen.global_position)
+			])
 		if arrived[0] or stuck_emitted[0]:
 			break
 
 	var elapsed_seconds := float(elapsed_frames) / PHYSICS_HZ
 	var passed := _print_outcome(citizen, arrived[0], stuck_emitted[0], elapsed_seconds)
+	_print_path_samples(path_samples)
 	_print_indicator_waypoints(samples)
 	print()
 	print("=== End route test ===")
@@ -138,6 +147,18 @@ func _print_outcome(citizen: Node, arrived: bool, stuck_emitted: bool, elapsed_s
 	print("  elapsed_seconds = %.2f (budget %.1f)" % [elapsed_seconds, MAX_TRAVEL_SECONDS])
 	print("  end position    = (%.2f, %.2f, %.2f)" % [
 		citizen.global_position.x, citizen.global_position.y, citizen.global_position.z])
+	if "_path_index" in citizen and "_global_path" in citizen:
+		var path: PackedVector3Array = citizen._global_path
+		var path_index: int = int(citizen._path_index)
+		print("  path_index      = %d/%d" % [path_index, maxi(path.size() - 1, 0)])
+		if path_index >= 0 and path_index < path.size():
+			var next_point := path[path_index]
+			print("  next waypoint   = (%.2f, %.2f, %.2f) kind=%s" % [
+				next_point.x, next_point.y, next_point.z,
+				citizen._get_pedestrian_graph_kind(next_point) if citizen.has_method("_get_pedestrian_graph_kind") else "-"
+			])
+	if "_perception" in citizen and citizen._perception != null:
+		print("  end surface     = %s" % str(citizen._perception.get_surface_kind(citizen.global_position)))
 	print("  NO_CANDIDATES   = %d (limit %d)" % [no_candidates, MAX_NO_CANDIDATES])
 	print("  STUCK.REPLAN    = %d (limit %d)" % [stuck_replans, MAX_STUCK_REPLAN])
 	print("  STUCK.EXHAUSTED = %d" % stuck_exhausted)
@@ -193,6 +214,32 @@ func _print_indicator_waypoints(samples: Array[Vector3]) -> void:
 			label, min_dist, expect_within, status])
 
 
+func _print_path_samples(path_samples: Array[String]) -> void:
+	if path_samples.is_empty():
+		return
+	print()
+	print("--- Path samples ---")
+	for sample in path_samples.slice(maxi(path_samples.size() - 12, 0), path_samples.size()):
+		print("  ", sample)
+
+
+func _print_global_path(citizen: Node) -> void:
+	if citizen == null or not "_global_path" in citizen:
+		return
+	var path: PackedVector3Array = citizen._global_path
+	print("--- Global path ---")
+	print("  points = %d" % path.size())
+	for i in range(path.size()):
+		var point := path[i]
+		var kind := "-"
+		if citizen.has_method("_get_pedestrian_graph_kind"):
+			kind = str(citizen._get_pedestrian_graph_kind(point))
+			if kind.is_empty():
+				kind = "-"
+		print("  %02d %s kind=%s" % [i, _fmt_vec3(point), kind])
+	print()
+
+
 func _event_count(citizen: Node, layer: String, event: String) -> int:
 	# Reach into the controller's logger via the private member.
 	# Acceptable for a test — the logger is the source of truth for events.
@@ -204,3 +251,7 @@ func _event_count(citizen: Node, layer: String, event: String) -> int:
 	if logger == null or not logger.has_method("get_event_count"):
 		return 0
 	return int(logger.get_event_count(layer, event))
+
+
+func _fmt_vec3(value: Vector3) -> String:
+	return "(%.2f, %.2f, %.2f)" % [value.x, value.y, value.z]

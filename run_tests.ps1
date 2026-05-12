@@ -138,6 +138,21 @@ $availableTests = @(
 		Script = "res://tools/codex_runtime_lod_conversation_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "gamesmoke"
+		Label = "Game Scene Smoke"
+		Script = "res://tools/codex_game_smoke_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "entry"
+		Label = "Building Entry Travel"
+		Script = "res://tools/codex_building_entry_travel_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "selection"
+		Label = "Selection Hit Test"
+		Script = "res://tools/codex_selection_hit_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "route"
 		Label = "Route Probe"
 		Script = "res://tools/codex_route_probe.gd"

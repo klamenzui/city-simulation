@@ -34,7 +34,7 @@
 [ext_resource type="PackedScene" uid="uid://doaenty10x3ft" path="res://Scenes/Roads/RoadStraightCrossing.tscn" id="55_eho1g"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_013_500cad96.tscn" id="55_k1ahk"]
 [ext_resource type="PackedScene" uid="uid://da1xt0o51uxma" path="res://Scenes/CityBuildings/stores/stores_014_126ea44a.tscn" id="58_mk7o0"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_015_f544cce0.tscn" id="59_jhmog"]
+[ext_resource type="PackedScene" uid="uid://cx6tpnlmke6ym" path="res://Scenes/CityBuildings/stores/stores_015_f544cce0.tscn" id="59_jhmog"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_016_ac59b627.tscn" id="62_6fuh2"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_017_749175fb.tscn" id="64_i1nx7"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_018_e9415629.tscn" id="65_5eeth"]
@@ -50,7 +50,7 @@
 [ext_resource type="PackedScene" uid="uid://cw5nwm7th1qyw" path="res://ImportedCitySource/assets/plants/tree01.gltf" id="75_xnlf2"]
 [ext_resource type="PackedScene" uid="uid://bj6eb5n46fjfc" path="res://ImportedCitySource/assets/plants/bush03.gltf" id="76_3may0"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_023_b137ee32.tscn" id="76_pdhal"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_024_bc829056.tscn" id="77_mibso"]
+[ext_resource type="PackedScene" uid="uid://b2133vo7trckb" path="res://Scenes/CityBuildings/stores/stores_024_bc829056.tscn" id="77_mibso"]
 [ext_resource type="PackedScene" uid="uid://dwu6en8dk7qua" path="res://ImportedCitySource/assets/plants/bush01.gltf" id="77_obdul"]
 [ext_resource type="PackedScene" uid="uid://crkalxntwby7q" path="res://ImportedCitySource/assets/plants/bush02.gltf" id="78_aon1w"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_025_b7745ee7.tscn" id="78_sosel"]
@@ -2170,9 +2170,8 @@ script = ExtResource("401_skybr")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.348106, 1.9736841, 18.510485)
 autonomous_simulation_enabled = false
 local_astar_radius = 0.6
-log_file_path = "res://citizen.log"
 
-[node name="ControlledCitizen" parent="." instance=ExtResource("106_llcqu")]
+[node name="ControlledCitizen" parent="." unique_id=1375507526 instance=ExtResource("106_llcqu")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.04, 0.156, 18.66)
 collision_layer = 0
 autonomous_simulation_enabled = false
@@ -2181,9 +2180,7 @@ accept_click_input = true
 keyboard_control_enabled = true
 keyboard_control_speed_multiplier = 1.2
 keyboard_control_disable_jump = false
-keyboard_control_use_green_corridor = true
+keyboard_control_use_green_corridor = false
 local_astar_radius = 0.6
-local_astar_wall_buffer_cells = 0
 jump_velocity = 3.2
 log_file_path = "res://controlled_citizen.log"
-debug_draw_avoidance = true

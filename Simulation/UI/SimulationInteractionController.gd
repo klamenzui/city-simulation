@@ -142,6 +142,8 @@ func handle_input(event: InputEvent) -> bool:
 			if selection_state_controller.try_handle_click_move(event.position):
 				_entity_clicked_this_frame = true
 				return true
+		if hovered_control == null and _try_select_entity_under_cursor(event.position):
+			return true
 		call_deferred("_check_deselect_this_frame")
 
 	return false
@@ -197,6 +199,90 @@ func _check_deselect_this_frame() -> void:
 	if not _entity_clicked_this_frame:
 		deselect()
 	_entity_clicked_this_frame = false
+
+func _try_select_entity_under_cursor(screen_pos: Vector2) -> bool:
+	if owner_node == null or selection_state_controller == null:
+		return false
+	var viewport := owner_node.get_viewport()
+	if viewport == null:
+		return false
+	var camera := viewport.get_camera_3d()
+	if camera == null:
+		return false
+	var world_3d := camera.get_world_3d()
+	if world_3d == null:
+		return false
+	var screen_citizen := _find_citizen_near_screen_pos(camera, screen_pos)
+	if screen_citizen != null:
+		handle_citizen_clicked(screen_citizen)
+		return true
+
+	var from := camera.project_ray_origin(screen_pos)
+	var to := from + camera.project_ray_normal(screen_pos) * 1000.0
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.collide_with_areas = true
+	query.collide_with_bodies = true
+	query.collision_mask = 0xFFFFFFFF
+
+	var excluded: Array[RID] = []
+	for _i in range(12):
+		query.exclude = excluded
+		var hit := world_3d.direct_space_state.intersect_ray(query)
+		if hit.is_empty():
+			return false
+		var collider: Variant = hit.get("collider", null)
+		var citizen := _resolve_citizen_from_collider(collider)
+		if citizen != null:
+			handle_citizen_clicked(citizen)
+			return true
+		var building := _resolve_building_from_collider(collider)
+		if building != null:
+			handle_building_clicked(building)
+			return true
+		if collider is CollisionObject3D:
+			excluded.append((collider as CollisionObject3D).get_rid())
+			continue
+		return false
+	return false
+
+func _find_citizen_near_screen_pos(camera: Camera3D, screen_pos: Vector2) -> Citizen:
+	if world == null or camera == null:
+		return null
+	var best: Citizen = null
+	var best_dist := INF
+	var max_pick_radius_px := 28.0
+	for citizen in world.citizens:
+		if citizen == null or not is_instance_valid(citizen):
+			continue
+		if not citizen.visible or citizen.is_inside_building():
+			continue
+		var pick_pos := citizen.global_position + Vector3(0.0, 0.45, 0.0)
+		if camera.is_position_behind(pick_pos):
+			continue
+		var projected := camera.unproject_position(pick_pos)
+		var dist := projected.distance_to(screen_pos)
+		if dist > max_pick_radius_px or dist >= best_dist:
+			continue
+		best = citizen
+		best_dist = dist
+	return best
+
+func _resolve_citizen_from_collider(collider: Variant) -> Citizen:
+	var node := collider as Node if collider is Node else null
+	while node != null:
+		if node is Citizen:
+			var citizen := node as Citizen
+			return citizen if citizen.visible else null
+		node = node.get_parent()
+	return null
+
+func _resolve_building_from_collider(collider: Variant) -> Building:
+	var node := collider as Node if collider is Node else null
+	while node != null:
+		if node is Building:
+			return node as Building
+		node = node.get_parent()
+	return null
 
 func _refresh_debug_panel_dialog_ui() -> void:
 	if debug_panel == null:
