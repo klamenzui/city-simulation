@@ -207,7 +207,7 @@ shadow_mesh = SubResource("ArrayMesh_8ng3i")
 script = ExtResource("1_lveob")
 building_name = "Restaurant 02 (Commercial building)"
 building_type = 2
-entrance = NodePath("Entrance")
+entrance = NodePath("")
 
 [node name="base2" parent="." unique_id=641860325 instance=ExtResource("2_nr3j8")]
 
@@ -247,5 +247,5 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.087, 0)
 mesh = SubResource("ArrayMesh_6ddc1")
 skeleton = NodePath("")
 
-[node name="Entrance" type="Node3D" parent="." unique_id=194448893]
+[node name="Entrance" type="Marker3D" parent="." unique_id=616413434]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0.52900076)

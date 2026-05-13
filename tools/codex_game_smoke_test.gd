@@ -32,12 +32,18 @@ func _init() -> void:
 		printerr("FAIL: no buildings registered after scene setup")
 		quit(1)
 		return
+	var park_count := _count_registered_parks(world)
+	if park_count != 1:
+		printerr("FAIL: expected one registered park cluster, got %d" % park_count)
+		quit(1)
+		return
 
 	_ensure_rent_has_a_tenant(world)
 	var tenant_count := _count_residential_tenants(world)
-	print("scene citizens=%d buildings=%d residential_tenants=%d" % [
+	print("scene citizens=%d buildings=%d parks=%d residential_tenants=%d" % [
 		world.citizens.size(),
 		world.buildings.size(),
+		park_count,
 		tenant_count
 	])
 	if tenant_count <= 0:
@@ -96,6 +102,14 @@ func _count_residential_tenants(world: World) -> int:
 	for building in world.buildings:
 		if building is ResidentialBuilding:
 			total += (building as ResidentialBuilding).tenants.size()
+	return total
+
+
+func _count_registered_parks(world: World) -> int:
+	var total := 0
+	for building in world.buildings:
+		if building is Park or building.is_in_group("parks"):
+			total += 1
 	return total
 
 

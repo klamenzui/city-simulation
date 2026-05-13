@@ -830,7 +830,7 @@ shadow_mesh = SubResource("ArrayMesh_q8sic")
 script = ExtResource("1_snyoe")
 building_name = "University 02 (Services)"
 building_type = 7
-entrance = NodePath("Entrance")
+entrance = NodePath("")
 
 [node name="Cube_003" type="MeshInstance3D" parent="." unique_id=267647284]
 transform = Transform3D(0.0610697, 0, 0, 0, 0.678019, 0, 0, 0, 0.0610697, 0.140343, 0.945362, 0.368042)
@@ -927,5 +927,5 @@ transform = Transform3D(-2.19167, 0, 2.47455e-07, 0, 1.3319, 0, -3.30933e-07, 0,
 mesh = SubResource("ArrayMesh_iry5v")
 skeleton = NodePath("")
 
-[node name="Entrance" type="Node3D" parent="." unique_id=545833033]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3407784, 0.06, 0.99118096)
+[node name="Entrance" type="Marker3D" parent="." unique_id=1250995984]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3407784, 0.44875067, 0.8631956)

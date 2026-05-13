@@ -54,6 +54,13 @@ extends CharacterBody3D
 @export var avoidance_slowdown_factor: float = 0.65
 @export var steering_smoothing: float = 5.0
 
+# ---------------------------------------------------------- Exports: Crowd
+@export_group("Crowd")
+@export var crowd_push_enabled: bool = true
+@export var crowd_push_radius: float = 0.34
+@export var crowd_push_strength: float = 0.55
+@export var crowd_push_max_speed: float = 0.32
+
 # ---------------------------------------------------------- Exports: Local A*
 @export_group("Local AStar Avoidance")
 @export var use_local_astar_avoidance: bool = true
@@ -414,7 +421,7 @@ func _physics_process(delta: float) -> void:
 		_clear_live_debug_scan()
 		_debug.clear_avoidance()
 		_apply_idle_gravity(delta)
-		move_and_slide()
+		_move_with_crowd_push(delta)
 		return
 
 	if _path_index >= _global_path.size():
@@ -422,7 +429,7 @@ func _physics_process(delta: float) -> void:
 		_debug.clear_avoidance()
 		_stop_at_target()
 		_apply_idle_gravity(delta)
-		move_and_slide()
+		_move_with_crowd_push(delta)
 		return
 
 	if not _advance_path_progress():
@@ -430,7 +437,7 @@ func _physics_process(delta: float) -> void:
 		_debug.clear_avoidance()
 		_stop_at_target()
 		_apply_idle_gravity(delta)
-		move_and_slide()
+		_move_with_crowd_push(delta)
 		return
 
 	var move_target := _global_path[_path_index] if _should_follow_waypoint_directly(_path_index) \
@@ -475,7 +482,74 @@ func _physics_process(delta: float) -> void:
 		_debug.clear_avoidance()
 
 	_apply_idle_gravity(delta)
+	_move_with_crowd_push(delta)
+
+
+func _move_with_crowd_push(_delta: float) -> void:
+	_apply_citizen_crowd_push()
 	move_and_slide()
+
+
+func _apply_citizen_crowd_push() -> void:
+	if not crowd_push_enabled:
+		return
+	if crowd_push_radius <= 0.01 or crowd_push_strength <= 0.0 or crowd_push_max_speed <= 0.0:
+		return
+	if not is_inside_tree() or collision_layer == 0:
+		return
+	if has_method("is_inside_building") and call("is_inside_building"):
+		return
+
+	var tree := get_tree()
+	if tree == null:
+		return
+
+	var radius_sq := crowd_push_radius * crowd_push_radius
+	var push := Vector3.ZERO
+	for node in tree.get_nodes_in_group("citizens"):
+		if node == self or node is not Node3D:
+			continue
+		var other := node as Node3D
+		if other.has_method("is_inside_building") and other.call("is_inside_building"):
+			continue
+		if other is CollisionObject3D and (other as CollisionObject3D).collision_layer == 0:
+			continue
+
+		var away := global_position - other.global_position
+		away.y = 0.0
+		var dist_sq := away.length_squared()
+		if dist_sq > radius_sq:
+			continue
+
+		var dist := sqrt(dist_sq)
+		if dist <= 0.001:
+			away = _get_exact_overlap_push_axis(other)
+			dist = 0.001
+
+		var pressure := 1.0 - clampf(dist / crowd_push_radius, 0.0, 1.0)
+		push += away.normalized() * pressure
+
+	if push.length_squared() <= 0.0001:
+		return
+
+	var push_velocity := push * crowd_push_strength
+	if push_velocity.length() > crowd_push_max_speed:
+		push_velocity = push_velocity.normalized() * crowd_push_max_speed
+	velocity.x += push_velocity.x
+	velocity.z += push_velocity.z
+
+
+func _get_exact_overlap_push_axis(other: Node3D) -> Vector3:
+	var self_id := int(get_instance_id())
+	var other_id := int(other.get_instance_id()) if other != null else self_id + 1
+	var low_id := mini(self_id, other_id)
+	var high_id := maxi(self_id, other_id)
+	var angle := float(posmod(low_id * 1103515245 + high_id * 12345, 6283)) / 1000.0
+	var sign := -1.0 if self_id < other_id else 1.0
+	var axis := Vector3(cos(angle) * sign, 0.0, sin(angle) * sign)
+	if axis.length_squared() <= 0.0001:
+		return Vector3.FORWARD * sign
+	return axis.normalized()
 
 
 func _physics_process_keyboard_control(delta: float) -> void:
@@ -498,7 +572,7 @@ func _physics_process_keyboard_control(delta: float) -> void:
 		_update_live_debug_scan(_manual_last_direction, delta)
 		_draw_debug(_manual_last_direction, _manual_last_direction)
 		_apply_idle_gravity(delta)
-		move_and_slide()
+		_move_with_crowd_push(delta)
 		return
 
 	_manual_last_direction = desired_direction
@@ -524,7 +598,7 @@ func _physics_process_keyboard_control(delta: float) -> void:
 		look_at(global_position + final_direction, Vector3.UP)
 	_draw_debug(desired_direction, final_direction)
 	_apply_idle_gravity(delta)
-	move_and_slide()
+	_move_with_crowd_push(delta)
 
 
 func _get_keyboard_control_direction() -> Vector3:

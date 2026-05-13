@@ -258,11 +258,26 @@ func _bind_building_clicks() -> void:
 	if interaction_controller == null:
 		return
 	var building_clicked_cb := Callable(interaction_controller, "handle_building_clicked")
-	for building in world.buildings:
+	var clickable_buildings := _get_clickable_scene_buildings()
+	for building in clickable_buildings:
 		if building == null:
 			continue
 		if not building.clicked.is_connected(building_clicked_cb):
 			building.clicked.connect(building_clicked_cb)
+
+func _get_clickable_scene_buildings() -> Array[Building]:
+	var result: Array[Building] = []
+	if world != null:
+		for building in world.buildings:
+			if building != null and not result.has(building):
+				result.append(building)
+	var tree := owner_node.get_tree() if owner_node != null else null
+	if tree == null:
+		return result
+	for node in tree.get_nodes_in_group("buildings"):
+		if node is Building and not result.has(node):
+			result.append(node as Building)
+	return result
 
 func _bind_citizen_clicks() -> void:
 	if interaction_controller == null:
