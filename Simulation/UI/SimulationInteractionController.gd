@@ -57,6 +57,10 @@ func handle_building_clicked(building: Building) -> void:
 	_entity_clicked_this_frame = true
 	if selection_state_controller == null:
 		return
+	if world != null and world.has_method("get_canonical_building"):
+		building = world.get_canonical_building(building)
+	if building == null:
+		return
 
 	selection_state_controller.handle_building_clicked(building)
 	if selection_state_controller.get_selected_building() != null:

@@ -2,9 +2,11 @@ extends SceneTree
 
 const BuildingScript = preload("res://Entities/Buildings/Building.gd")
 const ParkScript = preload("res://Entities/Buildings/Park.gd")
+const ResidentialBuildingScript = preload("res://Entities/Buildings/ResidentialBuilding.gd")
 const UniversityScript = preload("res://Entities/Buildings/University.gd")
 const CitizenScript = preload("res://Entities/Citizens/New/Citizen.gd")
 const WorldScript = preload("res://Simulation/World.gd")
+const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
 const ActionScript = preload("res://Actions/Action.gd")
 const StudyAtUniversityActionScript = preload("res://Actions/StudyAtUniversityAction.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
@@ -44,6 +46,9 @@ func _run_all_tests() -> void:
 		"world_city_bench_cache_refreshes_on_scene_change",
 		"world_auto_registers_runtime_park_queries",
 		"world_unregisters_removed_park_from_queries",
+		"world_registers_scene_park_cluster_once",
+		"citizen_factory_spawns_at_home_entrance",
+		"citizen_crowd_push_separates_close_neighbors",
 		"citizen_auto_resolves_world_for_queries",
 		"action_default_needs_modifier_is_isolated",
 		"relax_bench_uses_energy_bonus",
@@ -110,6 +115,12 @@ func _run_test(test_name: String) -> String:
 			return _test_world_auto_registers_runtime_park_queries()
 		"world_unregisters_removed_park_from_queries":
 			return _test_world_unregisters_removed_park_from_queries()
+		"world_registers_scene_park_cluster_once":
+			return _test_world_registers_scene_park_cluster_once()
+		"citizen_factory_spawns_at_home_entrance":
+			return _test_citizen_factory_spawns_at_home_entrance()
+		"citizen_crowd_push_separates_close_neighbors":
+			return _test_citizen_crowd_push_separates_close_neighbors()
 		"citizen_auto_resolves_world_for_queries":
 			return _test_citizen_auto_resolves_world_for_queries()
 		"action_default_needs_modifier_is_isolated":
@@ -571,6 +582,84 @@ func _test_world_unregisters_removed_park_from_queries() -> String:
 	_free_world(world)
 	return _current_error
 
+func _test_world_registers_scene_park_cluster_once() -> String:
+	var world: World = _new_world()
+	var cluster := Node3D.new()
+	cluster.name = "Park"
+	_harness_root.add_child(cluster)
+
+	var park_a: Park = ParkScript.new()
+	park_a.name = "ParkTileA"
+	park_a.building_name = "Park 01 (Park)"
+	var entrance_a := Node3D.new()
+	entrance_a.name = "Entrance"
+	entrance_a.position = Vector3(0.0, 0.0, 1.0)
+	park_a.add_child(entrance_a)
+	cluster.add_child(park_a)
+	var park_b: Park = ParkScript.new()
+	park_b.name = "ParkTileB"
+	park_b.building_name = "Park 02 (Park)"
+	park_b.position = Vector3(2.0, 0.0, 0.0)
+	var entrance_b := Node3D.new()
+	entrance_b.name = "Entrance"
+	entrance_b.position = Vector3(0.0, 0.0, 1.0)
+	park_b.add_child(entrance_b)
+	cluster.add_child(park_b)
+
+	world.register_building(park_a)
+	world.register_building(park_b)
+
+	_expect_eq(world.buildings.size(), 1, "scene park tiles under the Park node should register as one building")
+	_expect_eq(world.find_nearest_park(Vector3.ZERO), park_a, "first park tile should act as the scene-cluster representative")
+	_expect_eq(world.get_canonical_building(park_b), park_a, "park tile aliases should resolve to the representative")
+	_expect_eq(park_a.get_display_name(), "Park", "park cluster should use the parent node name in building lists")
+
+	_free_world(world)
+	return _current_error
+
+func _test_citizen_factory_spawns_at_home_entrance() -> String:
+	var world: World = _new_world()
+	var home: ResidentialBuilding = _new_residential("Starter Home", Vector3(0.0, 0.0, 1.4), 6)
+	world.register_building(home)
+
+	var spawned: Array[Citizen] = CitizenFactoryScript.spawn_citizens(_harness_root, world, 4)
+	_expect_eq(spawned.size(), 4, "factory should spawn the requested citizens")
+	_expect_eq(home.tenants.size(), 4, "spawned citizens should occupy home slots immediately")
+
+	var used_positions: Array[Vector3] = []
+	for index in spawned.size():
+		var citizen := spawned[index]
+		_expect_eq(citizen.home, home, "spawned citizen should keep the assigned residential home")
+		_expect(not citizen.is_inside_building(), "initial spawn should be visible outside the home")
+		_expect(citizen.global_position.distance_to(home.get_entrance_pos()) < 1.2, "citizen should spawn near the home entrance")
+		if index == 0:
+			var center_spawn: Vector3 = home.get_navigation_points(world, 0.0).get("spawn", home.get_entrance_pos())
+			_expect(citizen.global_position.distance_to(center_spawn) < 0.15, "first same-home spawn should stay centered at the exit")
+		for used_pos in used_positions:
+			_expect(citizen.global_position.distance_to(used_pos) > 0.20, "same-home spawn points should not start at the exact same point")
+		used_positions.append(citizen.global_position)
+
+	_free_world(world)
+	return _current_error
+
+func _test_citizen_crowd_push_separates_close_neighbors() -> String:
+	var front: Citizen = _new_citizen("Front Citizen")
+	var back: Citizen = _new_citizen("Back Citizen")
+	front.add_to_group("citizens")
+	back.add_to_group("citizens")
+	front.global_position = Vector3(0.0, 0.0, 0.0)
+	back.global_position = Vector3(0.0, 0.0, 0.0)
+	front.velocity = Vector3.ZERO
+	back.velocity = Vector3.ZERO
+
+	front._apply_citizen_crowd_push()
+	back._apply_citizen_crowd_push()
+
+	_expect(front.velocity.length() > 0.01, "front citizen should be pushed out of exact overlap")
+	_expect(back.velocity.length() > 0.01, "back citizen should also separate from exact overlap")
+	_expect(front.velocity.dot(back.velocity) < -0.0001, "exact-overlap push should split the pair in opposite directions")
+	return _current_error
+
 func _test_citizen_auto_resolves_world_for_queries() -> String:
 	var world: World = _new_world()
 	var park: Park = _new_park("Query Park")
@@ -631,6 +720,18 @@ func _new_building(building_name: String, worker_capacity: int = 0) -> Building:
 	building.add_child(entrance)
 	_harness_root.add_child(building)
 	return building
+
+func _new_residential(building_name: String, entrance_pos: Vector3, home_capacity: int = 10) -> ResidentialBuilding:
+	var residential: ResidentialBuilding = ResidentialBuildingScript.new()
+	residential.name = building_name
+	residential.building_name = building_name
+	residential.capacity = home_capacity
+	var entrance := Node3D.new()
+	entrance.name = "Entrance"
+	entrance.position = entrance_pos
+	residential.add_child(entrance)
+	_harness_root.add_child(residential)
+	return residential
 
 func _new_university(building_name: String) -> University:
 	var university: University = UniversityScript.new()

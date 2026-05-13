@@ -35,6 +35,8 @@ var _universities: Array[University] = []
 var _city_halls: Array[CityHall] = []
 var _parks: Array[Park] = []
 var _buildings_by_service_type: Dictionary = {}
+var _canonical_building_by_instance_id: Dictionary = {}
+var _park_representative_by_cluster_id: Dictionary = {}
 
 var is_paused: bool = false
 
@@ -560,6 +562,7 @@ func get_citizen_simulation_minutes_until_due(citizen: Citizen) -> int:
 	return 0
 
 func register_building(building: Building) -> void:
+	building = _get_registration_building(building)
 	if building == null or buildings.has(building):
 		return
 	buildings.append(building)
@@ -570,10 +573,24 @@ func register_building(building: Building) -> void:
 func unregister_building(building: Building) -> void:
 	if building == null:
 		return
+	var original_building := building
+	building = get_canonical_building(building)
+	_canonical_building_by_instance_id.erase(original_building.get_instance_id())
+	if building != original_building:
+		return
 	buildings.erase(building)
 	_deindex_building(building)
 	if district_index != null:
 		district_index.unregister_building(building)
+	_clear_park_representative(building)
+
+func get_canonical_building(building: Building) -> Building:
+	if building == null:
+		return null
+	var mapped: Variant = _canonical_building_by_instance_id.get(building.get_instance_id(), null)
+	if mapped is Building and is_instance_valid(mapped):
+		return mapped as Building
+	return building
 
 func register_job(job: Job) -> void:
 	if job == null or jobs.has(job):
@@ -942,6 +959,63 @@ func _find_bench_owner_building(node: Node) -> Building:
 			return current as Building
 		current = current.get_parent()
 	return null
+
+func _get_registration_building(building: Building) -> Building:
+	if building == null:
+		return null
+	if building is Park:
+		return _get_park_registration_representative(building as Park)
+	_canonical_building_by_instance_id[building.get_instance_id()] = building
+	return building
+
+func _get_park_registration_representative(park: Park) -> Park:
+	if park == null:
+		return null
+	var cluster_root := _get_park_scene_cluster_root(park)
+	if cluster_root == null:
+		_canonical_building_by_instance_id[park.get_instance_id()] = park
+		return park
+
+	var cluster_id := cluster_root.get_instance_id()
+	var existing: Variant = _park_representative_by_cluster_id.get(cluster_id, null)
+	if existing is Park and is_instance_valid(existing):
+		var representative := existing as Park
+		_canonical_building_by_instance_id[park.get_instance_id()] = representative
+		return representative
+
+	_park_representative_by_cluster_id[cluster_id] = park
+	_canonical_building_by_instance_id[park.get_instance_id()] = park
+	_configure_park_cluster_representative(park, cluster_root)
+	return park
+
+func _get_park_scene_cluster_root(park: Park) -> Node:
+	var parent := park.get_parent()
+	if parent == null:
+		return null
+	if parent.name == "Park":
+		return parent
+	return null
+
+func _configure_park_cluster_representative(park: Park, cluster_root: Node) -> void:
+	if park == null or cluster_root == null:
+		return
+	var cluster_name := str(cluster_root.name).strip_edges()
+	if not cluster_name.is_empty():
+		park.building_name = cluster_name
+
+func _clear_park_representative(building: Building) -> void:
+	if building is not Park:
+		return
+	var park := building as Park
+	var cluster_root := _get_park_scene_cluster_root(park)
+	if cluster_root == null:
+		_canonical_building_by_instance_id.erase(park.get_instance_id())
+		return
+	var cluster_id := cluster_root.get_instance_id()
+	var existing: Variant = _park_representative_by_cluster_id.get(cluster_id, null)
+	if existing == park:
+		_park_representative_by_cluster_id.erase(cluster_id)
+	_canonical_building_by_instance_id.erase(park.get_instance_id())
 
 func _index_building(building: Building) -> void:
 	_append_unique_building_to_bucket(_get_or_create_service_bucket(building.get_service_type()), building)
