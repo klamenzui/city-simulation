@@ -93,6 +93,8 @@ static func spawn_citizens(parent: Node, world: World, count: int) -> Array[Citi
 		var home := _assign_home(citizen, world)
 		parent.add_child(citizen)
 		place_citizen_at_home_exit(citizen, home, world, _claim_home_spawn_index(home, spawn_count_by_home))
+		if home != null:
+			citizen.enter_building(home, world, false)
 		world.register_citizen(citizen)
 		spawned.append(citizen)
 

@@ -1,10 +1,10 @@
-[gd_scene load_steps=12 format=4]
+[gd_scene format=4 uid="uid://cw6isxw0hvwun"]
 
-[ext_resource type="Script" path="res://Entities/Buildings/ResidentialBuilding.gd" id="1_a0hvm"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/city/base.gltf" id="2_awjgv"]
-[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="3_78bc6"]
-[ext_resource type="PackedScene" path="res://ImportedCitySource/assets/buildings/building_L.glb" id="4_8h0af"]
-[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/buildings/Textures/colormap.png" id="5_dus0b"]
+[ext_resource type="Script" uid="uid://bj48dr0vegu14" path="res://Entities/Buildings/ResidentialBuilding.gd" id="1_a0hvm"]
+[ext_resource type="PackedScene" uid="uid://dx57medmq3ji" path="res://ImportedCitySource/assets/city/base.gltf" id="2_awjgv"]
+[ext_resource type="Texture2D" uid="uid://b3b5vu8lonkcv" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="3_78bc6"]
+[ext_resource type="PackedScene" uid="uid://10bg22sfqeax" path="res://ImportedCitySource/assets/buildings/building_L.glb" id="4_8h0af"]
+[ext_resource type="Texture2D" uid="uid://dwqcg1j4876yu" path="res://ImportedCitySource/assets/buildings/Textures/colormap.png" id="5_dus0b"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gdd5y"]
 resource_name = "citybits_texture"
@@ -42,6 +42,9 @@ _surfaces = [{
 }]
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_ht4oy")
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_a0hvm"]
+data = PackedVector3Array(-1, 0, -0.9, -1, 0.099999994, -1, -1, 0.099999994, -0.9, -1, 0, -0.9, -1, 0, -1, -1, 0.099999994, -1, 0.9, 0, -1, 1, 0.099999994, -1, 0.9, 0.099999994, -1, 0.9, 0, -1, 1, 0, -1, 1, 0.099999994, -1, 1, 0, 0.9, 1, 0.099999994, 1, 1, 0.099999994, 0.9, 1, 0, 0.9, 1, 0, 1, 1, 0.099999994, 1, -0.9, 0, 1, -1, 0.099999994, 1, -0.9, 0.099999994, 1, -0.9, 0, 1, -1, 0, 1, -1, 0.099999994, 1, 0.9, 0, 0.9, 1, 0, 1, 1, 0, 0.9, 0.9, 0, 0.9, 0.9, 0, 1, 1, 0, 1, 0.9, 0, 0.9, -0.9, 0, 1, 0.9, 0, 1, 0.9, 0, -0.9, 0.9, 0, 0.9, 1, 0, 0.9, 0.9, 0, -0.9, 1, 0, 0.9, 1, 0, -0.9, 0.9, 0, 0.9, -0.9, 0, 0.9, -0.9, 0, 1, 0.9, 0, -0.9, -0.9, 0, 0.9, 0.9, 0, 0.9, -1, 0, 0.9, -0.9, 0, 1, -0.9, 0, 0.9, -1, 0, 0.9, -1, 0, 1, -0.9, 0, 1, -0.9, 0, -0.9, -1, 0, 0.9, -0.9, 0, 0.9, 0.9, 0, -0.9, -0.9, 0, -0.9, -0.9, 0, 0.9, -0.9, 0, -0.9, -1, 0, -0.9, -1, 0, 0.9, -1, 0, -1, -1, 0, -0.9, -0.9, 0, -0.9, -1, 0, -1, -0.9, 0, -0.9, -0.9, 0, -1, 0.9, 0, -1, -0.9, 0, -1, -0.9, 0, -0.9, 0.9, 0, -1, -0.9, 0, -0.9, 0.9, 0, -0.9, 0.9, 0, -1, 0.9, 0, -0.9, 1, 0, -0.9, 0.9, 0, -1, 1, 0, -0.9, 1, 0, -1, -0.9, 0.099999994, 0.9, -1, 0.099999994, 1, -1, 0.099999994, 0.9, -0.9, 0.099999994, 0.9, -0.9, 0.099999994, 1, -1, 0.099999994, 1, 1, 0.099999994, 0.9, 0.9, 0.099999994, 1, 0.9, 0.099999994, 0.9, 1, 0.099999994, 0.9, 1, 0.099999994, 1, 0.9, 0.099999994, 1, 0.9, 0.099999994, 1, -0.9, 0, 1, -0.9, 0.099999994, 1, 0.9, 0.099999994, 1, 0.9, 0, 1, -0.9, 0, 1, 1, 0, 1, 0.9, 0.099999994, 1, 1, 0.099999994, 1, 1, 0, 1, 0.9, 0, 1, 0.9, 0.099999994, 1, -0.9, 0.099999994, -1, 0.9, 0, -1, 0.9, 0.099999994, -1, -0.9, 0.099999994, -1, -0.9, 0, -1, 0.9, 0, -1, 0.9, 0.099999994, -1, -0.9, 0.099999994, -0.9, -0.9, 0.099999994, -1, 0.9, 0.099999994, -1, 0.9, 0.099999994, -0.9, -0.9, 0.099999994, -0.9, 0.9, 0.099999994, -0.9, 1, 0.099999994, -0.9, 1, 0.099999994, 0.9, 0.9, 0.099999994, -0.9, 1, 0.099999994, 0.9, 0.9, 0.099999994, 0.9, -0.9, 0.099999994, -0.9, -1, 0.099999994, 0.9, -1, 0.099999994, -0.9, -0.9, 0.099999994, -0.9, -0.9, 0.099999994, 0.9, -1, 0.099999994, 0.9, 0.9, 0.099999994, 1, -0.9, 0.099999994, 0.9, 0.9, 0.099999994, 0.9, 0.9, 0.099999994, 1, -0.9, 0.099999994, 1, -0.9, 0.099999994, 0.9, -1, 0, -1, -0.9, 0.099999994, -1, -1, 0.099999994, -1, -1, 0, -1, -0.9, 0, -1, -0.9, 0.099999994, -1, -0.9, 0.099999994, -0.9, 0.9, 0.099999994, 0.9, -0.9, 0.099999994, 0.9, -0.9, 0.099999994, -0.9, 0.9, 0.099999994, -0.9, 0.9, 0.099999994, 0.9, 1, 0.099999994, -1, 0.9, 0.099999994, -0.9, 0.9, 0.099999994, -1, 1, 0.099999994, -1, 1, 0.099999994, -0.9, 0.9, 0.099999994, -0.9, -0.9, 0.099999994, -1, -1, 0.099999994, -0.9, -1, 0.099999994, -1, -0.9, 0.099999994, -1, -0.9, 0.099999994, -0.9, -1, 0.099999994, -0.9, 1, 0, -1, 1, 0.099999994, -0.9, 1, 0.099999994, -1, 1, 0, -1, 1, 0, -0.9, 1, 0.099999994, -0.9, 1, 0.099999994, -0.9, 1, 0, 0.9, 1, 0.099999994, 0.9, 1, 0.099999994, -0.9, 1, 0, -0.9, 1, 0, 0.9, -1, 0, 1, -1, 0.099999994, 0.9, -1, 0.099999994, 1, -1, 0, 1, -1, 0, 0.9, -1, 0.099999994, 0.9, -1, 0.099999994, 0.9, -1, 0, -0.9, -1, 0.099999994, -0.9, -1, 0.099999994, 0.9, -1, 0, 0.9, -1, 0, -0.9)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lqdna"]
 resource_name = "colormap"
@@ -83,23 +86,28 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_35668")
 
-[node name="multilayer_residential_07" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_multilayer", "residential"]]
+[node name="multilayer_residential_07" type="Node3D" unique_id=516660607 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_multilayer", "residential"]]
 script = ExtResource("1_a0hvm")
 building_name = "Residential 07 (Multilayer)"
 building_type = 1
 entrance = NodePath("Entrance")
 
-[node name="base2" type="Node3D" parent="." instance=ExtResource("2_awjgv")]
+[node name="base2" parent="." unique_id=2037578589 instance=ExtResource("2_awjgv")]
 
-[node name="base_mesh" type="MeshInstance3D" parent="base2"]
+[node name="base_mesh" type="MeshInstance3D" parent="base2" unique_id=1573316440]
 mesh = SubResource("ArrayMesh_rw05s")
 skeleton = NodePath("")
 
-[node name="building-sample-tower-d2" type="Node3D" parent="." instance=ExtResource("4_8h0af")]
+[node name="StaticBody3D" type="StaticBody3D" parent="base2/base_mesh" unique_id=1216889238]
 
-[node name="building-sample-tower-d_mesh" type="MeshInstance3D" parent="building-sample-tower-d2"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="base2/base_mesh/StaticBody3D" unique_id=97351449]
+shape = SubResource("ConcavePolygonShape3D_a0hvm")
+
+[node name="building-sample-tower-d2" parent="." unique_id=1353775707 instance=ExtResource("4_8h0af")]
+
+[node name="building-sample-tower-d_mesh" type="MeshInstance3D" parent="building-sample-tower-d2" unique_id=1378777588]
 mesh = SubResource("ArrayMesh_0fyg1")
 skeleton = NodePath("")
 
-[node name="Entrance" type="Node3D" parent="."]
+[node name="Entrance" type="Node3D" parent="." unique_id=236767400]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)

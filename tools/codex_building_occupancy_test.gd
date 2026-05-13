@@ -626,18 +626,16 @@ func _test_citizen_factory_spawns_at_home_entrance() -> String:
 	_expect_eq(spawned.size(), 4, "factory should spawn the requested citizens")
 	_expect_eq(home.tenants.size(), 4, "spawned citizens should occupy home slots immediately")
 
-	var used_positions: Array[Vector3] = []
 	for index in spawned.size():
 		var citizen := spawned[index]
 		_expect_eq(citizen.home, home, "spawned citizen should keep the assigned residential home")
-		_expect(not citizen.is_inside_building(), "initial spawn should be visible outside the home")
+		_expect_eq(citizen.current_location, home, "spawned citizen should start logically at home")
+		_expect(citizen.is_inside_building(), "initial spawn should start inside the home until the first exit")
+		_expect(not citizen.visible, "initial home residents should be hidden while they are inside")
 		_expect(citizen.global_position.distance_to(home.get_entrance_pos()) < 1.2, "citizen should spawn near the home entrance")
 		if index == 0:
 			var center_spawn: Vector3 = home.get_navigation_points(world, 0.0).get("spawn", home.get_entrance_pos())
 			_expect(citizen.global_position.distance_to(center_spawn) < 0.15, "first same-home spawn should stay centered at the exit")
-		for used_pos in used_positions:
-			_expect(citizen.global_position.distance_to(used_pos) > 0.20, "same-home spawn points should not start at the exact same point")
-		used_positions.append(citizen.global_position)
 
 	_free_world(world)
 	return _current_error

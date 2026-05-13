@@ -1007,10 +1007,12 @@ func _set_interior_presence(hidden: bool) -> void:
 
 
 func _set_position_grounded(pos: Vector3) -> void:
-	# Simple variant for the new stack — the legacy Citizen.gd routed this
-	# through a Locomotion helper that did snap-to-ground. Movement-layer
-	# helper will replace this when we extract it.
-	global_position = pos
+	# Keep teleports/exits on the walkable floor; otherwise failed short
+	# routes can leave the body falling in place at building entrances.
+	if is_inside_tree():
+		global_position = _project_navigation_target_to_ground(pos)
+	else:
+		global_position = pos
 	velocity = Vector3.ZERO
 
 
