@@ -94,6 +94,13 @@ func _ready() -> void:
 	call_deferred("_auto_resolve_refs")
 
 
+func _physics_process(delta: float) -> void:
+	if _is_body_presence_hidden():
+		velocity = Vector3.ZERO
+		return
+	super._physics_process(delta)
+
+
 func _ensure_sim_initialized() -> void:
 	if _sim != null:
 		return
@@ -766,6 +773,11 @@ func _apply_lod_presence_state() -> void:
 # changes (rest-pose, building exit, travel stop) when the mode toggles.
 # Component holds the bare flags; Facade owns the side-effect pipeline.
 # ========================================================================
+
+func _is_body_presence_hidden() -> bool:
+	var lod_hidden := _sim != null and _sim.lod != null and _sim.lod.presence_hidden
+	return _interior_presence_hidden or lod_hidden
+
 
 func is_autonomous_simulation_enabled() -> bool:
 	return autonomous_simulation_enabled

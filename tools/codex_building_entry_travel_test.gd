@@ -79,6 +79,21 @@ func _init() -> void:
 		quit(1)
 		return
 
+	var indoor_y := citizen.global_position.y
+	for _i in range(120):
+		await physics_frame
+	var indoor_y_delta := absf(citizen.global_position.y - indoor_y)
+	if indoor_y_delta > 0.02 or citizen.velocity.length_squared() > 0.0001:
+		printerr("FAIL: hidden indoor citizen kept simulating physics and fell")
+		_print_debug(citizen, source, target, route)
+		printerr("  indoor_y_before=%.3f indoor_y_after=%.3f velocity=%s" % [
+			indoor_y,
+			citizen.global_position.y,
+			_fmt_v3(citizen.velocity),
+		])
+		quit(1)
+		return
+
 	print("ENTRY_TRAVEL OK source=%s target=%s route_points=%d pos=%s visible=%s inside=%s" % [
 		source.get_display_name(),
 		target.get_display_name(),
