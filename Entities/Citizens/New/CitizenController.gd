@@ -1431,12 +1431,14 @@ func _begin_stuck_escape(strong: bool) -> bool:
 	_obstacle_check_timer = 0.0
 	_steering.reset()
 	_clear_local_avoidance_path()
+	var escape_jump_started := _jump.try_stuck_escape_jump(strong)
 	_logger.info("CTRL", "STUCK_ESCAPE_BEGIN", {
 		"pos": global_position,
 		"target": _target_position,
 		"escape_target": _stuck_escape_target,
 		"dir": picked,
 		"strong": strong,
+		"jump": escape_jump_started,
 	})
 	return true
 

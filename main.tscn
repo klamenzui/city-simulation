@@ -72,7 +72,7 @@
 [ext_resource type="PackedScene" uid="uid://c2sjyx3wuxudg" path="res://environment/sky/Cycle.tscn" id="99_deygs"]
 [ext_resource type="PackedScene" uid="uid://cib1b468oy5er" path="res://Scenes/CityBuildings/multilayer/multilayer_005_ae5226aa.tscn" id="100_inxc5"]
 [ext_resource type="PackedScene" uid="uid://d180o3e5em11x" path="res://Scenes/CityBuildings/multilayer/multilayer_006_51b92887.tscn" id="102_xpnqb"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/multilayer/multilayer_007_8ef7bcee.tscn" id="104_bbw0l"]
+[ext_resource type="PackedScene" uid="uid://cw6isxw0hvwun" path="res://Scenes/CityBuildings/multilayer/multilayer_007_8ef7bcee.tscn" id="104_bbw0l"]
 [ext_resource type="PackedScene" uid="uid://cpjwfjfva60al" path="res://Entities/Citizens/CitizenNew.tscn" id="106_llcqu"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/foundation/foundation_001_64613340.tscn" id="107_bcjhn"]
 [ext_resource type="PackedScene" uid="uid://deo16kr38jbmc" path="res://Scenes/CityBuildings/multi_building/multi_building_001_04e25c36.tscn" id="108_k5qk0"]
@@ -82,7 +82,7 @@
 [ext_resource type="PackedScene" uid="uid://cf62u7nv4trlh" path="res://Scenes/CityBuildings/multi_building/multi_building_005_e89a241a.tscn" id="116_wed7b"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/commercial_building/commercial_building_001_23cb9fc1.tscn" id="118_eminm"]
 [ext_resource type="PackedScene" uid="uid://0kse2l1oy6o2" path="res://Scenes/CityBuildings/commercial_building/commercial_building_002_751c8aa3.tscn" id="119_upd3q"]
-[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/commercial_building/commercial_building_003_f93fa3f3.tscn" id="120_7lw36"]
+[ext_resource type="PackedScene" uid="uid://762ncimisead" path="res://Scenes/CityBuildings/commercial_building/commercial_building_003_f93fa3f3.tscn" id="120_7lw36"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/commercial_building/commercial_building_004_6c6c8091.tscn" id="122_5k0po"]
 [ext_resource type="PackedScene" uid="uid://8xn0crafcrmt" path="res://Scenes/CityBuildings/commercial_building/commercial_building_005_a655c3a0.tscn" id="124_yswul"]
 [ext_resource type="PackedScene" uid="uid://cyxrmh78xtlmp" path="res://Scenes/CityBuildings/commercial_building/commercial_building_006_61db1820.tscn" id="125_kfvpq"]
@@ -2158,18 +2158,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -84.91101, -1.2723389, -6.922
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 84.91101, 1.2723389, 6.9225693)
 shape = SubResource("ConcavePolygonShape3D_deygs")
 
-[node name="Player" parent="World" unique_id=566366776 instance=ExtResource("106_llcqu")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.76355, 0.26549387, 15.044247)
-citizen_name = "Player"
-autonomous_simulation_enabled = false
-
 [node name="SkyBridge" type="Node" parent="." unique_id=1781400]
 script = ExtResource("401_skybr")
-
-[node name="Citizen" parent="." unique_id=1850326929 instance=ExtResource("106_llcqu")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.348106, 1.9736841, 18.510485)
-autonomous_simulation_enabled = false
-local_astar_radius = 0.6
 
 [node name="ControlledCitizen" parent="." unique_id=1375507526 instance=ExtResource("106_llcqu")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.04, 0.156, 18.66)

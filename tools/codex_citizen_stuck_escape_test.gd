@@ -32,11 +32,14 @@ func _run() -> void:
 	])
 	citizen._path_index = 1
 	citizen._is_travelling = true
+	citizen.velocity = Vector3.ZERO
+	citizen._jump._coyote_time = 0.1
 
 	var started: bool = citizen._begin_stuck_escape(false)
 	_expect(started, "stuck escape should start from a valid global path")
 	_expect(citizen._stuck_escape_timer > 0.0, "escape timer should be active")
 	_expect(citizen._stuck_escape_target != Vector3.ZERO, "escape should create a temporary local target")
+	_expect(citizen.velocity.y > 0.0, "escape should add a vertical jump impulse when floor grace is available")
 
 	var global_direction := Vector3.RIGHT
 	var steered: Vector3 = citizen._choose_steered_direction(global_direction, 1.0 / 60.0)

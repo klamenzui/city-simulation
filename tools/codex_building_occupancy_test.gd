@@ -2,6 +2,7 @@ extends SceneTree
 
 const BuildingScript = preload("res://Entities/Buildings/Building.gd")
 const ParkScript = preload("res://Entities/Buildings/Park.gd")
+const RestaurantScript = preload("res://Entities/Buildings/Restaurant.gd")
 const ResidentialBuildingScript = preload("res://Entities/Buildings/ResidentialBuilding.gd")
 const UniversityScript = preload("res://Entities/Buildings/University.gd")
 const CitizenScript = preload("res://Entities/Citizens/New/Citizen.gd")
@@ -50,6 +51,7 @@ func _run_all_tests() -> void:
 		"citizen_factory_spawns_at_home_entrance",
 		"citizen_crowd_push_separates_close_neighbors",
 		"citizen_auto_resolves_world_for_queries",
+		"hungry_citizen_uses_nearest_food_target",
 		"action_default_needs_modifier_is_isolated",
 		"relax_bench_uses_energy_bonus",
 		"worker_count_lifecycle",
@@ -123,6 +125,8 @@ func _run_test(test_name: String) -> String:
 			return _test_citizen_crowd_push_separates_close_neighbors()
 		"citizen_auto_resolves_world_for_queries":
 			return _test_citizen_auto_resolves_world_for_queries()
+		"hungry_citizen_uses_nearest_food_target":
+			return _test_hungry_citizen_uses_nearest_food_target()
 		"action_default_needs_modifier_is_isolated":
 			return _test_action_default_needs_modifier_is_isolated()
 		"relax_bench_uses_energy_bonus":
@@ -671,6 +675,56 @@ func _test_citizen_auto_resolves_world_for_queries() -> String:
 	_free_world(world)
 	return _current_error
 
+func _test_hungry_citizen_uses_nearest_food_target() -> String:
+	var world: World = _new_world()
+	world.time.minutes_total = 12 * 60
+	var near_restaurant: Restaurant = _new_restaurant("Near Restaurant", Vector3(2.0, 0.0, 0.0))
+	var far_restaurant: Restaurant = _new_restaurant("Far Favorite Restaurant", Vector3(40.0, 0.0, 0.0))
+	world.register_building(far_restaurant)
+	world.register_building(near_restaurant)
+
+	_expect_eq(
+		world.find_nearest_restaurant_with_meal(Vector3.ZERO, true, null),
+		near_restaurant,
+		"world should expose the nearest stocked restaurant for urgent food queries"
+	)
+
+	var citizen: Citizen = _new_citizen("Hungry Citizen")
+	world.register_citizen(citizen)
+	citizen.set_world_ref(world)
+	citizen.global_position = Vector3.ZERO
+	citizen.force_update_transform()
+	citizen.home = null
+	citizen.home_food_stock = 0
+	citizen.favorite_restaurant = far_restaurant
+	citizen.favorite_supermarket = null
+	citizen.wallet.balance = 200
+	citizen.needs.energy = 90.0
+	citizen.needs.fun = 70.0
+	citizen.needs.health = 100.0
+	citizen.hunger_threshold = 60.0
+
+	citizen.needs.hunger = 72.0
+	citizen.plan_next_action(world)
+	var hunger_action := citizen.current_action as GoToBuildingAction
+	_expect(hunger_action != null, "hungry citizen should choose a restaurant travel action")
+	if hunger_action != null:
+		_expect_eq(hunger_action.target, near_restaurant, "GOAP hunger target should prefer nearby stocked food over a far favorite")
+
+	citizen.stop_travel()
+	citizen.current_action = null
+	citizen.current_location = null
+	citizen.decision_cooldown_left = 0
+	citizen.needs.hunger = 85.0
+	citizen.plan_next_action(world)
+	var survival_action := citizen.current_action as GoToBuildingAction
+	_expect(survival_action != null, "critical hunger should choose a restaurant travel action")
+	if survival_action != null:
+		_expect_eq(survival_action.target, near_restaurant, "survival hunger target should prefer nearby stocked food over a far favorite")
+
+	_free_world(world)
+	return _current_error
+
 func _test_action_default_needs_modifier_is_isolated() -> String:
 	var action := ActionScript.new()
 	var first_modifier := action.get_needs_modifier(null, null)
@@ -741,6 +795,17 @@ func _new_university(building_name: String) -> University:
 	university.add_child(entrance)
 	_harness_root.add_child(university)
 	return university
+
+func _new_restaurant(building_name: String, position: Vector3) -> Restaurant:
+	var restaurant: Restaurant = RestaurantScript.new()
+	restaurant.name = building_name
+	restaurant.building_name = building_name
+	restaurant.position = position
+	var entrance := Node3D.new()
+	entrance.name = "Entrance"
+	restaurant.add_child(entrance)
+	_harness_root.add_child(restaurant)
+	return restaurant
 
 func _new_park(building_name: String) -> Park:
 	var cluster := Node3D.new()
