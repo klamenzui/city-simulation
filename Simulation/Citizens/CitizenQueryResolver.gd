@@ -55,6 +55,25 @@ func find_nearest_restaurant(citizen: Citizen, from_pos: Vector3, require_open: 
 			return not require_open or building.is_open(-1)
 	) as Restaurant
 
+func find_nearest_restaurant_with_meal(citizen: Citizen, from_pos: Vector3, require_open: bool = true) -> Restaurant:
+	var query_world := resolve_query_world(citizen)
+	if query_world != null:
+		if query_world.has_method("find_nearest_restaurant_with_meal"):
+			return query_world.find_nearest_restaurant_with_meal(from_pos, require_open, citizen)
+		return query_world.find_nearest_restaurant(from_pos, require_open, citizen)
+	return find_nearest_tree_building(
+		citizen,
+		from_pos,
+		"buildings",
+		func(building: Building) -> bool:
+			if building is not Restaurant:
+				return false
+			if require_open and not building.is_open(-1):
+				return false
+			var restaurant := building as Restaurant
+			return restaurant.can_sell_item("meal", 1) and restaurant.estimate_can_afford(citizen, "meal", 1)
+	) as Restaurant
+
 func find_nearest_supermarket(citizen: Citizen, from_pos: Vector3, require_open: bool = true) -> Supermarket:
 	var query_world := resolve_query_world(citizen)
 	if query_world != null:
@@ -67,6 +86,25 @@ func find_nearest_supermarket(citizen: Citizen, from_pos: Vector3, require_open:
 			if building is not Supermarket:
 				return false
 			return not require_open or building.is_open(-1)
+	) as Supermarket
+
+func find_nearest_supermarket_with_groceries(citizen: Citizen, from_pos: Vector3, require_open: bool = true) -> Supermarket:
+	var query_world := resolve_query_world(citizen)
+	if query_world != null:
+		if query_world.has_method("find_nearest_supermarket_with_groceries"):
+			return query_world.find_nearest_supermarket_with_groceries(from_pos, require_open, citizen)
+		return query_world.find_nearest_supermarket(from_pos, require_open, citizen)
+	return find_nearest_tree_building(
+		citizen,
+		from_pos,
+		"buildings",
+		func(building: Building) -> bool:
+			if building is not Supermarket:
+				return false
+			if require_open and not building.is_open(-1):
+				return false
+			var supermarket := building as Supermarket
+			return supermarket.can_sell_item("grocery_bundle", 1) and supermarket.estimate_can_afford(citizen, "grocery_bundle", 1)
 	) as Supermarket
 
 func find_nearest_shop(citizen: Citizen, from_pos: Vector3, require_open: bool = true) -> Shop:

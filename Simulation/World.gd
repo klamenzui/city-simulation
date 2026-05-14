@@ -761,6 +761,28 @@ func find_preferred_restaurant(from_pos: Vector3, excluded_citizen: Citizen = nu
 			best = restaurant
 	return best
 
+func find_nearest_restaurant_with_meal(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> Restaurant:
+	var best: Restaurant = null
+	var best_dist := INF
+	for restaurant in _restaurants:
+		if restaurant == null or not is_instance_valid(restaurant):
+			continue
+		if _is_building_temporarily_blocked_for(restaurant, seeker):
+			continue
+		if require_open and not restaurant.is_open(time.get_hour()):
+			continue
+		if not restaurant.can_sell_item("meal", 1):
+			continue
+		if seeker != null and not restaurant.estimate_can_afford(seeker, "meal", 1):
+			continue
+		if not _is_building_pedestrian_reachable(from_pos, restaurant):
+			continue
+		var dist := from_pos.distance_to(restaurant.global_position)
+		if dist < best_dist:
+			best_dist = dist
+			best = restaurant
+	return best
+
 func find_nearest_shop(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> Shop:
 	var best: Shop = null
 	var best_dist := INF
@@ -888,6 +910,28 @@ func find_nearest_supermarket(from_pos: Vector3, require_open: bool = true, seek
 		if _is_building_temporarily_blocked_for(market, seeker):
 			continue
 		if require_open and not market.is_open(time.get_hour()):
+			continue
+		if not _is_building_pedestrian_reachable(from_pos, market):
+			continue
+		var dist := from_pos.distance_to(market.global_position)
+		if dist < best_dist:
+			best_dist = dist
+			best = market
+	return best
+
+func find_nearest_supermarket_with_groceries(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> Supermarket:
+	var best: Supermarket = null
+	var best_dist := INF
+	for market in _supermarkets:
+		if market == null or not is_instance_valid(market):
+			continue
+		if _is_building_temporarily_blocked_for(market, seeker):
+			continue
+		if require_open and not market.is_open(time.get_hour()):
+			continue
+		if not market.can_sell_item("grocery_bundle", 1):
+			continue
+		if seeker != null and not market.estimate_can_afford(seeker, "grocery_bundle", 1):
 			continue
 		if not _is_building_pedestrian_reachable(from_pos, market):
 			continue

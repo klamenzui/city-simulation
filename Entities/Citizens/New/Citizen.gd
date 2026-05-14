@@ -1416,22 +1416,30 @@ func pay_rent(world: World, landlord: ResidentialBuilding, amount: int) -> bool:
 	return false
 
 
-func can_afford_restaurant(world: World) -> bool:
-	if favorite_restaurant == null or wallet == null:
+func can_afford_restaurant_at(restaurant: Restaurant, world: World) -> bool:
+	if restaurant == null or wallet == null:
 		return false
-	var price: int = favorite_restaurant.meal_price
-	if favorite_restaurant.has_method("get_meal_price"):
-		price = int(favorite_restaurant.get_meal_price(world))
+	var price: int = restaurant.meal_price
+	if restaurant.has_method("get_meal_price"):
+		price = int(restaurant.get_meal_price(world))
+	return wallet.balance >= price
+
+
+func can_afford_restaurant(world: World) -> bool:
+	return can_afford_restaurant_at(favorite_restaurant, world)
+
+
+func can_afford_groceries_at(supermarket: Supermarket, world: World) -> bool:
+	if supermarket == null or wallet == null:
+		return false
+	var price: int = supermarket.grocery_price
+	if supermarket.has_method("get_grocery_price"):
+		price = int(supermarket.get_grocery_price(world))
 	return wallet.balance >= price
 
 
 func can_afford_groceries(world: World) -> bool:
-	if favorite_supermarket == null or wallet == null:
-		return false
-	var price: int = favorite_supermarket.grocery_price
-	if favorite_supermarket.has_method("get_grocery_price"):
-		price = int(favorite_supermarket.get_grocery_price(world))
-	return wallet.balance >= price
+	return can_afford_groceries_at(favorite_supermarket, world)
 
 
 func can_afford_shop_item(_world: World) -> bool:
@@ -1459,9 +1467,25 @@ func _find_nearest_restaurant(from_pos: Vector3, require_open: bool = true) -> R
 	return _agent.query_resolver.find_nearest_restaurant(self, from_pos, require_open)
 
 
+func _find_nearest_restaurant_with_meal(from_pos: Vector3, require_open: bool = true) -> Restaurant:
+	if _agent == null or _agent.query_resolver == null:
+		return null
+	if _agent.query_resolver.has_method("find_nearest_restaurant_with_meal"):
+		return _agent.query_resolver.find_nearest_restaurant_with_meal(self, from_pos, require_open)
+	return _agent.query_resolver.find_nearest_restaurant(self, from_pos, require_open)
+
+
 func _find_nearest_supermarket(from_pos: Vector3, require_open: bool = true) -> Supermarket:
 	if _agent == null or _agent.query_resolver == null:
 		return null
+	return _agent.query_resolver.find_nearest_supermarket(self, from_pos, require_open)
+
+
+func _find_nearest_supermarket_with_groceries(from_pos: Vector3, require_open: bool = true) -> Supermarket:
+	if _agent == null or _agent.query_resolver == null:
+		return null
+	if _agent.query_resolver.has_method("find_nearest_supermarket_with_groceries"):
+		return _agent.query_resolver.find_nearest_supermarket_with_groceries(self, from_pos, require_open)
 	return _agent.query_resolver.find_nearest_supermarket(self, from_pos, require_open)
 
 

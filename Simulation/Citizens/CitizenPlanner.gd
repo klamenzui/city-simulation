@@ -181,18 +181,20 @@ func _try_survival_override(world, citizen) -> bool:
 			citizen.start_action(GoToBuildingActionScript.new(citizen.home, _survival_home_travel_minutes), world)
 			return true
 
-		if _can_eat_at_restaurant(world, citizen):
-			if citizen.current_location == citizen.favorite_restaurant:
-				citizen.start_action(EatAtRestaurantActionScript.new(citizen.favorite_restaurant), world)
+		var survival_restaurant := _select_survival_restaurant(world, citizen)
+		if survival_restaurant != null:
+			if citizen.current_location == survival_restaurant:
+				citizen.start_action(EatAtRestaurantActionScript.new(survival_restaurant), world)
 			else:
-				citizen.start_action(GoToBuildingActionScript.new(citizen.favorite_restaurant, _survival_restaurant_travel_minutes), world)
+				citizen.start_action(GoToBuildingActionScript.new(survival_restaurant, _survival_restaurant_travel_minutes), world)
 			return true
 
-		if _can_buy_groceries(world, citizen):
-			if citizen.current_location == citizen.favorite_supermarket:
-				citizen.start_action(BuyGroceriesActionScript.new(citizen.favorite_supermarket), world)
+		var survival_supermarket := _select_survival_supermarket(world, citizen)
+		if survival_supermarket != null:
+			if citizen.current_location == survival_supermarket:
+				citizen.start_action(BuyGroceriesActionScript.new(survival_supermarket), world)
 			else:
-				citizen.start_action(GoToBuildingActionScript.new(citizen.favorite_supermarket, _survival_supermarket_travel_minutes), world)
+				citizen.start_action(GoToBuildingActionScript.new(survival_supermarket, _survival_supermarket_travel_minutes), world)
 			return true
 
 	if citizen.home == null:
@@ -271,23 +273,53 @@ func _try_work_schedule(world, citizen) -> bool:
 	citizen.start_action(GoToBuildingActionScript.new(citizen.job.workplace, _work_travel_minutes), world)
 	return true
 
-func _can_eat_at_restaurant(world, citizen) -> bool:
-	if citizen.favorite_restaurant == null:
-		return false
-	if not citizen.favorite_restaurant.is_open(world.time.get_hour()):
-		return false
-	if not citizen.favorite_restaurant.can_sell_item("meal", 1):
-		return false
-	return citizen.can_afford_restaurant(world)
+func _select_survival_restaurant(world, citizen) -> Restaurant:
+	var current := citizen.current_location as Restaurant
+	if _can_eat_at_restaurant(world, citizen, current):
+		return current
 
-func _can_buy_groceries(world, citizen) -> bool:
-	if citizen.favorite_supermarket == null:
+	var nearest: Restaurant = null
+	if citizen.has_method("_find_nearest_restaurant_with_meal"):
+		nearest = citizen._find_nearest_restaurant_with_meal(citizen.global_position, true)
+	if _can_eat_at_restaurant(world, citizen, nearest):
+		return nearest
+
+	if _can_eat_at_restaurant(world, citizen, citizen.favorite_restaurant):
+		return citizen.favorite_restaurant
+	return null
+
+func _select_survival_supermarket(world, citizen) -> Supermarket:
+	var current := citizen.current_location as Supermarket
+	if _can_buy_groceries(world, citizen, current):
+		return current
+
+	var nearest: Supermarket = null
+	if citizen.has_method("_find_nearest_supermarket_with_groceries"):
+		nearest = citizen._find_nearest_supermarket_with_groceries(citizen.global_position, true)
+	if _can_buy_groceries(world, citizen, nearest):
+		return nearest
+
+	if _can_buy_groceries(world, citizen, citizen.favorite_supermarket):
+		return citizen.favorite_supermarket
+	return null
+
+func _can_eat_at_restaurant(world, citizen, restaurant: Restaurant) -> bool:
+	if restaurant == null:
 		return false
-	if not citizen.favorite_supermarket.is_open(world.time.get_hour()):
+	if not restaurant.is_open(world.time.get_hour()):
 		return false
-	if not citizen.favorite_supermarket.can_sell_item("grocery_bundle", 1):
+	if not restaurant.can_sell_item("meal", 1):
 		return false
-	return citizen.can_afford_groceries(world)
+	return citizen.can_afford_restaurant_at(restaurant, world)
+
+func _can_buy_groceries(world, citizen, supermarket: Supermarket) -> bool:
+	if supermarket == null:
+		return false
+	if not supermarket.is_open(world.time.get_hour()):
+		return false
+	if not supermarket.can_sell_item("grocery_bundle", 1):
+		return false
+	return citizen.can_afford_groceries_at(supermarket, world)
 
 func _is_night(hour: int) -> bool:
 	return hour >= _night_start_hour or hour < _day_start_hour

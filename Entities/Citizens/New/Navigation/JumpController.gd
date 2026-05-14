@@ -201,6 +201,43 @@ func try_jump(move_direction: Vector3, is_on_floor: bool, allow_road_collider: b
 	return true
 
 
+func try_stuck_escape_jump(strong: bool) -> bool:
+	var cfg := _ctx.config
+	if not cfg.jump_low_obstacles:
+		_last_status = "escape off"
+		return false
+	if _cooldown_timer > 0.0:
+		_last_status = "escape cooldown %.2f" % _cooldown_timer
+		return false
+	if _ctx.owner_body == null:
+		_last_status = "escape no body"
+		return false
+	if not _ctx.owner_body.is_on_floor() and _coyote_time <= 0.0:
+		_last_status = "escape air"
+		return false
+
+	var base_velocity := maxf(cfg.jump_velocity, 0.0)
+	if base_velocity <= 0.0:
+		_last_status = "escape no velocity"
+		return false
+
+	var min_multiplier := 0.85
+	var max_multiplier := 1.22
+	if strong:
+		min_multiplier = 1.05
+		max_multiplier = 1.45
+	var impulse := base_velocity * randf_range(min_multiplier, max_multiplier)
+	_ctx.owner_body.velocity.y = maxf(_ctx.owner_body.velocity.y, impulse)
+	_cooldown_timer = maxf(cfg.jump_cooldown, 0.0)
+	_last_status = "escape jump %.2f" % impulse
+	_ctx.logger.info("JUMP", "STUCK_ESCAPE", {
+		"velocity": impulse,
+		"strong": strong,
+		"pos": _ctx.get_owner_position(),
+	})
+	return true
+
+
 func _update_ray_target(planar_move_direction: Vector3) -> void:
 	var cfg := _ctx.config
 	var probe_distance := maxf(cfg.jump_probe_distance, 0.05)
