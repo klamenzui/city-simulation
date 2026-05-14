@@ -7,3 +7,10 @@
 .claude/
 # Local AI runtimes, models, and downloaded toolchains should stay machine-local.
 AI/
+.ai/qdrant_storage/
+.ai/lightrag/.env
+.ai/lightrag/rag_storage/
+.ai/lightrag/inputs/
+.ai/qdrant_import/
+.ai/.cache/
+__pycache__/

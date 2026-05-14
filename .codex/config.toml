@@ -1,0 +1,25 @@
+# Project-local Codex configuration for the city simulation project.
+# The project is already trusted in the user-level Codex config.
+
+[mcp_servers.context7]
+command = 'C:\Windows\System32\cmd.exe'
+args = ["/d", "/c", '"C:\Program Files\nodejs\npx.cmd" -y @upstash/context7-mcp']
+enabled = true
+required = false
+startup_timeout_sec = 60
+tool_timeout_sec = 120
+
+[mcp_servers.qdrant]
+command = 'C:\Users\klame\AppData\Roaming\Python\Python313\Scripts\uvx.exe'
+args = ["mcp-server-qdrant"]
+enabled = true
+required = false
+startup_timeout_sec = 120
+tool_timeout_sec = 120
+
+[mcp_servers.qdrant.env]
+QDRANT_URL = "http://localhost:6333"
+COLLECTION_NAME = "city-sim-memory"
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+TOOL_STORE_DESCRIPTION = "Store reusable project knowledge, concise code snippets, architecture decisions, known bugs, and Godot simulation patterns. Store summaries and important snippets only; never bulk-store huge files."
+TOOL_FIND_DESCRIPTION = "Search existing city-simulation project knowledge before architecture changes, refactors, or repeating known Godot simulation patterns."
