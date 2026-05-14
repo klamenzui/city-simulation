@@ -176,6 +176,11 @@ func on_building_overview_pressed() -> void:
 	if hud_overlay_controller != null:
 		hud_overlay_controller.toggle_building_overview()
 
+func on_citizen_overview_pressed() -> void:
+	mark_ui_interacted()
+	if hud_overlay_controller != null:
+		hud_overlay_controller.toggle_citizen_overview()
+
 func on_player_control_pressed() -> void:
 	mark_ui_interacted()
 	if selection_state_controller != null:

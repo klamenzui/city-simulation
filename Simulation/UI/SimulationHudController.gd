@@ -7,6 +7,7 @@ var owner_node: Node = null
 var world: World = null
 var canvas: CanvasLayer = null
 var building_overview_button: Button = null
+var citizen_overview_button: Button = null
 
 var _theme: Theme = null
 var _pause_button: Button = null
@@ -28,12 +29,14 @@ func setup(
 	pause_pressed: Callable,
 	speed_pressed: Callable,
 	building_overview_pressed: Callable,
+	citizen_overview_pressed: Callable,
 	player_control_pressed: Callable,
 	ai_runtime_pressed: Callable
 ) -> void:
 	owner_node = owner_ref
 	world = world_ref
-	_build_hud(pause_pressed, speed_pressed, building_overview_pressed, player_control_pressed, ai_runtime_pressed)
+	_build_hud(pause_pressed, speed_pressed, building_overview_pressed, citizen_overview_pressed,
+			player_control_pressed, ai_runtime_pressed)
 	_bind_world_signals()
 	_refresh_time_hud()
 	_refresh_pause_button()
@@ -48,6 +51,9 @@ func get_canvas() -> CanvasLayer:
 
 func get_building_overview_button() -> Button:
 	return building_overview_button
+
+func get_citizen_overview_button() -> Button:
+	return citizen_overview_button
 
 func refresh_control_mode(controlled_citizen: Citizen, mode_prefix: String = "CONTROL MODE", mode_hint: String = "") -> void:
 	if _control_mode_panel == null or _control_mode_label == null:
@@ -103,6 +109,7 @@ func _build_hud(
 	pause_pressed: Callable,
 	speed_pressed: Callable,
 	building_overview_pressed: Callable,
+	citizen_overview_pressed: Callable,
 	player_control_pressed: Callable,
 	ai_runtime_pressed: Callable
 ) -> void:
@@ -120,7 +127,7 @@ func _build_hud(
 
 	_build_top_time_panel()
 	_build_bottom_action_bar(pause_pressed, speed_pressed, building_overview_pressed,
-			player_control_pressed, ai_runtime_pressed)
+			citizen_overview_pressed, player_control_pressed, ai_runtime_pressed)
 	_build_control_mode_banner()
 
 
@@ -167,6 +174,7 @@ func _build_bottom_action_bar(
 	pause_pressed: Callable,
 	speed_pressed: Callable,
 	building_overview_pressed: Callable,
+	citizen_overview_pressed: Callable,
 	player_control_pressed: Callable,
 	ai_runtime_pressed: Callable
 ) -> void:
@@ -211,6 +219,14 @@ func _build_bottom_action_bar(
 	if building_overview_pressed.is_valid():
 		building_overview_button.pressed.connect(building_overview_pressed)
 	hbox.add_child(building_overview_button)
+
+	citizen_overview_button = Button.new()
+	citizen_overview_button.text = "Citizens"
+	citizen_overview_button.custom_minimum_size = Vector2(96, 36)
+	citizen_overview_button.focus_mode = Control.FOCUS_NONE
+	if citizen_overview_pressed.is_valid():
+		citizen_overview_button.pressed.connect(citizen_overview_pressed)
+	hbox.add_child(citizen_overview_button)
 
 	_player_control_button = Button.new()
 	_player_control_button.text = "Control Player"
