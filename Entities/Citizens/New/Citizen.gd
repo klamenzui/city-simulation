@@ -42,6 +42,11 @@ var _interior_presence_hidden: bool = false
 var _debug_repath_count: int = 0
 var _debug_last_travel_route: PackedVector3Array = PackedVector3Array()
 var _debug_last_travel_failed: bool = false
+# Accumulator for health-delta logging — emits one line per ~5 HP of drift
+# instead of one per tick. Persisted across ticks so micro-changes add up.
+var _log_health_accum: float = 0.0
+# Idempotency-Flag fuer die() — verhindert doppelten Cleanup im selben Tick.
+var _is_dying: bool = false
 var _debug_travel_target_building: Building = null
 var _travel_target: Vector3 = Vector3.ZERO
 var _travel_target_building: Building = null
@@ -1038,6 +1043,13 @@ func _update_trace_navigation_state(reason: String, desired_dir: Vector3, move_d
 	_sim.trace.update_navigation(reason, desired_dir, move_dir)
 
 
+# Override of CitizenController.set_trace_state — der Controller ruft das per
+# dynamic dispatch aus dem Movement-Loop, damit der CitizenTrace-Logger jeden
+# Tick aktuelle reason/desired/move-Werte sieht statt Default-"idle".
+func set_trace_state(reason: String, desired_dir: Vector3, move_dir: Vector3) -> void:
+	_update_trace_navigation_state(reason, desired_dir, move_dir)
+
+
 var _trace_last_decision_reason: String:
 	get:
 		return _sim.trace.last_decision_reason if _sim != null and _sim.trace != null else "idle"
@@ -1570,20 +1582,223 @@ func _trace_fmt_vec3(v: Vector3) -> String:
 	return "(%.2f, %.2f, %.2f)" % [v.x, v.y, v.z]
 
 
-func _update_debug(world: World, h_delta: float) -> void:
+func log_needs_changes(h_delta: float) -> void:
+	# Health-Logging muss IMMER laufen — nicht nur fuer den selektierten Citizen.
+	# Wird vom CitizenAgent jeden Sim-Tick aufgerufen.
+	if needs == null or h_delta == 0.0:
+		return
+	_log_health_accum += h_delta
+	if absf(_log_health_accum) < 5.0:
+		return
+	var reason := "recovering" if _log_health_accum > 0.0 else "declining"
+	SimLoggerScript.log("[%s] Health %+0.1f -> %.1f [%s]" % [
+		citizen_name,
+		_log_health_accum,
+		needs.health,
+		reason
+	])
+	_log_health_accum = 0.0
+
+
+## Returns true if HP reached 0 — caller should invoke die() and skip the rest
+## of the tick. Kept as a separate query so CitizenAgent can decide ordering.
+func is_dead() -> bool:
+	return needs != null and needs.health <= 0.0
+
+
+## Despawn-on-death. Idempotent: a second call is a no-op.
+## Releases tenant/worker/visitor slots so a future spawn can fill them,
+## cancels the current action, frees bench reservations, then queue_free()s
+## the node. The World's scene-tree listener picks up the removal and runs
+## unregister_citizen() / unregister_job() automatically.
+func die(world: Node = null) -> void:
+	if _is_dying:
+		return
+	_is_dying = true
+
+	var hp := needs.health if needs != null else 0.0
+	var location_label := "outside"
+	if current_location != null and current_location.has_method("get_display_name"):
+		location_label = current_location.get_display_name()
+	elif _sim != null and _sim.location != null and _sim.location.is_inside():
+		var inside := _sim.location.get_inside_building()
+		if inside != null and inside.has_method("get_display_name"):
+			location_label = inside.get_display_name()
+	SimLoggerScript.log("[%s] Died at HP=%.1f location=%s" % [
+		citizen_name, hp, location_label
+	])
+
+	if current_action != null and current_action.has_method("finish"):
+		current_action.finish(world, self)
+	current_action = null
+
+	release_reserved_benches(world)
+
+	# Tenant slot frei.
+	if home != null and home.has_method("remove_tenant"):
+		home.remove_tenant(self)
+		home = null
+
+	# Worker slot frei (Building.fire setzt auch job.workplace = null).
+	if job != null and job.workplace != null and job.workplace.has_method("fire"):
+		job.workplace.fire(self)
+
+	# Aus aktuellem Building/Visit austreten.
+	if is_inside_building():
+		exit_current_building(world)
+	elif current_location != null and current_location.has_method("on_citizen_exited"):
+		current_location.call("on_citizen_exited", self)
+	current_location = null
+
+	queue_free()
+
+
+func _update_debug(world: World, _h_delta: float) -> void:
 	if debug_panel == null:
 		return
-	if absf(h_delta) >= 0.5:
-		var reason := "recovering" if h_delta > 0.0 else "declining"
-		SimLoggerScript.log("[%s] Health %+0.1f -> %.1f [%s]" % [
-			citizen_name,
-			h_delta,
-			needs.health if needs != null else 0.0,
-			reason
-		])
-	debug_panel.update_debug({
+	if debug_panel.has_method("update_sections"):
+		debug_panel.update_sections(get_info_sections(world))
+	else:
+		debug_panel.update_debug(_get_flat_info_fallback())
+
+
+# Strukturierter Info-Output fuers DebugPanel — Sektionen statt flachem Dict.
+# Reihenfolge: Identitaet (wer) -> Beduerfnisse (Zustand) -> Aktivitaet (was
+# gerade) -> Finanzen (kompakt). Leere Felder werden vom DebugPanel uebersprungen,
+# damit z.B. "Bildung" nur erscheint, wenn der Citizen wirklich studiert.
+func get_info_sections(_world = null) -> Array:
+	return [
+		_build_identity_section(),
+		_build_needs_section(),
+		_build_activity_section(),
+		_build_finance_section(),
+	]
+
+
+func _build_identity_section() -> Dictionary:
+	var rows: Array = [{"label": "Name", "value": citizen_name}]
+	var job_str := _format_job_status_text()
+	if not job_str.is_empty():
+		rows.append({"label": "Beruf", "value": job_str})
+	var edu_str := _format_education_status_text()
+	if not edu_str.is_empty():
+		rows.append({"label": "Bildung", "value": edu_str})
+	return {"title": "Identitaet", "rows": rows}
+
+
+func _format_job_status_text() -> String:
+	if job == null:
+		return "arbeitslos"
+	if job.workplace == null:
+		return "arbeitslos (%s)" % job.title
+	return "%s @ %s (%d EUR/h)" % [
+		job.title,
+		_building_label(job.workplace),
+		job.wage_per_hour
+	]
+
+
+func _format_education_status_text() -> String:
+	if job != null and job.required_education_level > education_level:
+		return "%d / %d (fuer %s)" % [education_level, job.required_education_level, job.title]
+	if education_level > 0:
+		return "Level %d" % education_level
+	return ""
+
+
+func _build_needs_section() -> Dictionary:
+	if needs == null:
+		return {"title": "Beduerfnisse", "rows": []}
+	return {
+		"title": "Beduerfnisse",
+		"rows": [
+			_build_need_row("Hunger", needs.hunger, true),
+			_build_need_row("Energie", needs.energy, false),
+			_build_need_row("Spass", needs.fun, false),
+			_build_need_row("Gesundheit", needs.health, false),
+		]
+	}
+
+
+# `high_is_bad` true fuer hunger (steigt -> Problem); false fuer energy/fun/health
+# (fallen -> Problem). Severity steuert die Farbe im DebugPanel.
+func _build_need_row(label_text: String, value: float, high_is_bad: bool) -> Dictionary:
+	return {
+		"label": label_text,
+		"value": "%s  %3d / 100" % [_format_need_bar(value), int(round(value))],
+		"severity": _classify_need_severity(value, high_is_bad),
+	}
+
+
+func _classify_need_severity(value: float, high_is_bad: bool) -> String:
+	if high_is_bad:
+		if value >= 85:
+			return "critical"
+		if value >= 70:
+			return "warning"
+		return "normal"
+	if value <= 10:
+		return "critical"
+	if value <= 30:
+		return "warning"
+	return "normal"
+
+
+func _format_need_bar(value: float, width: int = 10) -> String:
+	var clamped := clampf(value, 0.0, 100.0)
+	var fill := clampi(int(round(clamped / 100.0 * width)), 0, width)
+	return "█".repeat(fill) + "░".repeat(width - fill)
+
+
+func _build_activity_section() -> Dictionary:
+	var rows: Array = []
+	var action_label := current_action.label if current_action != null else "Idle"
+	rows.append({"label": "Aktion", "value": action_label})
+	var location_text := _format_location_text()
+	if not location_text.is_empty():
+		rows.append({"label": "Ort", "value": location_text})
+	if is_travelling():
+		var target_label := _format_travel_target_label()
+		if not target_label.is_empty():
+			rows.append({"label": "Ziel", "value": "-> %s" % target_label})
+	rows.append({"label": "LOD", "value": get_simulation_lod_tier()})
+	return {"title": "Aktivitaet", "rows": rows}
+
+
+func _format_location_text() -> String:
+	if current_location == null:
+		return "unterwegs"
+	if current_location.has_method("get_display_name"):
+		return current_location.get_display_name()
+	return current_location.building_name
+
+
+func _format_travel_target_label() -> String:
+	var target_building: Building = null
+	if _debug_travel_target_building != null:
+		target_building = _debug_travel_target_building
+	elif _travel_target_building != null:
+		target_building = _travel_target_building
+	if target_building == null:
+		return ""
+	if target_building.has_method("get_display_name"):
+		return target_building.get_display_name()
+	return target_building.building_name
+
+
+func _build_finance_section() -> Dictionary:
+	var rows: Array = [{"label": "Geld", "value": "%d EUR" % (wallet.balance if wallet != null else 0)}]
+	if home_food_stock > 0:
+		rows.append({"label": "Vorraete", "value": str(home_food_stock)})
+	return {"title": "Finanzen", "rows": rows}
+
+
+# Fallback wenn das DebugPanel die neue update_sections-API noch nicht hat
+# (z.B. waehrend Tests, in denen ein gemocktes Panel verwendet wird).
+func _get_flat_info_fallback() -> Dictionary:
+	return {
 		"Citizen": citizen_name,
-		"Location": current_location.building_name if current_location != null else "travelling...",
+		"Location": _format_location_text(),
 		"Action": current_action.label if current_action != null else "idle",
 		"Hunger": "%.1f / 100" % (needs.hunger if needs != null else 0.0),
 		"Energy": "%.1f / 100" % (needs.energy if needs != null else 0.0),
@@ -1592,11 +1807,10 @@ func _update_debug(world: World, h_delta: float) -> void:
 		"Money": "%d EUR" % (wallet.balance if wallet != null else 0),
 		"Groceries": str(home_food_stock),
 		"Education": "%d" % education_level,
-		"Workplace": job.workplace.building_name if (job != null and job.workplace != null) else "unemployed",
-		"Position": "%d, %d, %d" % [global_position.x, global_position.y, global_position.z],
+		"Workplace": _building_label(job.workplace) if (job != null and job.workplace != null) else "unemployed",
 		"LOD": get_simulation_lod_tier(),
 		"TravelState": "moving" if is_travelling() else "idle",
-	})
+	}
 
 
 func get_job_debug_summary() -> String:

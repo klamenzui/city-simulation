@@ -202,6 +202,12 @@ func _on_payday() -> void:
 
 	var struggling_buildings := 0
 	var closed_buildings := 0
+	# Group by display-name + type so the daily summary stays compact when
+	# Main.tscn instantiates the same Multilayer/Multi-building scene many times.
+	# Each instance is still a real building with its own account; aggregation
+	# preserves sums and uses min..max ranges where instances diverge.
+	var building_groups: Dictionary = {}
+	var group_order: Array[String] = []
 	for building in buildings:
 		if building == null:
 			continue
@@ -210,7 +216,15 @@ func _on_payday() -> void:
 			closed_buildings += 1
 		elif building.is_struggling() or building.is_underfunded():
 			struggling_buildings += 1
-		SimLogger.log("  [BUILDING] %s" % building.get_daily_finance_log_summary())
+		var group_key := "%s|%s" % [building.get_display_name(), building.get_building_type_name()]
+		if not building_groups.has(group_key):
+			building_groups[group_key] = []
+			group_order.append(group_key)
+		(building_groups[group_key] as Array).append(building)
+
+	for group_key in group_order:
+		var group_buildings: Array = building_groups[group_key]
+		SimLogger.log("  [BUILDING] %s" % _format_building_group_summary(group_buildings))
 
 	SimLogger.log("  [SUMMARY] salaries=%d welfare=%d operating=%d maintenance=%d city_hall_balance=%d city_reserve_balance=%d reserve_transfers_today=%d public_funding_requested=%d public_funding_paid=%d struggling_buildings=%d closed_buildings=%d" % [
 		salaries_total,
@@ -229,6 +243,83 @@ func _on_payday() -> void:
 
 	_rollover_building_finances()
 	_run_daily_market_cycle()
+
+
+func _format_building_group_summary(group: Array) -> String:
+	if group.is_empty():
+		return ""
+	if group.size() == 1:
+		return (group[0] as Building).get_daily_finance_log_summary()
+
+	var first: Building = group[0] as Building
+	var count := group.size()
+	var balance_sum: int = 0
+	var income_sum: int = 0
+	var wages_sum: int = 0
+	var wages_unpaid_sum: int = 0
+	var taxes_sum: int = 0
+	var taxes_unpaid_sum: int = 0
+	var maintenance_sum: int = 0
+	var maintenance_unpaid_sum: int = 0
+	var operating_sum: int = 0
+	var operating_unpaid_sum: int = 0
+	var funding_req_sum: int = 0
+	var funding_paid_sum: int = 0
+	var condition_min: float = INF
+	var condition_max: float = -INF
+	var state_counts: Dictionary = {}
+
+	for b_var in group:
+		var b: Building = b_var as Building
+		balance_sum += b.account.balance
+		income_sum += b.income_today
+		wages_sum += b.wages_today
+		wages_unpaid_sum += b.wages_unpaid_today
+		taxes_sum += b.taxes_today
+		taxes_unpaid_sum += b.taxes_unpaid_today
+		maintenance_sum += b.maintenance_today
+		maintenance_unpaid_sum += b.maintenance_unpaid_today
+		operating_sum += b.operating_costs_today
+		operating_unpaid_sum += b.operating_unpaid_today
+		funding_req_sum += b.public_funding_requested_today
+		funding_paid_sum += b.public_funding_today
+		condition_min = minf(condition_min, b.condition)
+		condition_max = maxf(condition_max, b.condition)
+		var state_key := b.get_financial_state_key()
+		state_counts[state_key] = int(state_counts.get(state_key, 0)) + 1
+
+	var condition_str: String
+	if is_equal_approx(condition_min, condition_max):
+		condition_str = "%.1f" % condition_min
+	else:
+		condition_str = "%.1f..%.1f" % [condition_min, condition_max]
+
+	return "name=%s x%d type=%s balance=%d income=%d wages=%d/%d taxes=%d/%d maintenance=%d/%d operating=%d/%d funding=%d/%d state=%s condition=%s" % [
+		first.get_display_name(),
+		count,
+		first.get_building_type_name(),
+		balance_sum,
+		income_sum,
+		wages_sum, wages_unpaid_sum,
+		taxes_sum, taxes_unpaid_sum,
+		maintenance_sum, maintenance_unpaid_sum,
+		operating_sum, operating_unpaid_sum,
+		funding_req_sum, funding_paid_sum,
+		_format_state_counts(state_counts),
+		condition_str
+	]
+
+
+func _format_state_counts(state_counts: Dictionary) -> String:
+	if state_counts.size() == 1:
+		return state_counts.keys()[0] as String
+	# Stable order: print states most-common first.
+	var keys: Array = state_counts.keys()
+	keys.sort_custom(func(a, b): return int(state_counts[a]) > int(state_counts[b]))
+	var parts: Array[String] = []
+	for state_key in keys:
+		parts.append("%s[x%d]" % [state_key, state_counts[state_key]])
+	return "+".join(parts)
 
 
 func _run_daily_market_cycle() -> void:

@@ -221,6 +221,13 @@ var _stuck_escape_start_pos: Vector3 = Vector3.ZERO
 # Lifecycle
 # ========================================================================
 
+# Per-tick trace state sink — overridden by Citizen.gd to forward into
+# CitizenSimulation.trace. Kept virtual here so CitizenController can call
+# it from _physics_process without depending on the Sim stack.
+func set_trace_state(_reason: String, _desired_dir: Vector3, _move_dir: Vector3) -> void:
+	pass
+
+
 func _ready() -> void:
 	_config = _build_config()
 	_logger = _build_logger()
@@ -422,6 +429,7 @@ func _physics_process(delta: float) -> void:
 		_debug.clear_avoidance()
 		_apply_idle_gravity(delta)
 		_move_with_crowd_push(delta)
+		set_trace_state("idle", Vector3.ZERO, Vector3.ZERO)
 		return
 
 	if _path_index >= _global_path.size():
@@ -430,6 +438,7 @@ func _physics_process(delta: float) -> void:
 		_stop_at_target()
 		_apply_idle_gravity(delta)
 		_move_with_crowd_push(delta)
+		set_trace_state("arrived", Vector3.ZERO, Vector3.ZERO)
 		return
 
 	if not _advance_path_progress():
@@ -438,6 +447,7 @@ func _physics_process(delta: float) -> void:
 		_stop_at_target()
 		_apply_idle_gravity(delta)
 		_move_with_crowd_push(delta)
+		set_trace_state("advance_failed", Vector3.ZERO, Vector3.ZERO)
 		return
 
 	var move_target := _global_path[_path_index] if _should_follow_waypoint_directly(_path_index) \
@@ -474,12 +484,14 @@ func _physics_process(delta: float) -> void:
 
 		look_at(global_position + final_direction, Vector3.UP)
 		_draw_debug(desired_direction, final_direction)
+		set_trace_state("travel", desired_direction, final_direction)
 	else:
 		velocity.x = 0.0
 		velocity.z = 0.0
 		_steering.reset()
 		_clear_live_debug_scan()
 		_debug.clear_avoidance()
+		set_trace_state("no_direction", Vector3.ZERO, Vector3.ZERO)
 
 	_apply_idle_gravity(delta)
 	_move_with_crowd_push(delta)

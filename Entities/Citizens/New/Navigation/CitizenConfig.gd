@@ -106,6 +106,12 @@ var global_path_line_color: Color = Color(0.1, 0.85, 1.0, 1.0)
 var global_path_line_y_offset: float = 0.2
 var global_path_line_width: float = 0.08
 
+# Crowd push (separation between citizens at building entrances)
+var crowd_push_enabled: bool = true
+var crowd_push_radius: float = 0.34
+var crowd_push_strength: float = 0.55
+var crowd_push_max_speed: float = 0.32
+
 
 ## Whitelist of every config field that is mirrored from a CitizenController
 ## `@export var`. The drift test (`codex_citizen_config_drift_test.gd`)
@@ -184,6 +190,11 @@ const FIELD_NAMES: Array[String] = [
 	"global_path_line_color",
 	"global_path_line_y_offset",
 	"global_path_line_width",
+	# Crowd push (separation between citizens at building entrances)
+	"crowd_push_enabled",
+	"crowd_push_radius",
+	"crowd_push_strength",
+	"crowd_push_max_speed",
 ]
 
 

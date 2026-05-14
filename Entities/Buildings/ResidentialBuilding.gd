@@ -26,6 +26,11 @@ func add_tenant(c: Citizen) -> bool:
 	tenants.append(c)
 	return true
 
+func remove_tenant(c: Citizen) -> void:
+	if c == null:
+		return
+	tenants.erase(c)
+
 func charge_rent(world: World) -> void:
 	for c in tenants:
 		if c == null:

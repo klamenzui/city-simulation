@@ -125,19 +125,13 @@ func _build_hud(
 
 
 func _build_top_time_panel() -> void:
-	var top_margin := MarginContainer.new()
-	top_margin.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	top_margin.offset_top = 12
-	top_margin.offset_bottom = 80
-	top_margin.theme = _theme
-	canvas.add_child(top_margin)
-
-	var top_center := CenterContainer.new()
-	top_center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	top_margin.add_child(top_center)
-
+	# Symmetrisch zur Bottom-Action-Bar: PRESET_TOP_LEFT mit 12px Rand,
+	# linksbuendig statt zentriert.
 	var time_panel := PanelContainer.new()
-	top_center.add_child(time_panel)
+	time_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	time_panel.position = Vector2(12, 12)
+	time_panel.theme = _theme
+	canvas.add_child(time_panel)
 
 	var time_box := HBoxContainer.new()
 	time_box.add_theme_constant_override("separation", UiThemeScript.SEPARATION_LOOSE)
