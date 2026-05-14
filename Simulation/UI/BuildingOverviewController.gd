@@ -11,6 +11,7 @@ var _refresh_left: float = 0.0
 var _status_color_resolver: Callable = Callable()
 var _status_icon_resolver: Callable = Callable()
 var _mark_ui_interacted: Callable = Callable()
+var _select_building: Callable = Callable()
 
 func setup(
 	world_ref: World,
@@ -20,6 +21,7 @@ func setup(
 	status_color_resolver: Callable,
 	status_icon_resolver: Callable,
 	mark_ui_interacted: Callable,
+	select_building: Callable,
 	refresh_interval: float = 0.5
 ) -> void:
 	world = world_ref
@@ -30,6 +32,12 @@ func setup(
 	_status_color_resolver = status_color_resolver
 	_status_icon_resolver = status_icon_resolver
 	_mark_ui_interacted = mark_ui_interacted
+	_select_building = select_building
+	if label != null:
+		# Zeilen sind als `[url=<instance_id>]...[/url]` formatiert, meta_clicked
+		# loest die Selection ueber den uebergebenen `select_building`-Callback aus.
+		if not label.meta_clicked.is_connected(_on_meta_clicked):
+			label.meta_clicked.connect(_on_meta_clicked)
 
 func toggle_visibility() -> void:
 	_mark_interacted()
@@ -97,13 +105,26 @@ func _refresh_building_overview() -> void:
 func _format_building_overview_line(building: Building, status_key: String, active: bool, hour: int) -> String:
 	var status_text := building.get_open_status_display_label(hour)
 	var color := _status_key_to_hex(status_key)
-	var line := "[color=%s]%s[/color]  %s  (%d EUR)" % [
+	var inner := "[color=%s]%s[/color]  %s  (%d EUR)" % [
 		color,
 		_status_icon_for_overview(status_key),
 		_building_overview_escape("%s | %s" % [building.get_display_name(), status_text]),
 		building.account.balance
 	]
-	return "[b]%s[/b]" % line if active else line
+	var styled := "[b]%s[/b]" % inner if active else inner
+	return "[url=%d]%s[/url]" % [building.get_instance_id(), styled]
+
+
+func _on_meta_clicked(meta: Variant) -> void:
+	_mark_interacted()
+	if not _select_building.is_valid():
+		return
+	var instance_id := int(str(meta))
+	if instance_id == 0:
+		return
+	var entity := instance_from_id(instance_id)
+	if entity is Building and is_instance_valid(entity):
+		_select_building.call(entity as Building)
 
 func _get_building_state_rank(status_key: String) -> int:
 	match status_key:

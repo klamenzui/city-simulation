@@ -2,6 +2,7 @@ extends RefCounted
 class_name HudOverlayController
 
 const BuildingOverviewControllerScript = preload("res://Simulation/UI/BuildingOverviewController.gd")
+const CitizenOverviewControllerScript = preload("res://Simulation/UI/CitizenOverviewController.gd")
 const EntitySearchControllerScript = preload("res://Simulation/UI/EntitySearchController.gd")
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 
@@ -11,6 +12,7 @@ var canvas: CanvasLayer = null
 var search_input: LineEdit = null
 var search_results_list: ItemList = null
 var building_overview_controller = null
+var citizen_overview_controller = null
 var search_controller = null
 
 func setup(
@@ -18,6 +20,7 @@ func setup(
 	camera_ref: CityBuilderCamera,
 	canvas_ref: CanvasLayer,
 	building_overview_button_ref: Button,
+	citizen_overview_button_ref: Button,
 	select_citizen: Callable,
 	select_building: Callable,
 	status_color_resolver: Callable,
@@ -37,6 +40,13 @@ func setup(
 		status_color_resolver,
 		status_icon_resolver,
 		mark_ui_interacted,
+		select_building,
+		building_overview_refresh_interval_sec
+	)
+	_build_citizen_overview_overlay(
+		citizen_overview_button_ref,
+		mark_ui_interacted,
+		select_citizen,
 		building_overview_refresh_interval_sec
 	)
 	_build_search_overlay(
@@ -49,10 +59,16 @@ func setup(
 func update(delta: float) -> void:
 	if building_overview_controller != null:
 		building_overview_controller.update(delta)
+	if citizen_overview_controller != null:
+		citizen_overview_controller.update(delta)
 
 func toggle_building_overview() -> void:
 	if building_overview_controller != null:
 		building_overview_controller.toggle_visibility()
+
+func toggle_citizen_overview() -> void:
+	if citizen_overview_controller != null:
+		citizen_overview_controller.toggle_visibility()
 
 func get_search_input() -> LineEdit:
 	return search_input
@@ -65,6 +81,7 @@ func _build_building_overview_overlay(
 	status_color_resolver: Callable,
 	status_icon_resolver: Callable,
 	mark_ui_interacted: Callable,
+	select_building: Callable,
 	refresh_interval_sec: float
 ) -> void:
 	var building_overview_panel := PanelContainer.new()
@@ -110,6 +127,56 @@ func _build_building_overview_overlay(
 		status_color_resolver,
 		status_icon_resolver,
 		mark_ui_interacted,
+		select_building,
+		refresh_interval_sec
+	)
+
+func _build_citizen_overview_overlay(
+	citizen_overview_button_ref: Button,
+	mark_ui_interacted: Callable,
+	select_citizen: Callable,
+	refresh_interval_sec: float
+) -> void:
+	# Rechts neben Building-Overview-Panel.
+	var citizen_overview_panel := PanelContainer.new()
+	citizen_overview_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	citizen_overview_panel.position = Vector2(12 + 380 + 12, -380)
+	citizen_overview_panel.size = Vector2(380, 300)
+	citizen_overview_panel.visible = false
+	citizen_overview_panel.theme = UiThemeScript.get_or_build()
+	canvas.add_child(citizen_overview_panel)
+
+	var citizen_vbox := VBoxContainer.new()
+	citizen_vbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
+	citizen_overview_panel.add_child(citizen_vbox)
+
+	var citizen_heading := Label.new()
+	citizen_heading.text = "CITIZENS"
+	citizen_heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+	citizen_heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+	citizen_vbox.add_child(citizen_heading)
+
+	var citizen_overview_scroll := ScrollContainer.new()
+	citizen_overview_scroll.custom_minimum_size = Vector2(354, 256)
+	citizen_overview_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	citizen_vbox.add_child(citizen_overview_scroll)
+
+	var citizen_overview_label := RichTextLabel.new()
+	citizen_overview_label.bbcode_enabled = true
+	citizen_overview_label.fit_content = true
+	citizen_overview_label.scroll_active = false
+	citizen_overview_label.custom_minimum_size = Vector2(340, 240)
+	citizen_overview_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	citizen_overview_scroll.add_child(citizen_overview_label)
+
+	citizen_overview_controller = CitizenOverviewControllerScript.new()
+	citizen_overview_controller.setup(
+		world,
+		citizen_overview_panel,
+		citizen_overview_label,
+		citizen_overview_button_ref,
+		mark_ui_interacted,
+		select_citizen,
 		refresh_interval_sec
 	)
 
