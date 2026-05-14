@@ -53,6 +53,11 @@ func sim_tick(citizen, world) -> void:
 
 	var h_delta := needs_component.tick_needs(world, citizen)
 	citizen._update_work_day(world)
+	if citizen.has_method("log_needs_changes"):
+		citizen.log_needs_changes(h_delta)
+	if citizen.has_method("is_dead") and citizen.is_dead():
+		citizen.die(world)
+		return
 	citizen._update_debug(world, h_delta)
 	if citizen.has_method("is_manual_control_enabled") and citizen.is_manual_control_enabled():
 		return
@@ -100,6 +105,11 @@ func _clear_stale_rest_pose(citizen, world) -> void:
 func _sim_tick_coarse(citizen, world) -> void:
 	var h_delta := needs_component.tick_needs(world, citizen)
 	citizen._update_work_day(world)
+	if citizen.has_method("log_needs_changes"):
+		citizen.log_needs_changes(h_delta)
+	if citizen.has_method("is_dead") and citizen.is_dead():
+		citizen.die(world)
+		return
 	citizen._update_debug(world, h_delta)
 	if citizen.has_method("is_manual_control_enabled") and citizen.is_manual_control_enabled():
 		return

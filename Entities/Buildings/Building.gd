@@ -453,7 +453,191 @@ func select(panel: DebugPanel, world = null) -> void:
 func refresh_info_panel(world = null) -> void:
 	if debug_panel == null:
 		return
-	debug_panel.update_debug(get_info(world))
+	if debug_panel.has_method("update_sections"):
+		debug_panel.update_sections(get_info_sections(world))
+	else:
+		debug_panel.update_debug(get_info(world))
+
+
+# Strukturierter Info-Output fuers DebugPanel.
+# Reihenfolge: Identitaet -> Belegung -> Finanzen -> Wartung.
+# Leere/null Felder werden vom DebugPanel ausgeblendet, weshalb die Builder
+# konditionalisierte Felder per leerem String skippen koennen (z.B. "Besucher"
+# wird bei einem Park ohne Visitor-Kapazitaet uebersprungen).
+func get_info_sections(world = null) -> Array:
+	var sections: Array = [
+		_build_building_identity_section(),
+		_build_building_occupancy_section(world),
+		_build_building_finance_section(world),
+		_build_building_maintenance_section(),
+	]
+	for sec in _get_extra_info_sections(world):
+		sections.append(sec)
+	return sections
+
+
+# Subclass-Hook fuer zusaetzliche Sektionen (z.B. ResidentialBuilding koennte
+# "Vermietung" mit rent_per_day hier andocken). Default: leer.
+func _get_extra_info_sections(_world = null) -> Array:
+	return []
+
+
+func _build_building_identity_section() -> Dictionary:
+	var rows: Array = [
+		{"label": "Name", "value": get_display_name()},
+		{"label": "Typ", "value": get_building_type_name()},
+	]
+	var service := get_service_type()
+	# "housing" ist redundant zu Typ "Residential".
+	if not service.is_empty() and service != "housing":
+		rows.append({"label": "Service", "value": service})
+	var category := get_economy_category_label()
+	if not category.is_empty() and category != "-":
+		rows.append({"label": "Kategorie", "value": category})
+	return {"title": "Identitaet", "rows": rows}
+
+
+func _build_building_occupancy_section(world = null) -> Dictionary:
+	var rows: Array = []
+	if self is ResidentialBuilding or building_type == BuildingType.RESIDENTIAL:
+		var res := self as ResidentialBuilding
+		var tenant_count := res.tenants.size() if res != null else 0
+		var tenant_cap := maxi(capacity, 0)
+		var severity := "normal"
+		if tenant_cap > 0 and tenant_count == tenant_cap:
+			severity = "good"
+		rows.append({
+			"label": "Bewohner",
+			"value": "%d / %d" % [tenant_count, tenant_cap],
+			"severity": severity,
+		})
+	else:
+		if job_capacity > 0:
+			var worker_severity := "normal"
+			if workers.size() == 0:
+				worker_severity = "warning"
+			rows.append({
+				"label": "Mitarbeiter",
+				"value": "%d / %d" % [workers.size(), max(job_capacity, 0)],
+				"severity": worker_severity,
+			})
+		var effective_cap := get_effective_visitor_capacity()
+		if effective_cap > 0:
+			rows.append({"label": "Besucher", "value": "%d / %d" % [visitors.size(), max(effective_cap, 0)]})
+		var hour := -1
+		if world != null and world.time != null:
+			hour = world.time.get_hour()
+		var open_status := get_open_status_display_label(hour)
+		# Open/Close-Zeiten nur wenn ueberhaupt eine Spanne gepflegt ist
+		# (z.B. Wohngebaeude ohne sinnvolle Hours skippen das).
+		if open_hour != close_hour:
+			rows.append({
+				"label": "Oeffnungszeiten",
+				"value": "%02d:00 - %02d:00 (%s)" % [open_hour, close_hour, open_status],
+			})
+	return {"title": "Belegung", "rows": rows}
+
+
+func _build_building_finance_section(_world = null) -> Dictionary:
+	var rows: Array = []
+	rows.append({"label": "Bilanz", "value": "%d EUR" % account.balance})
+
+	if income_today > 0 or expenses_today > 0:
+		var profit := get_profit_today()
+		var profit_severity := "normal"
+		if profit < 0:
+			profit_severity = "warning"
+		rows.append({
+			"label": "Heute",
+			"value": "+%d EUR Einnahmen, -%d EUR Ausgaben, Gewinn %d EUR" % [income_today, expenses_today, profit],
+			"severity": profit_severity,
+		})
+
+	if self is ResidentialBuilding or building_type == BuildingType.RESIDENTIAL:
+		var res := self as ResidentialBuilding
+		if res != null:
+			rows.append({"label": "Miete/Tag", "value": "%d EUR" % res.rent_per_day})
+
+	if wages_unpaid_today > 0:
+		rows.append({"label": "Loehne offen", "value": "%d EUR" % wages_unpaid_today, "severity": "warning"})
+	if taxes_unpaid_today > 0:
+		rows.append({"label": "Steuern offen", "value": "%d EUR" % taxes_unpaid_today, "severity": "warning"})
+	if maintenance_unpaid_today > 0:
+		rows.append({"label": "Wartung offen", "value": "%d EUR" % maintenance_unpaid_today, "severity": "warning"})
+	if operating_unpaid_today > 0:
+		rows.append({"label": "Betrieb offen", "value": "%d EUR" % operating_unpaid_today, "severity": "warning"})
+
+	if requires_public_funding():
+		var funding_severity := "normal"
+		if public_funding_shortfall_today > 0:
+			funding_severity = "critical"
+		elif public_funding_today > 0:
+			funding_severity = "good"
+		rows.append({
+			"label": "Foerderung",
+			"value": "%d / %d EUR (offen: %d)" % [public_funding_today, public_funding_requested_today, public_funding_shortfall_today],
+			"severity": funding_severity,
+		})
+
+	var financial_severity := "good"
+	match get_financial_state_key():
+		"CLOSED":
+			financial_severity = "critical"
+		"UNDERFUNDED", "STRUGGLING":
+			financial_severity = "warning"
+	rows.append({
+		"label": "Status",
+		"value": get_financial_state_display_label(),
+		"severity": financial_severity,
+	})
+
+	return {"title": "Finanzen", "rows": rows}
+
+
+func _build_building_maintenance_section() -> Dictionary:
+	var rows: Array = []
+	var cond_severity := "normal"
+	if condition < 30:
+		cond_severity = "critical"
+	elif condition < 60:
+		cond_severity = "warning"
+	elif condition >= 90:
+		cond_severity = "good"
+	rows.append({
+		"label": "Zustand",
+		"value": "%.0f / 100 (%s)" % [condition, get_condition_state_label()],
+		"severity": cond_severity,
+	})
+
+	# "Missed days" als lesbarer Satz statt "w=%d t=%d m=%d ..." Kuerzel.
+	var missed_parts: Array[String] = []
+	if missed_wage_days > 0:
+		missed_parts.append("%d Gehalt" % missed_wage_days)
+	if missed_tax_days > 0:
+		missed_parts.append("%d Steuern" % missed_tax_days)
+	if missed_maintenance_days > 0:
+		missed_parts.append("%d Wartung" % missed_maintenance_days)
+	if negative_balance_days > 0:
+		missed_parts.append("%d Tag(e) negativ" % negative_balance_days)
+	if underfunded_days > 0:
+		missed_parts.append("%d Tag(e) unterfinanziert" % underfunded_days)
+	if not missed_parts.is_empty():
+		rows.append({
+			"label": "Verpasst",
+			"value": ", ".join(missed_parts),
+			"severity": "warning",
+		})
+
+	var total_obl := get_total_daily_obligation_estimate()
+	if total_obl > 0:
+		var base_op := get_base_operating_cost_per_day()
+		var payroll := get_payroll_due_today()
+		rows.append({
+			"label": "Tageskosten",
+			"value": "%d EUR (Betrieb %d + Lohn %d)" % [total_obl, base_op, payroll],
+		})
+
+	return {"title": "Wartung & Kosten", "rows": rows}
 
 func get_info(world = null) -> Dictionary:
 	var hour := -1

@@ -121,8 +121,8 @@ func _build_panel() -> void:
 	var panel := PanelContainer.new()
 	panel.name = "CoordinatePickerPanel"
 	panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	# Sits below the search panel (search uses ~10..236 from the top).
-	panel.offset_left = -300
+	# Sits below the search panel. Breite parallel zum Search-Panel (300 px).
+	panel.offset_left = -312
 	panel.offset_top = 252
 	panel.offset_right = -12
 	panel.offset_bottom = 440

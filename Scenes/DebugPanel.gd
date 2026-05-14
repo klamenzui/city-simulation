@@ -69,11 +69,17 @@ func _apply_theme_and_layout() -> void:
 	# inherit it normally via the Control hierarchy.
 	panel_root.theme = UiThemeScript.get_or_build()
 
-	# Reposition: top-left with margin, below the time panel.
-	panel_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	panel_root.position = Vector2(12, 80)
+	# Anchor links-vertikal: top below TimePanel (offset 80), bottom above
+	# ActionBar (offset -84 = 12 padding + 72 bar height). Breite fix 380.
+	panel_root.anchor_left = 0.0
+	panel_root.anchor_top = 0.0
+	panel_root.anchor_right = 0.0
+	panel_root.anchor_bottom = 1.0
+	panel_root.offset_left = 12
+	panel_root.offset_top = 80
+	panel_root.offset_right = 12 + 380
+	panel_root.offset_bottom = -84
 	panel_root.custom_minimum_size = Vector2(380, 0)
-	panel_root.size = Vector2(380, panel_root.size.y)
 
 	# Internal VBox: anchor full-rect with padding so children breathe.
 	var vbox: VBoxContainer = $Panel/VBoxContainer
@@ -148,6 +154,71 @@ func update_debug(data: Dictionary) -> void:
 
 	label.clear()
 	label.append_text("\n".join(lines))
+
+
+# Strukturierter Render-Pfad. `sections` ist ein Array von Dicts:
+#   { "title": String, "rows": Array[Dict] }
+# Jeder Row-Eintrag:
+#   { "label": String, "value": String, "severity": "normal|good|warning|critical" }
+# Leere `label` -> Row wird ohne Praefix gerendert (z.B. fuer Bars). Rows mit
+# leerem `value` werden uebersprungen, damit Aufrufer schlicht
+# `{"label": "Visitors", "value": ""}` skippen kann ohne if/else am Call-Site.
+func update_sections(sections: Array) -> void:
+	if label == null:
+		return
+	var lines: PackedStringArray = []
+	var first := true
+	for section_var in sections:
+		if section_var is not Dictionary:
+			continue
+		var section := section_var as Dictionary
+		var rows: Array = section.get("rows", [])
+		var rendered_rows := _render_section_rows(rows)
+		if rendered_rows.is_empty():
+			continue
+		if not first:
+			lines.append("")
+		first = false
+		var title := str(section.get("title", ""))
+		if not title.is_empty():
+			lines.append("[color=#909090]── %s ──[/color]" % _escape_bbcode(title))
+		for line in rendered_rows:
+			lines.append(line)
+	label.clear()
+	label.append_text("\n".join(lines))
+
+
+func _render_section_rows(rows: Array) -> PackedStringArray:
+	var out: PackedStringArray = []
+	for row_var in rows:
+		if row_var is not Dictionary:
+			continue
+		var row := row_var as Dictionary
+		var value_text := str(row.get("value", ""))
+		if value_text.is_empty():
+			continue
+		var label_text := str(row.get("label", ""))
+		var severity := str(row.get("severity", "normal"))
+		var rendered_value := _format_by_severity(value_text, severity)
+		if label_text.is_empty():
+			out.append(rendered_value)
+		else:
+			out.append("[b]%s:[/b] %s" % [_escape_bbcode(label_text), rendered_value])
+	return out
+
+
+func _format_by_severity(value: String, severity: String) -> String:
+	var escaped := _escape_bbcode(value)
+	match severity:
+		"critical":
+			return "[color=#d95c5c]%s[/color]" % escaped
+		"warning":
+			return "[color=#d0b35f]%s[/color]" % escaped
+		"good":
+			return "[color=#76c68f]%s[/color]" % escaped
+		_:
+			return escaped
+
 
 func set_citizen_control_button_visible(is_visible: bool) -> void:
 	if citizen_control_button == null:
