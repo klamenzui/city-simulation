@@ -1,6 +1,8 @@
 extends RefCounted
 class_name BuildingOverviewController
 
+const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
+
 var world: World = null
 var panel: PanelContainer = null
 var label: RichTextLabel = null
@@ -45,7 +47,8 @@ func toggle_visibility() -> void:
 		return
 	panel.visible = not panel.visible
 	if button != null:
-		button.text = "Hide Buildings" if panel.visible else "Buildings"
+		# Highlight the sidebar nav button while its panel is open.
+		UiThemeScript.apply_accent_state(button, panel.visible)
 	_refresh_left = 0.0
 	_refresh_building_overview()
 
