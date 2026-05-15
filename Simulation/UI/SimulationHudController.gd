@@ -139,8 +139,7 @@ func _build_hud(
 
 
 func _build_top_time_panel() -> void:
-	# Symmetrisch zur Bottom-Action-Bar: PRESET_TOP_LEFT mit 12px Rand,
-	# linksbuendig statt zentriert.
+	# Symmetric with the bottom action bar: top-left, 12 px margin.
 	var time_panel := PanelContainer.new()
 	time_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	time_panel.position = Vector2(12, 12)

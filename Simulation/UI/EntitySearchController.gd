@@ -151,6 +151,9 @@ func _apply_search_result(index: int) -> void:
 	_mark_interacted()
 	var entry := _search_results[index]
 	var entity = entry.get("entity", null)
+	if entity == null or not is_instance_valid(entity):
+		_refresh_search_results(search_input.text if search_input != null else "")
+		return
 
 	if entity is Citizen:
 		if _select_citizen.is_valid():
@@ -169,7 +172,7 @@ func _apply_search_result(index: int) -> void:
 	_focus_camera_on_search_entity(entity)
 
 func _focus_camera_on_search_entity(entity) -> void:
-	if city_camera == null:
+	if city_camera == null or entity == null or not is_instance_valid(entity):
 		return
 
 	var focus_pos := Vector3.ZERO

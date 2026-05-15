@@ -65,21 +65,23 @@ func _apply_theme_and_layout() -> void:
 	if panel_root == null:
 		return
 
-	# Theme on the root Panel — children (VBox, RichText, Button, LineEdit, …)
-	# inherit it normally via the Control hierarchy.
+	# Theme on the root Panel; children inherit it through the Control tree.
 	panel_root.theme = UiThemeScript.get_or_build()
 
-	# Anchor links-vertikal: top below TimePanel (offset 80), bottom above
-	# ActionBar (offset -84 = 12 padding + 72 bar height). Breite fix 380.
+	var viewport := get_viewport()
+	var viewport_width := viewport.get_visible_rect().size.x if viewport != null else 1280.0
+	var panel_width := minf(380.0, maxf(300.0, viewport_width * 0.36))
+
+	# Left side panel: top below the time panel, bottom above the action bar.
 	panel_root.anchor_left = 0.0
 	panel_root.anchor_top = 0.0
 	panel_root.anchor_right = 0.0
 	panel_root.anchor_bottom = 1.0
 	panel_root.offset_left = 12
 	panel_root.offset_top = 80
-	panel_root.offset_right = 12 + 380
+	panel_root.offset_right = 12 + panel_width
 	panel_root.offset_bottom = -84
-	panel_root.custom_minimum_size = Vector2(380, 0)
+	panel_root.custom_minimum_size = Vector2(panel_width, 0)
 
 	# Internal VBox: anchor full-rect with padding so children breathe.
 	var vbox: VBoxContainer = $Panel/VBoxContainer
@@ -101,6 +103,9 @@ func _apply_theme_and_layout() -> void:
 
 	# Body typography on the main info RichTextLabel.
 	if label != null:
+		label.custom_minimum_size = Vector2(maxf(240.0, panel_width - float(UiThemeScript.PADDING_PANEL_H * 2)), 260.0)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		label.add_theme_font_size_override("normal_font_size", UiThemeScript.FONT_SIZE_BODY)
 		label.add_theme_font_size_override("bold_font_size", UiThemeScript.FONT_SIZE_BODY)
 		label.add_theme_color_override("default_color", UiThemeScript.TEXT_PRIMARY)
@@ -116,6 +121,8 @@ func _apply_theme_and_layout() -> void:
 	# Dialog log gets a recessed dark background to separate it from the
 	# panel's main scroll area.
 	if citizen_dialog_log != null:
+		citizen_dialog_log.custom_minimum_size = Vector2(maxf(240.0, panel_width - float(UiThemeScript.PADDING_PANEL_H * 2)), 150.0)
+		citizen_dialog_log.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var log_box := StyleBoxFlat.new()
 		log_box.bg_color = UiThemeScript.BG_800
 		log_box.border_color = UiThemeScript.BORDER
@@ -156,13 +163,12 @@ func update_debug(data: Dictionary) -> void:
 	label.append_text("\n".join(lines))
 
 
-# Strukturierter Render-Pfad. `sections` ist ein Array von Dicts:
+# Structured render path. `sections` is an array of dictionaries:
 #   { "title": String, "rows": Array[Dict] }
-# Jeder Row-Eintrag:
+# Each row:
 #   { "label": String, "value": String, "severity": "normal|good|warning|critical" }
-# Leere `label` -> Row wird ohne Praefix gerendert (z.B. fuer Bars). Rows mit
-# leerem `value` werden uebersprungen, damit Aufrufer schlicht
-# `{"label": "Visitors", "value": ""}` skippen kann ohne if/else am Call-Site.
+# Empty labels render without a prefix. Empty values are skipped so callers can
+# pass optional rows without extra call-site branching.
 func update_sections(sections: Array) -> void:
 	if label == null:
 		return

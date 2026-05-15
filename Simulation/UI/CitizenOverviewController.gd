@@ -1,10 +1,10 @@
 extends RefCounted
 class_name CitizenOverviewController
 
-## Renders eine kompakte Citizen-Liste in einem Overview-Panel (Schwester zur
-## BuildingOverviewController). Wird vom HudOverlayController instanziiert und
-## ueber `toggle_visibility()` per HUD-Button gezeigt/versteckt. Severity wird
-## aus HP/Hunger/Energy abgeleitet, kritische Citizens stehen oben.
+## Renders a compact citizen list in an overview panel, paired with
+## BuildingOverviewController. HudOverlayController owns construction and
+## toggling. Severity is derived from HP, hunger, and energy so critical
+## citizens stay at the top.
 
 var world: World = null
 var panel: PanelContainer = null
@@ -33,8 +33,8 @@ func setup(
 	_mark_ui_interacted = mark_ui_interacted
 	_select_citizen = select_citizen
 	if label != null:
-		# Zeilen sind als `[url=<instance_id>]...[/url]` formatiert, meta_clicked
-		# loest die Selection ueber den uebergebenen `select_citizen`-Callback aus.
+		# Rows are formatted as `[url=<instance_id>]...[/url]`; meta_clicked
+		# resolves selection through the supplied `select_citizen` callback.
 		if not label.meta_clicked.is_connected(_on_meta_clicked):
 			label.meta_clicked.connect(_on_meta_clicked)
 
