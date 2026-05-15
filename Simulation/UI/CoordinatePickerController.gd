@@ -5,60 +5,48 @@ const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 
 ## Two debug toggles in the top-right of the HUD:
 ##
-##   1. **Pick Coords** — Linksklick → Camera-Ray + Ground-Snap → Floating
-##      Label3D + HUD-Anzeige + Clipboard.  Y wird auf Boden gesnappt.
+##   1. **Pick Coords** - left-click casts a camera ray, snaps to ground,
+##      shows a floating Label3D, updates HUD text, and copies to clipboard.
 ##
-##   2. **Scan Grid** — Linksklick → führt einen `LocalGridPlanner.scan_at()`
-##      an der Klick-Position aus (mit Camera-Forward als Richtung) und
-##      visualisiert jede Cell als 3D-Cross (rot=blocked, grün=free, etc.).
-##      Reasons werden NICHT als Welt-Labels gerendert (verdecken sich
-##      gegenseitig) — stattdessen als aggregierte Counts im HUD-Panel und
-##      per-Cell ins citizen.log.
+##   2. **Scan Grid** - left-click runs `LocalGridPlanner.scan_at()` at the
+##      clicked position using planar camera-forward as the scan direction, then
+##      visualizes cells as flat quads. Reasons are aggregated in the HUD and
+##      logged per cell instead of rendered as overlapping world labels.
 ##
-## Sucht den `$Citizen`-Node (Citizen/Controller) zur Laufzeit für den
-## Scan — die Komponenten `_local_grid` und `_perception` werden geliehen.
+## The scan finds the runtime `$Citizen` node and borrows its `_local_grid`.
 
 const RAY_LENGTH: float = 1000.0
 const GROUND_PROBE_UP: float = 4.0
 const GROUND_PROBE_DOWN: float = 12.0
 const PICK_COLLISION_MASK: int = 0xFFFFFFFF
 
-const SCAN_CELL_FILL: float = 0.85    # 0..1, Anteil der Cell-Größe den das Quad ausfüllt
-const SCAN_CELL_Y_OFFSET: float = 0.04  # m, Quad sitzt knapp über der Geometrie
+const SCAN_CELL_FILL: float = 0.85      # 0..1 portion of each cell covered by the quad.
+const SCAN_CELL_Y_OFFSET: float = 0.04  # Meters above ground geometry.
 
-# Beim Scan-Klick wird der Citizen aus 3 m Höhe auf den Klickpunkt geworfen
-# und fällt zu Boden. Erst nach Landung wird gescannt — so ist die Probe-
-# Höhen-Basis identisch zur echten Citizen-Y wenn er da hingehen würde.
+# Scan clicks drop the citizen from above the picked point and wait for landing
+# before scanning, matching the Y basis the citizen would have when walking there.
 const SCAN_DROP_HEIGHT: float = 3.0
 const SCAN_DROP_MAX_FRAMES: int = 90  # ~1.5 s Timeout
 
-## Eigener Scan-Radius unabhängig vom Live-Citizen-Wert (`local_astar_radius`).
-## Damit man ohne Inspector-Edit testen kann, wie eng/weit die Probe sein soll.
-## Default 0.6 m — passt zum üblichen Pedzone-Korridor zwischen Park-Mauer
-## und Straße. Erhöhe für Open-Air-Plätze, senke für sehr enge Gassen.
+## Dedicated scan radius independent from the live citizen setting
+## (`local_astar_radius`) so the probe width can be tested without inspector
+## edits. Default 0.6 m fits the usual pedestrian corridor near park walls.
 const SCAN_RADIUS_OVERRIDE: float = 0.6
 const SCAN_CELL_SIZE_OVERRIDE: float = 0.10
-## Wenn true: Sphere-Probe wird übersprungen — die User-„Top-Hit + Height"-
-## Strategie übernimmt (siehe SCAN_MAX_STEP_HEIGHT). Default true: Down-Ray
-## top-hit pro Cell, Y-Diff > Threshold = block. Pfosten, Hydranten, Wände
-## werden über die Höhe erkannt; Sphere-Probe nicht nötig.
+## When true, skips the sphere probe and uses the top-hit plus height strategy:
+## down-ray top hit per cell, Y delta above threshold means blocked.
 const SCAN_SKIP_PHYSICS: bool = true
-## Höhen-basiertes Block-Kriterium (User-Idee): Cell.y vs. scan_origin.y.
-## NAN = aus. Default 0.25 m = Treppenstufe / Park-Mauer-Schwelle.
-## Wände, Klippen werden so erkannt ohne Sphere-Probe.
+## Height-based block threshold: cell.y vs. scan_origin.y. NAN disables it.
+## Default 0.25 m catches steps, walls, and ledges without the sphere probe.
 const SCAN_MAX_STEP_HEIGHT: float = 0.25
-## Sphere-Probe-Radius nur für den Scan. Live-Config nutzt 0.16, was über
-## 0.6 m hinaus in benachbarte Meshes greift. 0.08 ist näher an der echten
-## Citizen-Capsule-Breite und macht Pedzonen sichtbar grün.
+## Scan-only sphere probe radius. The live config is wider; 0.08 is closer to
+## the effective citizen capsule width for this diagnostic view.
 const SCAN_PROBE_RADIUS_OVERRIDE: float = 0.08
-## Mindest-Wartezeit bevor `is_on_floor()` als valide gilt. Direkt nach
-## einem Teleport ist der Cache von CharacterBody3D vom alten move_and_slide-
-## Status, returnt also fälschlich `true` wenn der Citizen vor dem Teleport
-## am Boden war.
+## Minimum wait before `is_on_floor()` is trusted. Right after teleporting,
+## CharacterBody3D may still expose the previous move_and_slide floor cache.
 const SCAN_DROP_MIN_FRAMES: int = 5
-## Initiale Y-Velocity nach Teleport — zwingt das nächste `move_and_slide()`
-## den Floor-Cache zu invalidieren. Sonst greift `_apply_idle_gravity` nie
-## (denkt is_on_floor=true → keine Gravity).
+## Initial Y velocity after teleporting; forces the next move_and_slide to
+## invalidate the stale floor cache and apply gravity.
 const SCAN_DROP_KICKSTART_VELOCITY: float = -1.0
 
 var owner_node: Node = null
@@ -78,6 +66,8 @@ var _scan_button: Button = null
 var _scan_visual: MeshInstance3D = null
 var _scan_mesh: ImmediateMesh = null
 var _scan_material: StandardMaterial3D = null
+var _scan_in_progress: bool = false
+var _scan_request_id: int = 0
 
 
 func setup(p_owner: Node, p_world: World, p_camera: Camera3D, p_canvas: CanvasLayer) -> void:
@@ -92,9 +82,8 @@ func is_active() -> bool:
 	return _pick_active or _scan_active
 
 
-## Returns true wenn Event konsumiert wurde — dann darf SceneRuntime es nicht
-## weiterreichen an interaction_controller (sonst würde der Klick zusätzlich
-## einen Citizen oder ein Building selektieren).
+## Returns true when the event was consumed so SceneRuntime will not pass the
+## same click to the standard interaction controller.
 func handle_input(event: InputEvent) -> bool:
 	if not is_active():
 		return false
@@ -108,8 +97,13 @@ func handle_input(event: InputEvent) -> bool:
 		_set_result("(kein Treffer)")
 		return true
 	if _scan_active:
+		if _scan_in_progress:
+			_set_result("Scan laeuft bereits, warte auf Abschluss...")
+			return true
+		_scan_request_id += 1
+		_scan_in_progress = true
 		# Scan is async (drop-and-land), kick it off but don't await here.
-		_drop_and_scan(picked as Vector3, mouse_button.position)
+		_drop_and_scan(picked as Vector3, mouse_button.position, _scan_request_id)
 	else:
 		_show_pick(picked as Vector3)
 	return true
@@ -121,7 +115,7 @@ func _build_panel() -> void:
 	var panel := PanelContainer.new()
 	panel.name = "CoordinatePickerPanel"
 	panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	# Sits below the search panel. Breite parallel zum Search-Panel (300 px).
+	# Sits below the search panel at the same width.
 	panel.offset_left = -312
 	panel.offset_top = 252
 	panel.offset_right = -12
@@ -195,6 +189,8 @@ func _on_scan_toggled(toggled_on: bool) -> void:
 			_pick_button.text = "Pick Coordinates"
 			UiThemeScript.apply_accent_state(_pick_button, false)
 	if not _scan_active:
+		_scan_request_id += 1
+		_scan_in_progress = false
 		_clear_scan_visuals()
 	if _result_label != null and not is_active():
 		_result_label.text = "Aktiviere einen Modus, dann klicke auf die Map."
@@ -218,13 +214,10 @@ func _pick_coordinate(screen_pos: Vector2) -> Variant:
 	return _ground_snap(hit_pos)
 
 
-## Sondiert den Boden direkt unter `point` und gibt die echte Boden-Y zurück.
+## Probes the ground under `point` and returns the lowest reachable hit Y.
 ##
-## Walks ALLE Hits von oben nach unten durch (bis zu 8 Iterationen) und nimmt
-## den **niedrigsten Y**. Das fixt den Bug, dass der erste Hit oft eine
-## Park-Mauer-Top, ein EntranceTrigger oder ein anderer erhöhter Collider
-## ist — dann würde der Citizen "auf der Mauer" landen statt am echten
-## Boden. Falls gar kein Hit gefunden wird → Original-Y.
+## Walks all hits from top to bottom and takes the lowest Y. This avoids using
+## wall tops, entrance triggers, or elevated helper colliders as the ground.
 func _ground_snap(point: Vector3) -> Vector3:
 	if owner_node == null or not owner_node.is_inside_tree():
 		return point
@@ -310,16 +303,17 @@ func _set_result(text: String) -> void:
 ## Async drop-and-scan with full diagnostics in the HUD so we can see
 ## exactly which step inflates the Y value when the visualization ends up
 ## in the air.
-func _drop_and_scan(world_pos: Vector3, screen_pos: Vector2) -> void:
+func _drop_and_scan(world_pos: Vector3, screen_pos: Vector2, scan_request_id: int) -> void:
 	var citizen := _find_citizen_for_scan()
 	if citizen == null:
-		_set_result("(kein Citizen-Node gefunden — Scan unmöglich)")
+		_finish_scan_request(scan_request_id, "(kein Citizen-Node gefunden - Scan unmoeglich)")
 		return
 	var local_grid = citizen._local_grid if "_local_grid" in citizen else null
 	if local_grid == null or not local_grid.has_method("scan_at"):
-		_set_result("(Citizen hat kein _local_grid mit scan_at)")
+		_finish_scan_request(scan_request_id, "(Citizen hat kein _local_grid mit scan_at)")
 		return
 	if owner_node == null or not owner_node.is_inside_tree():
+		_finish_scan_request(scan_request_id)
 		return
 
 	# Stop any current travel so the drop position is not immediately overridden.
@@ -366,7 +360,7 @@ func _drop_and_scan(world_pos: Vector3, screen_pos: Vector2) -> void:
 			"capsule_y_offset_local": capsule_y_offset,
 			"physics_process_enabled": citizen.is_processing_physics() if citizen.has_method("is_processing_physics") else true,
 		})
-	_set_result("Drop läuft … von Y=%.2f, warte auf Boden" % drop_pos.y)
+	_set_result("Drop laeuft ... von Y=%.2f, warte auf Boden" % drop_pos.y)
 
 	# Wait for landing. Skip is_on_floor() checks for the first MIN_FRAMES
 	# frames because the cache from the pre-teleport state can lie. Log
@@ -376,6 +370,11 @@ func _drop_and_scan(world_pos: Vector3, screen_pos: Vector2) -> void:
 	var landing_frame := 0
 	for i in range(SCAN_DROP_MAX_FRAMES):
 		await tree.physics_frame
+		if not _is_scan_request_current(scan_request_id):
+			return
+		if citizen == null or not is_instance_valid(citizen):
+			_finish_scan_request(scan_request_id, "(Citizen nicht mehr verfuegbar - Scan abgebrochen)")
+			return
 		landing_frame = i + 1
 		if landing_frame >= SCAN_DROP_MIN_FRAMES \
 				and citizen.has_method("is_on_floor") and citizen.is_on_floor():
@@ -471,8 +470,21 @@ func _drop_and_scan(world_pos: Vector3, screen_pos: Vector2) -> void:
 			"min_quad_y": min_quad_y,
 			"max_quad_y": max_quad_y,
 		})
+	_finish_scan_request(scan_request_id)
 
 	# Result text is produced inside `_drop_and_scan` (it has the diag fields).
+
+
+func _is_scan_request_current(scan_request_id: int) -> bool:
+	return _scan_active and _scan_in_progress and scan_request_id == _scan_request_id
+
+
+func _finish_scan_request(scan_request_id: int, result_text: String = "") -> void:
+	if scan_request_id != _scan_request_id:
+		return
+	if not result_text.is_empty():
+		_set_result(result_text)
+	_scan_in_progress = false
 
 
 static func _fmt_count_map(m: Dictionary) -> String:

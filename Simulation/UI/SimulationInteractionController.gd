@@ -128,6 +128,7 @@ func handle_input(event: InputEvent) -> bool:
 		and controlled_citizen == null \
 		and (search_input == null or not search_input.has_focus()):
 		on_pause_pressed()
+		return true
 
 	if event.is_action_pressed("ui_cancel") and search_results_list != null and search_results_list.visible:
 		search_results_list.visible = false

@@ -1,19 +1,18 @@
 extends RefCounted
 class_name UiTheme
 
-## Zentrales Theme für das gesamte In-Game-HUD.
+## Central theme for the in-game HUD.
 ##
-## Wird auf den Root-`CanvasLayer` gesetzt — alle darunter liegenden Control-
-## Nodes erben das Theme automatisch (Panel, Button, Label, LineEdit, ItemList,
-## RichTextLabel, ScrollContainer). Einzelne Controller müssen NICHTS mit
-## StyleBoxen tun, außer sie wollen einen "aktiven" State (z. B. Pick-Button
-## ON) explizit hervorheben — dafür gibt es `apply_accent_state(button, on)`.
+## Applied to top-level Control nodes below CanvasLayer; their children inherit
+## it normally (Panel, Button, Label, LineEdit, ItemList, RichTextLabel,
+## ScrollContainer). Controllers only need custom StyleBoxes for explicit
+## active states, handled through `apply_accent_state(button, on)`.
 ##
-## Designziele:
-##   * Dunkles Stadt-Sim-Look (Cities-Skylines / Anno-Style)
-##   * Eine Akzentfarbe (Cyan) für Interaktion + aktive Toggles
-##   * Klare Hierarchie: Heading > Label > Body > Muted
-##   * Generös Padding/Spacing damit nichts gequetscht aussieht
+## Design goals:
+##   * Dark city-sim look
+##   * One cyan accent for interaction and active toggles
+##   * Clear hierarchy: heading > label > body > muted
+##   * Enough padding and spacing that dense tools still breathe
 
 # ============================================================================
 # Color palette — single source of truth.

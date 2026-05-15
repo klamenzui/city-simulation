@@ -34,8 +34,8 @@ func setup(
 	_mark_ui_interacted = mark_ui_interacted
 	_select_building = select_building
 	if label != null:
-		# Zeilen sind als `[url=<instance_id>]...[/url]` formatiert, meta_clicked
-		# loest die Selection ueber den uebergebenen `select_building`-Callback aus.
+		# Rows are formatted as `[url=<instance_id>]...[/url]`; meta_clicked
+		# resolves selection through the supplied `select_building` callback.
 		if not label.meta_clicked.is_connected(_on_meta_clicked):
 			label.meta_clicked.connect(_on_meta_clicked)
 
