@@ -5,6 +5,8 @@ class_name EconomyOverviewController
 ## on the right. Clicking a group selects its representative building so the
 ## global 3D selection and debug panel stay in sync.
 
+const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
+
 var world: World = null
 var panel: PanelContainer = null
 var city_label: RichTextLabel = null
@@ -48,9 +50,10 @@ func toggle_visibility() -> void:
 		return
 	panel.visible = not panel.visible
 	if button != null:
-		button.text = "Hide Economy" if panel.visible else "Economy"
-		_refresh_left = 0.0
-		_refresh_all()
+		# Highlight the sidebar nav button while its panel is open.
+		UiThemeScript.apply_accent_state(button, panel.visible)
+	_refresh_left = 0.0
+	_refresh_all()
 
 func is_visible() -> bool:
 	return panel != null and panel.visible
