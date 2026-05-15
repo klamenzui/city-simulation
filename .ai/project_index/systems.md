@@ -141,9 +141,9 @@ World orchestration, economy, time, bootstrap, navigation, GOAP, UI, debug, logg
 | Simulation/GOAP/GoapAction.gd | GoapAction | RefCounted |
 | Simulation/GOAP/GoapPlanner.gd | GoapPlanner | RefCounted |
 | Simulation/Logging/SimLogger.gd | SimLogger | RefCounted |
-| Simulation/Navigation/PedestrianGraph.gd | PedestrianGraph | RefCounted |
-| Simulation/Navigation/RoadGraph.gd | RoadGraph | RefCounted |
-| Simulation/Spatial/CityDistrictIndex.gd | CityDistrictIndex | RefCounted |
+| Simulation/Multiplayer/client/MultiplayerClientReplica.gd | MultiplayerClientReplica | RefCounted |
+| Simulation/Multiplayer/MultiplayerSession.gd | MultiplayerSession | Node |
+| Simulation/Multiplayer/server/MultiplayerHostAuthority.gd | MultiplayerHostAuthority | RefCounted |
 
 ## config
 
@@ -178,6 +178,7 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_live_economy_food_test.gd | - | SceneTree |
 | tools/codex_live_sim_probe.gd | - | SceneTree |
 | tools/codex_local_grid_topology_test.gd | - | SceneTree |
+| tools/codex_multiplayer_host_connect_test.gd | - | SceneTree |
 | tools/codex_navigation_edge_step_test.gd | - | SceneTree |
 | tools/codex_navigation_route_test.gd | - | SceneTree |
 | tools/codex_null_material_audit.gd | - | SceneTree |

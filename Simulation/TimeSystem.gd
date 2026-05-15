@@ -48,7 +48,18 @@ func advance(minutes: int) -> void:
 			hour_changed.emit(get_hour())
 
 	time_advanced.emit(day, get_hour(), get_minute())
-		
+
+func apply_network_state(network_day: int, network_minutes_total: int) -> void:
+	var old_day := day
+	var old_hour := get_hour()
+	day = maxi(network_day, 1)
+	minutes_total = clampi(network_minutes_total, 0, 24 * 60 - 1)
+	if day != old_day:
+		day_changed.emit(day)
+	if get_hour() != old_hour:
+		hour_changed.emit(get_hour())
+	time_advanced.emit(day, get_hour(), get_minute())
+
 func get_time_string() -> String:
 	return "%02d:%02d" % [get_hour(), get_minute()]
 

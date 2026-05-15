@@ -240,6 +240,8 @@ func _setup_selection_state_controller() -> void:
 		interaction_controller.bind_selection_state(selection_state_controller, hud_overlay_controller)
 
 func _setup_citizen_lod_controller() -> void:
+	if world != null and world.has_method("has_simulation_authority") and not world.has_simulation_authority():
+		return
 	if selection_state_controller == null:
 		return
 	citizen_lod_controller = CitizenSimulationLodControllerScript.new()

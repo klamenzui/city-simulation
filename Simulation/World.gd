@@ -39,6 +39,7 @@ var _canonical_building_by_instance_id: Dictionary = {}
 var _park_representative_by_cluster_id: Dictionary = {}
 
 var is_paused: bool = false
+var simulation_authority_enabled: bool = true
 
 signal paused_changed(paused: bool)
 signal speed_changed(multiplier: float)
@@ -105,6 +106,8 @@ func _register_existing_scene_nodes(tree: SceneTree) -> void:
 				register_job(citizen.job)
 
 func _on_tick() -> void:
+	if not simulation_authority_enabled:
+		return
 	if is_paused:
 		return
 
@@ -482,10 +485,22 @@ func _rollover_building_finances() -> void:
 			building.begin_new_day()
 
 func toggle_pause() -> void:
+	if not simulation_authority_enabled:
+		return
 	is_paused = not is_paused
 	paused_changed.emit(is_paused)
 
+func set_simulation_authority_enabled(enabled: bool) -> void:
+	simulation_authority_enabled = enabled
+	if _timer != null:
+		_timer.paused = not enabled
+
+func has_simulation_authority() -> bool:
+	return simulation_authority_enabled
+
 func set_speed(multiplier: float) -> void:
+	if not simulation_authority_enabled:
+		return
 	speed_multiplier = maxf(multiplier, 0.1)
 	_refresh_timer_wait_time()
 	speed_changed.emit(speed_multiplier)
