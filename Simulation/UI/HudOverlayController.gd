@@ -105,8 +105,8 @@ func _build_building_overview_overlay(
 ) -> void:
 	var building_overview_panel := PanelContainer.new()
 	building_overview_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	# Floats bottom-left, clear of the icon sidebar; height grows from bottom.
-	building_overview_panel.position = Vector2(UiThemeScript.SIDEBAR_WIDTH + 24, -312)
+	# Sits above the bottom action bar; height grows from bottom.
+	building_overview_panel.position = Vector2(12, -380)
 	building_overview_panel.size = Vector2(380, 300)
 	building_overview_panel.visible = false
 	# CanvasLayer can't hold a Theme — assign it explicitly on each top-level
@@ -159,7 +159,7 @@ func _build_citizen_overview_overlay(
 	# Positioned to the right of the building overview panel.
 	var citizen_overview_panel := PanelContainer.new()
 	citizen_overview_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	citizen_overview_panel.position = Vector2(UiThemeScript.SIDEBAR_WIDTH + 24 + 380 + 12, -312)
+	citizen_overview_panel.position = Vector2(12 + 380 + 12, -380)
 	citizen_overview_panel.size = Vector2(380, 300)
 	citizen_overview_panel.visible = false
 	citizen_overview_panel.theme = UiThemeScript.get_or_build()
@@ -213,10 +213,10 @@ func _build_economy_overview_overlay(
 
 	var economy_panel := PanelContainer.new()
 	economy_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	economy_panel.offset_left = float(UiThemeScript.SIDEBAR_WIDTH + 24)
+	economy_panel.offset_left = 12.0
 	economy_panel.offset_right = -12.0
-	economy_panel.offset_top = -panel_height - 12.0
-	economy_panel.offset_bottom = -12.0
+	economy_panel.offset_top = -panel_height - 80.0
+	economy_panel.offset_bottom = -80.0
 	economy_panel.custom_minimum_size = Vector2(620, panel_height)
 	economy_panel.visible = false
 	economy_panel.theme = UiThemeScript.get_or_build()
