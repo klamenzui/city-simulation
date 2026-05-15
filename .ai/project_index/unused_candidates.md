@@ -23,45 +23,6 @@ Purpose: candidate list only. Do not delete anything here without reference chec
 | ImportedCitySource/scenes/units/character_body_3d_new.tscn | name suggests variant/legacy; verify references before deletion |
 | ImportedCitySource/scripts/setup_city - Kopie.gd | name suggests variant/legacy; verify references before deletion |
 
-## Manual Audit 2026-05-15
-
-Reference tools used: `.ai/scripts/citysim_cleanup_check.py` and `.ai/scripts/citysim_find_references.py`.
-
-High-confidence unused private methods found with definition-only references:
-
-| Path | Symbol | Reason |
-| --- | --- | --- |
-| Entities/Citizens/New/Citizen.gd | `_find_nearest_shop` | definition-only; likely leftover after query resolver / food-target refactors |
-| Entities/Citizens/New/Citizen.gd | `_find_nearest_cinema` | definition-only; likely leftover after query resolver / leisure-target refactors |
-| Simulation/AI/LocalDialogueRuntimeService.gd | `_stringify_prompt_value` | definition-only helper |
-| Simulation/Navigation/PedestrianGraph.gd | `_get_crosswalk_side_corner_indices` | definition-only helper |
-| tools/codex_building_occupancy_test.gd | `_expect_vec3_near` | definition-only test helper |
-| tools/codex_scan_diagnose_test.gd | `_dump_raw_hit` | definition-only diagnostic helper |
-
-High-confidence stale files or paths:
-
-| Path | Reason |
-| --- | --- |
-| ImportedCitySource/scenes/units/character_body_3d_new.gd | zero references found |
-| ImportedCitySource/scenes/units/character_body_3d_new.tscn | zero references found |
-| ImportedCitySource/scripts/setup_city - Kopie.gd | zero references found; copy suffix indicates old duplicate |
-| Simulation/Bootstrap/CitySceneRefactor.gd | no scene/code references found; likely old migration helper |
-| Simulation/Bootstrap/ImportedCitySetup.gd | used by SceneBootstrapController, but points to missing `res://ImportedCitySource/city_edited.tscn` |
-
-Risky candidates requiring manual/editor verification before removal:
-
-| Path | Reason |
-| --- | --- |
-| Scenes/Building.tscn | no direct references found; may still be opened manually in editor |
-| Scenes/Park.tscn | no direct references found; may still be opened manually in editor |
-| Scenes/ResidentialBuilding.tscn | no direct references found; may still be opened manually in editor |
-| environment/sky/Day.tres | low-reference candidate; verify sky/environment setup visually |
-| environment/sky/Day.tscn | low-reference candidate; verify sky/environment setup visually |
-| environment/sky/Night.tscn | low-reference candidate; verify sky/environment setup visually |
-| environment/sky/time_ui_controller.gd | low-reference candidate; verify sky/environment setup visually |
-
-Do not delete `ImportedCitySource` as a whole: active scenes still reference assets and sub-scenes from it.
-
 ## Required Follow-Up
 
 - Run `.ai/scripts/citysim_cleanup_check.py --root .` for reference-based candidates.

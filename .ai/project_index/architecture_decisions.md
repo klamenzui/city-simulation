@@ -32,6 +32,14 @@ Purpose: compact decisions that should be checked before architectural edits.
 - Buildings store state, account, condition, jobs, and status.
 - Public buildings and commercial buildings have different funding/closure behavior.
 
+## Multiplayer Ownership Rules
+
+- Phase 1 uses Godot ENet in host-authoritative mode; Steam/Relay integration is deferred.
+- `Simulation/Multiplayer/shared`, `client`, and `server` separate serialization, client replica state, and host authority.
+- Host/server owns `World`, `TimeSystem`, `EconomySystem`, Citizen spawn, GOAP, building state, and money transfers.
+- Clients are view/input layers: they do not tick world simulation, spawn authoritative citizens, or mutate economy/building/citizen state directly.
+- Clients receive snapshots and may send command dictionaries; command execution must be validated on the host/server.
+
 ## Knowledge Storage Rule
 
 - Obsidian is the readable long-term memory.

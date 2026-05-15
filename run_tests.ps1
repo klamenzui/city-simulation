@@ -143,6 +143,11 @@ $availableTests = @(
 		Script = "res://tools/codex_game_smoke_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "multiplayer"
+		Label = "Multiplayer Host Connect"
+		Script = "res://tools/codex_multiplayer_host_connect_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "liveeconomy"
 		Label = "Live Economy Food Integration"
 		Script = "res://tools/codex_live_economy_food_test.gd"

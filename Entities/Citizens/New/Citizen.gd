@@ -22,6 +22,7 @@ signal clicked
 const SimLoggerScript = preload("res://Simulation/Logging/SimLogger.gd")
 const CitizenAgentScript = preload("res://Simulation/Citizens/CitizenAgent.gd")
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
+const WorldSnapshotSerializerScript = preload("res://Simulation/Multiplayer/shared/WorldSnapshotSerializer.gd")
 
 var _sim: CitizenSimulation = null
 var _world_ref: World = null
@@ -57,6 +58,10 @@ var _home_rotation_candidate_day: int = -1
 var _runtime_conversation_mode: String = ""
 var _runtime_conversation_partner: String = ""
 var _runtime_conversation_topic: String = ""
+var network_replica_mode: bool = false
+var _network_action_label: String = ""
+var _network_lod_tier: String = ""
+var _network_inside_building: bool = false
 var cheap_path_follow_lod_enabled: bool = true
 var cheap_path_follow_camera_distance: float = 80.0
 var obstacle_sensor_height: float = 0.9
@@ -96,14 +101,66 @@ func _ready() -> void:
 	_walk_speed = maxf(move_speed, 0.01)
 	_setup_clickable()
 	_setup_selection_visual()
-	call_deferred("_auto_resolve_refs")
+	if network_replica_mode:
+		set_network_replica_mode(true)
+	else:
+		call_deferred("_auto_resolve_refs")
 
 
 func _physics_process(delta: float) -> void:
+	if network_replica_mode:
+		velocity = Vector3.ZERO
+		return
 	if _is_body_presence_hidden():
 		velocity = Vector3.ZERO
 		return
 	super._physics_process(delta)
+
+
+func set_network_replica_mode(enabled: bool) -> void:
+	network_replica_mode = enabled
+	if not enabled:
+		return
+	autonomous_simulation_enabled = false
+	velocity = Vector3.ZERO
+	set_physics_process(false)
+
+
+func apply_network_snapshot(data: Dictionary, building_lookup: Dictionary) -> void:
+	set_network_replica_mode(true)
+	citizen_name = str(data.get("name", citizen_name))
+	if _sim != null and _sim.identity != null:
+		_sim.identity.citizen_name = citizen_name
+	global_position = WorldSnapshotSerializerScript.vector_from_snapshot(data.get("position", []), global_position)
+	rotation.y = float(data.get("rotation_y", rotation.y))
+	if bool(data.get("visible", visible)):
+		show()
+		collision_layer = _saved_collision_layer
+		collision_mask = _saved_collision_mask
+	else:
+		hide()
+		collision_layer = 0
+		collision_mask = 0
+	if wallet != null:
+		wallet.balance = int(data.get("wallet", wallet.balance))
+	if needs != null:
+		needs.hunger = float(data.get("hunger", needs.hunger))
+		needs.energy = float(data.get("energy", needs.energy))
+		needs.fun = float(data.get("fun", needs.fun))
+		needs.health = float(data.get("health", needs.health))
+	var location_id := str(data.get("current_location_id", ""))
+	current_location = building_lookup.get(location_id, null) as Building
+	var home_id := str(data.get("home_id", ""))
+	home = building_lookup.get(home_id, null) as ResidentialBuilding
+	if job != null:
+		var workplace_id := str(data.get("workplace_id", ""))
+		job.workplace = building_lookup.get(workplace_id, null) as Building
+	_network_action_label = str(data.get("action", _network_action_label))
+	_network_lod_tier = str(data.get("lod", _network_lod_tier))
+	_network_inside_building = bool(data.get("inside", _network_inside_building))
+	_is_travelling = bool(data.get("travelling", _is_travelling))
+	velocity = Vector3.ZERO
+	set_physics_process(false)
 
 
 func _ensure_sim_initialized() -> void:
@@ -546,6 +603,8 @@ const _DEFAULT_DECISION_COOLDOWN_MIN: int = 5
 const _DEFAULT_DECISION_COOLDOWN_MAX: int = 20
 
 func get_simulation_lod_tier() -> String:
+	if network_replica_mode and not _network_lod_tier.is_empty():
+		return _network_lod_tier
 	if _sim == null or _sim.lod == null:
 		return CitizenLodComponent.TIER_FOCUS
 	return _sim.lod.tier
@@ -1133,11 +1192,15 @@ func set_world_ref(p_world: Node) -> void:
 	_world_ref = p_world as World
 	if _sim != null:
 		_sim.set_world(p_world)
+	if network_replica_mode:
+		return
 	_auto_resolved_refs = false
 	call_deferred("_auto_resolve_refs")
 
 
 func sim_tick(p_world: Node) -> void:
+	if network_replica_mode:
+		return
 	if not should_run_simulation_lod_tick(p_world):
 		return
 	if _sim != null:
@@ -1777,6 +1840,8 @@ func _format_need_bar(value: float, width: int = 10) -> String:
 func _build_activity_section() -> Dictionary:
 	var rows: Array = []
 	var action_label := current_action.label if current_action != null else "Idle"
+	if network_replica_mode and not _network_action_label.is_empty():
+		action_label = _network_action_label
 	rows.append({"label": "Aktion", "value": action_label})
 	var location_text := _format_location_text()
 	if not location_text.is_empty():
