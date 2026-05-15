@@ -48,6 +48,9 @@ func toggle_visibility() -> void:
 	_refresh_left = 0.0
 	_refresh_citizen_overview()
 
+func is_visible() -> bool:
+	return panel != null and panel.visible
+
 func update(delta: float) -> void:
 	if panel == null or not panel.visible:
 		return
