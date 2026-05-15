@@ -1,7 +1,14 @@
 extends RefCounted
 class_name SimulationHudController
 
+## Persistent in-game chrome: a full-width top resource bar and a left
+## vertical icon-navigation sidebar (city-builder style). Replaces the old
+## bottom action bar. Public API is unchanged — SceneRuntimeController and
+## SelectionStateController still drive it through the same methods.
+
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
+
+const _SPEED_STEPS: Array[float] = [1.0, 2.0, 3.0, 4.0]
 
 var owner_node: Node = null
 var world: World = null
@@ -11,18 +18,25 @@ var citizen_overview_button: Button = null
 var economy_overview_button: Button = null
 
 var _theme: Theme = null
+var _menu_button: Button = null
 var _pause_button: Button = null
 var _player_control_button: Button = null
 var _ai_runtime_button: Button = null
-var _speed_buttons: Dictionary = {}  # float speed → Button
-var _speed_label: Label = null
+var _speed_button: Button = null
+var _sidebar_panel: PanelContainer = null
 var _date_label: Label = null
 var _clock_label: Label = null
-var _citizen_stats_label: Label = null
+var _treasury_label: Label = null
+var _population_label: Label = null
+var _housing_jobs_label: Label = null
+var _satisfaction_label: Label = null
 var _control_mode_panel: PanelContainer = null
 var _control_mode_label: Label = null
 var _ai_runtime_label: Label = null
 var _ai_runtime_service = null
+
+# Balance at the start of the current in-game day — drives the "today" delta.
+var _treasury_day_start: int = 0
 
 func setup(
 	owner_ref: Node,
@@ -37,10 +51,13 @@ func setup(
 ) -> void:
 	owner_node = owner_ref
 	world = world_ref
+	if world != null and world.city_account != null:
+		_treasury_day_start = world.city_account.balance
 	_build_hud(pause_pressed, speed_pressed, building_overview_pressed, citizen_overview_pressed,
 			economy_overview_pressed, player_control_pressed, ai_runtime_pressed)
 	_bind_world_signals()
 	_refresh_time_hud()
+	_refresh_stats()
 	_refresh_pause_button()
 	_refresh_speed_label()
 	refresh_control_mode(null)
@@ -125,80 +142,51 @@ func _build_hud(
 	canvas = CanvasLayer.new()
 	owner_node.add_child(canvas)
 
-	# CanvasLayer is not a Control, so it cannot hold a Theme — children
-	# attached to it don't automatically inherit theming. Cache one Theme
-	# instance per session and assign it to each top-level Control we build
-	# directly under the canvas. Nested Control children then inherit normally.
+	# CanvasLayer is not a Control, so it cannot hold a Theme — every top-level
+	# Control we attach to it must set `.theme` explicitly. Children inherit.
 	_theme = UiThemeScript.get_or_build()
 
-	_build_top_time_panel()
-	_build_bottom_action_bar(pause_pressed, speed_pressed, building_overview_pressed,
-			citizen_overview_pressed, economy_overview_pressed,
-			player_control_pressed, ai_runtime_pressed)
+	_build_top_bar(pause_pressed, speed_pressed)
+	_build_left_sidebar(building_overview_pressed, citizen_overview_pressed,
+			economy_overview_pressed, player_control_pressed, ai_runtime_pressed)
 	_build_control_mode_banner()
 
 
-func _build_top_time_panel() -> void:
-	# Symmetric with the bottom action bar: top-left, 12 px margin.
-	var time_panel := PanelContainer.new()
-	time_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	time_panel.position = Vector2(12, 12)
-	time_panel.theme = _theme
-	canvas.add_child(time_panel)
-
-	var time_box := HBoxContainer.new()
-	time_box.add_theme_constant_override("separation", UiThemeScript.SEPARATION_LOOSE)
-	time_panel.add_child(time_box)
-
-	_date_label = Label.new()
-	_date_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_date_label.add_theme_color_override("font_color", UiThemeScript.TEXT_SECONDARY)
-	_date_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_BODY)
-	_date_label.custom_minimum_size = Vector2(120, 36)
-	time_box.add_child(_date_label)
-
-	time_box.add_child(_make_v_divider())
-
-	_clock_label = Label.new()
-	_clock_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_clock_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_HEADING)
-	_clock_label.add_theme_color_override("font_color", UiThemeScript.ACCENT)
-	_clock_label.custom_minimum_size = Vector2(78, 36)
-	time_box.add_child(_clock_label)
-
-	time_box.add_child(_make_v_divider())
-
-	_citizen_stats_label = Label.new()
-	_citizen_stats_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_citizen_stats_label.add_theme_color_override("font_color", UiThemeScript.TEXT_SECONDARY)
-	_citizen_stats_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_BODY)
-	_citizen_stats_label.custom_minimum_size = Vector2(620, 36)
-	time_box.add_child(_citizen_stats_label)
-
-
-func _build_bottom_action_bar(
-	pause_pressed: Callable,
-	speed_pressed: Callable,
-	building_overview_pressed: Callable,
-	citizen_overview_pressed: Callable,
-	economy_overview_pressed: Callable,
-	player_control_pressed: Callable,
-	ai_runtime_pressed: Callable
-) -> void:
-	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	panel.position = Vector2(12, -72)
-	panel.theme = _theme
-	canvas.add_child(panel)
+func _build_top_bar(pause_pressed: Callable, speed_pressed: Callable) -> void:
+	var bar := PanelContainer.new()
+	bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	bar.offset_left = 0
+	bar.offset_top = 0
+	bar.offset_right = 0
+	bar.offset_bottom = UiThemeScript.TOPBAR_HEIGHT
+	bar.theme = _theme
+	# Square top edge — reads as an anchored bar, not a floating panel.
+	var bar_box := UiThemeScript._make_panel_box(0, UiThemeScript.BG_900, UiThemeScript.BORDER)
+	bar_box.corner_radius_top_left = 0
+	bar_box.corner_radius_top_right = 0
+	bar_box.content_margin_left = UiThemeScript.PADDING_PANEL_H
+	bar_box.content_margin_right = UiThemeScript.PADDING_PANEL_H
+	bar_box.content_margin_top = 6
+	bar_box.content_margin_bottom = 6
+	bar.add_theme_stylebox_override("panel", bar_box)
+	canvas.add_child(bar)
 
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_NORMAL)
-	panel.add_child(hbox)
+	bar.add_child(hbox)
 
-	# Pause: prominent toggle on the left.
+	# Left cluster: menu (collapses the sidebar) + pause.
+	_menu_button = Button.new()
+	_menu_button.text = "Menu"
+	_menu_button.tooltip_text = "Navigationsleiste ein-/ausblenden"
+	_menu_button.custom_minimum_size = Vector2(64, 40)
+	_menu_button.focus_mode = Control.FOCUS_NONE
+	_menu_button.pressed.connect(_on_menu_pressed)
+	hbox.add_child(_menu_button)
+
 	_pause_button = Button.new()
 	_pause_button.text = "Pause"
-	_pause_button.custom_minimum_size = Vector2(96, 36)
+	_pause_button.custom_minimum_size = Vector2(84, 40)
 	_pause_button.focus_mode = Control.FOCUS_NONE
 	if pause_pressed.is_valid():
 		_pause_button.pressed.connect(pause_pressed)
@@ -206,92 +194,91 @@ func _build_bottom_action_bar(
 
 	hbox.add_child(_make_v_divider())
 
-	# Speed buttons grouped as one cluster — active multiplier gets accent.
-	for speed in [1, 2, 3, 4]:
-		var btn := Button.new()
-		btn.text = "%dx" % speed
-		btn.custom_minimum_size = Vector2(44, 36)
-		btn.focus_mode = Control.FOCUS_NONE
-		if speed_pressed.is_valid():
-			btn.pressed.connect(speed_pressed.bind(float(speed)))
-		hbox.add_child(btn)
-		_speed_buttons[float(speed)] = btn
+	# Time cluster: date + clock chips, then one cycling speed button.
+	_date_label = _make_stat_chip(hbox, "DATUM", UiThemeScript.TEXT_PRIMARY, 132)
+	_clock_label = _make_stat_chip(hbox, "ZEIT", UiThemeScript.ACCENT, 64)
+
+	_speed_button = Button.new()
+	_speed_button.text = "Tempo x1"
+	_speed_button.tooltip_text = "Simulationstempo umschalten (1x -> 4x)"
+	_speed_button.custom_minimum_size = Vector2(96, 40)
+	_speed_button.focus_mode = Control.FOCUS_NONE
+	if speed_pressed.is_valid():
+		_speed_button.pressed.connect(_on_speed_cycle_pressed.bind(speed_pressed))
+	hbox.add_child(_speed_button)
 
 	hbox.add_child(_make_v_divider())
 
-	building_overview_button = Button.new()
-	building_overview_button.text = "Buildings"
-	building_overview_button.custom_minimum_size = Vector2(96, 36)
-	building_overview_button.focus_mode = Control.FOCUS_NONE
-	if building_overview_pressed.is_valid():
-		building_overview_button.pressed.connect(building_overview_pressed)
-	hbox.add_child(building_overview_button)
+	# City stat chips.
+	_treasury_label = _make_stat_chip(hbox, "STADTKASSE", UiThemeScript.TEXT_PRIMARY, 210)
+	_population_label = _make_stat_chip(hbox, "EINWOHNER", UiThemeScript.TEXT_PRIMARY, 150)
+	_housing_jobs_label = _make_stat_chip(hbox, "WOHNEN / JOBS", UiThemeScript.TEXT_PRIMARY, 130)
+	_satisfaction_label = _make_stat_chip(hbox, "ZUFRIEDENHEIT", UiThemeScript.SUCCESS, 80)
 
-	citizen_overview_button = Button.new()
-	citizen_overview_button.text = "Citizens"
-	citizen_overview_button.custom_minimum_size = Vector2(96, 36)
-	citizen_overview_button.focus_mode = Control.FOCUS_NONE
-	if citizen_overview_pressed.is_valid():
-		citizen_overview_button.pressed.connect(citizen_overview_pressed)
-	hbox.add_child(citizen_overview_button)
-
-	economy_overview_button = Button.new()
-	economy_overview_button.text = "Economy"
-	economy_overview_button.custom_minimum_size = Vector2(96, 36)
-	economy_overview_button.focus_mode = Control.FOCUS_NONE
-	if economy_overview_pressed.is_valid():
-		economy_overview_button.pressed.connect(economy_overview_pressed)
-	hbox.add_child(economy_overview_button)
-
-	_player_control_button = Button.new()
-	_player_control_button.text = "Control Player"
-	_player_control_button.custom_minimum_size = Vector2(120, 36)
-	_player_control_button.focus_mode = Control.FOCUS_NONE
-	_player_control_button.visible = false
-	if player_control_pressed.is_valid():
-		_player_control_button.pressed.connect(player_control_pressed)
-	hbox.add_child(_player_control_button)
-
-	_ai_runtime_button = Button.new()
-	_ai_runtime_button.text = "Setup AI"
-	_ai_runtime_button.custom_minimum_size = Vector2(104, 36)
-	_ai_runtime_button.focus_mode = Control.FOCUS_NONE
-	_ai_runtime_button.visible = false
-	if ai_runtime_pressed.is_valid():
-		_ai_runtime_button.pressed.connect(ai_runtime_pressed)
-	hbox.add_child(_ai_runtime_button)
-
-	hbox.add_child(_make_v_divider())
-
-	var hint := Label.new()
-	hint.text = "Click citizen / building for info"
-	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	hint.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
-	hint.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
-	hint.custom_minimum_size = Vector2(0, 36)
-	hbox.add_child(hint)
+	# Spacer so the AI status sits flush right.
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(spacer)
 
 	_ai_runtime_label = Label.new()
 	_ai_runtime_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_ai_runtime_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_ai_runtime_label.add_theme_color_override("font_color", UiThemeScript.TEXT_SECONDARY)
 	_ai_runtime_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
-	_ai_runtime_label.custom_minimum_size = Vector2(220, 36)
+	_ai_runtime_label.custom_minimum_size = Vector2(200, 40)
 	hbox.add_child(_ai_runtime_label)
 
-	# Compact current-speed indicator at the far right.
-	_speed_label = Label.new()
-	_speed_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_speed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_speed_label.add_theme_color_override("font_color", UiThemeScript.ACCENT)
-	_speed_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_LABEL)
-	_speed_label.custom_minimum_size = Vector2(50, 36)
-	hbox.add_child(_speed_label)
+
+func _build_left_sidebar(
+	building_overview_pressed: Callable,
+	citizen_overview_pressed: Callable,
+	economy_overview_pressed: Callable,
+	player_control_pressed: Callable,
+	ai_runtime_pressed: Callable
+) -> void:
+	_sidebar_panel = PanelContainer.new()
+	_sidebar_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_sidebar_panel.position = Vector2(12, UiThemeScript.TOPBAR_HEIGHT + 12)
+	_sidebar_panel.theme = _theme
+	canvas.add_child(_sidebar_panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
+	_sidebar_panel.add_child(vbox)
+
+	var nav_heading := Label.new()
+	nav_heading.text = "NAVIGATION"
+	nav_heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+	nav_heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+	vbox.add_child(nav_heading)
+
+	building_overview_button = _make_nav_button(vbox, "Gebaeude", building_overview_pressed)
+	citizen_overview_button = _make_nav_button(vbox, "Buerger", citizen_overview_pressed)
+	economy_overview_button = _make_nav_button(vbox, "Finanzen", economy_overview_pressed)
+
+	vbox.add_child(_make_h_divider())
+
+	_player_control_button = _make_nav_button(vbox, "Control Player", player_control_pressed)
+	_player_control_button.visible = false
+
+	_ai_runtime_button = _make_nav_button(vbox, "Setup AI", ai_runtime_pressed)
+	_ai_runtime_button.visible = false
+
+	vbox.add_child(_make_h_divider())
+
+	var hint := Label.new()
+	hint.text = "Klick = Info"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+	hint.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+	vbox.add_child(hint)
 
 
 func _build_control_mode_banner() -> void:
 	_control_mode_panel = PanelContainer.new()
 	_control_mode_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_control_mode_panel.position = Vector2(12, 12)
+	# Below the top bar, clear of the sidebar.
+	_control_mode_panel.position = Vector2(UiThemeScript.SIDEBAR_WIDTH + 24, UiThemeScript.TOPBAR_HEIGHT + 12)
 	_control_mode_panel.visible = false
 	_control_mode_panel.theme = _theme
 	# Accent-tinted banner — clearly different from a passive info panel.
@@ -321,18 +308,78 @@ func _build_control_mode_banner() -> void:
 	_control_mode_panel.add_child(_control_mode_label)
 
 
-## 1-px vertical divider with margins — used to group the action bar.
+## Caption-over-value chip for the top bar. Returns the value Label so the
+## refresh code can update it; the caption is static.
+func _make_stat_chip(parent: Node, caption: String, value_color: Color, min_width: int) -> Label:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	box.custom_minimum_size = Vector2(min_width, 44)
+	parent.add_child(box)
+
+	var caption_label := Label.new()
+	caption_label.text = caption
+	caption_label.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+	caption_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+	box.add_child(caption_label)
+
+	var value_label := Label.new()
+	value_label.text = "-"
+	value_label.add_theme_color_override("font_color", value_color)
+	value_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_HEADING)
+	box.add_child(value_label)
+	return value_label
+
+
+func _make_nav_button(parent: Node, text: String, on_pressed: Callable) -> Button:
+	var btn := Button.new()
+	btn.text = text
+	btn.custom_minimum_size = Vector2(UiThemeScript.SIDEBAR_WIDTH - 28, 40)
+	btn.focus_mode = Control.FOCUS_NONE
+	if on_pressed.is_valid():
+		btn.pressed.connect(on_pressed)
+	parent.add_child(btn)
+	return btn
+
+
+## 1-px vertical divider with margins — groups the top-bar clusters.
 func _make_v_divider() -> Control:
-	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(1, 26)
-	spacer.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var divider_panel := PanelContainer.new()
-	divider_panel.custom_minimum_size = Vector2(1, 26)
+	divider_panel.custom_minimum_size = Vector2(1, 30)
 	divider_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = UiThemeScript.BORDER
 	divider_panel.add_theme_stylebox_override("panel", sb)
 	return divider_panel
+
+
+## 1-px horizontal divider — groups sidebar sections.
+func _make_h_divider() -> Control:
+	var divider_panel := PanelContainer.new()
+	divider_panel.custom_minimum_size = Vector2(UiThemeScript.SIDEBAR_WIDTH - 28, 1)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = UiThemeScript.BORDER
+	divider_panel.add_theme_stylebox_override("panel", sb)
+	return divider_panel
+
+
+func _on_menu_pressed() -> void:
+	if _sidebar_panel == null:
+		return
+	_sidebar_panel.visible = not _sidebar_panel.visible
+	UiThemeScript.apply_accent_state(_menu_button, not _sidebar_panel.visible)
+
+
+func _on_speed_cycle_pressed(speed_pressed: Callable) -> void:
+	if not speed_pressed.is_valid():
+		return
+	var current := world.speed_multiplier if world != null else 1.0
+	var next_speed := _SPEED_STEPS[0]
+	for step in _SPEED_STEPS:
+		if step > current + 0.01:
+			next_speed = step
+			break
+	speed_pressed.call(next_speed)
+
 
 func _on_ai_runtime_status_changed(_status: String, _detail: String) -> void:
 	if _ai_runtime_service != null and _ai_runtime_service.has_method("get_ui_runtime_state"):
@@ -354,6 +401,9 @@ func _bind_world_signals() -> void:
 		var time_cb := Callable(self, "_on_time_advanced")
 		if not world.time.time_advanced.is_connected(time_cb):
 			world.time.time_advanced.connect(time_cb)
+		var day_cb := Callable(self, "_on_day_changed")
+		if not world.time.day_changed.is_connected(day_cb):
+			world.time.day_changed.connect(day_cb)
 
 func _on_world_paused(_paused: bool) -> void:
 	_refresh_pause_button()
@@ -363,6 +413,14 @@ func _on_world_speed_changed(_multiplier: float) -> void:
 
 func _on_time_advanced(_day: int, _hour: int, _minute: int) -> void:
 	_refresh_time_hud()
+	_refresh_stats()
+
+func _on_day_changed(_day: int) -> void:
+	# Snapshot the day's opening balance so the treasury delta is "since
+	# midnight". Runs before World processes the day's economy.
+	if world != null and world.city_account != null:
+		_treasury_day_start = world.city_account.balance
+	_refresh_stats()
 
 func _refresh_pause_button() -> void:
 	if _pause_button == null or world == null:
@@ -372,31 +430,100 @@ func _refresh_pause_button() -> void:
 	UiThemeScript.apply_accent_state(_pause_button, world.is_paused)
 
 func _refresh_speed_label() -> void:
-	if _speed_label == null or world == null:
+	if _speed_button == null or world == null:
 		return
-	_speed_label.text = "%.0fx" % world.speed_multiplier
-	# Highlight the speed button matching the current multiplier.
-	var current_speed := world.speed_multiplier
-	for speed_key in _speed_buttons.keys():
-		var btn: Button = _speed_buttons[speed_key]
-		if btn == null:
-			continue
-		var is_active := is_equal_approx(float(speed_key), current_speed)
-		UiThemeScript.apply_accent_state(btn, is_active)
+	_speed_button.text = "Tempo x%d" % int(round(world.speed_multiplier))
+	# Accent-on whenever the sim runs faster than real time.
+	UiThemeScript.apply_accent_state(_speed_button, world.speed_multiplier > 1.01)
 
 func _refresh_time_hud() -> void:
-	if _date_label == null or _clock_label == null or _citizen_stats_label == null or world == null or world.time == null:
+	if _date_label == null or _clock_label == null or world == null or world.time == null:
 		return
-	_date_label.text = world.time.get_ui_date_string()
-	_clock_label.text = world.time.get_time_string()
-	_citizen_stats_label.text = "Citizens: %d | Unbeschaeftigt: %d | Wohnplaetze: %d/%d | Arbeitsplaetze: %d/%d" % [
-		_count_registered_citizens(),
-		_count_unemployed_citizens(),
-		_count_used_housing_slots(),
-		_count_total_housing_slots(),
-		_count_filled_job_slots(),
-		_count_total_job_slots()
+	var weekend_tag := "  WE" if world.time.is_weekend() else ""
+	_date_label.text = "%s . Tag %d%s" % [
+		world.time.get_weekday_name_short_de(),
+		world.time.day,
+		weekend_tag
 	]
+	_clock_label.text = world.time.get_time_string()
+
+func _refresh_stats() -> void:
+	if world == null:
+		return
+	_refresh_treasury_label()
+	if _population_label != null:
+		_population_label.text = "%d  .  %d ohne Job" % [
+			_count_registered_citizens(),
+			_count_unemployed_citizens()
+		]
+	if _housing_jobs_label != null:
+		_housing_jobs_label.text = "%d/%d  .  %d/%d" % [
+			_count_used_housing_slots(),
+			_count_total_housing_slots(),
+			_count_filled_job_slots(),
+			_count_total_job_slots()
+		]
+	if _satisfaction_label != null:
+		var satisfaction := _compute_satisfaction_percent()
+		_satisfaction_label.text = "%d%%" % satisfaction
+		var sat_color := UiThemeScript.SUCCESS
+		if satisfaction < 45:
+			sat_color = UiThemeScript.DANGER
+		elif satisfaction < 70:
+			sat_color = UiThemeScript.WARNING
+		_satisfaction_label.add_theme_color_override("font_color", sat_color)
+
+func _refresh_treasury_label() -> void:
+	if _treasury_label == null or world == null or world.city_account == null:
+		return
+	var balance := world.city_account.balance
+	var delta := balance - _treasury_day_start
+	var delta_text := "+%s" % _format_int_grouped(delta) if delta >= 0 else _format_int_grouped(delta)
+	_treasury_label.text = "%s EUR  (%s heute)" % [_format_int_grouped(balance), delta_text]
+	var color := UiThemeScript.TEXT_PRIMARY
+	if balance < 0:
+		color = UiThemeScript.DANGER
+	elif delta > 0:
+		color = UiThemeScript.SUCCESS
+	elif delta < 0:
+		color = UiThemeScript.WARNING
+	_treasury_label.add_theme_color_override("font_color", color)
+
+## Groups an integer with '.' thousands separators (German style).
+func _format_int_grouped(value: int) -> String:
+	var negative := value < 0
+	var digits := str(absi(value))
+	var grouped := ""
+	var count := 0
+	for i in range(digits.length() - 1, -1, -1):
+		grouped = digits[i] + grouped
+		count += 1
+		if count % 3 == 0 and i > 0:
+			grouped = "." + grouped
+	return ("-" + grouped) if negative else grouped
+
+## Average citizen well-being as a 0-100 percentage. Hunger is inverted
+## (high hunger = bad); health/energy/fun count directly.
+func _compute_satisfaction_percent() -> int:
+	if world == null:
+		return 0
+	var total := 0.0
+	var counted := 0
+	for citizen in world.citizens:
+		if citizen == null or not is_instance_valid(citizen) or citizen.needs == null:
+			continue
+		var n := citizen.needs
+		var score := (
+			clampf(n.health, 0.0, 100.0)
+			+ clampf(n.energy, 0.0, 100.0)
+			+ clampf(n.fun, 0.0, 100.0)
+			+ (100.0 - clampf(n.hunger, 0.0, 100.0))
+		) / 4.0
+		total += score
+		counted += 1
+	if counted == 0:
+		return 0
+	return int(round(total / counted))
 
 func _count_registered_citizens() -> int:
 	if world == null:

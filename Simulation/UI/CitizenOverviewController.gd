@@ -6,6 +6,8 @@ class_name CitizenOverviewController
 ## toggling. Severity is derived from HP, hunger, and energy so critical
 ## citizens stay at the top.
 
+const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
+
 var world: World = null
 var panel: PanelContainer = null
 var label: RichTextLabel = null
@@ -44,7 +46,8 @@ func toggle_visibility() -> void:
 		return
 	panel.visible = not panel.visible
 	if button != null:
-		button.text = "Hide Citizens" if panel.visible else "Citizens"
+		# Highlight the sidebar nav button while its panel is open.
+		UiThemeScript.apply_accent_state(button, panel.visible)
 	_refresh_left = 0.0
 	_refresh_citizen_overview()
 
