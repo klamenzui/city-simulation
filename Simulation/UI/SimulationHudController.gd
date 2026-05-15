@@ -18,12 +18,10 @@ var citizen_overview_button: Button = null
 var economy_overview_button: Button = null
 
 var _theme: Theme = null
-var _menu_button: Button = null
 var _pause_button: Button = null
 var _player_control_button: Button = null
 var _ai_runtime_button: Button = null
 var _speed_button: Button = null
-var _sidebar_panel: PanelContainer = null
 var _date_label: Label = null
 var _clock_label: Label = null
 var _treasury_label: Label = null
@@ -147,7 +145,7 @@ func _build_hud(
 	_theme = UiThemeScript.get_or_build()
 
 	_build_top_bar(pause_pressed, speed_pressed)
-	_build_left_sidebar(building_overview_pressed, citizen_overview_pressed,
+	_build_bottom_action_bar(building_overview_pressed, citizen_overview_pressed,
 			economy_overview_pressed, player_control_pressed, ai_runtime_pressed)
 	_build_control_mode_banner()
 
@@ -175,15 +173,7 @@ func _build_top_bar(pause_pressed: Callable, speed_pressed: Callable) -> void:
 	hbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_NORMAL)
 	bar.add_child(hbox)
 
-	# Left cluster: menu (collapses the sidebar) + pause.
-	_menu_button = Button.new()
-	_menu_button.text = "Menu"
-	_menu_button.tooltip_text = "Navigationsleiste ein-/ausblenden"
-	_menu_button.custom_minimum_size = Vector2(64, 40)
-	_menu_button.focus_mode = Control.FOCUS_NONE
-	_menu_button.pressed.connect(_on_menu_pressed)
-	hbox.add_child(_menu_button)
-
+	# Left: pause toggle.
 	_pause_button = Button.new()
 	_pause_button.text = "Pause"
 	_pause_button.custom_minimum_size = Vector2(84, 40)
@@ -229,56 +219,53 @@ func _build_top_bar(pause_pressed: Callable, speed_pressed: Callable) -> void:
 	hbox.add_child(_ai_runtime_label)
 
 
-func _build_left_sidebar(
+func _build_bottom_action_bar(
 	building_overview_pressed: Callable,
 	citizen_overview_pressed: Callable,
 	economy_overview_pressed: Callable,
 	player_control_pressed: Callable,
 	ai_runtime_pressed: Callable
 ) -> void:
-	_sidebar_panel = PanelContainer.new()
-	_sidebar_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_sidebar_panel.position = Vector2(12, UiThemeScript.TOPBAR_HEIGHT + 12)
-	_sidebar_panel.theme = _theme
-	canvas.add_child(_sidebar_panel)
+	# Bottom-left bar. The left details panel reserves ~72 px here
+	# (DebugPanel offset_bottom = -84), so it never overlaps this bar.
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	panel.position = Vector2(12, -72)
+	panel.theme = _theme
+	canvas.add_child(panel)
 
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
-	_sidebar_panel.add_child(vbox)
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_NORMAL)
+	panel.add_child(hbox)
 
-	var nav_heading := Label.new()
-	nav_heading.text = "NAVIGATION"
-	nav_heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
-	nav_heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
-	vbox.add_child(nav_heading)
+	building_overview_button = _make_bar_button(hbox, "Gebaeude", 110, building_overview_pressed)
+	citizen_overview_button = _make_bar_button(hbox, "Buerger", 110, citizen_overview_pressed)
+	economy_overview_button = _make_bar_button(hbox, "Finanzen", 110, economy_overview_pressed)
 
-	building_overview_button = _make_nav_button(vbox, "Gebaeude", building_overview_pressed)
-	citizen_overview_button = _make_nav_button(vbox, "Buerger", citizen_overview_pressed)
-	economy_overview_button = _make_nav_button(vbox, "Finanzen", economy_overview_pressed)
+	hbox.add_child(_make_v_divider())
 
-	vbox.add_child(_make_h_divider())
-
-	_player_control_button = _make_nav_button(vbox, "Control Player", player_control_pressed)
+	_player_control_button = _make_bar_button(hbox, "Control Player", 130, player_control_pressed)
 	_player_control_button.visible = false
 
-	_ai_runtime_button = _make_nav_button(vbox, "Setup AI", ai_runtime_pressed)
+	_ai_runtime_button = _make_bar_button(hbox, "Setup AI", 110, ai_runtime_pressed)
 	_ai_runtime_button.visible = false
 
-	vbox.add_child(_make_h_divider())
+	hbox.add_child(_make_v_divider())
 
 	var hint := Label.new()
-	hint.text = "Klick = Info"
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.text = "Klick auf Buerger / Gebaeude fuer Infos"
+	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	hint.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
 	hint.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
-	vbox.add_child(hint)
+	hint.custom_minimum_size = Vector2(0, 36)
+	hbox.add_child(hint)
 
 
 func _build_control_mode_banner() -> void:
 	_control_mode_panel = PanelContainer.new()
 	_control_mode_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	# Below the top bar, clear of the sidebar.
-	_control_mode_panel.position = Vector2(UiThemeScript.SIDEBAR_WIDTH + 24, UiThemeScript.TOPBAR_HEIGHT + 12)
+	# Below the top bar, right of the left details panel (~392 px wide).
+	_control_mode_panel.position = Vector2(404, UiThemeScript.TOPBAR_HEIGHT + 12)
 	_control_mode_panel.visible = false
 	_control_mode_panel.theme = _theme
 	# Accent-tinted banner — clearly different from a passive info panel.
@@ -330,10 +317,10 @@ func _make_stat_chip(parent: Node, caption: String, value_color: Color, min_widt
 	return value_label
 
 
-func _make_nav_button(parent: Node, text: String, on_pressed: Callable) -> Button:
+func _make_bar_button(parent: Node, text: String, min_width: int, on_pressed: Callable) -> Button:
 	var btn := Button.new()
 	btn.text = text
-	btn.custom_minimum_size = Vector2(UiThemeScript.SIDEBAR_WIDTH - 28, 40)
+	btn.custom_minimum_size = Vector2(min_width, 36)
 	btn.focus_mode = Control.FOCUS_NONE
 	if on_pressed.is_valid():
 		btn.pressed.connect(on_pressed)
@@ -341,32 +328,15 @@ func _make_nav_button(parent: Node, text: String, on_pressed: Callable) -> Butto
 	return btn
 
 
-## 1-px vertical divider with margins — groups the top-bar clusters.
+## 1-px vertical divider with margins — groups the bar clusters.
 func _make_v_divider() -> Control:
 	var divider_panel := PanelContainer.new()
-	divider_panel.custom_minimum_size = Vector2(1, 30)
+	divider_panel.custom_minimum_size = Vector2(1, 26)
 	divider_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = UiThemeScript.BORDER
 	divider_panel.add_theme_stylebox_override("panel", sb)
 	return divider_panel
-
-
-## 1-px horizontal divider — groups sidebar sections.
-func _make_h_divider() -> Control:
-	var divider_panel := PanelContainer.new()
-	divider_panel.custom_minimum_size = Vector2(UiThemeScript.SIDEBAR_WIDTH - 28, 1)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = UiThemeScript.BORDER
-	divider_panel.add_theme_stylebox_override("panel", sb)
-	return divider_panel
-
-
-func _on_menu_pressed() -> void:
-	if _sidebar_panel == null:
-		return
-	_sidebar_panel.visible = not _sidebar_panel.visible
-	UiThemeScript.apply_accent_state(_menu_button, not _sidebar_panel.visible)
 
 
 func _on_speed_cycle_pressed(speed_pressed: Callable) -> void:

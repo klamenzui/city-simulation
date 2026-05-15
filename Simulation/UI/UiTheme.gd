@@ -66,10 +66,9 @@ const SEPARATION_DENSE: int = 6
 const SEPARATION_NORMAL: int = 10
 const SEPARATION_LOOSE: int = 16
 
-# Persistent chrome geometry — shared by the HUD top bar / sidebar and the
-# overlay controller so panels never overlap that chrome.
+# Persistent top-bar height — shared by the HUD and the overlay controller
+# so panels never overlap that chrome.
 const TOPBAR_HEIGHT: int = 56
-const SIDEBAR_WIDTH: int = 140
 
 
 # ============================================================================
