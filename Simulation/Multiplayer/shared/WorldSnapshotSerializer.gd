@@ -75,6 +75,9 @@ static func _build_citizen_snapshots(world: World) -> Array:
 			action_label = str(citizen.current_action.label)
 		var needs := citizen.needs
 		var job_workplace := citizen.job.workplace if citizen.job != null else null
+		var manual_control := citizen.is_manual_control_enabled() if citizen.has_method("is_manual_control_enabled") else false
+		if citizen.has_method("is_network_manual_controlled"):
+			manual_control = manual_control or citizen.is_network_manual_controlled()
 		snapshots.append({
 			"id": entity_id,
 			"scene": CITIZEN_SCENE_PATH,
@@ -92,6 +95,7 @@ static func _build_citizen_snapshots(world: World) -> Array:
 			"workplace_id": NetworkEntityRegistryScript.get_entity_id(job_workplace),
 			"action": action_label,
 			"travelling": citizen.is_travelling() if citizen.has_method("is_travelling") else false,
+			"manual_control": manual_control,
 			"lod": citizen.get_simulation_lod_tier() if citizen.has_method("get_simulation_lod_tier") else "focus",
 			"inside": citizen.is_inside_building() if citizen.has_method("is_inside_building") else false,
 		})

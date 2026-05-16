@@ -179,6 +179,8 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_live_sim_probe.gd | - | SceneTree |
 | tools/codex_local_grid_topology_test.gd | - | SceneTree |
 | tools/codex_multiplayer_host_connect_test.gd | - | SceneTree |
+| tools/codex_multiplayer_process_probe.gd | - | SceneTree |
+| tools/codex_multiplayer_two_process_test.gd | - | SceneTree |
 | tools/codex_navigation_edge_step_test.gd | - | SceneTree |
 | tools/codex_navigation_route_test.gd | - | SceneTree |
 | tools/codex_null_material_audit.gd | - | SceneTree |

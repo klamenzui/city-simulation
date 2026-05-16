@@ -75,6 +75,7 @@ Beispiele:
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only parse,economy
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only route,crosswalk
+powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only mp2process
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -IncludeSky
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -VerboseGodot
 ```
@@ -84,6 +85,7 @@ Optionale Parameter:
 - `-GodotExe "C:\path\to\Godot_v4.6.1-stable_win64_console.exe"`
 - `-Only parse,economy,route,crosswalk,sky`
 - `-Only parse,economy,occupancy,route,crosswalk,sky`
+- `-Only mp2process` fuer den optionalen echten Host/Client-Zwei-Prozess-Test
 - `-IncludeSky`
 - `-VerboseGodot`
 
@@ -109,6 +111,7 @@ Wenn ein Check fehlschlaegt, beendet sich der Runner mit Exit-Code `1`.
 - `tools/codex_parse_check.gd`: Ressourcen/Script-Load
 - `tools/codex_economy_test.gd`: Economy-Regressionen
 - `tools/codex_building_occupancy_test.gd`: Besucher-/Worker-Zaehlung in Gebaeuden
+- `tools/codex_multiplayer_two_process_test.gd`: echter Host/Client-Zwei-Prozess-Smoke
 - `tools/codex_route_probe.gd`: Pfad-/Crosswalk-Probes
 - `tools/codex_crosswalk_audit.gd`: Graph-Audit fuer Strassenquerungen
 - `tools/codex_sky_probe.gd`: Sky/Ocean/Tag-Nacht
