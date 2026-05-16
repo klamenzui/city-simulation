@@ -7,6 +7,7 @@ class_name SimulationHudController
 ## SelectionStateController still drive it through the same methods.
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
+const NetworkRoleScript = preload("res://Simulation/Multiplayer/shared/NetworkRole.gd")
 
 const _SPEED_STEPS: Array[float] = [1.0, 2.0, 3.0, 4.0]
 
@@ -28,10 +29,12 @@ var _treasury_label: Label = null
 var _population_label: Label = null
 var _housing_jobs_label: Label = null
 var _satisfaction_label: Label = null
+var _network_status_label: Label = null
 var _control_mode_panel: PanelContainer = null
 var _control_mode_label: Label = null
 var _ai_runtime_label: Label = null
 var _ai_runtime_service = null
+var multiplayer_session = null
 
 # Balance at the start of the current in-game day — drives the "today" delta.
 var _treasury_day_start: int = 0
@@ -45,19 +48,24 @@ func setup(
 	citizen_overview_pressed: Callable,
 	economy_overview_pressed: Callable,
 	player_control_pressed: Callable,
-	ai_runtime_pressed: Callable
+	ai_runtime_pressed: Callable,
+	multiplayer_session_ref = null
 ) -> void:
 	owner_node = owner_ref
 	world = world_ref
+	multiplayer_session = multiplayer_session_ref
 	if world != null and world.city_account != null:
 		_treasury_day_start = world.city_account.balance
 	_build_hud(pause_pressed, speed_pressed, building_overview_pressed, citizen_overview_pressed,
 			economy_overview_pressed, player_control_pressed, ai_runtime_pressed)
 	_bind_world_signals()
+	_bind_multiplayer_session()
 	_refresh_time_hud()
 	_refresh_stats()
 	_refresh_pause_button()
 	_refresh_speed_label()
+	_refresh_network_status()
+	_refresh_authority_controls()
 	refresh_control_mode(null)
 	set_player_control_visible(false)
 	refresh_player_control_button(false)
@@ -88,11 +96,17 @@ func refresh_control_mode(controlled_citizen: Citizen, mode_prefix: String = "CO
 func set_player_control_visible(is_visible: bool) -> void:
 	if _player_control_button == null:
 		return
-	_player_control_button.visible = is_visible
+	_player_control_button.visible = is_visible and not _is_network_client()
 
 func refresh_player_control_button(is_active: bool) -> void:
 	if _player_control_button == null:
 		return
+	if _is_network_client():
+		_player_control_button.disabled = true
+		_player_control_button.tooltip_text = "Clients steuern Citizens erst in Phase 2."
+		return
+	_player_control_button.disabled = false
+	_player_control_button.tooltip_text = ""
 	_player_control_button.text = "Exit Player" if is_active else "Control Player"
 	UiThemeScript.apply_accent_state(_player_control_button, is_active)
 
@@ -107,6 +121,12 @@ func bind_dialogue_runtime_service(dialogue_runtime_service_ref) -> void:
 			_ai_runtime_service.status_changed.connect(status_cb)
 	if _ai_runtime_service.has_method("get_ui_runtime_state"):
 		refresh_ai_runtime_state(_ai_runtime_service.get_ui_runtime_state())
+
+func bind_multiplayer_session(multiplayer_session_ref) -> void:
+	multiplayer_session = multiplayer_session_ref
+	_bind_multiplayer_session()
+	_refresh_network_status()
+	_refresh_authority_controls()
 
 func refresh_ai_runtime_state(ui_state: Dictionary) -> void:
 	if _ai_runtime_label == null or _ai_runtime_button == null:
@@ -185,25 +205,27 @@ func _build_top_bar(pause_pressed: Callable, speed_pressed: Callable) -> void:
 	hbox.add_child(_make_v_divider())
 
 	# Time cluster: date + clock chips, then one cycling speed button.
-	_date_label = _make_stat_chip(hbox, "DATUM", UiThemeScript.TEXT_PRIMARY, 132)
-	_clock_label = _make_stat_chip(hbox, "ZEIT", UiThemeScript.ACCENT, 64)
+	_date_label = _make_stat_chip(hbox, "DATUM", UiThemeScript.TEXT_PRIMARY, 112)
+	_clock_label = _make_stat_chip(hbox, "ZEIT", UiThemeScript.ACCENT, 62)
 
 	_speed_button = Button.new()
 	_speed_button.text = "Tempo x1"
 	_speed_button.tooltip_text = "Simulationstempo umschalten (1x -> 4x)"
-	_speed_button.custom_minimum_size = Vector2(96, 40)
+	_speed_button.custom_minimum_size = Vector2(90, 40)
 	_speed_button.focus_mode = Control.FOCUS_NONE
 	if speed_pressed.is_valid():
 		_speed_button.pressed.connect(_on_speed_cycle_pressed.bind(speed_pressed))
 	hbox.add_child(_speed_button)
 
+	_network_status_label = _make_stat_chip(hbox, "NETZ", UiThemeScript.TEXT_SECONDARY, 120)
+
 	hbox.add_child(_make_v_divider())
 
 	# City stat chips.
-	_treasury_label = _make_stat_chip(hbox, "STADTKASSE", UiThemeScript.TEXT_PRIMARY, 210)
-	_population_label = _make_stat_chip(hbox, "EINWOHNER", UiThemeScript.TEXT_PRIMARY, 150)
-	_housing_jobs_label = _make_stat_chip(hbox, "WOHNEN / JOBS", UiThemeScript.TEXT_PRIMARY, 130)
-	_satisfaction_label = _make_stat_chip(hbox, "ZUFRIEDENHEIT", UiThemeScript.SUCCESS, 80)
+	_treasury_label = _make_stat_chip(hbox, "STADTKASSE", UiThemeScript.TEXT_PRIMARY, 178)
+	_population_label = _make_stat_chip(hbox, "EINWOHNER", UiThemeScript.TEXT_PRIMARY, 122)
+	_housing_jobs_label = _make_stat_chip(hbox, "WOHNEN / JOBS", UiThemeScript.TEXT_PRIMARY, 112)
+	_satisfaction_label = _make_stat_chip(hbox, "ZUFRIEDENHEIT", UiThemeScript.SUCCESS, 76)
 
 	# Spacer so the AI status sits flush right.
 	var spacer := Control.new()
@@ -215,7 +237,7 @@ func _build_top_bar(pause_pressed: Callable, speed_pressed: Callable) -> void:
 	_ai_runtime_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_ai_runtime_label.add_theme_color_override("font_color", UiThemeScript.TEXT_SECONDARY)
 	_ai_runtime_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
-	_ai_runtime_label.custom_minimum_size = Vector2(200, 40)
+	_ai_runtime_label.custom_minimum_size = Vector2(150, 40)
 	hbox.add_child(_ai_runtime_label)
 
 
@@ -355,6 +377,10 @@ func _on_ai_runtime_status_changed(_status: String, _detail: String) -> void:
 	if _ai_runtime_service != null and _ai_runtime_service.has_method("get_ui_runtime_state"):
 		refresh_ai_runtime_state(_ai_runtime_service.get_ui_runtime_state())
 
+func _on_multiplayer_status_changed(_status: String, _detail: String) -> void:
+	_refresh_network_status()
+	_refresh_authority_controls()
+
 func _bind_world_signals() -> void:
 	if world == null:
 		return
@@ -374,6 +400,13 @@ func _bind_world_signals() -> void:
 		var day_cb := Callable(self, "_on_day_changed")
 		if not world.time.day_changed.is_connected(day_cb):
 			world.time.day_changed.connect(day_cb)
+
+func _bind_multiplayer_session() -> void:
+	if multiplayer_session == null or not multiplayer_session.has_signal("status_changed"):
+		return
+	var status_cb := Callable(self, "_on_multiplayer_status_changed")
+	if not multiplayer_session.status_changed.is_connected(status_cb):
+		multiplayer_session.status_changed.connect(status_cb)
 
 func _on_world_paused(_paused: bool) -> void:
 	_refresh_pause_button()
@@ -398,6 +431,7 @@ func _refresh_pause_button() -> void:
 	_pause_button.text = "Resume" if world.is_paused else "Pause"
 	# Paused = accent-on, so the player always sees the current state.
 	UiThemeScript.apply_accent_state(_pause_button, world.is_paused)
+	_refresh_authority_controls()
 
 func _refresh_speed_label() -> void:
 	if _speed_button == null or world == null:
@@ -405,6 +439,56 @@ func _refresh_speed_label() -> void:
 	_speed_button.text = "Tempo x%d" % int(round(world.speed_multiplier))
 	# Accent-on whenever the sim runs faster than real time.
 	UiThemeScript.apply_accent_state(_speed_button, world.speed_multiplier > 1.01)
+	_refresh_authority_controls()
+
+func _refresh_authority_controls() -> void:
+	var client := _is_network_client()
+	if _pause_button != null:
+		_pause_button.disabled = client
+		_pause_button.tooltip_text = "Clients folgen Pause/Zeit des Hosts." if client else ""
+	if _speed_button != null:
+		_speed_button.disabled = client
+		_speed_button.tooltip_text = "Clients folgen dem Simulationstempo des Hosts." if client else "Simulationstempo umschalten (1x -> 4x)"
+	if _player_control_button != null and client:
+		_player_control_button.disabled = true
+		_player_control_button.visible = false
+
+func _refresh_network_status() -> void:
+	if _network_status_label == null:
+		return
+	var text := "Offline"
+	var color := UiThemeScript.TEXT_MUTED
+	var tooltip := ""
+	if multiplayer_session != null and multiplayer_session.has_method("get_status"):
+		var status: Dictionary = multiplayer_session.get_status()
+		var role := str(status.get("role", NetworkRoleScript.OFFLINE))
+		var session_status := str(status.get("status", "offline"))
+		tooltip = str(status.get("detail", ""))
+		match role:
+			NetworkRoleScript.HOST:
+				text = "Host:%d" % int(status.get("port", 0))
+				color = UiThemeScript.SUCCESS
+			NetworkRoleScript.CLIENT:
+				if session_status == "connected":
+					text = "Client OK"
+					color = UiThemeScript.SUCCESS
+				elif session_status == "connection_failed" or session_status == "server_disconnected" or session_status == "join_error":
+					text = "Client Fehler"
+					color = UiThemeScript.DANGER
+				else:
+					text = "Client ..."
+					color = UiThemeScript.WARNING
+			_:
+				text = "Offline"
+				color = UiThemeScript.TEXT_MUTED
+	_network_status_label.text = text
+	_network_status_label.tooltip_text = tooltip
+	_network_status_label.add_theme_color_override("font_color", color)
+
+func _is_network_client() -> bool:
+	return multiplayer_session != null \
+		and multiplayer_session.has_method("is_client") \
+		and multiplayer_session.is_client()
 
 func _refresh_time_hud() -> void:
 	if _date_label == null or _clock_label == null or world == null or world.time == null:

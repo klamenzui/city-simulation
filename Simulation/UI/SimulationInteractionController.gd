@@ -8,13 +8,15 @@ var selection_state_controller = null
 var hud_overlay_controller = null
 var dialogue_runtime_service = null
 var conversation_manager = null
+var multiplayer_session = null
 
 var _entity_clicked_this_frame: bool = false
 var _building_panel_refresh_left: float = 0.0
 
-func setup(owner_ref: Node, world_ref: World) -> void:
+func setup(owner_ref: Node, world_ref: World, multiplayer_session_ref = null) -> void:
 	owner_node = owner_ref
 	world = world_ref
+	multiplayer_session = multiplayer_session_ref
 	_ensure_dialog_interact_input_action()
 	_build_debug_panel()
 
@@ -126,7 +128,8 @@ func handle_input(event: InputEvent) -> bool:
 	if event.is_action_pressed("ui_accept") \
 		and not text_input_focused \
 		and controlled_citizen == null \
-		and (search_input == null or not search_input.has_focus()):
+		and (search_input == null or not search_input.has_focus()) \
+		and not _is_network_client():
 		on_pause_pressed()
 		return true
 
@@ -162,15 +165,24 @@ func refresh_debug_panel_mode_controls() -> void:
 		selection_state_controller.refresh_debug_panel_mode_controls()
 
 func on_pause_pressed() -> void:
+	if _is_network_client():
+		return
 	if world != null:
 		world.toggle_pause()
 
 func on_speed_pressed(multiplier: float) -> void:
+	if _is_network_client():
+		return
 	if world == null:
 		return
 	world.set_speed(multiplier)
 	if world.is_paused:
 		world.toggle_pause()
+
+func _is_network_client() -> bool:
+	return multiplayer_session != null \
+		and multiplayer_session.has_method("is_client") \
+		and multiplayer_session.is_client()
 
 func on_building_overview_pressed() -> void:
 	mark_ui_interacted()

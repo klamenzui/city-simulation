@@ -38,6 +38,7 @@ func join_game(address: String, port: int) -> Error:
 	return OK
 
 func stop() -> void:
+	_disconnect_signals()
 	if session_node != null and session_node.multiplayer.has_multiplayer_peer():
 		session_node.multiplayer.multiplayer_peer = null
 	if _peer != null:
@@ -76,6 +77,19 @@ func _connect_signals() -> void:
 		session_node.multiplayer.connection_failed.connect(failed_cb)
 	if not session_node.multiplayer.server_disconnected.is_connected(disconnected_cb):
 		session_node.multiplayer.server_disconnected.connect(disconnected_cb)
+
+func _disconnect_signals() -> void:
+	if session_node == null:
+		return
+	var connected_cb := Callable(self, "_on_connected_to_server")
+	var failed_cb := Callable(self, "_on_connection_failed")
+	var disconnected_cb := Callable(self, "_on_server_disconnected")
+	if session_node.multiplayer.connected_to_server.is_connected(connected_cb):
+		session_node.multiplayer.connected_to_server.disconnect(connected_cb)
+	if session_node.multiplayer.connection_failed.is_connected(failed_cb):
+		session_node.multiplayer.connection_failed.disconnect(failed_cb)
+	if session_node.multiplayer.server_disconnected.is_connected(disconnected_cb):
+		session_node.multiplayer.server_disconnected.disconnect(disconnected_cb)
 
 func _ensure_replica_root() -> void:
 	if _replica_root != null:
@@ -156,12 +170,17 @@ func _safe_node_name(value: String) -> String:
 	return result
 
 func _on_connected_to_server() -> void:
-	pass
+	if session_node != null and session_node.has_method("_client_transport_connected"):
+		session_node.call("_client_transport_connected")
 
 func _on_connection_failed() -> void:
 	if world != null and world.has_method("set_simulation_authority_enabled"):
 		world.set_simulation_authority_enabled(false)
+	if session_node != null and session_node.has_method("_client_connection_failed"):
+		session_node.call("_client_connection_failed")
 
 func _on_server_disconnected() -> void:
 	if world != null and world.has_method("set_simulation_authority_enabled"):
 		world.set_simulation_authority_enabled(false)
+	if session_node != null and session_node.has_method("_client_server_disconnected"):
+		session_node.call("_client_server_disconnected")

@@ -6,6 +6,7 @@ const NetworkRoleScript = preload("res://Simulation/Multiplayer/shared/NetworkRo
 const DEFAULT_ADDRESS := "127.0.0.1"
 const DEFAULT_PORT := 24567
 const DEFAULT_MAX_CLIENTS := 3
+const MAX_CLIENTS := 3
 
 static func from_command_line() -> Dictionary:
 	return from_args(OS.get_cmdline_user_args())
@@ -49,7 +50,7 @@ static func from_args(args: PackedStringArray) -> Dictionary:
 
 	options["role"] = NetworkRoleScript.normalize(str(options["role"]))
 	options["port"] = _parse_port(str(options["port"]), DEFAULT_PORT)
-	options["max_clients"] = clampi(int(options["max_clients"]), 1, 32)
+	options["max_clients"] = clampi(int(options["max_clients"]), 1, MAX_CLIENTS)
 	if str(options["address"]).strip_edges().is_empty():
 		options["address"] = DEFAULT_ADDRESS
 	return options

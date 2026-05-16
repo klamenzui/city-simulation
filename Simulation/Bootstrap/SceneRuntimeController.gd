@@ -29,6 +29,7 @@ var selection_state_controller = null
 var citizen_lod_controller = null
 var citizen_conversation_manager = null
 var dialogue_runtime_service = null
+var multiplayer_session = null
 
 func setup(
 	owner_ref: Node,
@@ -40,11 +41,13 @@ func setup(
 	all_trace_interval_sec: float,
 	search_result_limit: int,
 	building_overview_refresh_interval_sec: float,
-	initial_citizen_count: int
+	initial_citizen_count: int,
+	multiplayer_session_ref = null
 ) -> void:
 	owner_node = owner_ref
 	world = world_ref
 	city_camera = camera_ref
+	multiplayer_session = multiplayer_session_ref
 	var headless_runtime := _is_headless_runtime()
 
 	_setup_runtime_debug_logger(
@@ -157,7 +160,7 @@ func _setup_building_status_style_resolver() -> void:
 
 func _setup_interaction_controller() -> void:
 	interaction_controller = SimulationInteractionControllerScript.new()
-	interaction_controller.setup(owner_node, world)
+	interaction_controller.setup(owner_node, world, multiplayer_session)
 	if dialogue_runtime_service != null and interaction_controller.has_method("bind_dialogue_runtime_service"):
 		interaction_controller.bind_dialogue_runtime_service(dialogue_runtime_service)
 	if citizen_conversation_manager != null and interaction_controller.has_method("bind_conversation_manager"):
@@ -187,7 +190,8 @@ func _build_hud(search_result_limit: int, building_overview_refresh_interval_sec
 		Callable(interaction_controller, "on_citizen_overview_pressed"),
 		Callable(interaction_controller, "on_economy_overview_pressed"),
 		Callable(interaction_controller, "on_player_control_pressed"),
-		Callable(interaction_controller, "on_ai_runtime_pressed")
+		Callable(interaction_controller, "on_ai_runtime_pressed"),
+		multiplayer_session
 	)
 	if dialogue_runtime_service != null and hud_controller.has_method("bind_dialogue_runtime_service"):
 		hud_controller.bind_dialogue_runtime_service(dialogue_runtime_service)
