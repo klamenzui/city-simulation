@@ -55,7 +55,8 @@ func _start_runtime() -> void:
 		ALL_CITIZEN_TRACE_INTERVAL_SEC,
 		SEARCH_RESULT_LIMIT,
 		BUILDING_OVERVIEW_REFRESH_INTERVAL_SEC,
-		initial_citizen_count
+		initial_citizen_count,
+		_multiplayer_session
 	)
 	if not _is_network_client():
 		_activate_controlled_citizen_debug_target()
@@ -153,8 +154,18 @@ func _remove_local_scene_citizens_for_client() -> void:
 		if node is not Citizen:
 			continue
 		var citizen := node as Citizen
+		if bool(citizen.get("network_replica_mode")) or _is_client_replica_node(citizen):
+			continue
 		world.unregister_citizen(citizen)
 		citizen.queue_free()
+
+func _is_client_replica_node(node: Node) -> bool:
+	var current := node
+	while current != null:
+		if current.name == "ClientReplicas":
+			return true
+		current = current.get_parent()
+	return false
 
 func _input(event: InputEvent) -> void:
 	if _handle_controlled_citizen_shortcuts(event):

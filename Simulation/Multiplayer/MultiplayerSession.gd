@@ -50,6 +50,7 @@ func apply_options(options: Dictionary) -> void:
 			_enter_offline_mode()
 
 func start_offline() -> void:
+	_stop_network_peers()
 	role = NetworkRoleScript.OFFLINE
 	_enter_offline_mode()
 
@@ -77,19 +78,24 @@ func get_status() -> Dictionary:
 	}
 
 func host_game(host_port: int = LaunchOptionsScript.DEFAULT_PORT, host_max_clients: int = LaunchOptionsScript.DEFAULT_MAX_CLIENTS) -> Error:
+	_stop_network_peers()
 	role = NetworkRoleScript.HOST
 	port = host_port
-	max_clients = host_max_clients
+	max_clients = clampi(host_max_clients, 1, LaunchOptionsScript.MAX_CLIENTS)
 	_host_authority = HostAuthorityScript.new()
 	_host_authority.setup(root_node, world, self)
 	var err: Error = _host_authority.start_host(port, max_clients)
 	if err != OK:
+		if _host_authority != null:
+			_host_authority.stop()
+			_host_authority = null
 		_set_status("host_error", "Could not start ENet host on port %d (error %d)." % [port, err])
 		return err
 	_set_status("hosting", "Hosting on port %d for up to %d clients." % [port, max_clients])
 	return OK
 
 func join_game(join_address: String = LaunchOptionsScript.DEFAULT_ADDRESS, join_port: int = LaunchOptionsScript.DEFAULT_PORT) -> Error:
+	_stop_network_peers()
 	role = NetworkRoleScript.CLIENT
 	address = join_address
 	port = join_port
@@ -97,6 +103,9 @@ func join_game(join_address: String = LaunchOptionsScript.DEFAULT_ADDRESS, join_
 	_client_replica.setup(root_node, world, self)
 	var err: Error = _client_replica.join_game(address, port)
 	if err != OK:
+		if _client_replica != null:
+			_client_replica.stop()
+			_client_replica = null
 		_set_status("join_error", "Could not connect to %s:%d (error %d)." % [address, port, err])
 		return err
 	_set_status("joining", "Connecting to %s:%d." % [address, port])
@@ -116,6 +125,29 @@ func _set_status(status: String, detail: String = "") -> void:
 	_status = status
 	_detail = detail
 	status_changed.emit(status, detail)
+
+func _stop_network_peers() -> void:
+	if _host_authority != null:
+		_host_authority.stop()
+		_host_authority = null
+	if _client_replica != null:
+		_client_replica.stop()
+		_client_replica = null
+
+func _client_transport_connected() -> void:
+	if not is_client():
+		return
+	_set_status("transport_connected", "Connected to %s:%d. Waiting for world snapshot." % [address, port])
+
+func _client_connection_failed() -> void:
+	if not is_client():
+		return
+	_set_status("connection_failed", "Connection to %s:%d failed." % [address, port])
+
+func _client_server_disconnected() -> void:
+	if not is_client():
+		return
+	_set_status("server_disconnected", "Server disconnected.")
 
 @rpc("authority", "call_remote", "reliable")
 func _client_apply_full_snapshot(snapshot: Dictionary) -> void:

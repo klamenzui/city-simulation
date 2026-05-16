@@ -11,6 +11,7 @@ class_name MultiplayerMenuController
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 const LaunchOptionsScript = preload("res://Simulation/Multiplayer/shared/MultiplayerLaunchOptions.gd")
+const MAX_UI_CLIENTS := LaunchOptionsScript.MAX_CLIENTS
 
 var owner_node: Node = null
 var session: MultiplayerSession = null
@@ -25,6 +26,7 @@ var _join_port_edit: LineEdit = null
 var _status_label: Label = null
 var _buttons: Array[Button] = []
 var _started: bool = false
+var _join_in_progress: bool = false
 
 func setup(owner_ref: Node, session_ref: MultiplayerSession, on_started: Callable) -> void:
 	owner_node = owner_ref
@@ -37,6 +39,7 @@ func setup(owner_ref: Node, session_ref: MultiplayerSession, on_started: Callabl
 			session.status_changed.connect(status_cb)
 
 func close() -> void:
+	_join_in_progress = false
 	if session != null and session.has_signal("status_changed"):
 		var status_cb := Callable(self, "_on_session_status_changed")
 		if session.status_changed.is_connected(status_cb):
@@ -113,7 +116,7 @@ func _build_menu() -> void:
 	host_row.add_child(_make_field_label("Port"))
 	_host_port_edit = _make_line_edit(str(LaunchOptionsScript.DEFAULT_PORT), 90)
 	host_row.add_child(_host_port_edit)
-	host_row.add_child(_make_field_label("Max. Spieler"))
+	host_row.add_child(_make_field_label("Max. Clients"))
 	_host_max_edit = _make_line_edit(str(LaunchOptionsScript.DEFAULT_MAX_CLIENTS), 60)
 	host_row.add_child(_host_max_edit)
 
@@ -167,11 +170,17 @@ func _on_singleplayer_pressed() -> void:
 func _on_host_pressed() -> void:
 	if _started or session == null:
 		return
-	var host_port := _parse_port(_host_port_edit.text if _host_port_edit != null else "")
-	var host_max := _parse_max_clients(_host_max_edit.text if _host_max_edit != null else "")
+	var host_port := _read_port(_host_port_edit.text if _host_port_edit != null else "", "Host-Port")
+	if host_port < 0:
+		return
+	var host_max := _read_max_clients(_host_max_edit.text if _host_max_edit != null else "")
+	if host_max < 0:
+		return
+	_set_buttons_disabled(true)
 	_set_status("Starte Host auf Port %d …" % host_port)
 	var err: int = session.host_game(host_port, host_max)
 	if err != OK:
+		_set_buttons_disabled(false)
 		_set_status(_status_detail("Host fehlgeschlagen."))
 		return
 	_finish()
@@ -180,28 +189,37 @@ func _on_join_pressed() -> void:
 	if _started or session == null:
 		return
 	var join_address := _parse_address(_join_address_edit.text if _join_address_edit != null else "")
-	var join_port := _parse_port(_join_port_edit.text if _join_port_edit != null else "")
+	var join_port := _read_port(_join_port_edit.text if _join_port_edit != null else "", "Join-Port")
+	if join_port < 0:
+		return
+	_join_in_progress = true
+	_set_buttons_disabled(true)
 	_set_status("Verbinde zu %s:%d …" % [join_address, join_port])
 	var err: int = session.join_game(join_address, join_port)
 	if err != OK:
+		_join_in_progress = false
+		_set_buttons_disabled(false)
 		_set_status(_status_detail("Verbindung fehlgeschlagen."))
 		return
-	_finish()
 
 func _finish() -> void:
 	if _started:
 		return
 	_started = true
-	for button in _buttons:
-		if button != null:
-			button.disabled = true
+	_set_buttons_disabled(true)
 	if _on_started.is_valid():
 		_on_started.call()
 
-func _on_session_status_changed(_status: String, detail: String) -> void:
-	if detail.is_empty():
-		return
-	_set_status(detail)
+func _on_session_status_changed(status: String, detail: String) -> void:
+	if not detail.is_empty():
+		_set_status(detail)
+	match status:
+		"connected":
+			if _join_in_progress:
+				_finish()
+		"join_error", "connection_failed", "server_disconnected":
+			_join_in_progress = false
+			_set_buttons_disabled(false)
 
 func _status_detail(fallback: String) -> String:
 	if session != null:
@@ -215,18 +233,33 @@ func _set_status(text: String) -> void:
 	if _status_label != null:
 		_status_label.text = text
 
-# --- Input parsing — mirrors MultiplayerLaunchOptions clamping. -----------
-func _parse_port(raw: String) -> int:
-	var trimmed := raw.strip_edges()
-	if not trimmed.is_valid_int():
-		return LaunchOptionsScript.DEFAULT_PORT
-	return clampi(int(trimmed), 1024, 65535)
+func _set_buttons_disabled(is_disabled: bool) -> void:
+	for button in _buttons:
+		if button != null:
+			button.disabled = is_disabled
 
-func _parse_max_clients(raw: String) -> int:
+# --- Input parsing -------------------------------------------------------
+func _read_port(raw: String, label: String) -> int:
 	var trimmed := raw.strip_edges()
 	if not trimmed.is_valid_int():
-		return LaunchOptionsScript.DEFAULT_MAX_CLIENTS
-	return clampi(int(trimmed), 1, 32)
+		_set_status("%s muss eine Zahl zwischen 1024 und 65535 sein." % label)
+		return -1
+	var value := int(trimmed)
+	if value < 1024 or value > 65535:
+		_set_status("%s muss zwischen 1024 und 65535 liegen." % label)
+		return -1
+	return value
+
+func _read_max_clients(raw: String) -> int:
+	var trimmed := raw.strip_edges()
+	if not trimmed.is_valid_int():
+		_set_status("Max. Clients muss eine Zahl zwischen 1 und %d sein." % MAX_UI_CLIENTS)
+		return -1
+	var value := int(trimmed)
+	if value < 1 or value > MAX_UI_CLIENTS:
+		_set_status("Max. Clients muss zwischen 1 und %d liegen." % MAX_UI_CLIENTS)
+		return -1
+	return value
 
 func _parse_address(raw: String) -> String:
 	var trimmed := raw.strip_edges()

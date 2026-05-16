@@ -40,6 +40,7 @@ func start_host(port: int, max_clients: int) -> Error:
 
 func stop() -> void:
 	_active = false
+	_disconnect_signals()
 	if session_node != null and session_node.multiplayer.has_multiplayer_peer():
 		session_node.multiplayer.multiplayer_peer = null
 	if _peer != null:
@@ -88,6 +89,16 @@ func _connect_signals() -> void:
 		session_node.multiplayer.peer_connected.connect(peer_connected_cb)
 	if not session_node.multiplayer.peer_disconnected.is_connected(peer_disconnected_cb):
 		session_node.multiplayer.peer_disconnected.connect(peer_disconnected_cb)
+
+func _disconnect_signals() -> void:
+	if session_node == null:
+		return
+	var peer_connected_cb := Callable(self, "_on_peer_connected")
+	var peer_disconnected_cb := Callable(self, "_on_peer_disconnected")
+	if session_node.multiplayer.peer_connected.is_connected(peer_connected_cb):
+		session_node.multiplayer.peer_connected.disconnect(peer_connected_cb)
+	if session_node.multiplayer.peer_disconnected.is_connected(peer_disconnected_cb):
+		session_node.multiplayer.peer_disconnected.disconnect(peer_disconnected_cb)
 
 func _on_peer_connected(peer_id: int) -> void:
 	send_full_snapshot_to_peer(peer_id)
