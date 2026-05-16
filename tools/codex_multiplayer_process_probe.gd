@@ -2,7 +2,7 @@ extends SceneTree
 
 const REPORT_INTERVAL_SEC := 0.10
 const MAX_RUNTIME_SEC := 30.0
-const CLIENT_DRIVE_COMMAND_COUNT := 18
+const CLIENT_DRIVE_COMMAND_COUNT := 80
 
 const NetworkEntityRegistryScript = preload("res://Simulation/Multiplayer/shared/NetworkEntityRegistry.gd")
 const WorldSnapshotSerializerScript = preload("res://Simulation/Multiplayer/shared/WorldSnapshotSerializer.gd")
@@ -79,6 +79,7 @@ func _build_report(phase: String) -> Dictionary:
 	var citizen_entries := snapshot.get("citizens", []) as Array
 	var building_entries := snapshot.get("buildings", []) as Array
 	var local_player_id := str(status.get("local_player_citizen_id", ""))
+	var host_debug := status.get("host_debug", {}) as Dictionary
 	return {
 		"phase": phase,
 		"probe_role": _probe_role,
@@ -101,6 +102,10 @@ func _build_report(phase: String) -> Dictionary:
 		"manual_control_citizen_count": _count_manual_control_citizens(citizen_entries),
 		"manual_control_citizen_ids": _ids_from_entries_with_bool(citizen_entries, "manual_control"),
 		"client_drive_commands_sent": _client_drive_commands_sent,
+		"host_player_input_command_count": int(host_debug.get("player_input_command_count", 0)),
+		"host_player_input_command_count_by_peer": host_debug.get("player_input_command_count_by_peer", {}),
+		"host_assigned_player_citizen_ids_by_peer": host_debug.get("assigned_player_citizen_ids_by_peer", {}),
+		"host_last_player_input_direction_by_peer": host_debug.get("last_player_input_direction_by_peer", {}),
 		"citizen_count": citizen_entries.size(),
 		"visible_citizen_count": _count_visible_citizens(citizen_entries),
 		"inside_citizen_count": _count_inside_citizens(citizen_entries),
@@ -121,10 +126,11 @@ func _maybe_send_client_drive_input() -> void:
 	if str(status.get("local_player_citizen_id", "")).is_empty():
 		return
 	_client_drive_commands_sent += 1
+	var local_player_id := str(status.get("local_player_citizen_id", ""))
 	session.send_command({
 		"type": "player_input",
 		"sequence": _client_drive_commands_sent,
-		"direction": _vec3_to_array(_get_local_player_forward_direction(str(status.get("local_player_citizen_id", "")))),
+		"direction": _vec3_to_array(_get_local_player_drive_direction(local_player_id, _client_drive_commands_sent)),
 	})
 
 func _entry_bool(entries: Array, entity_id: String, key: String) -> bool:
@@ -141,7 +147,7 @@ func _entry_value(entries: Array, entity_id: String, key: String, fallback: Vari
 			return data.get(key, fallback)
 	return fallback
 
-func _get_local_player_forward_direction(entity_id: String) -> Vector3:
+func _get_local_player_drive_direction(entity_id: String, command_index: int) -> Vector3:
 	var world := _get_world()
 	if world == null or entity_id.is_empty():
 		return Vector3.FORWARD
@@ -152,7 +158,25 @@ func _get_local_player_forward_direction(entity_id: String) -> Vector3:
 			continue
 		var forward := -citizen.global_transform.basis.z
 		forward.y = 0.0
-		return forward.normalized() if forward.length_squared() > 0.0001 else Vector3.FORWARD
+		if forward.length_squared() <= 0.0001:
+			forward = Vector3.FORWARD
+		else:
+			forward = forward.normalized()
+		var right := citizen.global_transform.basis.x
+		right.y = 0.0
+		if right.length_squared() <= 0.0001:
+			right = Vector3.RIGHT
+		else:
+			right = right.normalized()
+		match int((command_index - 1) / 10) % 4:
+			0:
+				return forward
+			1:
+				return right
+			2:
+				return -forward
+			_:
+				return -right
 	return Vector3.FORWARD
 
 func _vec3_to_array(value: Vector3) -> Array:

@@ -19,6 +19,7 @@ var _last_sequence: int = 0
 var _input_timer: float = 0.0
 var _input_sequence: int = 0
 var _camera_follow_target_id: String = ""
+var _last_sent_input_direction: Vector3 = Vector3.ZERO
 
 func setup(root_ref: Node, world_ref: World, session_ref: Node) -> void:
 	root_node = root_ref
@@ -51,6 +52,7 @@ func stop() -> void:
 	_peer = null
 	local_player_citizen_id = ""
 	_camera_follow_target_id = ""
+	_last_sent_input_direction = Vector3.ZERO
 
 func update(delta: float) -> void:
 	if local_player_citizen_id.is_empty() or session_node == null:
@@ -59,12 +61,16 @@ func update(delta: float) -> void:
 	if _input_timer > 0.0:
 		return
 	_input_timer = INPUT_SEND_INTERVAL_SEC
+	var direction := _get_player_input_direction()
+	if direction.length_squared() <= 0.0001 and _last_sent_input_direction.length_squared() <= 0.0001:
+		return
 	_input_sequence += 1
 	send_command({
 		"type": "player_input",
 		"sequence": _input_sequence,
-		"direction": _vec3_to_array(_get_player_input_direction()),
+		"direction": _vec3_to_array(direction),
 	})
+	_last_sent_input_direction = direction
 
 func apply_snapshot(snapshot: Dictionary) -> void:
 	if snapshot.is_empty() or world == null or root_node == null:
@@ -269,6 +275,7 @@ func _on_connection_failed() -> void:
 func _on_server_disconnected() -> void:
 	local_player_citizen_id = ""
 	_camera_follow_target_id = ""
+	_last_sent_input_direction = Vector3.ZERO
 	if world != null and world.has_method("set_simulation_authority_enabled"):
 		world.set_simulation_authority_enabled(false)
 	if session_node != null and session_node.has_method("_client_server_disconnected"):

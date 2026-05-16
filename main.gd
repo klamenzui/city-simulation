@@ -41,6 +41,8 @@ func _ready() -> void:
 func _start_runtime() -> void:
 	if _is_network_client():
 		_remove_local_scene_citizens_for_client()
+	elif _is_network_host():
+		_remove_legacy_controlled_citizen_for_network_host()
 	var initial_citizen_count := BalanceConfig.get_int("simulation.initial_citizen_count", CITIZEN_COUNT)
 	if _is_network_client():
 		initial_citizen_count = 0
@@ -58,7 +60,9 @@ func _start_runtime() -> void:
 		initial_citizen_count,
 		_multiplayer_session
 	)
-	if not _is_network_client():
+	if _is_network_host():
+		_multiplayer_session.ensure_local_host_player()
+	elif not _is_network_client():
 		_activate_controlled_citizen_debug_target()
 	call_deferred("_log_initial_debug_snapshot")
 
@@ -77,7 +81,7 @@ func _log_initial_debug_snapshot() -> void:
 		_runtime_controller.log_initial_debug_snapshot()
 
 func _activate_controlled_citizen_debug_target() -> void:
-	if _is_network_client():
+	if _is_network_client() or _is_network_host():
 		return
 	if _controlled_citizen == null:
 		return
@@ -147,6 +151,19 @@ func _on_multiplayer_session_started() -> void:
 func _is_network_client() -> bool:
 	return _multiplayer_session != null and _multiplayer_session.is_client()
 
+func _is_network_host() -> bool:
+	return _multiplayer_session != null and _multiplayer_session.is_host()
+
+func _remove_legacy_controlled_citizen_for_network_host() -> void:
+	if _controlled_citizen == null or not is_instance_valid(_controlled_citizen):
+		_controlled_citizen = null
+		return
+	_deactivate_controlled_citizen_debug_target()
+	if world != null and _controlled_citizen is Citizen:
+		world.unregister_citizen(_controlled_citizen as Citizen)
+	_controlled_citizen.queue_free()
+	_controlled_citizen = null
+
 func _remove_local_scene_citizens_for_client() -> void:
 	if world == null or get_tree() == null:
 		return
@@ -174,7 +191,7 @@ func _input(event: InputEvent) -> void:
 		_runtime_controller.handle_input(event)
 
 func _handle_controlled_citizen_shortcuts(event: InputEvent) -> bool:
-	if _is_network_client():
+	if _is_network_client() or _is_network_host():
 		return false
 	if _controlled_citizen == null:
 		return false

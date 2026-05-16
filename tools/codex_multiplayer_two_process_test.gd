@@ -81,10 +81,13 @@ func _init() -> void:
 		quit(1)
 		return
 
-	print("host citizens=%d visible=%d inside=%d buildings=%d time=%s" % [
+	print("host citizens=%d visible=%d inside=%d player=%s player_visible=%s player_manual=%s buildings=%d time=%s" % [
 		int(host_ready.get("citizen_count", 0)),
 		int(host_ready.get("visible_citizen_count", 0)),
 		int(host_ready.get("inside_citizen_count", 0)),
+		str(host_ready.get("local_player_citizen_id", "")),
+		str(host_ready.get("local_player_visible", false)),
+		str(host_ready.get("local_player_manual_control", false)),
 		int(host_ready.get("building_count", 0)),
 		_time_text(host_ready),
 	])
@@ -197,9 +200,22 @@ func _validate_host_client_state(host_report: Dictionary, client_report: Diction
 	if int(client_report.get("visible_citizen_count", 0)) <= 0:
 		printerr("FAIL: client has no visible replicated citizens")
 		return false
+	var host_player_id := str(host_report.get("local_player_citizen_id", ""))
+	if host_player_id.is_empty():
+		printerr("FAIL: host did not receive a local player citizen id")
+		return false
+	if not bool(host_report.get("local_player_visible", false)):
+		printerr("FAIL: host's assigned player citizen is not visible")
+		return false
+	if not bool(host_report.get("local_player_manual_control", false)):
+		printerr("FAIL: host's assigned player citizen is not marked as server-controlled")
+		return false
 	var local_player_id := str(client_report.get("local_player_citizen_id", ""))
 	if local_player_id.is_empty():
 		printerr("FAIL: client did not receive a local player citizen id")
+		return false
+	if local_player_id == host_player_id:
+		printerr("FAIL: host and client received the same player citizen id")
 		return false
 	if not bool(client_report.get("local_player_visible", false)):
 		printerr("FAIL: client's assigned player citizen is not visible")
@@ -214,6 +230,9 @@ func _validate_host_client_state(host_report: Dictionary, client_report: Diction
 	var client_ids := client_report.get("citizen_ids", []) as Array
 	if host_ids != client_ids:
 		printerr("FAIL: host/client citizen network ids differ")
+		return false
+	if not host_ids.has(host_player_id):
+		printerr("FAIL: host assigned player citizen id is not part of the host snapshot")
 		return false
 	if not client_ids.has(local_player_id):
 		printerr("FAIL: assigned player citizen id is not part of the client snapshot")
