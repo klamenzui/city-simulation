@@ -242,6 +242,7 @@ func _try_select_entity_under_cursor(screen_pos: Vector2) -> bool:
 	var screen_citizen := _find_citizen_near_screen_pos(camera, screen_pos)
 	if screen_citizen != null:
 		handle_citizen_clicked(screen_citizen)
+		_request_network_interaction(screen_citizen)
 		return true
 
 	var from := camera.project_ray_origin(screen_pos)
@@ -261,10 +262,12 @@ func _try_select_entity_under_cursor(screen_pos: Vector2) -> bool:
 		var citizen := _resolve_citizen_from_collider(collider)
 		if citizen != null:
 			handle_citizen_clicked(citizen)
+			_request_network_interaction(citizen)
 			return true
 		var building := _resolve_building_from_collider(collider)
 		if building != null:
 			handle_building_clicked(building)
+			_request_network_interaction(building)
 			return true
 		if collider is CollisionObject3D:
 			excluded.append((collider as CollisionObject3D).get_rid())
@@ -310,6 +313,11 @@ func _resolve_building_from_collider(collider: Variant) -> Building:
 			return node as Building
 		node = node.get_parent()
 	return null
+
+func _request_network_interaction(target: Node) -> void:
+	if multiplayer_session == null or not multiplayer_session.has_method("request_entity_interaction"):
+		return
+	multiplayer_session.request_entity_interaction(target)
 
 func _refresh_debug_panel_dialog_ui() -> void:
 	if debug_panel == null:

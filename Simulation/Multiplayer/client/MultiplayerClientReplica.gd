@@ -5,6 +5,11 @@ const NetworkEntityRegistryScript = preload("res://Simulation/Multiplayer/shared
 const WorldSnapshotSerializerScript = preload("res://Simulation/Multiplayer/shared/WorldSnapshotSerializer.gd")
 const CITIZEN_SCENE_PATH := "res://Entities/Citizens/CitizenNew.tscn"
 const INPUT_SEND_INTERVAL_SEC := 0.05
+const REPLICA_INTERPOLATION_SPEED := 10.0
+const REPLICA_ROTATION_INTERPOLATION_SPEED := 12.0
+const REPLICA_SNAP_DISTANCE_METERS := 8.0
+const REPLICA_TARGET_EPSILON_METERS := 0.02
+const LOCAL_PLAYER_DEFAULT_PREDICTION_SPEED := 0.5
 
 var root_node: Node = null
 var world: World = null
@@ -14,12 +19,20 @@ var local_player_citizen_id: String = ""
 var _peer: ENetMultiplayerPeer = null
 var _replica_root: Node3D = null
 var _citizen_scene: PackedScene = null
+var _building_lookup_by_id: Dictionary = {}
 var _citizen_by_id: Dictionary = {}
-var _last_sequence: int = 0
+var _replica_interpolation_by_id: Dictionary = {}
+var _received_full_snapshot: bool = false
+var _last_full_sequence: int = 0
+var _last_actor_state_sequence: int = 0
+var _last_world_state_sequence: int = 0
 var _input_timer: float = 0.0
 var _input_sequence: int = 0
 var _camera_follow_target_id: String = ""
 var _last_sent_input_direction: Vector3 = Vector3.ZERO
+var _local_prediction_frame_count: int = 0
+var _local_prediction_distance: float = 0.0
+var _last_prediction_direction: Vector3 = Vector3.ZERO
 
 func setup(root_ref: Node, world_ref: World, session_ref: Node) -> void:
 	root_node = root_ref
@@ -53,19 +66,28 @@ func stop() -> void:
 	local_player_citizen_id = ""
 	_camera_follow_target_id = ""
 	_last_sent_input_direction = Vector3.ZERO
+	_building_lookup_by_id.clear()
+	_replica_interpolation_by_id.clear()
+	_received_full_snapshot = false
+	_last_full_sequence = 0
+	_last_actor_state_sequence = 0
+	_last_world_state_sequence = 0
+	_reset_local_prediction_debug()
 
 func update(delta: float) -> void:
+	_update_replica_interpolation(delta)
 	if local_player_citizen_id.is_empty() or session_node == null:
 		return
+	var direction := _get_player_input_direction()
+	_apply_local_player_prediction(delta, direction)
 	_input_timer -= delta
 	if _input_timer > 0.0:
 		return
 	_input_timer = INPUT_SEND_INTERVAL_SEC
-	var direction := _get_player_input_direction()
 	if direction.length_squared() <= 0.0001 and _last_sent_input_direction.length_squared() <= 0.0001:
 		return
 	_input_sequence += 1
-	send_command({
+	_send_command_raw({
 		"type": "player_input",
 		"sequence": _input_sequence,
 		"direction": _vec3_to_array(direction),
@@ -75,18 +97,18 @@ func update(delta: float) -> void:
 func apply_snapshot(snapshot: Dictionary) -> void:
 	if snapshot.is_empty() or world == null or root_node == null:
 		return
+	var snapshot_kind := str(snapshot.get("snapshot_kind", WorldSnapshotSerializerScript.SNAPSHOT_FULL))
 	var sequence := int(snapshot.get("sequence", 0))
-	if sequence > 0 and sequence < _last_sequence:
+	if not _should_apply_snapshot(snapshot_kind, sequence):
 		return
-	_last_sequence = sequence
 
-	WorldSnapshotSerializerScript.apply_snapshot_to_world(world, root_node, snapshot)
+	_update_snapshot_sequence(snapshot_kind, sequence)
+	_merge_building_lookup(snapshot.get("buildings", []))
+	WorldSnapshotSerializerScript.apply_snapshot_to_world(world, root_node, snapshot, _building_lookup_by_id)
 	local_player_citizen_id = str(snapshot.get("local_player_citizen_id", local_player_citizen_id))
-	var building_lookup := WorldSnapshotSerializerScript.build_building_lookup(
-		root_node,
-		snapshot.get("buildings", [])
-	)
-	_apply_citizen_snapshots(snapshot.get("citizens", []), building_lookup)
+	if snapshot.has("citizens"):
+		var remove_missing := bool(snapshot.get("citizens_complete", true))
+		_apply_citizen_snapshots(snapshot.get("citizens", []), _building_lookup_by_id, remove_missing)
 	_sync_local_player_camera()
 
 func get_local_player_citizen() -> Citizen:
@@ -97,7 +119,27 @@ func get_local_player_citizen() -> Citizen:
 	var citizen := _citizen_by_id[local_player_citizen_id] as Citizen
 	return citizen if citizen != null and is_instance_valid(citizen) else null
 
+func get_debug_status() -> Dictionary:
+	return {
+		"received_full_snapshot": _received_full_snapshot,
+		"building_lookup_count": _building_lookup_by_id.size(),
+		"last_full_sequence": _last_full_sequence,
+		"last_actor_state_sequence": _last_actor_state_sequence,
+		"last_world_state_sequence": _last_world_state_sequence,
+		"interpolation_target_count": _replica_interpolation_by_id.size(),
+		"interpolation_max_error": _get_replica_interpolation_max_error(),
+		"prediction_frame_count": _local_prediction_frame_count,
+		"prediction_distance": _local_prediction_distance,
+		"prediction_error": _get_local_player_prediction_error(),
+		"prediction_last_direction": _vec3_to_array(_last_prediction_direction),
+	}
+
 func send_command(command: Dictionary) -> void:
+	if str(command.get("type", "")) == "player_input":
+		_apply_player_input_command_prediction(command)
+	_send_command_raw(command)
+
+func _send_command_raw(command: Dictionary) -> void:
 	if session_node == null or command.is_empty():
 		return
 	session_node.rpc_id(1, "_server_receive_command", command)
@@ -140,7 +182,33 @@ func _ensure_replica_root() -> void:
 	_replica_root.name = "ClientReplicas"
 	root_node.add_child(_replica_root)
 
-func _apply_citizen_snapshots(entries: Variant, building_lookup: Dictionary) -> void:
+func _should_apply_snapshot(snapshot_kind: String, sequence: int) -> bool:
+	match snapshot_kind:
+		WorldSnapshotSerializerScript.SNAPSHOT_FULL:
+			return sequence <= 0 or sequence >= _last_full_sequence
+		WorldSnapshotSerializerScript.SNAPSHOT_WORLD_STATE:
+			return _received_full_snapshot and (sequence <= 0 or sequence > _last_world_state_sequence)
+		_:
+			return _received_full_snapshot and (sequence <= 0 or sequence > _last_actor_state_sequence)
+
+func _update_snapshot_sequence(snapshot_kind: String, sequence: int) -> void:
+	match snapshot_kind:
+		WorldSnapshotSerializerScript.SNAPSHOT_FULL:
+			_received_full_snapshot = true
+			_last_full_sequence = maxi(_last_full_sequence, sequence)
+		WorldSnapshotSerializerScript.SNAPSHOT_WORLD_STATE:
+			_last_world_state_sequence = maxi(_last_world_state_sequence, sequence)
+		_:
+			_last_actor_state_sequence = maxi(_last_actor_state_sequence, sequence)
+
+func _merge_building_lookup(entries: Variant) -> void:
+	if entries is not Array:
+		return
+	var lookup := WorldSnapshotSerializerScript.build_building_lookup(root_node, entries as Array)
+	for entity_id in lookup.keys():
+		_building_lookup_by_id[entity_id] = lookup[entity_id]
+
+func _apply_citizen_snapshots(entries: Variant, building_lookup: Dictionary, remove_missing: bool) -> void:
 	if entries is not Array:
 		return
 	var seen: Dictionary = {}
@@ -155,11 +223,32 @@ func _apply_citizen_snapshots(entries: Variant, building_lookup: Dictionary) -> 
 		var citizen := _get_or_create_citizen(entity_id)
 		if citizen == null:
 			continue
-		if citizen.has_method("apply_network_snapshot"):
-			citizen.apply_network_snapshot(data, building_lookup)
-		else:
-			citizen.global_position = WorldSnapshotSerializerScript.vector_from_snapshot(data.get("position", []), citizen.global_position)
-	_remove_missing_citizens(seen)
+		_apply_citizen_snapshot(entity_id, citizen, data, building_lookup)
+	if remove_missing:
+		_remove_missing_citizens(seen)
+
+func _apply_citizen_snapshot(entity_id: String, citizen: Citizen, data: Dictionary, building_lookup: Dictionary) -> void:
+	var had_interpolation_state := _replica_interpolation_by_id.has(entity_id)
+	var render_position := citizen.global_position
+	var render_rotation_y := citizen.rotation.y
+	var target_position := WorldSnapshotSerializerScript.vector_from_snapshot(data.get("position", []), render_position)
+	var target_rotation_y := float(data.get("rotation_y", render_rotation_y))
+	if citizen.has_method("apply_network_snapshot"):
+		citizen.apply_network_snapshot(data, building_lookup)
+	else:
+		citizen.global_position = target_position
+		citizen.rotation.y = target_rotation_y
+	var should_snap := not had_interpolation_state or render_position.distance_to(target_position) > REPLICA_SNAP_DISTANCE_METERS
+	if should_snap:
+		citizen.global_position = target_position
+		citizen.rotation.y = target_rotation_y
+	else:
+		citizen.global_position = render_position
+		citizen.rotation.y = render_rotation_y
+	_replica_interpolation_by_id[entity_id] = {
+		"target_position": target_position,
+		"target_rotation_y": target_rotation_y,
+	}
 
 func _get_or_create_citizen(entity_id: String) -> Citizen:
 	if _citizen_by_id.has(entity_id):
@@ -197,8 +286,93 @@ func _remove_missing_citizens(seen: Dictionary) -> void:
 			continue
 		var citizen := _citizen_by_id[entity_id] as Citizen
 		_citizen_by_id.erase(entity_id)
+		_replica_interpolation_by_id.erase(entity_id)
 		if citizen != null and is_instance_valid(citizen):
 			citizen.queue_free()
+
+func _update_replica_interpolation(delta: float) -> void:
+	if delta <= 0.0 or _replica_interpolation_by_id.is_empty():
+		return
+	var position_alpha := clampf(delta * REPLICA_INTERPOLATION_SPEED, 0.0, 1.0)
+	var rotation_alpha := clampf(delta * REPLICA_ROTATION_INTERPOLATION_SPEED, 0.0, 1.0)
+	for entity_id in _replica_interpolation_by_id.keys():
+		if not _citizen_by_id.has(entity_id):
+			continue
+		var citizen := _citizen_by_id[entity_id] as Citizen
+		if citizen == null or not is_instance_valid(citizen):
+			continue
+		var state := _replica_interpolation_by_id[entity_id] as Dictionary
+		var target_position: Vector3 = state.get("target_position", citizen.global_position)
+		var target_rotation_y := float(state.get("target_rotation_y", citizen.rotation.y))
+		var distance := citizen.global_position.distance_to(target_position)
+		if distance > REPLICA_SNAP_DISTANCE_METERS or distance <= REPLICA_TARGET_EPSILON_METERS:
+			citizen.global_position = target_position
+		else:
+			citizen.global_position = citizen.global_position.lerp(target_position, position_alpha)
+		citizen.rotation.y = lerp_angle(citizen.rotation.y, target_rotation_y, rotation_alpha)
+
+func _get_replica_interpolation_max_error() -> float:
+	var max_error := 0.0
+	for entity_id in _replica_interpolation_by_id.keys():
+		if not _citizen_by_id.has(entity_id):
+			continue
+		var citizen := _citizen_by_id[entity_id] as Citizen
+		if citizen == null or not is_instance_valid(citizen):
+			continue
+		var state := _replica_interpolation_by_id[entity_id] as Dictionary
+		var target_position: Vector3 = state.get("target_position", citizen.global_position)
+		max_error = maxf(max_error, citizen.global_position.distance_to(target_position))
+	return max_error
+
+func _apply_local_player_prediction(delta: float, direction: Vector3) -> void:
+	if delta <= 0.0 or direction.length_squared() <= 0.0001:
+		_last_prediction_direction = Vector3.ZERO
+		return
+	var citizen := get_local_player_citizen()
+	if citizen == null:
+		return
+	direction.y = 0.0
+	if direction.length_squared() > 1.0:
+		direction = direction.normalized()
+	var displacement := direction * _get_prediction_speed(citizen) * delta
+	if displacement.length_squared() <= 0.000001:
+		return
+	citizen.global_position += displacement
+	citizen.look_at(citizen.global_position + direction, Vector3.UP)
+	_local_prediction_frame_count += 1
+	_local_prediction_distance += displacement.length()
+	_last_prediction_direction = direction
+
+func _apply_player_input_command_prediction(command: Dictionary) -> void:
+	if local_player_citizen_id.is_empty():
+		return
+	var direction := WorldSnapshotSerializerScript.vector_from_snapshot(command.get("direction", []), Vector3.ZERO)
+	_apply_local_player_prediction(INPUT_SEND_INTERVAL_SEC, direction)
+
+func _get_prediction_speed(citizen: Citizen) -> float:
+	var speed := LOCAL_PLAYER_DEFAULT_PREDICTION_SPEED
+	var raw_speed: Variant = citizen.get("move_speed")
+	if raw_speed is float or raw_speed is int:
+		speed = maxf(float(raw_speed), 0.0)
+	var raw_multiplier: Variant = citizen.get("keyboard_control_speed_multiplier")
+	if raw_multiplier is float or raw_multiplier is int:
+		speed *= maxf(float(raw_multiplier), 0.0)
+	return speed
+
+func _get_local_player_prediction_error() -> float:
+	if local_player_citizen_id.is_empty() or not _replica_interpolation_by_id.has(local_player_citizen_id):
+		return 0.0
+	var citizen := get_local_player_citizen()
+	if citizen == null:
+		return 0.0
+	var state := _replica_interpolation_by_id[local_player_citizen_id] as Dictionary
+	var target_position: Vector3 = state.get("target_position", citizen.global_position)
+	return citizen.global_position.distance_to(target_position)
+
+func _reset_local_prediction_debug() -> void:
+	_local_prediction_frame_count = 0
+	_local_prediction_distance = 0.0
+	_last_prediction_direction = Vector3.ZERO
 
 func _safe_node_name(value: String) -> String:
 	var result := value
@@ -276,6 +450,13 @@ func _on_server_disconnected() -> void:
 	local_player_citizen_id = ""
 	_camera_follow_target_id = ""
 	_last_sent_input_direction = Vector3.ZERO
+	_building_lookup_by_id.clear()
+	_replica_interpolation_by_id.clear()
+	_received_full_snapshot = false
+	_last_full_sequence = 0
+	_last_actor_state_sequence = 0
+	_last_world_state_sequence = 0
+	_reset_local_prediction_debug()
 	if world != null and world.has_method("set_simulation_authority_enabled"):
 		world.set_simulation_authority_enabled(false)
 	if session_node != null and session_node.has_method("_client_server_disconnected"):

@@ -7,6 +7,7 @@ const NetworkRoleScript = preload("res://Simulation/Multiplayer/shared/NetworkRo
 const LaunchOptionsScript = preload("res://Simulation/Multiplayer/shared/MultiplayerLaunchOptions.gd")
 const HostAuthorityScript = preload("res://Simulation/Multiplayer/server/MultiplayerHostAuthority.gd")
 const ClientReplicaScript = preload("res://Simulation/Multiplayer/client/MultiplayerClientReplica.gd")
+const NetworkEntityRegistryScript = preload("res://Simulation/Multiplayer/shared/NetworkEntityRegistry.gd")
 
 var root_node: Node = null
 var world: World = null
@@ -81,6 +82,8 @@ func get_status() -> Dictionary:
 	}
 	if _host_authority != null and _host_authority.has_method("get_debug_status"):
 		status["host_debug"] = _host_authority.get_debug_status()
+	if _client_replica != null and _client_replica.has_method("get_debug_status"):
+		status["client_debug"] = _client_replica.get_debug_status()
 	return status
 
 func get_local_player_citizen_id() -> String:
@@ -141,6 +144,21 @@ func send_command(command: Dictionary) -> void:
 		return
 	_client_replica.send_command(command)
 
+func request_entity_interaction(target: Node) -> void:
+	if target == null:
+		return
+	var target_id := NetworkEntityRegistryScript.get_entity_id(target)
+	if target_id.is_empty():
+		return
+	var command := {
+		"type": "interact_entity",
+		"target_id": target_id,
+	}
+	if is_client():
+		send_command(command)
+	elif is_host() and _host_authority != null and _host_authority.has_method("handle_local_command"):
+		_host_authority.handle_local_command(command)
+
 func _enter_offline_mode() -> void:
 	if world != null and world.has_method("set_simulation_authority_enabled"):
 		world.set_simulation_authority_enabled(true)
@@ -183,6 +201,12 @@ func _client_apply_full_snapshot(snapshot: Dictionary) -> void:
 
 @rpc("authority", "call_remote", "unreliable_ordered", 0)
 func _client_apply_snapshot(snapshot: Dictionary) -> void:
+	if _client_replica == null:
+		return
+	_client_replica.apply_snapshot(snapshot)
+
+@rpc("authority", "call_remote", "reliable")
+func _client_apply_world_state_snapshot(snapshot: Dictionary) -> void:
 	if _client_replica == null:
 		return
 	_client_replica.apply_snapshot(snapshot)

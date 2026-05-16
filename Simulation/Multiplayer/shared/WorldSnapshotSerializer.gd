@@ -4,6 +4,9 @@ class_name WorldSnapshotSerializer
 const NetworkEntityRegistryScript = preload("res://Simulation/Multiplayer/shared/NetworkEntityRegistry.gd")
 const CITIZEN_SCENE_PATH := "res://Entities/Citizens/CitizenNew.tscn"
 const PROTOCOL_VERSION := 1
+const SNAPSHOT_FULL := "full"
+const SNAPSHOT_ACTOR_STATE := "actor_state"
+const SNAPSHOT_WORLD_STATE := "world_state"
 
 static func build_snapshot(world: World, root: Node, sequence: int, registry) -> Dictionary:
 	if world == null or root == null:
@@ -13,11 +16,44 @@ static func build_snapshot(world: World, root: Node, sequence: int, registry) ->
 
 	return {
 		"protocol": PROTOCOL_VERSION,
+		"snapshot_kind": SNAPSHOT_FULL,
+		"sequence": sequence,
+		"citizens_complete": true,
+		"time": _build_time_snapshot(world),
+		"world": _build_world_snapshot(world),
+		"buildings": _build_building_snapshots(world, root, true),
+		"citizens": _build_citizen_snapshots(world, true),
+	}
+
+static func build_actor_state_snapshot(world: World, root: Node, sequence: int, registry) -> Dictionary:
+	if world == null or root == null:
+		return {}
+	if registry != null:
+		registry.ensure_world_entities(world, root)
+
+	return {
+		"protocol": PROTOCOL_VERSION,
+		"snapshot_kind": SNAPSHOT_ACTOR_STATE,
+		"sequence": sequence,
+		"citizens_complete": true,
+		"time": _build_time_snapshot(world),
+		"world": _build_world_snapshot(world),
+		"citizens": _build_citizen_snapshots(world, false),
+	}
+
+static func build_world_state_snapshot(world: World, root: Node, sequence: int, registry) -> Dictionary:
+	if world == null or root == null:
+		return {}
+	if registry != null:
+		registry.ensure_world_entities(world, root)
+
+	return {
+		"protocol": PROTOCOL_VERSION,
+		"snapshot_kind": SNAPSHOT_WORLD_STATE,
 		"sequence": sequence,
 		"time": _build_time_snapshot(world),
 		"world": _build_world_snapshot(world),
-		"buildings": _build_building_snapshots(world, root),
-		"citizens": _build_citizen_snapshots(world),
+		"buildings": _build_building_snapshots(world, root, false),
 	}
 
 static func _build_time_snapshot(world: World) -> Dictionary:
@@ -36,7 +72,7 @@ static func _build_world_snapshot(world: World) -> Dictionary:
 		"city_balance": world.city_account.balance if world.city_account != null else 0,
 	}
 
-static func _build_building_snapshots(world: World, root: Node) -> Array:
+static func _build_building_snapshots(world: World, root: Node, include_static: bool) -> Array:
 	var snapshots: Array = []
 	for building in world.buildings:
 		if building == null or not is_instance_valid(building):
@@ -44,13 +80,8 @@ static func _build_building_snapshots(world: World, root: Node) -> Array:
 		var entity_id := NetworkEntityRegistryScript.get_entity_id(building)
 		if entity_id.is_empty():
 			continue
-		snapshots.append({
+		var data := {
 			"id": entity_id,
-			"path": _node_path(root, building),
-			"name": building.building_name,
-			"display_name": building.get_display_name() if building.has_method("get_display_name") else building.building_name,
-			"type": int(building.building_type),
-			"type_name": building.get_building_type_name() if building.has_method("get_building_type_name") else "",
 			"position": _vec3_to_array(building.global_position),
 			"balance": building.account.balance if building.account != null else 0,
 			"condition": building.condition,
@@ -59,10 +90,17 @@ static func _build_building_snapshots(world: World, root: Node) -> Array:
 			"workers": building.workers.size(),
 			"visitors": building.visitors.size(),
 			"capacity": building.capacity,
-		})
+		}
+		if include_static:
+			data["path"] = _node_path(root, building)
+			data["name"] = building.building_name
+			data["display_name"] = building.get_display_name() if building.has_method("get_display_name") else building.building_name
+			data["type"] = int(building.building_type)
+			data["type_name"] = building.get_building_type_name() if building.has_method("get_building_type_name") else ""
+		snapshots.append(data)
 	return snapshots
 
-static func _build_citizen_snapshots(world: World) -> Array:
+static func _build_citizen_snapshots(world: World, include_static: bool) -> Array:
 	var snapshots: Array = []
 	for citizen in world.citizens:
 		if citizen == null or not is_instance_valid(citizen):
@@ -78,10 +116,8 @@ static func _build_citizen_snapshots(world: World) -> Array:
 		var manual_control := citizen.is_manual_control_enabled() if citizen.has_method("is_manual_control_enabled") else false
 		if citizen.has_method("is_network_manual_controlled"):
 			manual_control = manual_control or citizen.is_network_manual_controlled()
-		snapshots.append({
+		var data := {
 			"id": entity_id,
-			"scene": CITIZEN_SCENE_PATH,
-			"name": citizen.citizen_name,
 			"position": _vec3_to_array(citizen.global_position),
 			"rotation_y": citizen.rotation.y,
 			"visible": citizen.visible,
@@ -98,15 +134,19 @@ static func _build_citizen_snapshots(world: World) -> Array:
 			"manual_control": manual_control,
 			"lod": citizen.get_simulation_lod_tier() if citizen.has_method("get_simulation_lod_tier") else "focus",
 			"inside": citizen.is_inside_building() if citizen.has_method("is_inside_building") else false,
-		})
+		}
+		if include_static:
+			data["scene"] = CITIZEN_SCENE_PATH
+			data["name"] = citizen.citizen_name
+		snapshots.append(data)
 	return snapshots
 
-static func apply_snapshot_to_world(world: World, root: Node, snapshot: Dictionary) -> void:
+static func apply_snapshot_to_world(world: World, root: Node, snapshot: Dictionary, building_lookup: Dictionary = {}) -> void:
 	if world == null or root == null or snapshot.is_empty():
 		return
 	_apply_time_snapshot(world, snapshot.get("time", {}))
 	_apply_world_snapshot(world, snapshot.get("world", {}))
-	_apply_building_snapshots(root, snapshot.get("buildings", []))
+	_apply_building_snapshots(root, snapshot.get("buildings", []), building_lookup)
 
 static func build_building_lookup(root: Node, building_snapshots: Array) -> Dictionary:
 	var lookup: Dictionary = {}
@@ -161,22 +201,25 @@ static func _apply_world_snapshot(world: World, data: Variant) -> void:
 	if world.city_account != null:
 		world.city_account.balance = int(world_data.get("city_balance", world.city_account.balance))
 
-static func _apply_building_snapshots(root: Node, entries: Variant) -> void:
+static func _apply_building_snapshots(root: Node, entries: Variant, building_lookup: Dictionary) -> void:
 	if entries is not Array:
 		return
 	for entry in entries:
 		if entry is not Dictionary:
 			continue
 		var data := entry as Dictionary
+		var entity_id := str(data.get("id", ""))
 		var path := str(data.get("path", ""))
-		if path.is_empty():
-			continue
-		var node := root.get_node_or_null(path)
+		var node := root.get_node_or_null(path) if not path.is_empty() else null
+		if node == null and not entity_id.is_empty():
+			node = building_lookup.get(entity_id, null) as Node
 		if node is not Building:
 			continue
 		var building := node as Building
-		NetworkEntityRegistryScript.set_entity_id(building, str(data.get("id", "")))
-		building.building_name = str(data.get("name", building.building_name))
+		if not entity_id.is_empty():
+			NetworkEntityRegistryScript.set_entity_id(building, entity_id)
+		if data.has("name"):
+			building.building_name = str(data.get("name", building.building_name))
 		if building.account != null:
 			building.account.balance = int(data.get("balance", building.account.balance))
 		building.condition = float(data.get("condition", building.condition))

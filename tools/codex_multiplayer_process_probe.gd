@@ -3,6 +3,7 @@ extends SceneTree
 const REPORT_INTERVAL_SEC := 0.10
 const MAX_RUNTIME_SEC := 30.0
 const CLIENT_DRIVE_COMMAND_COUNT := 80
+const HOST_DRIVE_FRAME_COUNT := 80
 
 const NetworkEntityRegistryScript = preload("res://Simulation/Multiplayer/shared/NetworkEntityRegistry.gd")
 const WorldSnapshotSerializerScript = preload("res://Simulation/Multiplayer/shared/WorldSnapshotSerializer.gd")
@@ -15,6 +16,10 @@ var _registry = NetworkEntityRegistryScript.new()
 var _authority_gate_checked: bool = false
 var _authority_gate_ok: bool = false
 var _client_drive_commands_sent: int = 0
+var _client_interaction_command_sent: bool = false
+var _host_interaction_request_sent: bool = false
+var _host_drive_frames_sent: int = 0
+var _host_drive_key_pressed: bool = false
 
 func _init() -> void:
 	var args := _parse_args(OS.get_cmdline_user_args())
@@ -43,11 +48,15 @@ func _init() -> void:
 		if not _stop_path.is_empty() and FileAccess.file_exists(_stop_path):
 			break
 		_maybe_check_client_tick_gate()
+		_maybe_drive_host_player()
+		_maybe_send_host_interaction_request()
 		_maybe_send_client_drive_input()
+		_maybe_send_client_interaction_request()
 		_write_report(_build_report("running"))
 		await create_timer(REPORT_INTERVAL_SEC).timeout
 
 	_write_report(_build_report("stopped"))
+	_set_host_drive_key_pressed(false)
 	if _main != null and is_instance_valid(_main):
 		_main.queue_free()
 	await process_frame
@@ -80,6 +89,7 @@ func _build_report(phase: String) -> Dictionary:
 	var building_entries := snapshot.get("buildings", []) as Array
 	var local_player_id := str(status.get("local_player_citizen_id", ""))
 	var host_debug := status.get("host_debug", {}) as Dictionary
+	var client_debug := status.get("client_debug", {}) as Dictionary
 	return {
 		"phase": phase,
 		"probe_role": _probe_role,
@@ -102,20 +112,72 @@ func _build_report(phase: String) -> Dictionary:
 		"manual_control_citizen_count": _count_manual_control_citizens(citizen_entries),
 		"manual_control_citizen_ids": _ids_from_entries_with_bool(citizen_entries, "manual_control"),
 		"client_drive_commands_sent": _client_drive_commands_sent,
+		"client_interaction_command_sent": _client_interaction_command_sent,
+		"host_interaction_request_sent": _host_interaction_request_sent,
+		"host_drive_frames_sent": _host_drive_frames_sent,
 		"host_player_input_command_count": int(host_debug.get("player_input_command_count", 0)),
 		"host_player_input_command_count_by_peer": host_debug.get("player_input_command_count_by_peer", {}),
 		"host_assigned_player_citizen_ids_by_peer": host_debug.get("assigned_player_citizen_ids_by_peer", {}),
 		"host_last_player_input_direction_by_peer": host_debug.get("last_player_input_direction_by_peer", {}),
+		"host_interaction_command_count": int(host_debug.get("interaction_command_count", 0)),
+		"host_accepted_interaction_command_count": int(host_debug.get("accepted_interaction_command_count", 0)),
+		"host_interaction_command_count_by_peer": host_debug.get("interaction_command_count_by_peer", {}),
+		"host_accepted_interaction_command_count_by_peer": host_debug.get("accepted_interaction_command_count_by_peer", {}),
+		"host_last_interaction_by_peer": host_debug.get("last_interaction_by_peer", {}),
+		"client_received_full_snapshot": bool(client_debug.get("received_full_snapshot", false)),
+		"client_building_lookup_count": int(client_debug.get("building_lookup_count", 0)),
+		"client_last_full_sequence": int(client_debug.get("last_full_sequence", 0)),
+		"client_last_actor_state_sequence": int(client_debug.get("last_actor_state_sequence", 0)),
+		"client_last_world_state_sequence": int(client_debug.get("last_world_state_sequence", 0)),
+		"client_replica_interpolation_target_count": int(client_debug.get("interpolation_target_count", 0)),
+		"client_replica_interpolation_max_error": float(client_debug.get("interpolation_max_error", 0.0)),
+		"client_prediction_frame_count": int(client_debug.get("prediction_frame_count", 0)),
+		"client_prediction_distance": float(client_debug.get("prediction_distance", 0.0)),
+		"client_prediction_error": float(client_debug.get("prediction_error", 0.0)),
 		"citizen_count": citizen_entries.size(),
 		"visible_citizen_count": _count_visible_citizens(citizen_entries),
 		"inside_citizen_count": _count_inside_citizens(citizen_entries),
 		"citizen_ids": _ids_from_entries(citizen_entries),
+		"visible_citizen_ids": _ids_from_entries_with_bool(citizen_entries, "visible"),
+		"citizen_positions_by_id": _positions_by_id(citizen_entries),
 		"building_count": building_entries.size(),
 		"building_ids": _ids_from_entries(building_entries),
 	}
 
+func _maybe_drive_host_player() -> void:
+	if _probe_role != "host":
+		_set_host_drive_key_pressed(false)
+		return
+	if _host_drive_frames_sent >= HOST_DRIVE_FRAME_COUNT:
+		_set_host_drive_key_pressed(false)
+		return
+	var session := _get_session()
+	if session == null or not session.has_method("get_status"):
+		return
+	var status: Dictionary = session.get_status()
+	if str(status.get("status", "")) != "hosting":
+		return
+	if str(status.get("local_player_citizen_id", "")).is_empty():
+		return
+	if session.multiplayer.get_peers().is_empty():
+		return
+	_set_host_drive_key_pressed(true)
+	_host_drive_frames_sent += 1
+
+func _set_host_drive_key_pressed(pressed: bool) -> void:
+	if _host_drive_key_pressed == pressed:
+		return
+	_host_drive_key_pressed = pressed
+	var event := InputEventKey.new()
+	event.keycode = KEY_W
+	event.physical_keycode = KEY_W
+	event.pressed = pressed
+	Input.parse_input_event(event)
+
 func _maybe_send_client_drive_input() -> void:
-	if _probe_role != "client" or _client_drive_commands_sent >= CLIENT_DRIVE_COMMAND_COUNT:
+	if _probe_role != "client":
+		return
+	if _client_drive_commands_sent >= CLIENT_DRIVE_COMMAND_COUNT:
 		return
 	var session := _get_session()
 	if session == null or not session.has_method("get_status") or not session.has_method("send_command"):
@@ -132,6 +194,44 @@ func _maybe_send_client_drive_input() -> void:
 		"sequence": _client_drive_commands_sent,
 		"direction": _vec3_to_array(_get_local_player_drive_direction(local_player_id, _client_drive_commands_sent)),
 	})
+
+func _maybe_send_client_interaction_request() -> void:
+	if _probe_role != "client" or _client_interaction_command_sent:
+		return
+	var session := _get_session()
+	if session == null or not session.has_method("get_status") or not session.has_method("send_command"):
+		return
+	var status: Dictionary = session.get_status()
+	if str(status.get("status", "")) != "connected":
+		return
+	var world := _get_world()
+	if world == null or world.buildings.is_empty():
+		return
+	var target_id := NetworkEntityRegistryScript.get_entity_id(world.buildings[0])
+	if target_id.is_empty():
+		return
+	session.send_command({
+		"type": "interact_entity",
+		"target_id": target_id,
+	})
+	_client_interaction_command_sent = true
+
+func _maybe_send_host_interaction_request() -> void:
+	if _probe_role != "host" or _host_interaction_request_sent:
+		return
+	var session := _get_session()
+	if session == null or not session.has_method("get_status") or not session.has_method("request_entity_interaction"):
+		return
+	var status: Dictionary = session.get_status()
+	if str(status.get("status", "")) != "hosting":
+		return
+	if str(status.get("local_player_citizen_id", "")).is_empty():
+		return
+	var world := _get_world()
+	if world == null or world.buildings.is_empty():
+		return
+	session.request_entity_interaction(world.buildings[0])
+	_host_interaction_request_sent = true
 
 func _entry_bool(entries: Array, entity_id: String, key: String) -> bool:
 	return bool(_entry_value(entries, entity_id, key, false))
@@ -228,14 +328,35 @@ func _ids_from_entries(entries: Array) -> Array[String]:
 	ids.sort()
 	return ids
 
+func _positions_by_id(entries: Array) -> Dictionary:
+	var positions: Dictionary = {}
+	for entry in entries:
+		if entry is not Dictionary:
+			continue
+		var data := entry as Dictionary
+		var entity_id := str(data.get("id", ""))
+		if entity_id.is_empty():
+			continue
+		positions[entity_id] = data.get("position", [])
+	return positions
+
 func _write_report(report: Dictionary) -> void:
 	if _report_path.is_empty():
 		return
-	var file := FileAccess.open(_report_path, FileAccess.WRITE)
+	var temp_path := "%s.tmp" % _report_path
+	var file := FileAccess.open(temp_path, FileAccess.WRITE)
 	if file == null:
 		return
 	file.store_string(JSON.stringify(report))
 	file.close()
+	var dir := DirAccess.open(_report_path.get_base_dir())
+	if dir == null:
+		return
+	var report_file := _report_path.get_file()
+	var temp_file := temp_path.get_file()
+	if FileAccess.file_exists(_report_path):
+		dir.remove(report_file)
+	dir.rename(temp_file, report_file)
 
 func _get_session() -> Node:
 	return _main.get_node_or_null("MultiplayerSession") if _main != null else null
