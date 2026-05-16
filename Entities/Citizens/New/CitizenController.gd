@@ -564,7 +564,19 @@ func _get_exact_overlap_push_axis(other: Node3D) -> Vector3:
 	return axis.normalized()
 
 
+func apply_external_manual_direction(delta: float, desired_direction: Vector3) -> void:
+	_physics_process_manual_direction(delta, desired_direction, false)
+
+
 func _physics_process_keyboard_control(delta: float) -> void:
+	_physics_process_manual_direction(delta, _get_keyboard_control_direction(), true)
+
+
+func _physics_process_manual_direction(
+	delta: float,
+	desired_direction: Vector3,
+	read_jump_input: bool
+) -> void:
 	if _is_travelling:
 		_global_path = PackedVector3Array()
 		_path_index = 0
@@ -575,7 +587,9 @@ func _physics_process_keyboard_control(delta: float) -> void:
 		_surface_escape_cooldown = 0.0
 		_clear_stuck_escape()
 
-	var desired_direction := _get_keyboard_control_direction()
+	desired_direction.y = 0.0
+	if desired_direction.length_squared() > 1.0:
+		desired_direction = desired_direction.normalized()
 	if desired_direction.length_squared() <= 0.0001:
 		velocity.x = 0.0
 		velocity.z = 0.0
@@ -604,7 +618,8 @@ func _physics_process_keyboard_control(delta: float) -> void:
 	velocity.x = final_direction.x * final_speed
 	velocity.z = final_direction.z * final_speed
 
-	_try_keyboard_jump(desired_direction, steered_direction)
+	if read_jump_input:
+		_try_keyboard_jump(desired_direction, steered_direction)
 
 	if final_direction.length_squared() > 0.0001:
 		look_at(global_position + final_direction, Vector3.UP)

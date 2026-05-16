@@ -4,16 +4,21 @@ class_name MultiplayerClientReplica
 const NetworkEntityRegistryScript = preload("res://Simulation/Multiplayer/shared/NetworkEntityRegistry.gd")
 const WorldSnapshotSerializerScript = preload("res://Simulation/Multiplayer/shared/WorldSnapshotSerializer.gd")
 const CITIZEN_SCENE_PATH := "res://Entities/Citizens/CitizenNew.tscn"
+const INPUT_SEND_INTERVAL_SEC := 0.05
 
 var root_node: Node = null
 var world: World = null
 var session_node: Node = null
+var local_player_citizen_id: String = ""
 
 var _peer: ENetMultiplayerPeer = null
 var _replica_root: Node3D = null
 var _citizen_scene: PackedScene = null
 var _citizen_by_id: Dictionary = {}
 var _last_sequence: int = 0
+var _input_timer: float = 0.0
+var _input_sequence: int = 0
+var _camera_follow_target_id: String = ""
 
 func setup(root_ref: Node, world_ref: World, session_ref: Node) -> void:
 	root_node = root_ref
@@ -44,6 +49,22 @@ func stop() -> void:
 	if _peer != null:
 		_peer.close()
 	_peer = null
+	local_player_citizen_id = ""
+	_camera_follow_target_id = ""
+
+func update(delta: float) -> void:
+	if local_player_citizen_id.is_empty() or session_node == null:
+		return
+	_input_timer -= delta
+	if _input_timer > 0.0:
+		return
+	_input_timer = INPUT_SEND_INTERVAL_SEC
+	_input_sequence += 1
+	send_command({
+		"type": "player_input",
+		"sequence": _input_sequence,
+		"direction": _vec3_to_array(_get_player_input_direction()),
+	})
 
 func apply_snapshot(snapshot: Dictionary) -> void:
 	if snapshot.is_empty() or world == null or root_node == null:
@@ -54,11 +75,21 @@ func apply_snapshot(snapshot: Dictionary) -> void:
 	_last_sequence = sequence
 
 	WorldSnapshotSerializerScript.apply_snapshot_to_world(world, root_node, snapshot)
+	local_player_citizen_id = str(snapshot.get("local_player_citizen_id", local_player_citizen_id))
 	var building_lookup := WorldSnapshotSerializerScript.build_building_lookup(
 		root_node,
 		snapshot.get("buildings", [])
 	)
 	_apply_citizen_snapshots(snapshot.get("citizens", []), building_lookup)
+	_sync_local_player_camera()
+
+func get_local_player_citizen() -> Citizen:
+	if local_player_citizen_id.is_empty():
+		return null
+	if not _citizen_by_id.has(local_player_citizen_id):
+		return null
+	var citizen := _citizen_by_id[local_player_citizen_id] as Citizen
+	return citizen if citizen != null and is_instance_valid(citizen) else null
 
 func send_command(command: Dictionary) -> void:
 	if session_node == null or command.is_empty():
@@ -169,6 +200,62 @@ func _safe_node_name(value: String) -> String:
 		result = result.replace(ch, "_")
 	return result
 
+func _sync_local_player_camera() -> void:
+	if local_player_citizen_id.is_empty() or _camera_follow_target_id == local_player_citizen_id:
+		return
+	var citizen := get_local_player_citizen()
+	if citizen == null or root_node == null:
+		return
+	var viewport := root_node.get_viewport()
+	var camera := viewport.get_camera_3d() if viewport != null else null
+	if camera != null and camera.has_method("set_follow_target"):
+		camera.call("set_follow_target", citizen)
+		_camera_follow_target_id = local_player_citizen_id
+
+func _get_player_input_direction() -> Vector3:
+	if _is_text_input_focused():
+		return Vector3.ZERO
+	var side := 0.0
+	var forward_amount := 0.0
+	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+		side -= 1.0
+	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+		side += 1.0
+	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+		forward_amount += 1.0
+	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+		forward_amount -= 1.0
+	if absf(side) <= 0.001 and absf(forward_amount) <= 0.001:
+		return Vector3.ZERO
+
+	var basis_forward := Vector3.FORWARD
+	var basis_right := Vector3.RIGHT
+	if root_node != null:
+		var viewport := root_node.get_viewport()
+		var camera := viewport.get_camera_3d() if viewport != null else null
+		if camera != null:
+			basis_forward = -camera.global_transform.basis.z
+			basis_forward.y = 0.0
+			if basis_forward.length_squared() > 0.0001:
+				basis_forward = basis_forward.normalized()
+			basis_right = camera.global_transform.basis.x
+			basis_right.y = 0.0
+			if basis_right.length_squared() > 0.0001:
+				basis_right = basis_right.normalized()
+	var direction := basis_right * side + basis_forward * forward_amount
+	direction.y = 0.0
+	return direction.normalized() if direction.length_squared() > 0.0001 else Vector3.ZERO
+
+func _is_text_input_focused() -> bool:
+	if root_node == null:
+		return false
+	var viewport := root_node.get_viewport()
+	var focus_owner := viewport.gui_get_focus_owner() if viewport != null else null
+	return focus_owner is LineEdit or focus_owner is TextEdit
+
+func _vec3_to_array(value: Vector3) -> Array:
+	return [value.x, value.y, value.z]
+
 func _on_connected_to_server() -> void:
 	if session_node != null and session_node.has_method("_client_transport_connected"):
 		session_node.call("_client_transport_connected")
@@ -180,6 +267,8 @@ func _on_connection_failed() -> void:
 		session_node.call("_client_connection_failed")
 
 func _on_server_disconnected() -> void:
+	local_player_citizen_id = ""
+	_camera_follow_target_id = ""
 	if world != null and world.has_method("set_simulation_authority_enabled"):
 		world.set_simulation_authority_enabled(false)
 	if session_node != null and session_node.has_method("_client_server_disconnected"):

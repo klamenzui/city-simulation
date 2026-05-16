@@ -57,6 +57,8 @@ func start_offline() -> void:
 func update(delta: float) -> void:
 	if _host_authority != null:
 		_host_authority.update(delta)
+	if _client_replica != null and _client_replica.has_method("update"):
+		_client_replica.update(delta)
 
 func is_host() -> bool:
 	return role == NetworkRoleScript.HOST
@@ -75,7 +77,18 @@ func get_status() -> Dictionary:
 		"address": address,
 		"port": port,
 		"max_clients": max_clients,
+		"local_player_citizen_id": get_local_player_citizen_id(),
 	}
+
+func get_local_player_citizen_id() -> String:
+	if _client_replica == null:
+		return ""
+	return str(_client_replica.local_player_citizen_id)
+
+func get_local_player_citizen() -> Citizen:
+	if _client_replica == null or not _client_replica.has_method("get_local_player_citizen"):
+		return null
+	return _client_replica.get_local_player_citizen()
 
 func host_game(host_port: int = LaunchOptionsScript.DEFAULT_PORT, host_max_clients: int = LaunchOptionsScript.DEFAULT_MAX_CLIENTS) -> Error:
 	_stop_network_peers()

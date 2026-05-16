@@ -31,6 +31,8 @@ const RESOURCES := [
 	"res://tools/codex_economy_test.gd",
 	"res://tools/codex_building_occupancy_test.gd",
 	"res://tools/codex_multiplayer_host_connect_test.gd",
+	"res://tools/codex_multiplayer_process_probe.gd",
+	"res://tools/codex_multiplayer_two_process_test.gd",
 	"res://tools/codex_runtime_lod_conversation_test.gd",
 	"res://tools/codex_dialogue_probe.gd",
 ]

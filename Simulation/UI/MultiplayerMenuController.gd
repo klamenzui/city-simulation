@@ -24,6 +24,7 @@ var _host_max_edit: LineEdit = null
 var _join_address_edit: LineEdit = null
 var _join_port_edit: LineEdit = null
 var _status_label: Label = null
+var _cancel_join_button: Button = null
 var _buttons: Array[Button] = []
 var _started: bool = false
 var _join_in_progress: bool = false
@@ -150,6 +151,13 @@ func _build_menu() -> void:
 	_buttons.append(join_btn)
 	UiThemeScript.apply_accent_state(join_btn, true)
 
+	_cancel_join_button = Button.new()
+	_cancel_join_button.text = "Verbindung abbrechen"
+	_cancel_join_button.custom_minimum_size = Vector2(0, 34)
+	_cancel_join_button.visible = false
+	_cancel_join_button.pressed.connect(Callable(self, "_on_cancel_join_pressed"))
+	vbox.add_child(_cancel_join_button)
+
 	vbox.add_child(_make_separator())
 
 	_status_label = Label.new()
@@ -192,21 +200,29 @@ func _on_join_pressed() -> void:
 	var join_port := _read_port(_join_port_edit.text if _join_port_edit != null else "", "Join-Port")
 	if join_port < 0:
 		return
-	_join_in_progress = true
-	_set_buttons_disabled(true)
+	_set_join_pending(true)
 	_set_status("Verbinde zu %s:%d …" % [join_address, join_port])
 	var err: int = session.join_game(join_address, join_port)
 	if err != OK:
-		_join_in_progress = false
-		_set_buttons_disabled(false)
+		_set_join_pending(false)
 		_set_status(_status_detail("Verbindung fehlgeschlagen."))
 		return
+
+func _on_cancel_join_pressed() -> void:
+	if not _join_in_progress or session == null:
+		return
+	session.start_offline()
+	_set_join_pending(false)
+	_set_status("Verbindung abgebrochen.")
 
 func _finish() -> void:
 	if _started:
 		return
 	_started = true
 	_set_buttons_disabled(true)
+	if _cancel_join_button != null:
+		_cancel_join_button.visible = false
+		_cancel_join_button.disabled = true
 	if _on_started.is_valid():
 		_on_started.call()
 
@@ -218,8 +234,7 @@ func _on_session_status_changed(status: String, detail: String) -> void:
 			if _join_in_progress:
 				_finish()
 		"join_error", "connection_failed", "server_disconnected":
-			_join_in_progress = false
-			_set_buttons_disabled(false)
+			_set_join_pending(false)
 
 func _status_detail(fallback: String) -> String:
 	if session != null:
@@ -237,6 +252,14 @@ func _set_buttons_disabled(is_disabled: bool) -> void:
 	for button in _buttons:
 		if button != null:
 			button.disabled = is_disabled
+
+func _set_join_pending(is_pending: bool) -> void:
+	_join_in_progress = is_pending
+	_set_buttons_disabled(is_pending)
+	if _cancel_join_button == null:
+		return
+	_cancel_join_button.visible = is_pending
+	_cancel_join_button.disabled = not is_pending
 
 # --- Input parsing -------------------------------------------------------
 func _read_port(raw: String, label: String) -> int:

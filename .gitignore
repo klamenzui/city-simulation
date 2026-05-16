@@ -13,4 +13,5 @@ AI/
 .ai/lightrag/inputs/
 .ai/qdrant_import/
 .ai/.cache/
+.ai/test_runs/
 __pycache__/

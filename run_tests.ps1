@@ -148,6 +148,12 @@ $availableTests = @(
 		Script = "res://tools/codex_multiplayer_host_connect_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "mp2process"
+		Label = "Multiplayer Two-Process"
+		Script = "res://tools/codex_multiplayer_two_process_test.gd"
+		Optional = $true
+	}
+	[pscustomobject]@{
 		Key = "liveeconomy"
 		Label = "Live Economy Food Integration"
 		Script = "res://tools/codex_live_economy_food_test.gd"
@@ -226,6 +232,9 @@ $selectedTests = $availableTests | Where-Object {
 	}
 	if ($_.Key -eq "sky") {
 		return $IncludeSky.IsPresent
+	}
+	if ($_.Optional) {
+		return $false
 	}
 	return $true
 }

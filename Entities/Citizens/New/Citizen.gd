@@ -62,6 +62,10 @@ var network_replica_mode: bool = false
 var _network_action_label: String = ""
 var _network_lod_tier: String = ""
 var _network_inside_building: bool = false
+var _network_manual_control: bool = false
+var _network_server_control_enabled: bool = false
+var _network_server_control_direction: Vector3 = Vector3.ZERO
+var _network_server_control_input_age_sec: float = INF
 var cheap_path_follow_lod_enabled: bool = true
 var cheap_path_follow_camera_distance: float = 80.0
 var obstacle_sensor_height: float = 0.9
@@ -111,6 +115,9 @@ func _physics_process(delta: float) -> void:
 	if network_replica_mode:
 		velocity = Vector3.ZERO
 		return
+	if _network_server_control_enabled:
+		_physics_process_network_server_control(delta)
+		return
 	if _is_body_presence_hidden():
 		velocity = Vector3.ZERO
 		return
@@ -124,6 +131,35 @@ func set_network_replica_mode(enabled: bool) -> void:
 	autonomous_simulation_enabled = false
 	velocity = Vector3.ZERO
 	set_physics_process(false)
+
+
+func set_network_server_control_enabled(enabled: bool, world: Node = null) -> void:
+	_network_server_control_enabled = enabled
+	_network_server_control_direction = Vector3.ZERO
+	_network_server_control_input_age_sec = INF
+	if enabled:
+		set_manual_control_enabled(true, world)
+		set_simulation_lod_state("focus", true, true, 1)
+		_refresh_network_player_lod_commitment(world)
+	else:
+		set_manual_control_enabled(false, world)
+
+
+func apply_network_server_control_input(direction: Vector3, world: Node = null) -> void:
+	if not _network_server_control_enabled:
+		return
+	direction.y = 0.0
+	_network_server_control_direction = direction.normalized() if direction.length_squared() > 1.0 else direction
+	_network_server_control_input_age_sec = 0.0
+	_refresh_network_player_lod_commitment(world)
+
+
+func _physics_process_network_server_control(delta: float) -> void:
+	if _network_server_control_input_age_sec > 0.35:
+		_network_server_control_direction = Vector3.ZERO
+	if has_method("apply_external_manual_direction"):
+		apply_external_manual_direction(delta, _network_server_control_direction)
+	_network_server_control_input_age_sec += delta
 
 
 func apply_network_snapshot(data: Dictionary, building_lookup: Dictionary) -> void:
@@ -158,9 +194,14 @@ func apply_network_snapshot(data: Dictionary, building_lookup: Dictionary) -> vo
 	_network_action_label = str(data.get("action", _network_action_label))
 	_network_lod_tier = str(data.get("lod", _network_lod_tier))
 	_network_inside_building = bool(data.get("inside", _network_inside_building))
+	_network_manual_control = bool(data.get("manual_control", _network_manual_control))
 	_is_travelling = bool(data.get("travelling", _is_travelling))
 	velocity = Vector3.ZERO
 	set_physics_process(false)
+
+
+func is_network_manual_controlled() -> bool:
+	return _network_manual_control
 
 
 func _ensure_sim_initialized() -> void:
@@ -706,6 +747,21 @@ func remove_lod_commitments(commitment_types: Array) -> void:
 	if _sim == null or _sim.lod == null:
 		return
 	_sim.lod.remove_commitments(commitment_types)
+
+
+func _refresh_network_player_lod_commitment(world: Node = null) -> void:
+	if _sim == null or _sim.lod == null:
+		return
+	var until_day := 1
+	var until_minute := 60
+	if world != null and "time" in world and world.time != null:
+		var current_day := int(world.time.day)
+		var total_minutes := int(world.time.minutes_total) + 60
+		until_day = current_day + int(total_minutes / (24 * 60))
+		until_minute = posmod(total_minutes, 24 * 60)
+	_sim.lod.upsert_commitment("player_interest", until_day, until_minute, 100.0, {
+		"source": "network_player",
+	})
 
 
 func clear_expired_lod_commitments(world: Node) -> void:
