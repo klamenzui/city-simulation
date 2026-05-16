@@ -59,15 +59,34 @@ func _init() -> void:
 		await _stop_processes(pids, stop_paths)
 		quit(1)
 		return
-	var client_moved := await _wait_for_player_movement(client_report, client_ready, 4.0)
-	if client_moved.is_empty():
-		printerr("FAIL: client player citizen did not move from server-authoritative input")
+
+	host_ready = _read_report(host_report)
+	var host_player_id := str(host_ready.get("local_player_citizen_id", ""))
+	var host_visible_on_client := await _wait_for_entity_visible(client_report, host_player_id, 4.0)
+	if host_visible_on_client.is_empty():
+		printerr("FAIL: host player citizen is not visible on client")
 		await _stop_processes(pids, stop_paths)
 		quit(1)
 		return
-	client_ready = client_moved
+	var host_moved_on_client := await _wait_for_entity_movement(client_report, host_visible_on_client, host_player_id, 6.0)
+	if host_moved_on_client.is_empty():
+		printerr("FAIL: host player citizen did not move on client from server snapshots")
+		await _stop_processes(pids, stop_paths)
+		quit(1)
+		return
+	client_ready = host_moved_on_client
 
+	var client_player_id := str(client_ready.get("local_player_citizen_id", ""))
+	var client_moved_on_host := await _wait_for_entity_movement(host_report, _read_report(host_report), client_player_id, 6.0)
+	if client_moved_on_host.is_empty():
+		printerr("FAIL: client player citizen did not move on host from server-authoritative input")
+		await _stop_processes(pids, stop_paths)
+		quit(1)
+		return
+	host_ready = client_moved_on_host
 	host_ready = _read_report(host_report)
+	client_ready = _read_report(client_report)
+
 	if not _validate_host_client_state(host_ready, client_ready):
 		await _stop_processes(pids, stop_paths)
 		quit(1)
@@ -165,6 +184,40 @@ func _wait_for_player_movement(report_path: String, start_report: Dictionary, ti
 		await create_timer(POLL_INTERVAL_SEC).timeout
 	return {}
 
+func _wait_for_entity_movement(
+	report_path: String,
+	start_report: Dictionary,
+	entity_id: String,
+	timeout_sec: float
+) -> Dictionary:
+	var start_pos := _position_for_entity(start_report, entity_id)
+	if entity_id.is_empty():
+		return {}
+	var deadline := Time.get_ticks_msec() + int(timeout_sec * 1000.0)
+	while Time.get_ticks_msec() < deadline:
+		var report := _read_report(report_path)
+		var visible_ids := report.get("visible_citizen_ids", []) as Array
+		if not visible_ids.has(entity_id):
+			await create_timer(POLL_INTERVAL_SEC).timeout
+			continue
+		var pos := _position_for_entity(report, entity_id)
+		if _planar_distance(start_pos, pos) > 0.05:
+			return report
+		await create_timer(POLL_INTERVAL_SEC).timeout
+	return {}
+
+func _wait_for_entity_visible(report_path: String, entity_id: String, timeout_sec: float) -> Dictionary:
+	if entity_id.is_empty():
+		return {}
+	var deadline := Time.get_ticks_msec() + int(timeout_sec * 1000.0)
+	while Time.get_ticks_msec() < deadline:
+		var report := _read_report(report_path)
+		var visible_ids := report.get("visible_citizen_ids", []) as Array
+		if visible_ids.has(entity_id):
+			return report
+		await create_timer(POLL_INTERVAL_SEC).timeout
+	return {}
+
 func _is_report_ready(report: Dictionary, role: String) -> bool:
 	if report.is_empty():
 		return false
@@ -200,6 +253,33 @@ func _validate_host_client_state(host_report: Dictionary, client_report: Diction
 	if int(client_report.get("visible_citizen_count", 0)) <= 0:
 		printerr("FAIL: client has no visible replicated citizens")
 		return false
+	if not bool(client_report.get("client_received_full_snapshot", false)):
+		printerr("FAIL: client did not apply a reliable full snapshot")
+		return false
+	if int(client_report.get("client_building_lookup_count", 0)) != int(client_report.get("building_count", 0)):
+		printerr("FAIL: client building lookup does not match replicated building count")
+		return false
+	if int(client_report.get("client_last_actor_state_sequence", 0)) <= 0:
+		printerr("FAIL: client did not apply actor-state delta snapshots")
+		return false
+	if int(client_report.get("client_last_world_state_sequence", 0)) <= 0:
+		printerr("FAIL: client did not apply reliable world-state snapshots")
+		return false
+	if int(client_report.get("client_replica_interpolation_target_count", 0)) != int(client_report.get("citizen_count", 0)):
+		printerr("FAIL: client replica interpolation is not tracking all citizens")
+		return false
+	if float(client_report.get("client_replica_interpolation_max_error", 0.0)) > 8.0:
+		printerr("FAIL: client replica interpolation drift is too large")
+		return false
+	if int(client_report.get("client_prediction_frame_count", 0)) <= 0:
+		printerr("FAIL: client local prediction did not run")
+		return false
+	if float(client_report.get("client_prediction_distance", 0.0)) <= 0.0:
+		printerr("FAIL: client local prediction did not move the player replica")
+		return false
+	if float(client_report.get("client_prediction_error", 0.0)) > 8.0:
+		printerr("FAIL: client local prediction reconciliation error is too large")
+		return false
 	var host_player_id := str(host_report.get("local_player_citizen_id", ""))
 	if host_player_id.is_empty():
 		printerr("FAIL: host did not receive a local player citizen id")
@@ -222,6 +302,32 @@ func _validate_host_client_state(host_report: Dictionary, client_report: Diction
 		return false
 	if not bool(client_report.get("local_player_manual_control", false)):
 		printerr("FAIL: client's assigned player citizen is not marked as server-controlled")
+		return false
+	var client_visible_ids := client_report.get("visible_citizen_ids", []) as Array
+	if not client_visible_ids.has(host_player_id):
+		printerr("FAIL: host player citizen is not visible on the client")
+		return false
+	if int(host_report.get("host_drive_frames_sent", 0)) <= 0:
+		printerr("FAIL: host player was not driven during the process test")
+		return false
+	if not bool(client_report.get("client_interaction_command_sent", false)):
+		printerr("FAIL: client did not send an interaction command")
+		return false
+	if not bool(host_report.get("host_interaction_request_sent", false)):
+		printerr("FAIL: host did not send a local interaction command")
+		return false
+	var host_interaction_counts := host_report.get("host_accepted_interaction_command_count_by_peer", {}) as Dictionary
+	if int(host_interaction_counts.get("1", 0)) <= 0:
+		printerr("FAIL: host local interaction command was not accepted")
+		return false
+	if _sum_peer_counts_except(host_interaction_counts, "1") <= 0:
+		printerr("FAIL: client interaction command was not accepted by the host")
+		return false
+	if int(host_report.get("host_interaction_command_count", 0)) <= 1:
+		printerr("FAIL: host did not receive the client interaction command")
+		return false
+	if int(host_report.get("host_accepted_interaction_command_count", 0)) <= 1:
+		printerr("FAIL: host did not accept the client interaction command")
 		return false
 	if int(host_report.get("building_count", -1)) != int(client_report.get("building_count", -2)):
 		printerr("FAIL: host/client building counts differ")
@@ -249,7 +355,10 @@ func _read_report(report_path: String) -> Dictionary:
 	var text := FileAccess.get_file_as_string(report_path)
 	if text.is_empty():
 		return {}
-	var parsed: Variant = JSON.parse_string(text)
+	var json := JSON.new()
+	if json.parse(text) != OK:
+		return {}
+	var parsed: Variant = json.data
 	return parsed as Dictionary if parsed is Dictionary else {}
 
 func _stop_processes(pids: Array[int], stop_paths: Array[String]) -> void:
@@ -311,6 +420,24 @@ func _position_from_report(report: Dictionary) -> Vector3:
 		var values := raw as Array
 		return Vector3(float(values[0]), float(values[1]), float(values[2]))
 	return Vector3.ZERO
+
+func _position_for_entity(report: Dictionary, entity_id: String) -> Vector3:
+	if entity_id.is_empty():
+		return Vector3.ZERO
+	var positions := report.get("citizen_positions_by_id", {}) as Dictionary
+	var raw: Variant = positions.get(entity_id, [])
+	if raw is Array and (raw as Array).size() >= 3:
+		var values := raw as Array
+		return Vector3(float(values[0]), float(values[1]), float(values[2]))
+	return Vector3.ZERO
+
+func _sum_peer_counts_except(counts: Dictionary, excluded_key: String) -> int:
+	var total := 0
+	for key in counts.keys():
+		if str(key) == excluded_key:
+			continue
+		total += int(counts.get(key, 0))
+	return total
 
 func _planar_distance(a: Vector3, b: Vector3) -> float:
 	a.y = 0.0

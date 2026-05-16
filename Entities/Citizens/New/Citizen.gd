@@ -184,11 +184,13 @@ func apply_network_snapshot(data: Dictionary, building_lookup: Dictionary) -> vo
 		needs.energy = float(data.get("energy", needs.energy))
 		needs.fun = float(data.get("fun", needs.fun))
 		needs.health = float(data.get("health", needs.health))
-	var location_id := str(data.get("current_location_id", ""))
-	current_location = building_lookup.get(location_id, null) as Building
-	var home_id := str(data.get("home_id", ""))
-	home = building_lookup.get(home_id, null) as ResidentialBuilding
-	if job != null:
+	if data.has("current_location_id"):
+		var location_id := str(data.get("current_location_id", ""))
+		current_location = building_lookup.get(location_id, null) as Building
+	if data.has("home_id"):
+		var home_id := str(data.get("home_id", ""))
+		home = building_lookup.get(home_id, null) as ResidentialBuilding
+	if job != null and data.has("workplace_id"):
 		var workplace_id := str(data.get("workplace_id", ""))
 		job.workplace = building_lookup.get(workplace_id, null) as Building
 	_network_action_label = str(data.get("action", _network_action_label))
