@@ -24,6 +24,7 @@ var debug_tools_button: Button = null
 var _theme: Theme = null
 var _pause_button: Button = null
 var _player_control_button: Button = null
+var _camera_mode_button: Button = null
 var _ai_runtime_button: Button = null
 var _speed_button: Button = null
 var _date_label: Label = null
@@ -39,6 +40,7 @@ var _control_mode_label: Label = null
 var _ai_runtime_label: Label = null
 var _ai_runtime_service = null
 var multiplayer_session = null
+var camera_mode_manager = null
 var _hud_status_refresh_left: float = 0.0
 
 # Balance at the start of the current in-game day — drives the "today" delta.
@@ -55,17 +57,20 @@ func setup(
 	search_pressed: Callable,
 	debug_tools_pressed: Callable,
 	player_control_pressed: Callable,
+	camera_mode_pressed: Callable,
 	ai_runtime_pressed: Callable,
-	multiplayer_session_ref = null
+	multiplayer_session_ref = null,
+	camera_mode_manager_ref = null
 ) -> void:
 	owner_node = owner_ref
 	world = world_ref
 	multiplayer_session = multiplayer_session_ref
+	camera_mode_manager = camera_mode_manager_ref
 	if world != null and world.city_account != null:
 		_treasury_day_start = world.city_account.balance
 	_build_hud(pause_pressed, speed_pressed, building_overview_pressed, citizen_overview_pressed,
 			economy_overview_pressed, search_pressed, debug_tools_pressed,
-			player_control_pressed, ai_runtime_pressed)
+			player_control_pressed, camera_mode_pressed, ai_runtime_pressed)
 	_bind_world_signals()
 	_bind_multiplayer_session()
 	_refresh_time_hud()
@@ -78,6 +83,7 @@ func setup(
 	refresh_control_mode(null)
 	set_player_control_visible(false)
 	refresh_player_control_button(false)
+	refresh_camera_mode_button()
 	refresh_ai_runtime_state({})
 
 func get_canvas() -> CanvasLayer:
@@ -133,6 +139,28 @@ func refresh_player_control_button(is_active: bool) -> void:
 	_player_control_button.text = "Exit Player" if is_active else "Control Player"
 	UiThemeScript.apply_accent_state(_player_control_button, is_active)
 
+## Camera-mode toggle. Server/host/offline only — hidden for clients, who are
+## locked to the 3rd-person player camera.
+func refresh_camera_mode_button() -> void:
+	if _camera_mode_button == null:
+		return
+	if _is_network_client() or camera_mode_manager == null:
+		_camera_mode_button.visible = false
+		return
+	_camera_mode_button.visible = true
+	_camera_mode_button.disabled = false
+	var builder := false
+	if camera_mode_manager.has_method("is_player_mode"):
+		builder = not bool(camera_mode_manager.is_player_mode())
+	_camera_mode_button.text = "Kamera: Builder" if builder else "Kamera: 3rd"
+	_camera_mode_button.tooltip_text = "Umschalten Player-3rd-Person <-> Builder-Kamera"
+	UiThemeScript.apply_accent_state(_camera_mode_button, builder)
+
+func _on_camera_mode_button_pressed(external: Callable) -> void:
+	if external.is_valid():
+		external.call()
+	refresh_camera_mode_button()
+
 func bind_dialogue_runtime_service(dialogue_runtime_service_ref) -> void:
 	_ai_runtime_service = dialogue_runtime_service_ref
 	if _ai_runtime_service == null:
@@ -178,6 +206,7 @@ func _build_hud(
 	search_pressed: Callable,
 	debug_tools_pressed: Callable,
 	player_control_pressed: Callable,
+	camera_mode_pressed: Callable,
 	ai_runtime_pressed: Callable
 ) -> void:
 	if owner_node == null:
@@ -193,7 +222,7 @@ func _build_hud(
 	_build_top_bar(pause_pressed, speed_pressed)
 	_build_bottom_action_bar(building_overview_pressed, citizen_overview_pressed,
 			economy_overview_pressed, search_pressed, debug_tools_pressed,
-			player_control_pressed, ai_runtime_pressed)
+			player_control_pressed, camera_mode_pressed, ai_runtime_pressed)
 	_build_control_mode_banner()
 
 
@@ -276,6 +305,7 @@ func _build_bottom_action_bar(
 	search_pressed: Callable,
 	debug_tools_pressed: Callable,
 	player_control_pressed: Callable,
+	camera_mode_pressed: Callable,
 	ai_runtime_pressed: Callable
 ) -> void:
 	# Full-width bottom bar, mirrors the top bar. The left details panel
@@ -310,6 +340,11 @@ func _build_bottom_action_bar(
 
 	_player_control_button = _make_bar_button(hbox, "Control Player", 130, player_control_pressed)
 	_player_control_button.visible = false
+
+	_camera_mode_button = _make_bar_button(hbox, "Kamera: 3rd", 150, Callable())
+	if camera_mode_pressed.is_valid():
+		_camera_mode_button.pressed.connect(_on_camera_mode_button_pressed.bind(camera_mode_pressed))
+	_camera_mode_button.visible = false
 
 	_ai_runtime_button = _make_bar_button(hbox, "Setup AI", 110, ai_runtime_pressed)
 	_ai_runtime_button.visible = false
@@ -496,6 +531,7 @@ func _refresh_authority_controls() -> void:
 	if _player_control_button != null and client:
 		_player_control_button.disabled = true
 		_player_control_button.visible = false
+	refresh_camera_mode_button()
 
 func _refresh_network_status() -> void:
 	if _network_status_label == null:

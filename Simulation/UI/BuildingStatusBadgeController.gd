@@ -3,6 +3,7 @@ class_name BuildingStatusBadgeController
 
 var owner_node: Node = null
 var camera: Camera3D = null
+var camera_mode_manager = null
 
 var _layer: CanvasLayer = null
 var _panel: PanelContainer = null
@@ -27,15 +28,28 @@ func setup(
 	_status_icon_resolver = status_icon_resolver
 	_build_ui(default_border_color)
 
+func bind_camera_mode_manager(camera_mode_manager_ref) -> void:
+	camera_mode_manager = camera_mode_manager_ref
+
+# Badges must track whichever camera actually renders the frame (3rd-person
+# rig or city-builder), otherwise they unproject against a stale transform.
+func _active_camera() -> Camera3D:
+	if camera_mode_manager != null and camera_mode_manager.has_method("get_active_camera"):
+		var active = camera_mode_manager.get_active_camera()
+		if active != null:
+			return active
+	return camera
+
 func update(building: Building, world: World) -> void:
-	if _panel == null or _label == null or camera == null:
+	var cam := _active_camera()
+	if _panel == null or _label == null or cam == null:
 		return
 	if building == null or not is_instance_valid(building):
 		hide()
 		return
 
 	var badge_world_pos := _get_badge_world_position(building)
-	if camera.is_position_behind(badge_world_pos):
+	if cam.is_position_behind(badge_world_pos):
 		hide()
 		return
 
@@ -44,7 +58,7 @@ func update(building: Building, world: World) -> void:
 		hide()
 		return
 
-	var screen_pos := camera.unproject_position(badge_world_pos)
+	var screen_pos := cam.unproject_position(badge_world_pos)
 	var viewport_rect := viewport.get_visible_rect()
 	if screen_pos.x < -40.0 or screen_pos.x > viewport_rect.size.x + 40.0 or screen_pos.y < -40.0 or screen_pos.y > viewport_rect.size.y + 40.0:
 		hide()

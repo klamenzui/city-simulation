@@ -437,15 +437,15 @@ func _sync_local_player_camera() -> void:
 	var citizen := get_local_player_citizen()
 	if citizen == null or root_node == null:
 		return
-	var viewport := root_node.get_viewport()
-	var camera := viewport.get_camera_3d() if viewport != null else null
-	if camera != null and camera.has_method("set_follow_target"):
-		if _camera_follow_target_id == local_player_citizen_id \
-				and camera.has_method("is_following_controller_view") \
-				and bool(camera.call("is_following_controller_view")):
-			return
-		camera.call("set_follow_target", citizen, true)
-		_camera_follow_target_id = local_player_citizen_id
+	var manager = root_node.get_camera_mode_manager() if root_node.has_method("get_camera_mode_manager") else null
+	if manager == null:
+		return
+	if _camera_follow_target_id == local_player_citizen_id \
+			and manager.has_method("is_following_controller_view") \
+			and bool(manager.is_following_controller_view()):
+		return
+	manager.set_follow_target(citizen, true)
+	_camera_follow_target_id = local_player_citizen_id
 
 func _get_player_input_direction() -> Vector3:
 	if _is_text_input_focused():

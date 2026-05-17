@@ -3,16 +3,12 @@ class_name DebugPanel
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 
-signal citizen_control_toggled
-signal citizen_click_move_toggled
 signal citizen_dialog_toggled
 signal citizen_dialog_message_submitted(message: String)
 signal ui_interacted
 
 @onready var panel_root: Panel = $Panel
 @onready var label: RichTextLabel = $Panel/VBoxContainer/Label
-@onready var citizen_control_button: Button = $Panel/VBoxContainer/CitizenControlButton
-@onready var citizen_click_move_button: Button = $Panel/VBoxContainer/CitizenClickMoveButton
 @onready var citizen_dialog_button: Button = $Panel/VBoxContainer/CitizenDialogButton
 @onready var citizen_dialog_status_label: Label = $Panel/VBoxContainer/CitizenDialogStatusLabel
 @onready var citizen_dialog_log: RichTextLabel = $Panel/VBoxContainer/CitizenDialogLog
@@ -25,16 +21,6 @@ func _ready() -> void:
 	_apply_theme_and_layout()
 	if panel_root != null:
 		panel_root.gui_input.connect(_on_panel_gui_input)
-	if citizen_control_button != null:
-		citizen_control_button.visible = false
-		citizen_control_button.focus_mode = Control.FOCUS_NONE
-		citizen_control_button.gui_input.connect(_on_panel_gui_input)
-		citizen_control_button.pressed.connect(_on_citizen_control_button_pressed)
-	if citizen_click_move_button != null:
-		citizen_click_move_button.visible = false
-		citizen_click_move_button.focus_mode = Control.FOCUS_NONE
-		citizen_click_move_button.gui_input.connect(_on_panel_gui_input)
-		citizen_click_move_button.pressed.connect(_on_citizen_click_move_button_pressed)
 	if citizen_dialog_button != null:
 		citizen_dialog_button.visible = false
 		citizen_dialog_button.focus_mode = Control.FOCUS_NONE
@@ -226,28 +212,6 @@ func _format_by_severity(value: String, severity: String) -> String:
 			return escaped
 
 
-func set_citizen_control_button_visible(is_visible: bool) -> void:
-	if citizen_control_button == null:
-		return
-	citizen_control_button.visible = is_visible
-
-func set_citizen_control_active(is_active: bool) -> void:
-	if citizen_control_button == null:
-		return
-	citizen_control_button.text = "Exit Control Mode" if is_active else "Control Citizen"
-	UiThemeScript.apply_accent_state(citizen_control_button, is_active)
-
-func set_citizen_click_move_button_visible(is_visible: bool) -> void:
-	if citizen_click_move_button == null:
-		return
-	citizen_click_move_button.visible = is_visible
-
-func set_citizen_click_move_active(is_active: bool) -> void:
-	if citizen_click_move_button == null:
-		return
-	citizen_click_move_button.text = "Exit Click Move" if is_active else "Click Move Citizen"
-	UiThemeScript.apply_accent_state(citizen_click_move_button, is_active)
-
 func update_citizen_dialog(ui_state: Dictionary) -> void:
 	var visible := bool(ui_state.get("visible", false))
 	if citizen_dialog_button != null:
@@ -277,16 +241,6 @@ func focus_citizen_dialog_input() -> void:
 		return
 	citizen_dialog_line_edit.grab_focus()
 	citizen_dialog_line_edit.caret_column = citizen_dialog_line_edit.text.length()
-
-func _on_citizen_control_button_pressed() -> void:
-	ui_interacted.emit()
-	citizen_control_toggled.emit()
-	citizen_control_button.visible = false
-
-func _on_citizen_click_move_button_pressed() -> void:
-	ui_interacted.emit()
-	citizen_click_move_toggled.emit()
-	citizen_click_move_button.visible = false
 
 func _on_citizen_dialog_button_pressed() -> void:
 	ui_interacted.emit()

@@ -17,7 +17,7 @@ Purpose: likely duplication areas to inspect before adding new code.
 | debugpanel | 2 | Scenes/DebugPanel.gd<br>Scenes/DebugPanel.tscn |
 | factory | 2 | Entities/Buildings/Factory.gd<br>Scenes/Factory.tscn |
 | farm | 2 | Entities/Buildings/Farm.gd<br>Scenes/Farm.tscn |
-| main | 2 | main.gd<br>Main.tscn |
+| main | 2 | main.gd<br>main.tscn |
 | park | 2 | Entities/Buildings/Park.gd<br>Scenes/Park.tscn |
 | plant | 2 | ImportedCitySource/Plant.tscn<br>ImportedCitySource/scripts/plant/plant.gd |
 | residentialbuilding | 2 | Entities/Buildings/ResidentialBuilding.gd<br>Scenes/ResidentialBuilding.tscn |
