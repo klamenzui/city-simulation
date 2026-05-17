@@ -1499,6 +1499,12 @@ func find_best_workplace_for_job(from_pos: Vector3, job: Job, seeker: Citizen = 
 	if job == null:
 		return null
 
+	var reachable := _find_best_workplace_for_job(from_pos, job, seeker, true)
+	if reachable != null:
+		return reachable
+	return _find_best_workplace_for_job(from_pos, job, seeker, false)
+
+func _find_best_workplace_for_job(from_pos: Vector3, job: Job, seeker: Citizen, require_reachable: bool) -> Building:
 	var best: Building = null
 	var best_dist := INF
 
@@ -1507,11 +1513,11 @@ func find_best_workplace_for_job(from_pos: Vector3, job: Job, seeker: Citizen = 
 			continue
 		if _is_building_temporarily_blocked_for(building, seeker):
 			continue
-		if not building.has_free_job_slots():
+		if not _has_available_job_commitment_slot(building):
 			continue
 		if not job.allows_building(building):
 			continue
-		if not _is_building_pedestrian_reachable(from_pos, building):
+		if require_reachable and not _is_building_pedestrian_reachable(from_pos, building):
 			continue
 
 		var building_pos := building.global_position if building.is_inside_tree() else building.position
@@ -1526,19 +1532,28 @@ func find_best_job_offer_for_citizen(from_pos: Vector3, citizen: Citizen, allow_
 	if citizen == null:
 		return {}
 
-	var best_fit: Dictionary = {}
-	var best_fit_score := -INF
-	var best_training: Dictionary = {}
-	var best_training_score := -INF
+	var reachable := _find_best_job_offer_for_citizen(from_pos, citizen, allow_training, true)
+	if not reachable.is_empty():
+		return reachable
+	return _find_best_job_offer_for_citizen(from_pos, citizen, allow_training, false)
+
+func _find_best_job_offer_for_citizen(
+	from_pos: Vector3,
+	citizen: Citizen,
+	allow_training: bool,
+	require_reachable: bool
+) -> Dictionary:
+	var best_offer: Dictionary = {}
+	var best_score := -INF
 
 	for building in buildings:
 		if building == null:
 			continue
 		if _is_building_temporarily_blocked_for(building, citizen):
 			continue
-		if not building.has_free_job_slots():
+		if not _has_available_job_commitment_slot(building):
 			continue
-		if not _is_building_pedestrian_reachable(from_pos, building):
+		if require_reachable and not _is_building_pedestrian_reachable(from_pos, building):
 			continue
 
 		for job_title in _get_candidate_job_titles_for_building(building):
@@ -1546,20 +1561,40 @@ func find_best_job_offer_for_citizen(from_pos: Vector3, citizen: Citizen, allow_
 			if offer.is_empty():
 				continue
 			var education_gap := int(offer.get("education_gap", 0))
+			if education_gap > 0 and not allow_training:
+				continue
 			var offer_score := float(offer.get("score", -INF))
-			if education_gap <= 0:
-				if offer_score > best_fit_score:
-					best_fit_score = offer_score
-					best_fit = offer
-			elif allow_training and offer_score > best_training_score:
-				best_training_score = offer_score
-				best_training = offer
+			if offer_score > best_score:
+				best_score = offer_score
+				best_offer = offer
 
-	if not best_fit.is_empty():
-		return best_fit
-	if allow_training:
-		return best_training
-	return {}
+	return best_offer
+
+func _has_available_job_commitment_slot(building: Building) -> bool:
+	if building == null:
+		return false
+	if building.job_capacity <= 0:
+		return false
+	if not building.can_accept_workers():
+		return false
+	return _get_committed_job_slots(building) < building.job_capacity
+
+func _get_committed_job_slots(building: Building) -> int:
+	if building == null:
+		return 0
+	var committed: Dictionary = {}
+	for job in jobs:
+		if job == null or job.workplace != building:
+			continue
+		committed[job.get_instance_id()] = true
+	for worker in building.workers:
+		if worker == null:
+			continue
+		if worker.job != null and worker.job.workplace == building:
+			committed[worker.job.get_instance_id()] = true
+		else:
+			committed["worker_%d" % worker.get_instance_id()] = true
+	return committed.size()
 
 func _build_job_offer_for_citizen(citizen: Citizen, building: Building, job_title: String, from_pos: Vector3) -> Dictionary:
 	if citizen == null or building == null or job_title.is_empty():
@@ -1591,7 +1626,7 @@ func _score_job_offer_for_citizen(
 	education_gap: int
 ) -> float:
 	var distance := from_pos.distance_to(building.get_entrance_pos())
-	var free_slots := maxi(building.job_capacity - building.workers.size(), 0)
+	var free_slots := maxi(building.job_capacity - _get_committed_job_slots(building), 0)
 	var score := 0.0
 	var university_missing_teaching := false
 	var park_missing_gardener := false
@@ -1603,7 +1638,12 @@ func _score_job_offer_for_citizen(
 
 	score -= distance * 1.6
 	score += float(maxi(free_slots, 1)) * 40.0
-	score += 240.0 if education_gap <= 0 else -170.0 * float(education_gap)
+	if education_gap <= 0:
+		score += 240.0
+	else:
+		var training_bonus := BalanceConfig.get_float("economy.jobs.training_offer_score_bonus", 420.0)
+		var training_gap_penalty := BalanceConfig.get_float("economy.jobs.training_offer_gap_penalty", 120.0)
+		score += training_bonus - training_gap_penalty * float(education_gap)
 
 	if building.is_public_building():
 		score += 260.0

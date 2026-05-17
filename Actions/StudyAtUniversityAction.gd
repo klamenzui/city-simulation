@@ -88,3 +88,19 @@ func finish(world, citizen) -> void:
 			elapsed_minutes,
 			citizen.education_level
 		])
+		_promote_to_reserved_job(world, citizen)
+
+func _promote_to_reserved_job(world, citizen) -> void:
+	if citizen == null or citizen.job == null:
+		return
+	if citizen.job.workplace == null:
+		return
+	if not citizen.job.meets_requirements(citizen):
+		return
+	if citizen.job.try_get_employed(citizen):
+		if world != null and world.has_method("register_job"):
+			world.register_job(citizen.job)
+		citizen.debug_log("Education complete: hired as %s at %s." % [
+			citizen.job.title,
+			citizen.job.workplace.get_display_name()
+		])

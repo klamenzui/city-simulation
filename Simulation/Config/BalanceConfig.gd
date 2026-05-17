@@ -121,6 +121,8 @@ static func _default_data() -> Dictionary:
 			"jobs": {
 				"wage_per_hour_min": 10,
 				"wage_per_hour_max": 26,
+				"training_offer_score_bonus": 420.0,
+				"training_offer_gap_penalty": 120.0,
 				"wage_per_hour_by_title": {
 					"Baecker": 12,
 					"Kellner": 12,
