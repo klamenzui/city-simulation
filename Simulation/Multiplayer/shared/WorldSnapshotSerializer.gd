@@ -111,6 +111,8 @@ static func _build_citizen_snapshots(world: World, include_static: bool) -> Arra
 		var action_label := ""
 		if citizen.current_action != null:
 			action_label = str(citizen.current_action.label)
+		elif citizen.has_method("get_server_interaction_label"):
+			action_label = str(citizen.get_server_interaction_label())
 		var needs := citizen.needs
 		var job_workplace := citizen.job.workplace if citizen.job != null else null
 		var manual_control := citizen.is_manual_control_enabled() if citizen.has_method("is_manual_control_enabled") else false

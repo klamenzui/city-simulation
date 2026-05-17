@@ -90,6 +90,8 @@ func _build_report(phase: String) -> Dictionary:
 	var local_player_id := str(status.get("local_player_citizen_id", ""))
 	var host_debug := status.get("host_debug", {}) as Dictionary
 	var client_debug := status.get("client_debug", {}) as Dictionary
+	var active_interactions := host_debug.get("active_interaction_by_peer", {}) as Dictionary
+	var active_effects := host_debug.get("active_interaction_effect_by_peer", {}) as Dictionary
 	return {
 		"phase": phase,
 		"probe_role": _probe_role,
@@ -121,9 +123,18 @@ func _build_report(phase: String) -> Dictionary:
 		"host_last_player_input_direction_by_peer": host_debug.get("last_player_input_direction_by_peer", {}),
 		"host_interaction_command_count": int(host_debug.get("interaction_command_count", 0)),
 		"host_accepted_interaction_command_count": int(host_debug.get("accepted_interaction_command_count", 0)),
+		"host_completed_interaction_command_count": int(host_debug.get("completed_interaction_command_count", 0)),
+		"host_applied_interaction_effect_count": int(host_debug.get("applied_interaction_effect_count", 0)),
 		"host_interaction_command_count_by_peer": host_debug.get("interaction_command_count_by_peer", {}),
 		"host_accepted_interaction_command_count_by_peer": host_debug.get("accepted_interaction_command_count_by_peer", {}),
+		"host_completed_interaction_command_count_by_peer": host_debug.get("completed_interaction_command_count_by_peer", {}),
+		"host_applied_interaction_effect_count_by_peer": host_debug.get("applied_interaction_effect_count_by_peer", {}),
 		"host_last_interaction_by_peer": host_debug.get("last_interaction_by_peer", {}),
+		"host_last_interaction_effect_by_peer": host_debug.get("last_interaction_effect_by_peer", {}),
+		"host_active_interaction_by_peer": active_interactions,
+		"host_active_interaction_count": active_interactions.size(),
+		"host_active_interaction_effect_by_peer": active_effects,
+		"host_active_interaction_effect_count": active_effects.size(),
 		"client_received_full_snapshot": bool(client_debug.get("received_full_snapshot", false)),
 		"client_building_lookup_count": int(client_debug.get("building_lookup_count", 0)),
 		"client_last_full_sequence": int(client_debug.get("last_full_sequence", 0)),
@@ -198,16 +209,18 @@ func _maybe_send_client_drive_input() -> void:
 func _maybe_send_client_interaction_request() -> void:
 	if _probe_role != "client" or _client_interaction_command_sent:
 		return
+	if _client_drive_commands_sent < CLIENT_DRIVE_COMMAND_COUNT:
+		return
 	var session := _get_session()
 	if session == null or not session.has_method("get_status") or not session.has_method("send_command"):
 		return
 	var status: Dictionary = session.get_status()
 	if str(status.get("status", "")) != "connected":
 		return
-	var world := _get_world()
-	if world == null or world.buildings.is_empty():
+	var target := _find_nearest_interaction_target(str(status.get("local_player_citizen_id", "")))
+	if target == null:
 		return
-	var target_id := NetworkEntityRegistryScript.get_entity_id(world.buildings[0])
+	var target_id := NetworkEntityRegistryScript.get_entity_id(target)
 	if target_id.is_empty():
 		return
 	session.send_command({
@@ -219,6 +232,8 @@ func _maybe_send_client_interaction_request() -> void:
 func _maybe_send_host_interaction_request() -> void:
 	if _probe_role != "host" or _host_interaction_request_sent:
 		return
+	if _host_drive_frames_sent < HOST_DRIVE_FRAME_COUNT:
+		return
 	var session := _get_session()
 	if session == null or not session.has_method("get_status") or not session.has_method("request_entity_interaction"):
 		return
@@ -227,10 +242,10 @@ func _maybe_send_host_interaction_request() -> void:
 		return
 	if str(status.get("local_player_citizen_id", "")).is_empty():
 		return
-	var world := _get_world()
-	if world == null or world.buildings.is_empty():
+	var target := _find_nearest_interaction_target(str(status.get("local_player_citizen_id", "")))
+	if target == null:
 		return
-	session.request_entity_interaction(world.buildings[0])
+	session.request_entity_interaction(target)
 	_host_interaction_request_sent = true
 
 func _entry_bool(entries: Array, entity_id: String, key: String) -> bool:
@@ -278,6 +293,70 @@ func _get_local_player_drive_direction(entity_id: String, command_index: int) ->
 			_:
 				return -right
 	return Vector3.FORWARD
+
+func _find_nearest_interaction_target(local_player_id: String) -> Node:
+	var world := _get_world()
+	if world == null or local_player_id.is_empty():
+		return null
+	var player := _find_citizen_by_id(local_player_id)
+	if player == null:
+		return null
+	var best_citizen := _find_nearest_visible_citizen(player, local_player_id)
+	if best_citizen != null:
+		return best_citizen
+	return _find_nearest_building(player.global_position)
+
+func _find_nearest_visible_citizen(player: Citizen, local_player_id: String) -> Citizen:
+	var world := _get_world()
+	if world == null or player == null:
+		return null
+	var best: Citizen = null
+	var best_distance := INF
+	for citizen in world.citizens:
+		if citizen == null or not is_instance_valid(citizen):
+			continue
+		if NetworkEntityRegistryScript.get_entity_id(citizen) == local_player_id:
+			continue
+		if not citizen.visible or citizen.is_inside_building():
+			continue
+		var distance := _planar_distance(player.global_position, citizen.global_position)
+		if distance >= best_distance:
+			continue
+		best = citizen
+		best_distance = distance
+	return best
+
+func _find_nearest_building(origin: Vector3) -> Building:
+	var world := _get_world()
+	if world == null:
+		return null
+	var best: Building = null
+	var best_distance := INF
+	for building in world.buildings:
+		if building == null or not is_instance_valid(building):
+			continue
+		var distance := _planar_distance(origin, building.global_position)
+		if distance >= best_distance:
+			continue
+		best = building
+		best_distance = distance
+	return best
+
+func _find_citizen_by_id(entity_id: String) -> Citizen:
+	var world := _get_world()
+	if world == null or entity_id.is_empty():
+		return null
+	for citizen in world.citizens:
+		if citizen == null or not is_instance_valid(citizen):
+			continue
+		if NetworkEntityRegistryScript.get_entity_id(citizen) == entity_id:
+			return citizen
+	return null
+
+func _planar_distance(a: Vector3, b: Vector3) -> float:
+	a.y = 0.0
+	b.y = 0.0
+	return a.distance_to(b)
 
 func _vec3_to_array(value: Vector3) -> Array:
 	return [value.x, value.y, value.z]

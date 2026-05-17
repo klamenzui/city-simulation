@@ -3,6 +3,8 @@ extends SceneTree
 const HOST_READY_TIMEOUT_SEC := 12.0
 const CLIENT_READY_TIMEOUT_SEC := 18.0
 const CLIENT_DISCONNECT_TIMEOUT_SEC := 8.0
+const INTERACTION_READY_TIMEOUT_SEC := 12.0
+const INTERACTION_EFFECT_TIMEOUT_SEC := 12.0
 const SHUTDOWN_WAIT_SEC := 1.0
 const POLL_INTERVAL_SEC := 0.10
 const PORT_BASE := 35600
@@ -85,6 +87,22 @@ func _init() -> void:
 		return
 	host_ready = client_moved_on_host
 	host_ready = _read_report(host_report)
+	client_ready = _read_report(client_report)
+	var interactions_ready := await _wait_for_interaction_travel_started(host_report, INTERACTION_READY_TIMEOUT_SEC)
+	if interactions_ready.is_empty():
+		printerr("FAIL: server-authorized interaction travel did not start")
+		await _stop_processes(pids, stop_paths)
+		quit(1)
+		return
+	host_ready = interactions_ready
+	client_ready = _read_report(client_report)
+	var effects_ready := await _wait_for_interaction_effect_applied(host_report, INTERACTION_EFFECT_TIMEOUT_SEC)
+	if effects_ready.is_empty():
+		printerr("FAIL: server-authorized interaction effect was not applied")
+		await _stop_processes(pids, stop_paths)
+		quit(1)
+		return
+	host_ready = effects_ready
 	client_ready = _read_report(client_report)
 
 	if not _validate_host_client_state(host_ready, client_ready):
@@ -218,6 +236,46 @@ func _wait_for_entity_visible(report_path: String, entity_id: String, timeout_se
 		await create_timer(POLL_INTERVAL_SEC).timeout
 	return {}
 
+func _wait_for_interaction_travel_started(report_path: String, timeout_sec: float) -> Dictionary:
+	var deadline := Time.get_ticks_msec() + int(timeout_sec * 1000.0)
+	while Time.get_ticks_msec() < deadline:
+		var report := _read_report(report_path)
+		if _interaction_travel_ready(report):
+			return report
+		await create_timer(POLL_INTERVAL_SEC).timeout
+	return {}
+
+func _wait_for_interaction_effect_applied(report_path: String, timeout_sec: float) -> Dictionary:
+	var deadline := Time.get_ticks_msec() + int(timeout_sec * 1000.0)
+	while Time.get_ticks_msec() < deadline:
+		var report := _read_report(report_path)
+		if _interaction_effect_ready(report):
+			return report
+		await create_timer(POLL_INTERVAL_SEC).timeout
+	return {}
+
+func _interaction_travel_ready(report: Dictionary) -> bool:
+	if report.is_empty():
+		return false
+	var accepted_counts := report.get("host_accepted_interaction_command_count_by_peer", {}) as Dictionary
+	if int(accepted_counts.get("1", 0)) <= 0:
+		return false
+	if _sum_peer_counts_except(accepted_counts, "1") <= 0:
+		return false
+	var completed_counts := report.get("host_completed_interaction_command_count_by_peer", {}) as Dictionary
+	var active_interactions := report.get("host_active_interaction_by_peer", {}) as Dictionary
+	var host_ready := int(completed_counts.get("1", 0)) > 0 or active_interactions.has("1")
+	var client_ready := _sum_peer_counts_except(completed_counts, "1") > 0 or _active_peer_count_except(active_interactions, "1") > 0
+	return host_ready and client_ready
+
+func _interaction_effect_ready(report: Dictionary) -> bool:
+	if report.is_empty():
+		return false
+	var effect_counts := report.get("host_applied_interaction_effect_count_by_peer", {}) as Dictionary
+	if int(effect_counts.get("1", 0)) <= 0:
+		return false
+	return _sum_peer_counts_except(effect_counts, "1") > 0
+
 func _is_report_ready(report: Dictionary, role: String) -> bool:
 	if report.is_empty():
 		return false
@@ -329,6 +387,21 @@ func _validate_host_client_state(host_report: Dictionary, client_report: Diction
 	if int(host_report.get("host_accepted_interaction_command_count", 0)) <= 1:
 		printerr("FAIL: host did not accept the client interaction command")
 		return false
+	var completed_interaction_counts := host_report.get("host_completed_interaction_command_count_by_peer", {}) as Dictionary
+	var active_interactions := host_report.get("host_active_interaction_by_peer", {}) as Dictionary
+	if int(completed_interaction_counts.get("1", 0)) <= 0 and not active_interactions.has("1"):
+		printerr("FAIL: host local interaction did not start travel or complete")
+		return false
+	if _sum_peer_counts_except(completed_interaction_counts, "1") <= 0 and _active_peer_count_except(active_interactions, "1") <= 0:
+		printerr("FAIL: client interaction did not start server-authorized travel or complete")
+		return false
+	var effect_counts := host_report.get("host_applied_interaction_effect_count_by_peer", {}) as Dictionary
+	if int(effect_counts.get("1", 0)) <= 0:
+		printerr("FAIL: host local interaction effect was not applied")
+		return false
+	if _sum_peer_counts_except(effect_counts, "1") <= 0:
+		printerr("FAIL: client interaction effect was not applied by the host")
+		return false
 	if int(host_report.get("building_count", -1)) != int(client_report.get("building_count", -2)):
 		printerr("FAIL: host/client building counts differ")
 		return false
@@ -437,6 +510,14 @@ func _sum_peer_counts_except(counts: Dictionary, excluded_key: String) -> int:
 		if str(key) == excluded_key:
 			continue
 		total += int(counts.get(key, 0))
+	return total
+
+func _active_peer_count_except(active_interactions: Dictionary, excluded_key: String) -> int:
+	var total := 0
+	for key in active_interactions.keys():
+		if str(key) == excluded_key:
+			continue
+		total += 1
 	return total
 
 func _planar_distance(a: Vector3, b: Vector3) -> float:
