@@ -211,6 +211,12 @@ func _client_apply_world_state_snapshot(snapshot: Dictionary) -> void:
 		return
 	_client_replica.apply_snapshot(snapshot)
 
+@rpc("authority", "call_remote", "reliable")
+func _client_apply_interaction_status(status: Dictionary) -> void:
+	if _client_replica == null or not _client_replica.has_method("apply_interaction_status"):
+		return
+	_client_replica.apply_interaction_status(status)
+
 @rpc("any_peer", "call_remote", "reliable")
 func _server_receive_command(command: Dictionary) -> void:
 	if _host_authority == null:

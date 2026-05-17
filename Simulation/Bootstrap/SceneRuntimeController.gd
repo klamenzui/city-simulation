@@ -103,6 +103,8 @@ func update(delta: float) -> void:
 		selection_debug_controller.update(selected_citizen, selected_building, world)
 	if building_status_badge_controller != null:
 		building_status_badge_controller.update(selected_building, world)
+	if hud_controller != null and hud_controller.has_method("update"):
+		hud_controller.update(delta)
 	if hud_overlay_controller != null:
 		hud_overlay_controller.update(delta)
 	if interaction_controller != null:

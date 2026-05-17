@@ -103,7 +103,12 @@ func _init() -> void:
 		quit(1)
 		return
 	host_ready = effects_ready
-	client_ready = _read_report(client_report)
+	client_ready = await _wait_for_client_interaction_status(client_report, 4.0)
+	if client_ready.is_empty():
+		printerr("FAIL: client did not receive authoritative interaction status")
+		await _stop_processes(pids, stop_paths)
+		quit(1)
+		return
 
 	if not _validate_host_client_state(host_ready, client_ready):
 		await _stop_processes(pids, stop_paths)
@@ -250,6 +255,17 @@ func _wait_for_interaction_effect_applied(report_path: String, timeout_sec: floa
 	while Time.get_ticks_msec() < deadline:
 		var report := _read_report(report_path)
 		if _interaction_effect_ready(report):
+			return report
+		await create_timer(POLL_INTERVAL_SEC).timeout
+	return {}
+
+func _wait_for_client_interaction_status(report_path: String, timeout_sec: float) -> Dictionary:
+	var deadline := Time.get_ticks_msec() + int(timeout_sec * 1000.0)
+	while Time.get_ticks_msec() < deadline:
+		var report := _read_report(report_path)
+		var status := report.get("client_interaction_status", {}) as Dictionary
+		var state := str(status.get("state", ""))
+		if ["travelling", "arrived", "effect", "ready"].has(state):
 			return report
 		await create_timer(POLL_INTERVAL_SEC).timeout
 	return {}
@@ -401,6 +417,11 @@ func _validate_host_client_state(host_report: Dictionary, client_report: Diction
 		return false
 	if _sum_peer_counts_except(effect_counts, "1") <= 0:
 		printerr("FAIL: client interaction effect was not applied by the host")
+		return false
+	var client_interaction_status := client_report.get("client_interaction_status", {}) as Dictionary
+	if str(client_interaction_status.get("state", "")).is_empty() \
+			or str(client_interaction_status.get("state", "")) == "requested":
+		printerr("FAIL: client interaction UI status did not leave request-pending state")
 		return false
 	if int(host_report.get("building_count", -1)) != int(client_report.get("building_count", -2)):
 		printerr("FAIL: host/client building counts differ")

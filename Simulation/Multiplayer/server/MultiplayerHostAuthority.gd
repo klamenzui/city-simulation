@@ -30,6 +30,7 @@ var _completed_interaction_command_count_by_peer: Dictionary = {}
 var _applied_interaction_effect_count_by_peer: Dictionary = {}
 var _last_interaction_by_peer: Dictionary = {}
 var _last_interaction_effect_by_peer: Dictionary = {}
+var _last_interaction_status_by_peer: Dictionary = {}
 var _active_interaction_by_peer: Dictionary = {}
 var _active_interaction_effect_by_peer: Dictionary = {}
 var _local_host_camera_follow_target_id: String = ""
@@ -121,6 +122,7 @@ func get_debug_status() -> Dictionary:
 		"applied_interaction_effect_count_by_peer": _string_keyed_int_dictionary(_applied_interaction_effect_count_by_peer),
 		"last_interaction_by_peer": _last_interaction_by_peer.duplicate(true),
 		"last_interaction_effect_by_peer": _last_interaction_effect_by_peer.duplicate(true),
+		"interaction_status_by_peer": _last_interaction_status_by_peer.duplicate(true),
 		"active_interaction_by_peer": _active_interaction_debug_dictionary(),
 		"active_interaction_effect_by_peer": _active_interaction_effect_debug_dictionary(),
 	}
@@ -258,6 +260,7 @@ func _release_player_citizen(peer_id: int) -> void:
 	_player_citizen_id_by_peer.erase(peer_id)
 	_active_interaction_by_peer.erase(peer_id)
 	_clear_interaction_effect_for_peer(peer_id)
+	_last_interaction_status_by_peer.erase(str(peer_id))
 	if peer_id == LOCAL_HOST_PEER_ID:
 		_local_host_camera_follow_target_id = ""
 	var citizen := _find_citizen_by_id(entity_id)
@@ -293,6 +296,7 @@ func _handle_interact_entity_command(peer_id: int, command: Dictionary) -> void:
 	var accepted := bool(interaction.get("accepted", false))
 	if accepted:
 		_accepted_interaction_command_count_by_peer[peer_id] = int(_accepted_interaction_command_count_by_peer.get(peer_id, 0)) + 1
+	_record_interaction_status(peer_id, _interaction_status_state_from_interaction(interaction), interaction)
 	_last_interaction_by_peer[str(peer_id)] = interaction
 
 func _start_entity_interaction(peer_id: int, player: Citizen, target_id: String, target: Node3D) -> Dictionary:
@@ -312,10 +316,24 @@ func _start_entity_interaction(peer_id: int, player: Citizen, target_id: String,
 	if target == null:
 		result["reason"] = "missing_target"
 		return result
+	result["target_name"] = _entity_display_name(target)
 	if target == player:
 		result["reason"] = "self_target"
 		return result
 	_clear_interaction_effect_for_peer(peer_id)
+	if target is Citizen:
+		var direct_distance := _planar_distance(player.global_position, target.global_position)
+		result["target_distance"] = direct_distance
+		if direct_distance <= CITIZEN_INTERACTION_DISTANCE + _arrival_tolerance_for_target(target):
+			_face_player_towards(player, target.global_position)
+			result["accepted"] = true
+			result["state"] = "arrived"
+			result["current_distance"] = direct_distance
+			result["target_position"] = _vec3_to_array(target.global_position)
+			result["effect"] = _apply_interaction_effect(peer_id, player, target, result, direct_distance)
+			_completed_interaction_command_count_by_peer[peer_id] = int(_completed_interaction_command_count_by_peer.get(peer_id, 0)) + 1
+			_active_interaction_by_peer.erase(peer_id)
+			return result
 	var target_position := _interaction_target_position(player, target)
 	var distance_before := _planar_distance(player.global_position, target_position)
 	result["start_distance"] = distance_before
@@ -344,6 +362,7 @@ func _start_entity_interaction(peer_id: int, player: Citizen, target_id: String,
 			"player_id": player_id,
 			"target_id": target_id,
 			"target_type": target_type,
+			"target_name": _entity_display_name(target),
 			"target_position": target_position,
 			"start_distance": distance_before,
 		}
@@ -391,6 +410,12 @@ func _finish_active_interaction(
 	if state == "arrived":
 		_completed_interaction_command_count_by_peer[peer_id] = int(_completed_interaction_command_count_by_peer.get(peer_id, 0)) + 1
 	_update_last_interaction_debug(peer_id, interaction, state, reason, current_distance)
+	var status_payload := _last_interaction_by_peer.get(str(peer_id), interaction) as Dictionary
+	if state == "arrived":
+		var effect_payload := _last_interaction_effect_by_peer.get(str(peer_id), {}) as Dictionary
+		if not effect_payload.is_empty():
+			status_payload["effect"] = effect_payload.duplicate(true)
+	_record_interaction_status(peer_id, _interaction_status_state_from_interaction(status_payload), status_payload)
 
 func _update_last_interaction_debug(
 	peer_id: int,
@@ -404,6 +429,7 @@ func _update_last_interaction_debug(
 		"accepted": state != "cancelled",
 		"player_id": str(interaction.get("player_id", "")),
 		"target_type": str(interaction.get("target_type", "")),
+		"target_name": str(interaction.get("target_name", "")),
 		"state": state,
 		"reason": reason,
 		"start_distance": float(interaction.get("start_distance", 0.0)),
@@ -422,6 +448,7 @@ func _apply_interaction_effect(
 		"player_id": NetworkEntityRegistryScript.get_entity_id(player),
 		"target_id": NetworkEntityRegistryScript.get_entity_id(target),
 		"target_type": _entity_type_name(target),
+		"target_name": _entity_display_name(target),
 		"state": "not_applied",
 		"reason": "",
 		"current_distance": current_distance,
@@ -525,6 +552,13 @@ func _clear_interaction_effect_for_peer(peer_id: int) -> void:
 		if target_citizen.has_method("remove_lod_commitment"):
 			target_citizen.remove_lod_commitment("network_interaction")
 	_active_interaction_effect_by_peer.erase(peer_id)
+	_record_interaction_status(peer_id, "ready", {
+		"player_id": str(effect.get("player_id", "")),
+		"target_id": str(effect.get("target_id", "")),
+		"target_type": str(effect.get("target_type", "")),
+		"target_name": str(effect.get("target_name", "")),
+		"detail": "Interaction ended.",
+	})
 
 func _building_interaction_block_reason(building: Building) -> String:
 	if building == null:
@@ -716,6 +750,72 @@ func _entity_display_name(entity: Node) -> String:
 		return building.building_name
 	return entity.name
 
+func _record_interaction_status(peer_id: int, state: String, payload: Dictionary) -> void:
+	var target_id := str(payload.get("target_id", ""))
+	var target_type := str(payload.get("target_type", ""))
+	var target_name := str(payload.get("target_name", ""))
+	var reason := str(payload.get("reason", ""))
+	var raw_effect: Variant = payload.get("effect", {})
+	var effect: Dictionary = {}
+	if raw_effect is Dictionary:
+		effect = raw_effect as Dictionary
+	if target_name.is_empty() and not effect.is_empty():
+		target_name = str(effect.get("target_name", ""))
+	if reason.is_empty() and not effect.is_empty():
+		reason = str(effect.get("reason", ""))
+	if target_name.is_empty() and not target_id.is_empty():
+		var target := _find_entity_by_id(target_id)
+		if target != null:
+			target_name = _entity_display_name(target)
+	if target_type.is_empty() and not target_id.is_empty():
+		var target_for_type := _find_entity_by_id(target_id)
+		target_type = _entity_type_name(target_for_type)
+
+	var status := {
+		"state": state,
+		"target_id": target_id,
+		"target_type": target_type,
+		"target_name": target_name,
+		"player_id": str(payload.get("player_id", "")),
+		"reason": reason,
+		"detail": str(payload.get("detail", _interaction_status_detail(state, target_name, reason))),
+	}
+	_last_interaction_status_by_peer[str(peer_id)] = status
+	if peer_id == LOCAL_HOST_PEER_ID or session_node == null:
+		return
+	session_node.rpc_id(peer_id, "_client_apply_interaction_status", status)
+
+func _interaction_status_state_from_interaction(interaction: Dictionary) -> String:
+	var state := str(interaction.get("state", "rejected"))
+	var raw_effect: Variant = interaction.get("effect", {})
+	var effect: Dictionary = {}
+	if raw_effect is Dictionary:
+		effect = raw_effect as Dictionary
+	if state == "arrived" and not effect.is_empty():
+		var effect_state := str(effect.get("state", ""))
+		if not effect_state.is_empty() and effect_state != "not_applied":
+			return "effect"
+		if not str(effect.get("reason", "")).is_empty():
+			return "rejected"
+	return state
+
+func _interaction_status_detail(state: String, target_name: String, reason: String) -> String:
+	var target_label := target_name if not target_name.is_empty() else "target"
+	match state:
+		"travelling":
+			return "Moving to %s." % target_label
+		"arrived":
+			return "Arrived at %s." % target_label
+		"effect":
+			return "Interacting with %s." % target_label
+		"cancelled":
+			return reason if not reason.is_empty() else "Interaction cancelled."
+		"rejected", "travel_failed":
+			return reason if not reason.is_empty() else "Interaction rejected."
+		"ready":
+			return "Ready."
+	return str(state).capitalize()
+
 func _active_interaction_debug_dictionary() -> Dictionary:
 	var result: Dictionary = {}
 	for peer_id in _active_interaction_by_peer.keys():
@@ -724,6 +824,7 @@ func _active_interaction_debug_dictionary() -> Dictionary:
 			"player_id": str(interaction.get("player_id", "")),
 			"target_id": str(interaction.get("target_id", "")),
 			"target_type": str(interaction.get("target_type", "")),
+			"target_name": str(interaction.get("target_name", "")),
 			"state": "travelling",
 			"start_distance": float(interaction.get("start_distance", 0.0)),
 			"target_position": _vec3_to_array(interaction.get("target_position", Vector3.ZERO)),
@@ -738,6 +839,7 @@ func _active_interaction_effect_debug_dictionary() -> Dictionary:
 			"player_id": str(effect.get("player_id", "")),
 			"target_id": str(effect.get("target_id", "")),
 			"target_type": str(effect.get("target_type", "")),
+			"target_name": str(effect.get("target_name", "")),
 			"state": str(effect.get("state", "")),
 			"remaining_sec": float(effect.get("remaining_sec", 0.0)),
 		}

@@ -30,6 +30,7 @@ const RESOURCES := [
 	"res://ImportedCitySource/scenes/trafficlight_c_active.gd",
 	"res://tools/codex_economy_test.gd",
 	"res://tools/codex_building_occupancy_test.gd",
+	"res://tools/codex_citizen_fall_respawn_test.gd",
 	"res://tools/codex_multiplayer_host_connect_test.gd",
 	"res://tools/codex_multiplayer_process_probe.gd",
 	"res://tools/codex_multiplayer_two_process_test.gd",

@@ -23,6 +23,9 @@ const SimLoggerScript = preload("res://Simulation/Logging/SimLogger.gd")
 const CitizenAgentScript = preload("res://Simulation/Citizens/CitizenAgent.gd")
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const WorldSnapshotSerializerScript = preload("res://Simulation/Multiplayer/shared/WorldSnapshotSerializer.gd")
+const FALL_RESPAWN_DEPTH_METERS := 8.0
+const FALL_RESPAWN_COOLDOWN_SEC := 1.0
+const FALL_RESPAWN_GROUND_OFFSET := 0.12
 
 var _sim: CitizenSimulation = null
 var _world_ref: World = null
@@ -68,6 +71,10 @@ var _network_server_control_enabled: bool = false
 var _network_server_control_direction: Vector3 = Vector3.ZERO
 var _network_server_control_input_age_sec: float = INF
 var _network_server_interaction_travel_enabled: bool = false
+var _last_safe_respawn_position: Vector3 = Vector3.ZERO
+var _has_last_safe_respawn_position: bool = false
+var _fall_respawn_cooldown_sec: float = 0.0
+var _fall_respawn_count: int = 0
 var cheap_path_follow_lod_enabled: bool = true
 var cheap_path_follow_camera_distance: float = 80.0
 var obstacle_sensor_height: float = 0.9
@@ -117,18 +124,26 @@ func _physics_process(delta: float) -> void:
 	if network_replica_mode:
 		velocity = Vector3.ZERO
 		return
+	var resolved_world := _resolve_world_ref()
+	_fall_respawn_cooldown_sec = maxf(_fall_respawn_cooldown_sec - delta, 0.0)
+	if _should_respawn_after_fall(resolved_world):
+		_respawn_after_fall(resolved_world)
+		return
 	if _network_server_control_enabled:
 		if _network_server_interaction_travel_enabled:
 			super._physics_process(delta)
 			if not _is_travelling and has_reached_travel_target():
 				_network_server_interaction_travel_enabled = false
+			_post_physics_fall_safety(resolved_world)
 			return
 		_physics_process_network_server_control(delta)
+		_post_physics_fall_safety(resolved_world)
 		return
 	if _is_body_presence_hidden():
 		velocity = Vector3.ZERO
 		return
 	super._physics_process(delta)
+	_post_physics_fall_safety(resolved_world)
 
 
 func set_network_replica_mode(enabled: bool) -> void:
@@ -210,6 +225,122 @@ func finish_network_server_interaction_travel() -> void:
 
 func is_network_server_interaction_travelling() -> bool:
 	return _network_server_interaction_travel_enabled and _is_travelling
+
+func get_fall_respawn_count() -> int:
+	return _fall_respawn_count
+
+func _post_physics_fall_safety(world: World) -> void:
+	if _should_respawn_after_fall(world):
+		_respawn_after_fall(world)
+		return
+	_remember_safe_respawn_position(world)
+
+func _should_respawn_after_fall(world: World) -> bool:
+	if _fall_respawn_cooldown_sec > 0.0:
+		return false
+	if _is_body_presence_hidden():
+		return false
+	return global_position.y < _fall_respawn_threshold_y(world)
+
+func _fall_respawn_threshold_y(world: World) -> float:
+	return _fall_respawn_ground_y(world) - FALL_RESPAWN_DEPTH_METERS
+
+func _fall_respawn_ground_y(world: World) -> float:
+	if world != null and world.has_method("get_ground_fallback_y"):
+		return float(world.get_ground_fallback_y())
+	return 0.0
+
+func _remember_safe_respawn_position(world: World) -> void:
+	if _is_body_presence_hidden() or not is_on_floor():
+		return
+	if global_position.y <= _fall_respawn_threshold_y(world) + 1.0:
+		return
+	_last_safe_respawn_position = global_position
+	_has_last_safe_respawn_position = true
+
+func _respawn_after_fall(world: World) -> void:
+	var fallen_position := global_position
+	var respawn_position := _get_fall_respawn_position(world)
+	_prepare_for_fall_respawn(world)
+	_set_position_grounded(respawn_position)
+	_last_safe_respawn_position = global_position
+	_has_last_safe_respawn_position = true
+	_fall_respawn_cooldown_sec = FALL_RESPAWN_COOLDOWN_SEC
+	_fall_respawn_count += 1
+	if SimLoggerScript != null:
+		SimLoggerScript.log("[Citizen %s] Respawned after fall from %s to %s" % [
+			_get_log_name(),
+			_fmt_v3(fallen_position),
+			_fmt_v3(global_position),
+		])
+
+func _prepare_for_fall_respawn(world: World) -> void:
+	cancel_network_server_interaction_travel()
+	clear_server_interaction_label()
+	clear_rest_pose(false)
+	release_reserved_benches(world)
+	if is_inside_building():
+		exit_current_building(world)
+	elif current_location != null:
+		leave_current_location(world, false)
+	stop_travel()
+	current_location = null
+	current_action = null
+	decision_cooldown_left = 0
+	_set_interior_presence(false)
+	velocity = Vector3.ZERO
+
+func _get_fall_respawn_position(world: World) -> Vector3:
+	if _has_last_safe_respawn_position:
+		return _snap_respawn_position(_last_safe_respawn_position, world)
+	var location_position: Variant = _building_respawn_position(current_location, world)
+	if location_position is Vector3:
+		return location_position as Vector3
+	var home_position: Variant = _building_respawn_position(home, world)
+	if home_position is Vector3:
+		return home_position as Vector3
+	var nearest_building := _nearest_respawn_building(world, global_position)
+	var nearest_position: Variant = _building_respawn_position(nearest_building, world)
+	if nearest_position is Vector3:
+		return nearest_position as Vector3
+	var fallback := world.get_world_center() if world != null and world.has_method("get_world_center") else Vector3.ZERO
+	fallback.y = _fall_respawn_ground_y(world) + FALL_RESPAWN_GROUND_OFFSET
+	return _snap_respawn_position(fallback, world)
+
+func _building_respawn_position(building: Building, world: World) -> Variant:
+	if building == null or not is_instance_valid(building):
+		return null
+	var nav_points := get_navigation_points_for_building(building, world)
+	var fallback := building.get_entrance_pos() if building.has_method("get_entrance_pos") else building.global_position
+	var raw_position: Variant = nav_points.get("spawn", nav_points.get("access", fallback))
+	if raw_position is not Vector3:
+		raw_position = fallback
+	return _snap_respawn_position(raw_position as Vector3, world, building)
+
+func _snap_respawn_position(pos: Vector3, world: World, building: Building = null) -> Vector3:
+	var snapped := pos
+	if world != null and world.has_method("get_pedestrian_access_point"):
+		snapped = world.get_pedestrian_access_point(snapped, building)
+	if is_inside_tree():
+		snapped = _project_navigation_target_to_ground(snapped)
+	var ground_y := _fall_respawn_ground_y(world)
+	snapped.y = maxf(snapped.y, ground_y + FALL_RESPAWN_GROUND_OFFSET)
+	return snapped
+
+func _nearest_respawn_building(world: World, origin: Vector3) -> Building:
+	if world == null:
+		return null
+	var best: Building = null
+	var best_distance := INF
+	for building in world.buildings:
+		if building == null or not is_instance_valid(building):
+			continue
+		var distance := _planar_distance(origin, building.global_position)
+		if distance >= best_distance:
+			continue
+		best = building
+		best_distance = distance
+	return best
 
 
 func set_server_interaction_label(label: String) -> void:
