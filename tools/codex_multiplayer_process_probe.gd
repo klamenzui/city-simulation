@@ -4,6 +4,7 @@ const REPORT_INTERVAL_SEC := 0.10
 const MAX_RUNTIME_SEC := 30.0
 const CLIENT_DRIVE_COMMAND_COUNT := 80
 const HOST_DRIVE_FRAME_COUNT := 80
+const HOST_INTERACTION_RELEASE_FRAME_COUNT := 8
 
 const NetworkEntityRegistryScript = preload("res://Simulation/Multiplayer/shared/NetworkEntityRegistry.gd")
 const WorldSnapshotSerializerScript = preload("res://Simulation/Multiplayer/shared/WorldSnapshotSerializer.gd")
@@ -19,6 +20,7 @@ var _client_drive_commands_sent: int = 0
 var _client_interaction_command_sent: bool = false
 var _host_interaction_request_sent: bool = false
 var _host_drive_frames_sent: int = 0
+var _host_interaction_release_frames: int = 0
 var _host_drive_key_pressed: bool = false
 
 func _init() -> void:
@@ -123,10 +125,12 @@ func _build_report(phase: String) -> Dictionary:
 		"host_last_player_input_direction_by_peer": host_debug.get("last_player_input_direction_by_peer", {}),
 		"host_interaction_command_count": int(host_debug.get("interaction_command_count", 0)),
 		"host_accepted_interaction_command_count": int(host_debug.get("accepted_interaction_command_count", 0)),
+		"host_rejected_interaction_command_count": int(host_debug.get("rejected_interaction_command_count", 0)),
 		"host_completed_interaction_command_count": int(host_debug.get("completed_interaction_command_count", 0)),
 		"host_applied_interaction_effect_count": int(host_debug.get("applied_interaction_effect_count", 0)),
 		"host_interaction_command_count_by_peer": host_debug.get("interaction_command_count_by_peer", {}),
 		"host_accepted_interaction_command_count_by_peer": host_debug.get("accepted_interaction_command_count_by_peer", {}),
+		"host_rejected_interaction_command_count_by_peer": host_debug.get("rejected_interaction_command_count_by_peer", {}),
 		"host_completed_interaction_command_count_by_peer": host_debug.get("completed_interaction_command_count_by_peer", {}),
 		"host_applied_interaction_effect_count_by_peer": host_debug.get("applied_interaction_effect_count_by_peer", {}),
 		"host_last_interaction_by_peer": host_debug.get("last_interaction_by_peer", {}),
@@ -150,6 +154,8 @@ func _build_report(phase: String) -> Dictionary:
 		"citizen_count": citizen_entries.size(),
 		"visible_citizen_count": _count_visible_citizens(citizen_entries),
 		"inside_citizen_count": _count_inside_citizens(citizen_entries),
+		"total_fall_respawn_count": _sum_int_entry_values(citizen_entries, "fall_respawn_count"),
+		"fall_respawn_counts_by_id": _int_values_by_id(citizen_entries, "fall_respawn_count"),
 		"citizen_ids": _ids_from_entries(citizen_entries),
 		"visible_citizen_ids": _ids_from_entries_with_bool(citizen_entries, "visible"),
 		"citizen_positions_by_id": _positions_by_id(citizen_entries),
@@ -163,6 +169,7 @@ func _maybe_drive_host_player() -> void:
 		return
 	if _host_drive_frames_sent >= HOST_DRIVE_FRAME_COUNT:
 		_set_host_drive_key_pressed(false)
+		_host_interaction_release_frames += 1
 		return
 	var session := _get_session()
 	if session == null or not session.has_method("get_status"):
@@ -229,12 +236,18 @@ func _maybe_send_client_interaction_request() -> void:
 		"type": "interact_entity",
 		"target_id": target_id,
 	})
+	session.send_command({
+		"type": "interact_entity",
+		"target_id": target_id,
+	})
 	_client_interaction_command_sent = true
 
 func _maybe_send_host_interaction_request() -> void:
 	if _probe_role != "host" or _host_interaction_request_sent:
 		return
 	if _host_drive_frames_sent < HOST_DRIVE_FRAME_COUNT:
+		return
+	if _host_interaction_release_frames < HOST_INTERACTION_RELEASE_FRAME_COUNT:
 		return
 	var session := _get_session()
 	if session == null or not session.has_method("get_status") or not session.has_method("request_entity_interaction"):
@@ -420,6 +433,25 @@ func _positions_by_id(entries: Array) -> Dictionary:
 			continue
 		positions[entity_id] = data.get("position", [])
 	return positions
+
+func _int_values_by_id(entries: Array, key: String) -> Dictionary:
+	var values: Dictionary = {}
+	for entry in entries:
+		if entry is not Dictionary:
+			continue
+		var data := entry as Dictionary
+		var entity_id := str(data.get("id", ""))
+		if entity_id.is_empty():
+			continue
+		values[entity_id] = int(data.get(key, 0))
+	return values
+
+func _sum_int_entry_values(entries: Array, key: String) -> int:
+	var total := 0
+	for entry in entries:
+		if entry is Dictionary:
+			total += int((entry as Dictionary).get(key, 0))
+	return total
 
 func _write_report(report: Dictionary) -> void:
 	if _report_path.is_empty():

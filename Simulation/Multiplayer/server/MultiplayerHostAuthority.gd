@@ -10,6 +10,7 @@ const LOCAL_HOST_PEER_ID := 1
 const CITIZEN_INTERACTION_DISTANCE := 1.2
 const INTERACTION_ARRIVAL_TOLERANCE := 0.55
 const INTERACTION_EFFECT_DURATION_SEC := 8.0
+const INTERACTION_COMMAND_COOLDOWN_SEC := 0.25
 
 var root_node: Node = null
 var world: World = null
@@ -26,11 +27,13 @@ var _player_input_command_count_by_peer: Dictionary = {}
 var _last_player_input_direction_by_peer: Dictionary = {}
 var _interaction_command_count_by_peer: Dictionary = {}
 var _accepted_interaction_command_count_by_peer: Dictionary = {}
+var _rejected_interaction_command_count_by_peer: Dictionary = {}
 var _completed_interaction_command_count_by_peer: Dictionary = {}
 var _applied_interaction_effect_count_by_peer: Dictionary = {}
 var _last_interaction_by_peer: Dictionary = {}
 var _last_interaction_effect_by_peer: Dictionary = {}
 var _last_interaction_status_by_peer: Dictionary = {}
+var _interaction_command_cooldown_by_peer: Dictionary = {}
 var _active_interaction_by_peer: Dictionary = {}
 var _active_interaction_effect_by_peer: Dictionary = {}
 var _local_host_camera_follow_target_id: String = ""
@@ -73,6 +76,7 @@ func update(delta: float) -> void:
 	if not _active or session_node == null:
 		return
 	_apply_local_host_player_input()
+	_update_interaction_command_cooldowns(delta)
 	_update_active_interactions()
 	_update_interaction_effects(delta)
 	_snapshot_timer -= delta
@@ -114,15 +118,18 @@ func get_debug_status() -> Dictionary:
 		"last_player_input_direction_by_peer": _last_player_input_direction_by_peer.duplicate(true),
 		"interaction_command_count": _sum_int_values(_interaction_command_count_by_peer),
 		"accepted_interaction_command_count": _sum_int_values(_accepted_interaction_command_count_by_peer),
+		"rejected_interaction_command_count": _sum_int_values(_rejected_interaction_command_count_by_peer),
 		"completed_interaction_command_count": _sum_int_values(_completed_interaction_command_count_by_peer),
 		"applied_interaction_effect_count": _sum_int_values(_applied_interaction_effect_count_by_peer),
 		"interaction_command_count_by_peer": _string_keyed_int_dictionary(_interaction_command_count_by_peer),
 		"accepted_interaction_command_count_by_peer": _string_keyed_int_dictionary(_accepted_interaction_command_count_by_peer),
+		"rejected_interaction_command_count_by_peer": _string_keyed_int_dictionary(_rejected_interaction_command_count_by_peer),
 		"completed_interaction_command_count_by_peer": _string_keyed_int_dictionary(_completed_interaction_command_count_by_peer),
 		"applied_interaction_effect_count_by_peer": _string_keyed_int_dictionary(_applied_interaction_effect_count_by_peer),
 		"last_interaction_by_peer": _last_interaction_by_peer.duplicate(true),
 		"last_interaction_effect_by_peer": _last_interaction_effect_by_peer.duplicate(true),
 		"interaction_status_by_peer": _last_interaction_status_by_peer.duplicate(true),
+		"interaction_command_cooldown_by_peer": _interaction_command_cooldown_debug_dictionary(),
 		"active_interaction_by_peer": _active_interaction_debug_dictionary(),
 		"active_interaction_effect_by_peer": _active_interaction_effect_debug_dictionary(),
 	}
@@ -259,6 +266,7 @@ func _release_player_citizen(peer_id: int) -> void:
 	var entity_id := str(_player_citizen_id_by_peer.get(peer_id, ""))
 	_player_citizen_id_by_peer.erase(peer_id)
 	_active_interaction_by_peer.erase(peer_id)
+	_interaction_command_cooldown_by_peer.erase(peer_id)
 	_clear_interaction_effect_for_peer(peer_id)
 	_last_interaction_status_by_peer.erase(str(peer_id))
 	if peer_id == LOCAL_HOST_PEER_ID:
@@ -291,11 +299,24 @@ func _handle_interact_entity_command(peer_id: int, command: Dictionary) -> void:
 		citizen_id = _assign_player_citizen(peer_id)
 	var player := _find_citizen_by_id(citizen_id)
 	var target_id := str(command.get("target_id", ""))
+	if _is_interaction_command_on_cooldown(peer_id):
+		var cooldown_rejection := _build_rejected_interaction(
+			player,
+			target_id,
+			"interaction_cooldown",
+			_find_entity_by_id(target_id)
+		)
+		cooldown_rejection["cooldown_remaining_sec"] = float(_interaction_command_cooldown_by_peer.get(peer_id, 0.0))
+		_record_rejected_interaction(peer_id, cooldown_rejection, not _has_active_interaction_context(peer_id))
+		return
+	_interaction_command_cooldown_by_peer[peer_id] = INTERACTION_COMMAND_COOLDOWN_SEC
 	var target := _find_entity_by_id(target_id)
 	var interaction := _start_entity_interaction(peer_id, player, target_id, target)
 	var accepted := bool(interaction.get("accepted", false))
 	if accepted:
 		_accepted_interaction_command_count_by_peer[peer_id] = int(_accepted_interaction_command_count_by_peer.get(peer_id, 0)) + 1
+	else:
+		_rejected_interaction_command_count_by_peer[peer_id] = int(_rejected_interaction_command_count_by_peer.get(peer_id, 0)) + 1
 	_record_interaction_status(peer_id, _interaction_status_state_from_interaction(interaction), interaction)
 	_last_interaction_by_peer[str(peer_id)] = interaction
 
@@ -319,6 +340,10 @@ func _start_entity_interaction(peer_id: int, player: Citizen, target_id: String,
 	result["target_name"] = _entity_display_name(target)
 	if target == player:
 		result["reason"] = "self_target"
+		return result
+	var unavailable_reason := _target_unavailable_reason(target)
+	if not unavailable_reason.is_empty():
+		result["reason"] = unavailable_reason
 		return result
 	_clear_interaction_effect_for_peer(peer_id)
 	if target is Citizen:
@@ -368,6 +393,28 @@ func _start_entity_interaction(peer_id: int, player: Citizen, target_id: String,
 		}
 		_face_player_towards(player, target.global_position)
 	return result
+
+func _build_rejected_interaction(
+	player: Citizen,
+	target_id: String,
+	reason: String,
+	target: Node3D = null
+) -> Dictionary:
+	return {
+		"target_id": target_id,
+		"accepted": false,
+		"player_id": NetworkEntityRegistryScript.get_entity_id(player),
+		"target_type": _entity_type_name(target),
+		"target_name": _entity_display_name(target) if target != null else "",
+		"state": "rejected",
+		"reason": reason,
+	}
+
+func _record_rejected_interaction(peer_id: int, interaction: Dictionary, publish_status: bool = true) -> void:
+	_rejected_interaction_command_count_by_peer[peer_id] = int(_rejected_interaction_command_count_by_peer.get(peer_id, 0)) + 1
+	_last_interaction_by_peer[str(peer_id)] = interaction
+	if publish_status:
+		_record_interaction_status(peer_id, "rejected", interaction)
 
 func _update_active_interactions() -> void:
 	if _active_interaction_by_peer.is_empty():
@@ -567,6 +614,33 @@ func _building_interaction_block_reason(building: Building) -> String:
 	if building.has_method("is_open") and not bool(building.is_open(hour)):
 		return "building_closed"
 	return ""
+
+func _target_unavailable_reason(target: Node3D) -> String:
+	if target is Citizen:
+		var citizen := target as Citizen
+		if not citizen.visible:
+			return "target_not_visible"
+		if citizen.has_method("is_inside_building") and citizen.is_inside_building():
+			return "target_inside_building"
+	if target is Building:
+		return _building_interaction_block_reason(target as Building)
+	return ""
+
+func _is_interaction_command_on_cooldown(peer_id: int) -> bool:
+	return float(_interaction_command_cooldown_by_peer.get(peer_id, 0.0)) > 0.0
+
+func _has_active_interaction_context(peer_id: int) -> bool:
+	return _active_interaction_by_peer.has(peer_id) or _active_interaction_effect_by_peer.has(peer_id)
+
+func _update_interaction_command_cooldowns(delta: float) -> void:
+	if delta <= 0.0 or _interaction_command_cooldown_by_peer.is_empty():
+		return
+	for peer_id in _interaction_command_cooldown_by_peer.keys():
+		var remaining := maxf(float(_interaction_command_cooldown_by_peer.get(peer_id, 0.0)) - delta, 0.0)
+		if remaining <= 0.0:
+			_interaction_command_cooldown_by_peer.erase(peer_id)
+		else:
+			_interaction_command_cooldown_by_peer[peer_id] = remaining
 
 func _upsert_network_interaction_commitment(citizen: Citizen) -> void:
 	if citizen == null or world == null or world.time == null or not citizen.has_method("upsert_lod_commitment"):
@@ -843,6 +917,12 @@ func _active_interaction_effect_debug_dictionary() -> Dictionary:
 			"state": str(effect.get("state", "")),
 			"remaining_sec": float(effect.get("remaining_sec", 0.0)),
 		}
+	return result
+
+func _interaction_command_cooldown_debug_dictionary() -> Dictionary:
+	var result: Dictionary = {}
+	for peer_id in _interaction_command_cooldown_by_peer.keys():
+		result[str(peer_id)] = float(_interaction_command_cooldown_by_peer.get(peer_id, 0.0))
 	return result
 
 func _sum_int_values(values: Dictionary) -> int:

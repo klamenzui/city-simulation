@@ -403,6 +403,10 @@ func _validate_host_client_state(host_report: Dictionary, client_report: Diction
 	if int(host_report.get("host_accepted_interaction_command_count", 0)) <= 1:
 		printerr("FAIL: host did not accept the client interaction command")
 		return false
+	var rejected_interaction_counts := host_report.get("host_rejected_interaction_command_count_by_peer", {}) as Dictionary
+	if _sum_peer_counts_except(rejected_interaction_counts, "1") <= 0:
+		printerr("FAIL: host did not reject the duplicate client interaction command")
+		return false
 	var completed_interaction_counts := host_report.get("host_completed_interaction_command_count_by_peer", {}) as Dictionary
 	var active_interactions := host_report.get("host_active_interaction_by_peer", {}) as Dictionary
 	if int(completed_interaction_counts.get("1", 0)) <= 0 and not active_interactions.has("1"):
