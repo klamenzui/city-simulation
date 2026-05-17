@@ -49,6 +49,8 @@ func _run_all_tests() -> void:
 		"world_unregisters_removed_park_from_queries",
 		"world_registers_scene_park_cluster_once",
 		"citizen_factory_spawns_at_home_entrance",
+		"job_offer_prefers_training_and_reserves_slot",
+		"study_finish_hires_reserved_trainee",
 		"citizen_death_cleanup_unregisters_and_queues_refill",
 		"population_refill_spawns_after_delay",
 		"citizen_crowd_push_separates_close_neighbors",
@@ -123,6 +125,10 @@ func _run_test(test_name: String) -> String:
 			return _test_world_registers_scene_park_cluster_once()
 		"citizen_factory_spawns_at_home_entrance":
 			return _test_citizen_factory_spawns_at_home_entrance()
+		"job_offer_prefers_training_and_reserves_slot":
+			return _test_job_offer_prefers_training_and_reserves_slot()
+		"study_finish_hires_reserved_trainee":
+			return _test_study_finish_hires_reserved_trainee()
 		"citizen_death_cleanup_unregisters_and_queues_refill":
 			return _test_citizen_death_cleanup_unregisters_and_queues_refill()
 		"population_refill_spawns_after_delay":
@@ -646,6 +652,74 @@ func _test_citizen_factory_spawns_at_home_entrance() -> String:
 		if index == 0:
 			var center_spawn: Vector3 = home.get_navigation_points(world, 0.0).get("spawn", home.get_entrance_pos())
 			_expect(citizen.global_position.distance_to(center_spawn) < 0.15, "first same-home spawn should stay centered at the exit")
+
+	_free_world(world)
+	return _current_error
+
+func _test_job_offer_prefers_training_and_reserves_slot() -> String:
+	var world: World = _new_world()
+	var factory: Building = _new_building("Training Factory", 1)
+	factory.building_type = BuildingScript.BuildingType.FACTORY
+	world.register_building(factory)
+
+	var trainee: Citizen = _new_citizen("Trainee Applicant")
+	trainee.education_level = 0
+	world.register_citizen(trainee)
+
+	var offer := world.find_best_job_offer_for_citizen(trainee.global_position, trainee, true)
+	_expect(not offer.is_empty(), "job offer should be available for an uneducated trainee")
+	_expect_eq(offer.get("building", null), factory, "job offer should target the factory")
+	_expect(int(offer.get("education_gap", 0)) > 0, "job offer should be allowed to require education")
+
+	var job := CitizenFactoryScript.build_job_from_offer(offer)
+	_expect(job != null, "training offer should build a concrete job resource")
+	if job != null:
+		trainee.job = job
+		world.register_job(job)
+
+	var second: Citizen = _new_citizen("Second Applicant")
+	var second_offer := world.find_best_job_offer_for_citizen(second.global_position, second, true)
+	_expect(second_offer.is_empty(), "reserved trainee job should consume the only factory slot")
+
+	_free_world(world)
+	return _current_error
+
+func _test_study_finish_hires_reserved_trainee() -> String:
+	var world: World = _new_world()
+	var university: University = _new_university("Hiring Uni")
+	var factory: Building = _new_building("Hiring Factory", 1)
+	factory.building_type = BuildingScript.BuildingType.FACTORY
+	university.job_capacity = 2
+	world.register_building(university)
+	world.register_building(factory)
+
+	var teacher: Citizen = _new_citizen("Teacher Worker")
+	teacher.job = Job.new()
+	teacher.job.title = "Teacher"
+	teacher.job.workplace = university
+	teacher.job.workplace_service_type = "education"
+	_expect(university.try_hire(teacher), "university should hire teaching staff before study")
+
+	var trainee: Citizen = _new_citizen("Engineer Trainee")
+	trainee.education_level = 0
+	trainee.job = Job.new()
+	trainee.job.title = "Engineer"
+	trainee.job.workplace = factory
+	trainee.job.preferred_workplace = factory
+	trainee.job.required_education_level = 1
+	trainee.job.allowed_building_types = [BuildingScript.BuildingType.FACTORY]
+	world.register_citizen(trainee)
+	world.register_job(trainee.job)
+
+	var action: StudyAtUniversityAction = StudyAtUniversityActionScript.new(university, 1)
+	action.start(world, trainee)
+	action.tick(world, trainee, 1)
+	action.finish(world, trainee)
+
+	_expect_eq(trainee.education_level, 1, "study should satisfy the reserved job education requirement")
+	_expect(factory.workers.has(trainee), "study finish should hire the qualified trainee into the reserved workplace")
+	_expect(world.jobs.has(trainee.job), "reserved trainee job should remain registered after hiring")
+	_expect_eq(university.visitors.size(), 0, "study finish should remove the trainee from university visitors")
 
 	_free_world(world)
 	return _current_error

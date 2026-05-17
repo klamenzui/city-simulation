@@ -32,6 +32,7 @@ Purpose: compact decisions that should be checked before architectural edits.
 - `EconomySystem` owns transfers and daily financial resolution.
 - Buildings store state, account, condition, jobs, and status.
 - Public buildings and commercial buildings have different funding/closure behavior.
+- World job offers must count assigned jobs as slot reservations, including trainee jobs that are not hired yet. Education completion promotes the reserved job into a real building worker.
 
 ## Multiplayer Ownership Rules
 
