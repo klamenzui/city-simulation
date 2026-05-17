@@ -60,12 +60,14 @@ var _runtime_conversation_partner: String = ""
 var _runtime_conversation_topic: String = ""
 var network_replica_mode: bool = false
 var _network_action_label: String = ""
+var _server_interaction_label: String = ""
 var _network_lod_tier: String = ""
 var _network_inside_building: bool = false
 var _network_manual_control: bool = false
 var _network_server_control_enabled: bool = false
 var _network_server_control_direction: Vector3 = Vector3.ZERO
 var _network_server_control_input_age_sec: float = INF
+var _network_server_interaction_travel_enabled: bool = false
 var cheap_path_follow_lod_enabled: bool = true
 var cheap_path_follow_camera_distance: float = 80.0
 var obstacle_sensor_height: float = 0.9
@@ -116,6 +118,11 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector3.ZERO
 		return
 	if _network_server_control_enabled:
+		if _network_server_interaction_travel_enabled:
+			super._physics_process(delta)
+			if not _is_travelling and has_reached_travel_target():
+				_network_server_interaction_travel_enabled = false
+			return
 		_physics_process_network_server_control(delta)
 		return
 	if _is_body_presence_hidden():
@@ -137,6 +144,9 @@ func set_network_server_control_enabled(enabled: bool, world: Node = null) -> vo
 	_network_server_control_enabled = enabled
 	_network_server_control_direction = Vector3.ZERO
 	_network_server_control_input_age_sec = INF
+	_network_server_interaction_travel_enabled = false
+	if not enabled:
+		clear_server_interaction_label()
 	if enabled:
 		set_manual_control_enabled(true, world)
 		set_simulation_lod_state("focus", true, true, 1)
@@ -149,9 +159,70 @@ func apply_network_server_control_input(direction: Vector3, world: Node = null) 
 	if not _network_server_control_enabled:
 		return
 	direction.y = 0.0
+	if direction.length_squared() > 0.0001:
+		cancel_network_server_interaction_travel()
+		clear_server_interaction_label()
+		if is_inside_building():
+			exit_current_building(world)
+		elif current_location != null:
+			leave_current_location(world, false)
 	_network_server_control_direction = direction.normalized() if direction.length_squared() > 1.0 else direction
 	_network_server_control_input_age_sec = 0.0
 	_refresh_network_player_lod_commitment(world)
+
+
+func begin_network_server_interaction_travel(
+	target_pos: Vector3,
+	target_building: Building = null,
+	world: Node = null
+) -> bool:
+	if not _network_server_control_enabled:
+		set_network_server_control_enabled(true, world)
+	clear_rest_pose(true)
+	if is_inside_building():
+		exit_current_building(world)
+	elif current_location != null:
+		leave_current_location(world, false)
+	release_reserved_benches(world)
+	current_action = null
+	decision_cooldown_left = 0
+	stop_travel()
+	current_location = null
+	_network_server_control_direction = Vector3.ZERO
+	_network_server_control_input_age_sec = INF
+	var travel_started := begin_travel_to(target_pos, target_building)
+	_network_server_interaction_travel_enabled = travel_started
+	return travel_started
+
+
+func cancel_network_server_interaction_travel() -> void:
+	if not _network_server_interaction_travel_enabled:
+		return
+	_network_server_interaction_travel_enabled = false
+	stop_travel()
+
+
+func finish_network_server_interaction_travel() -> void:
+	_network_server_interaction_travel_enabled = false
+	velocity.x = 0.0
+	velocity.z = 0.0
+
+
+func is_network_server_interaction_travelling() -> bool:
+	return _network_server_interaction_travel_enabled and _is_travelling
+
+
+func set_server_interaction_label(label: String) -> void:
+	_server_interaction_label = label.strip_edges()
+
+
+func clear_server_interaction_label(expected_label: String = "") -> void:
+	if expected_label.is_empty() or _server_interaction_label == expected_label:
+		_server_interaction_label = ""
+
+
+func get_server_interaction_label() -> String:
+	return _server_interaction_label
 
 
 func _physics_process_network_server_control(delta: float) -> void:
@@ -1898,6 +1969,8 @@ func _format_need_bar(value: float, width: int = 10) -> String:
 func _build_activity_section() -> Dictionary:
 	var rows: Array = []
 	var action_label := current_action.label if current_action != null else "Idle"
+	if current_action == null and not _server_interaction_label.is_empty():
+		action_label = _server_interaction_label
 	if network_replica_mode and not _network_action_label.is_empty():
 		action_label = _network_action_label
 	rows.append({"label": "Aktion", "value": action_label})

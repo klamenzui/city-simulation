@@ -7,6 +7,9 @@ const WorldSnapshotSerializerScript = preload("res://Simulation/Multiplayer/shar
 const SNAPSHOT_INTERVAL_SEC := 0.25
 const WORLD_STATE_SNAPSHOT_INTERVAL_SEC := 1.0
 const LOCAL_HOST_PEER_ID := 1
+const CITIZEN_INTERACTION_DISTANCE := 1.2
+const INTERACTION_ARRIVAL_TOLERANCE := 0.55
+const INTERACTION_EFFECT_DURATION_SEC := 8.0
 
 var root_node: Node = null
 var world: World = null
@@ -23,7 +26,12 @@ var _player_input_command_count_by_peer: Dictionary = {}
 var _last_player_input_direction_by_peer: Dictionary = {}
 var _interaction_command_count_by_peer: Dictionary = {}
 var _accepted_interaction_command_count_by_peer: Dictionary = {}
+var _completed_interaction_command_count_by_peer: Dictionary = {}
+var _applied_interaction_effect_count_by_peer: Dictionary = {}
 var _last_interaction_by_peer: Dictionary = {}
+var _last_interaction_effect_by_peer: Dictionary = {}
+var _active_interaction_by_peer: Dictionary = {}
+var _active_interaction_effect_by_peer: Dictionary = {}
 var _local_host_camera_follow_target_id: String = ""
 
 func setup(root_ref: Node, world_ref: World, session_ref: Node) -> void:
@@ -64,6 +72,8 @@ func update(delta: float) -> void:
 	if not _active or session_node == null:
 		return
 	_apply_local_host_player_input()
+	_update_active_interactions()
+	_update_interaction_effects(delta)
 	_snapshot_timer -= delta
 	if _snapshot_timer <= 0.0:
 		_snapshot_timer = SNAPSHOT_INTERVAL_SEC
@@ -103,9 +113,16 @@ func get_debug_status() -> Dictionary:
 		"last_player_input_direction_by_peer": _last_player_input_direction_by_peer.duplicate(true),
 		"interaction_command_count": _sum_int_values(_interaction_command_count_by_peer),
 		"accepted_interaction_command_count": _sum_int_values(_accepted_interaction_command_count_by_peer),
+		"completed_interaction_command_count": _sum_int_values(_completed_interaction_command_count_by_peer),
+		"applied_interaction_effect_count": _sum_int_values(_applied_interaction_effect_count_by_peer),
 		"interaction_command_count_by_peer": _string_keyed_int_dictionary(_interaction_command_count_by_peer),
 		"accepted_interaction_command_count_by_peer": _string_keyed_int_dictionary(_accepted_interaction_command_count_by_peer),
+		"completed_interaction_command_count_by_peer": _string_keyed_int_dictionary(_completed_interaction_command_count_by_peer),
+		"applied_interaction_effect_count_by_peer": _string_keyed_int_dictionary(_applied_interaction_effect_count_by_peer),
 		"last_interaction_by_peer": _last_interaction_by_peer.duplicate(true),
+		"last_interaction_effect_by_peer": _last_interaction_effect_by_peer.duplicate(true),
+		"active_interaction_by_peer": _active_interaction_debug_dictionary(),
+		"active_interaction_effect_by_peer": _active_interaction_effect_debug_dictionary(),
 	}
 
 func build_snapshot() -> Dictionary:
@@ -239,6 +256,8 @@ func _assign_player_citizen(peer_id: int) -> String:
 func _release_player_citizen(peer_id: int) -> void:
 	var entity_id := str(_player_citizen_id_by_peer.get(peer_id, ""))
 	_player_citizen_id_by_peer.erase(peer_id)
+	_active_interaction_by_peer.erase(peer_id)
+	_clear_interaction_effect_for_peer(peer_id)
 	if peer_id == LOCAL_HOST_PEER_ID:
 		_local_host_camera_follow_target_id = ""
 	var citizen := _find_citizen_by_id(entity_id)
@@ -256,6 +275,8 @@ func _handle_player_input_command(peer_id: int, command: Dictionary) -> void:
 	direction.y = 0.0
 	if direction.length_squared() > 1.0:
 		direction = direction.normalized()
+	if direction.length_squared() > 0.0001:
+		_clear_interaction_effect_for_peer(peer_id)
 	_player_input_command_count_by_peer[peer_id] = int(_player_input_command_count_by_peer.get(peer_id, 0)) + 1
 	_last_player_input_direction_by_peer[str(peer_id)] = [direction.x, direction.y, direction.z]
 	citizen.apply_network_server_control_input(direction, world)
@@ -268,16 +289,291 @@ func _handle_interact_entity_command(peer_id: int, command: Dictionary) -> void:
 	var player := _find_citizen_by_id(citizen_id)
 	var target_id := str(command.get("target_id", ""))
 	var target := _find_entity_by_id(target_id)
-	var accepted := player != null and target != null and target != player
+	var interaction := _start_entity_interaction(peer_id, player, target_id, target)
+	var accepted := bool(interaction.get("accepted", false))
 	if accepted:
-		_face_player_towards(player, target.global_position)
 		_accepted_interaction_command_count_by_peer[peer_id] = int(_accepted_interaction_command_count_by_peer.get(peer_id, 0)) + 1
-	_last_interaction_by_peer[str(peer_id)] = {
+	_last_interaction_by_peer[str(peer_id)] = interaction
+
+func _start_entity_interaction(peer_id: int, player: Citizen, target_id: String, target: Node3D) -> Dictionary:
+	var player_id := NetworkEntityRegistryScript.get_entity_id(player)
+	var target_type := _entity_type_name(target)
+	var result := {
 		"target_id": target_id,
-		"accepted": accepted,
-		"player_id": citizen_id,
-		"target_type": _entity_type_name(target),
+		"accepted": false,
+		"player_id": player_id,
+		"target_type": target_type,
+		"state": "rejected",
+		"reason": "",
 	}
+	if player == null:
+		result["reason"] = "missing_player"
+		return result
+	if target == null:
+		result["reason"] = "missing_target"
+		return result
+	if target == player:
+		result["reason"] = "self_target"
+		return result
+	_clear_interaction_effect_for_peer(peer_id)
+	var target_position := _interaction_target_position(player, target)
+	var distance_before := _planar_distance(player.global_position, target_position)
+	result["start_distance"] = distance_before
+	result["target_position"] = _vec3_to_array(target_position)
+	if distance_before <= _arrival_tolerance_for_target(target):
+		_face_player_towards(player, target.global_position)
+		result["accepted"] = true
+		result["state"] = "arrived"
+		result["current_distance"] = distance_before
+		result["effect"] = _apply_interaction_effect(peer_id, player, target, result, distance_before)
+		_completed_interaction_command_count_by_peer[peer_id] = int(_completed_interaction_command_count_by_peer.get(peer_id, 0)) + 1
+		_active_interaction_by_peer.erase(peer_id)
+		return result
+	if not player.has_method("begin_network_server_interaction_travel"):
+		result["reason"] = "player_cannot_travel"
+		return result
+	var target_building := target as Building
+	var travel_started := bool(player.begin_network_server_interaction_travel(target_position, target_building, world))
+	result["accepted"] = travel_started
+	result["state"] = "travelling" if travel_started else "travel_failed"
+	result["reason"] = "" if travel_started else "path_failed"
+	result["current_distance"] = distance_before
+	if travel_started:
+		_set_citizen_interaction_label(player, "Going to %s" % _entity_display_name(target))
+		_active_interaction_by_peer[peer_id] = {
+			"player_id": player_id,
+			"target_id": target_id,
+			"target_type": target_type,
+			"target_position": target_position,
+			"start_distance": distance_before,
+		}
+		_face_player_towards(player, target.global_position)
+	return result
+
+func _update_active_interactions() -> void:
+	if _active_interaction_by_peer.is_empty():
+		return
+	for peer_id in _active_interaction_by_peer.keys():
+		var interaction := _active_interaction_by_peer.get(peer_id, {}) as Dictionary
+		var player_id := str(interaction.get("player_id", ""))
+		var target_id := str(interaction.get("target_id", ""))
+		var player := _find_citizen_by_id(player_id)
+		var target := _find_entity_by_id(target_id)
+		if player == null or target == null:
+			_finish_active_interaction(int(peer_id), interaction, "cancelled", "missing_entity", -1.0)
+			continue
+		var target_position: Vector3 = interaction.get("target_position", target.global_position)
+		var current_distance := _planar_distance(player.global_position, target_position)
+		var arrived := current_distance <= _arrival_tolerance_for_target(target)
+		if not arrived and player.has_method("has_reached_travel_target"):
+			arrived = player.has_reached_travel_target()
+		if arrived:
+			_face_player_towards(player, target.global_position)
+			if player.has_method("finish_network_server_interaction_travel"):
+				player.finish_network_server_interaction_travel()
+			_apply_interaction_effect(int(peer_id), player, target, interaction, current_distance)
+			_finish_active_interaction(int(peer_id), interaction, "arrived", "", current_distance)
+			continue
+		if player.has_method("is_network_server_interaction_travelling") \
+				and not bool(player.is_network_server_interaction_travelling()):
+			_finish_active_interaction(int(peer_id), interaction, "cancelled", "travel_interrupted", current_distance)
+			continue
+		_update_last_interaction_debug(int(peer_id), interaction, "travelling", "", current_distance)
+
+func _finish_active_interaction(
+	peer_id: int,
+	interaction: Dictionary,
+	state: String,
+	reason: String,
+	current_distance: float
+) -> void:
+	_active_interaction_by_peer.erase(peer_id)
+	if state == "arrived":
+		_completed_interaction_command_count_by_peer[peer_id] = int(_completed_interaction_command_count_by_peer.get(peer_id, 0)) + 1
+	_update_last_interaction_debug(peer_id, interaction, state, reason, current_distance)
+
+func _update_last_interaction_debug(
+	peer_id: int,
+	interaction: Dictionary,
+	state: String,
+	reason: String,
+	current_distance: float
+) -> void:
+	_last_interaction_by_peer[str(peer_id)] = {
+		"target_id": str(interaction.get("target_id", "")),
+		"accepted": state != "cancelled",
+		"player_id": str(interaction.get("player_id", "")),
+		"target_type": str(interaction.get("target_type", "")),
+		"state": state,
+		"reason": reason,
+		"start_distance": float(interaction.get("start_distance", 0.0)),
+		"current_distance": current_distance,
+		"target_position": _vec3_to_array(interaction.get("target_position", Vector3.ZERO)),
+	}
+
+func _apply_interaction_effect(
+	peer_id: int,
+	player: Citizen,
+	target: Node3D,
+	interaction: Dictionary,
+	current_distance: float
+) -> Dictionary:
+	var effect := {
+		"player_id": NetworkEntityRegistryScript.get_entity_id(player),
+		"target_id": NetworkEntityRegistryScript.get_entity_id(target),
+		"target_type": _entity_type_name(target),
+		"state": "not_applied",
+		"reason": "",
+		"current_distance": current_distance,
+	}
+	if player == null or target == null:
+		effect["reason"] = "missing_entity"
+		_record_interaction_effect(peer_id, effect, false)
+		return effect
+
+	if target is Building:
+		var building := target as Building
+		var blocked_reason := _building_interaction_block_reason(building)
+		if not blocked_reason.is_empty():
+			effect["reason"] = blocked_reason
+			_record_interaction_effect(peer_id, effect, false)
+			return effect
+		if player.has_method("enter_building"):
+			player.enter_building(building, world, false)
+		var player_label := "Visiting %s" % _entity_display_name(building)
+		_set_citizen_interaction_label(player, player_label)
+		effect["state"] = "entered_building"
+		effect["building_visitor_count"] = building.visitors.size()
+		_track_interaction_effect(peer_id, effect, player_label, "")
+		_record_interaction_effect(peer_id, effect, true)
+		return effect
+
+	if target is Citizen:
+		var target_citizen := target as Citizen
+		_face_player_towards(player, target_citizen.global_position)
+		_face_player_towards(target_citizen, player.global_position)
+		var player_label := "Talking to %s" % _entity_display_name(target_citizen)
+		var target_label := "Talking to Player"
+		_set_citizen_interaction_label(player, player_label)
+		_set_citizen_interaction_label(target_citizen, target_label)
+		if target_citizen.has_method("set_runtime_conversation_state"):
+			target_citizen.set_runtime_conversation_state("interactive", "Player", "network_interaction")
+		_upsert_network_interaction_commitment(target_citizen)
+		effect["state"] = "citizen_interaction"
+		_track_interaction_effect(peer_id, effect, player_label, target_label)
+		_record_interaction_effect(peer_id, effect, true)
+		return effect
+
+	effect["reason"] = "unsupported_target"
+	_record_interaction_effect(peer_id, effect, false)
+	return effect
+
+func _track_interaction_effect(
+	peer_id: int,
+	effect: Dictionary,
+	player_label: String,
+	target_label: String
+) -> void:
+	var tracked := effect.duplicate(true)
+	tracked["remaining_sec"] = INTERACTION_EFFECT_DURATION_SEC
+	tracked["player_label"] = player_label
+	tracked["target_label"] = target_label
+	_active_interaction_effect_by_peer[peer_id] = tracked
+
+func _record_interaction_effect(peer_id: int, effect: Dictionary, applied: bool) -> void:
+	_last_interaction_effect_by_peer[str(peer_id)] = effect.duplicate(true)
+	if applied:
+		_applied_interaction_effect_count_by_peer[peer_id] = int(_applied_interaction_effect_count_by_peer.get(peer_id, 0)) + 1
+
+func _update_interaction_effects(delta: float) -> void:
+	if _active_interaction_effect_by_peer.is_empty():
+		return
+	for peer_id in _active_interaction_effect_by_peer.keys():
+		var effect := _active_interaction_effect_by_peer.get(peer_id, {}) as Dictionary
+		var player := _find_citizen_by_id(str(effect.get("player_id", "")))
+		var target := _find_entity_by_id(str(effect.get("target_id", "")))
+		if player == null or target == null:
+			_clear_interaction_effect_for_peer(int(peer_id))
+			continue
+		var remaining := float(effect.get("remaining_sec", 0.0)) - delta
+		effect["remaining_sec"] = remaining
+		if remaining <= 0.0:
+			_clear_interaction_effect_for_peer(int(peer_id))
+			continue
+		_set_citizen_interaction_label(player, str(effect.get("player_label", "")))
+		if target is Citizen:
+			var target_citizen := target as Citizen
+			_set_citizen_interaction_label(target_citizen, str(effect.get("target_label", "")))
+			if target_citizen.has_method("set_runtime_conversation_state"):
+				target_citizen.set_runtime_conversation_state("interactive", "Player", "network_interaction")
+		_active_interaction_effect_by_peer[peer_id] = effect
+
+func _clear_interaction_effect_for_peer(peer_id: int) -> void:
+	var effect := _active_interaction_effect_by_peer.get(peer_id, {}) as Dictionary
+	if effect.is_empty():
+		return
+	var player := _find_citizen_by_id(str(effect.get("player_id", "")))
+	if player != null and player.has_method("clear_server_interaction_label"):
+		player.clear_server_interaction_label(str(effect.get("player_label", "")))
+	var target := _find_entity_by_id(str(effect.get("target_id", "")))
+	if target is Citizen:
+		var target_citizen := target as Citizen
+		if target_citizen.has_method("clear_server_interaction_label"):
+			target_citizen.clear_server_interaction_label(str(effect.get("target_label", "")))
+		if target_citizen.has_method("clear_runtime_conversation_state"):
+			target_citizen.clear_runtime_conversation_state()
+		if target_citizen.has_method("remove_lod_commitment"):
+			target_citizen.remove_lod_commitment("network_interaction")
+	_active_interaction_effect_by_peer.erase(peer_id)
+
+func _building_interaction_block_reason(building: Building) -> String:
+	if building == null:
+		return "missing_building"
+	var hour := world.time.get_hour() if world != null and world.time != null else -1
+	if building.has_method("is_open") and not bool(building.is_open(hour)):
+		return "building_closed"
+	return ""
+
+func _upsert_network_interaction_commitment(citizen: Citizen) -> void:
+	if citizen == null or world == null or world.time == null or not citizen.has_method("upsert_lod_commitment"):
+		return
+	var total_minutes := int(world.time.minutes_total) + 20
+	var until_day := int(world.time.day) + int(total_minutes / (24 * 60))
+	var until_minute := posmod(total_minutes, 24 * 60)
+	citizen.upsert_lod_commitment("network_interaction", until_day, until_minute, 50.0, {
+		"source": "multiplayer_interaction",
+	})
+
+func _set_citizen_interaction_label(citizen: Citizen, label: String) -> void:
+	if citizen != null and citizen.has_method("set_server_interaction_label"):
+		citizen.set_server_interaction_label(label)
+
+func _interaction_target_position(player: Citizen, target: Node3D) -> Vector3:
+	if target is Building:
+		var building := target as Building
+		var nav_points := player.get_navigation_points_for_building(building, world) if player != null and player.has_method("get_navigation_points_for_building") else {}
+		var access_pos: Variant = nav_points.get("access", building.get_entrance_pos())
+		return access_pos if access_pos is Vector3 else building.get_entrance_pos()
+	if target is Citizen:
+		var direction := player.global_position - target.global_position
+		direction.y = 0.0
+		if direction.length_squared() <= 0.0001:
+			direction = -target.global_transform.basis.z
+			direction.y = 0.0
+		if direction.length_squared() <= 0.0001:
+			direction = Vector3.FORWARD
+		var position := target.global_position + direction.normalized() * CITIZEN_INTERACTION_DISTANCE
+		if world != null and world.has_method("get_pedestrian_access_point"):
+			position = world.get_pedestrian_access_point(position)
+		return position
+	return target.global_position
+
+func _arrival_tolerance_for_target(target: Node3D) -> float:
+	if target is Building:
+		var building := target as Building
+		if building.has_method("get_navigation_approach_distance"):
+			return maxf(float(building.get_navigation_approach_distance()), INTERACTION_ARRIVAL_TOLERANCE)
+	return INTERACTION_ARRIVAL_TOLERANCE
 
 func _reserved_player_citizen_ids() -> Dictionary:
 	var reserved: Dictionary = {}
@@ -314,7 +610,10 @@ func _apply_local_host_player_input() -> void:
 	var citizen := _find_citizen_by_id(entity_id)
 	if citizen == null or not citizen.has_method("apply_network_server_control_input"):
 		return
-	citizen.apply_network_server_control_input(_get_local_host_input_direction(), world)
+	var direction := _get_local_host_input_direction()
+	if direction.length_squared() > 0.0001:
+		_clear_interaction_effect_for_peer(LOCAL_HOST_PEER_ID)
+	citizen.apply_network_server_control_input(direction, world)
 	_sync_local_host_player_camera(entity_id)
 
 func _sync_local_host_player_camera(entity_id: String) -> void:
@@ -405,6 +704,45 @@ func _entity_type_name(entity: Node) -> String:
 		return "building"
 	return ""
 
+func _entity_display_name(entity: Node) -> String:
+	if entity == null:
+		return "Target"
+	if entity is Citizen:
+		return (entity as Citizen).citizen_name
+	if entity is Building:
+		var building := entity as Building
+		if building.has_method("get_display_name"):
+			return building.get_display_name()
+		return building.building_name
+	return entity.name
+
+func _active_interaction_debug_dictionary() -> Dictionary:
+	var result: Dictionary = {}
+	for peer_id in _active_interaction_by_peer.keys():
+		var interaction := _active_interaction_by_peer.get(peer_id, {}) as Dictionary
+		result[str(peer_id)] = {
+			"player_id": str(interaction.get("player_id", "")),
+			"target_id": str(interaction.get("target_id", "")),
+			"target_type": str(interaction.get("target_type", "")),
+			"state": "travelling",
+			"start_distance": float(interaction.get("start_distance", 0.0)),
+			"target_position": _vec3_to_array(interaction.get("target_position", Vector3.ZERO)),
+		}
+	return result
+
+func _active_interaction_effect_debug_dictionary() -> Dictionary:
+	var result: Dictionary = {}
+	for peer_id in _active_interaction_effect_by_peer.keys():
+		var effect := _active_interaction_effect_by_peer.get(peer_id, {}) as Dictionary
+		result[str(peer_id)] = {
+			"player_id": str(effect.get("player_id", "")),
+			"target_id": str(effect.get("target_id", "")),
+			"target_type": str(effect.get("target_type", "")),
+			"state": str(effect.get("state", "")),
+			"remaining_sec": float(effect.get("remaining_sec", 0.0)),
+		}
+	return result
+
 func _sum_int_values(values: Dictionary) -> int:
 	var total := 0
 	for value in values.values():
@@ -416,6 +754,17 @@ func _string_keyed_int_dictionary(values: Dictionary) -> Dictionary:
 	for key in values.keys():
 		result[str(key)] = int(values.get(key, 0))
 	return result
+
+func _planar_distance(a: Vector3, b: Vector3) -> float:
+	a.y = 0.0
+	b.y = 0.0
+	return a.distance_to(b)
+
+func _vec3_to_array(value: Variant) -> Array:
+	if value is Vector3:
+		var vec := value as Vector3
+		return [vec.x, vec.y, vec.z]
+	return []
 
 func _find_citizen_by_id(entity_id: String) -> Citizen:
 	if entity_id.is_empty() or world == null:
