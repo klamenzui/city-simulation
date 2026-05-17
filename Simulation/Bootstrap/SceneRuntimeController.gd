@@ -189,6 +189,8 @@ func _build_hud(search_result_limit: int, building_overview_refresh_interval_sec
 		Callable(interaction_controller, "on_building_overview_pressed"),
 		Callable(interaction_controller, "on_citizen_overview_pressed"),
 		Callable(interaction_controller, "on_economy_overview_pressed"),
+		Callable(interaction_controller, "on_search_overview_pressed"),
+		Callable(interaction_controller, "on_debug_tools_pressed"),
 		Callable(interaction_controller, "on_player_control_pressed"),
 		Callable(interaction_controller, "on_ai_runtime_pressed"),
 		multiplayer_session
@@ -208,6 +210,7 @@ func _build_hud(search_result_limit: int, building_overview_refresh_interval_sec
 		hud_controller.get_building_overview_button(),
 		hud_controller.get_citizen_overview_button(),
 		hud_controller.get_economy_overview_button(),
+		hud_controller.get_search_overview_button(),
 		Callable(interaction_controller, "handle_citizen_clicked"),
 		Callable(interaction_controller, "handle_building_clicked"),
 		Callable(building_status_style_resolver, "get_badge_color"),
@@ -224,7 +227,10 @@ func _setup_coordinate_picker() -> void:
 	if canvas == null:
 		return
 	coordinate_picker_controller = CoordinatePickerControllerScript.new()
-	coordinate_picker_controller.setup(owner_node, world, city_camera, canvas)
+	coordinate_picker_controller.setup(owner_node, world, city_camera, canvas,
+			hud_controller.get_debug_tools_button())
+	if interaction_controller != null:
+		interaction_controller.bind_coordinate_picker(coordinate_picker_controller)
 
 
 func _setup_selection_state_controller() -> void:
