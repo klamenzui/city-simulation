@@ -48,6 +48,8 @@ func setup(
 	world = world_ref
 	city_camera = camera_ref
 	multiplayer_session = multiplayer_session_ref
+	if world != null and world.has_method("set_citizen_spawn_parent"):
+		world.set_citizen_spawn_parent(owner_node)
 	var headless_runtime := _is_headless_runtime()
 
 	_setup_runtime_debug_logger(
@@ -57,6 +59,8 @@ func setup(
 		all_trace_interval_sec
 	)
 	_spawn_citizens(initial_citizen_count)
+	if world != null and world.has_method("capture_population_target_floor"):
+		world.capture_population_target_floor()
 	_setup_selection_state_controller()
 	_setup_dialogue_runtime(headless_runtime)
 	_setup_conversation_manager()
@@ -66,6 +70,7 @@ func setup(
 	_setup_selection_debug_controller()
 	_setup_building_status_style_resolver()
 	_setup_interaction_controller()
+	_bind_world_citizen_registration()
 	_bind_citizen_clicks()
 	_setup_building_status_badge_controller()
 	_bind_building_clicks()
@@ -300,19 +305,31 @@ func _get_clickable_scene_buildings() -> Array[Building]:
 func _bind_citizen_clicks() -> void:
 	if interaction_controller == null:
 		return
-	var citizen_clicked_base := Callable(interaction_controller, "handle_citizen_clicked")
 	for citizen in world.citizens:
 		if citizen == null:
 			continue
-		var clicked_cb := citizen_clicked_base.bind(citizen)
-		if not citizen.clicked.is_connected(clicked_cb):
-			citizen.clicked.connect(clicked_cb)
+		_bind_citizen_click(citizen)
+
+func _bind_citizen_click(citizen: Citizen) -> void:
+	if interaction_controller == null or citizen == null:
+		return
+	var clicked_cb := Callable(interaction_controller, "handle_citizen_clicked").bind(citizen)
+	if not citizen.clicked.is_connected(clicked_cb):
+		citizen.clicked.connect(clicked_cb)
+
+func _bind_world_citizen_registration() -> void:
+	if world == null or interaction_controller == null:
+		return
+	var registered_cb := Callable(self, "_on_world_citizen_registered")
+	if not world.citizen_registered.is_connected(registered_cb):
+		world.citizen_registered.connect(registered_cb)
+
+func _on_world_citizen_registered(citizen: Citizen) -> void:
+	_bind_citizen_click(citizen)
 
 func _spawn_citizens(initial_citizen_count: int) -> void:
 	var spawned := CitizenFactory.spawn_citizens(owner_node, world, initial_citizen_count)
 	if interaction_controller == null:
 		return
 	for citizen in spawned:
-		var clicked_cb := Callable(interaction_controller, "handle_citizen_clicked").bind(citizen)
-		if not citizen.clicked.is_connected(clicked_cb):
-			citizen.clicked.connect(clicked_cb)
+		_bind_citizen_click(citizen)

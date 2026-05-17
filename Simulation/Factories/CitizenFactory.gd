@@ -21,6 +21,7 @@ const LAST_NAMES := [
 const HOME_EXIT_COLUMNS := 3
 const HOME_EXIT_LATERAL_SPACING := 0.26
 const HOME_EXIT_ROW_SPACING := 0.30
+const CITIZEN_SERIAL_META := "_citizen_factory_next_serial"
 
 const JOB_TITLES := [
 	"Baecker", "Kellner", "Programmierer", "Fahrer", "Mechaniker",
@@ -76,29 +77,61 @@ static func spawn_citizens(parent: Node, world: World, count: int) -> Array[Citi
 
 	var spawn_count_by_home: Dictionary = {}
 	for i in count:
-		var candidate := citizen_scene.instantiate()
-		if candidate is not Citizen:
-			continue
-
-		var citizen := candidate as Citizen
-		var first_name: String = str(first_pool[i % first_pool.size()])
-		var last_name: String = str(last_pool[i % last_pool.size()])
-		citizen.citizen_name = "%s %s" % [first_name, last_name]
-
-		citizen.job = _create_random_job()
-		citizen.set_world_ref(world)
-		if citizen.job != null:
-			world.register_job(citizen.job)
-
-		var home := _assign_home(citizen, world)
-		parent.add_child(citizen)
-		place_citizen_at_home_exit(citizen, home, world, _claim_home_spawn_index(home, spawn_count_by_home))
-		if home != null:
-			citizen.enter_building(home, world, false)
-		world.register_citizen(citizen)
-		spawned.append(citizen)
+		var citizen := _spawn_citizen_from_scene(
+			parent,
+			world,
+			citizen_scene,
+			i,
+			spawn_count_by_home,
+			first_pool,
+			last_pool
+		)
+		if citizen != null:
+			spawned.append(citizen)
 
 	return spawned
+
+static func spawn_citizen(parent: Node, world: World, spawn_index: int = 0) -> Citizen:
+	if parent == null or world == null:
+		return null
+
+	var citizen_scene: PackedScene = load(CITIZEN_SCENE_PATH)
+	if citizen_scene == null:
+		push_error("CitizenFactory: Could not load %s" % CITIZEN_SCENE_PATH)
+		return null
+	return _spawn_citizen_from_scene(parent, world, citizen_scene, spawn_index, {})
+
+static func _spawn_citizen_from_scene(
+	parent: Node,
+	world: World,
+	citizen_scene: PackedScene,
+	spawn_index: int,
+	spawn_count_by_home: Dictionary,
+	first_pool: Array = [],
+	last_pool: Array = []
+) -> Citizen:
+	var candidate := citizen_scene.instantiate()
+	if candidate is not Citizen:
+		return null
+
+	var citizen := candidate as Citizen
+	var serial := _claim_citizen_serial(world)
+	citizen.name = "Citizen_%04d" % serial
+	citizen.citizen_name = _build_citizen_display_name(serial, spawn_index, first_pool, last_pool)
+	citizen.set_world_ref(world)
+
+	var home := _assign_home(citizen, world)
+	var origin := home.global_position if home != null else _get_fallback_spawn_pos(world, spawn_index)
+	citizen.job = _create_spawn_job(citizen, world, origin)
+	if citizen.job != null:
+		world.register_job(citizen.job)
+
+	parent.add_child(citizen)
+	place_citizen_at_home_exit(citizen, home, world, _claim_home_spawn_index(home, spawn_count_by_home))
+	if home != null:
+		citizen.enter_building(home, world, false)
+	world.register_citizen(citizen)
+	return citizen
 
 static func place_citizen_at_home_exit(
 	citizen: Citizen,
@@ -165,6 +198,8 @@ static func _get_exit_facing_dir(home: ResidentialBuilding, entrance_pos: Vector
 static func _get_fallback_spawn_pos(world: World, spawn_index: int) -> Vector3:
 	var spawn_pos := Vector3.ZERO
 	if world != null:
+		if world.has_method("get_citizen_spawn_position"):
+			return world.get_citizen_spawn_position(spawn_index)
 		spawn_pos = world.get_world_center()
 		spawn_pos.y = world.get_ground_fallback_y()
 	var ring := float(spawn_index / 8) * 0.35 + 0.6
@@ -188,6 +223,69 @@ static func _create_random_job() -> Job:
 	job.workplace_service_type = get_service_type_for_job_title(job.title)
 	job.allowed_building_types = get_allowed_building_types_for_job_title(job.title)
 	return job
+
+static func _create_spawn_job(citizen: Citizen, world: World, origin: Vector3) -> Job:
+	var offered_job := _create_job_from_best_offer(citizen, world, origin)
+	if offered_job != null:
+		return offered_job
+	return _create_random_job()
+
+static func _create_job_from_best_offer(citizen: Citizen, world: World, origin: Vector3) -> Job:
+	if citizen == null or world == null or not world.has_method("find_best_job_offer_for_citizen"):
+		return null
+	var offer: Dictionary = world.find_best_job_offer_for_citizen(origin, citizen, true)
+	if offer.is_empty():
+		return null
+	return build_job_from_offer(offer)
+
+static func build_job_from_offer(offer: Dictionary) -> Job:
+	var target_building := offer.get("building", null) as Building
+	if target_building == null:
+		return null
+	var job_title := str(offer.get("title", "Worker"))
+	var job := Job.new()
+	job.title = job_title
+	job.wage_per_hour = int(offer.get("wage_per_hour", get_wage_for_job_title(job_title)))
+	job.shift_hours = int(offer.get("shift_hours", 8))
+	job.required_education_level = int(offer.get(
+		"required_education_level",
+		get_required_education_for_job_title(job_title)
+	))
+	var expected_service_type := get_service_type_for_job_title(job_title)
+	job.workplace_service_type = expected_service_type \
+		if expected_service_type != "" and target_building.get_service_type() == expected_service_type \
+		else ""
+	job.allowed_building_types = []
+	for type_id in offer.get("allowed_building_types", get_allowed_building_types_for_job_title(job_title)):
+		job.allowed_building_types.append(int(type_id))
+	job.workplace = target_building
+	job.preferred_workplace = target_building
+	return job
+
+static func _claim_citizen_serial(world: World) -> int:
+	if world == null:
+		return 1
+	var next_serial := int(world.get_meta(CITIZEN_SERIAL_META, world.citizens.size() + 1))
+	world.set_meta(CITIZEN_SERIAL_META, next_serial + 1)
+	return next_serial
+
+static func _build_citizen_display_name(
+	serial: int,
+	spawn_index: int,
+	first_pool: Array,
+	last_pool: Array
+) -> String:
+	var first_name: String
+	var last_name: String
+	if first_pool.is_empty():
+		first_name = str(FIRST_NAMES[posmod(serial - 1, FIRST_NAMES.size())])
+	else:
+		first_name = str(first_pool[posmod(spawn_index, first_pool.size())])
+	if last_pool.is_empty():
+		last_name = str(LAST_NAMES[posmod(int((serial - 1) / FIRST_NAMES.size()), LAST_NAMES.size())])
+	else:
+		last_name = str(last_pool[posmod(spawn_index, last_pool.size())])
+	return "%s %s" % [first_name, last_name]
 
 static func get_wage_for_job_title(job_title: String) -> int:
 	var configured_wage := BalanceConfig.get_int("economy.jobs.wage_per_hour_by_title.%s" % job_title, -1)

@@ -169,6 +169,7 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_building_entry_travel_test.gd | - | SceneTree |
 | tools/codex_building_occupancy_test.gd | - | SceneTree |
 | tools/codex_citizen_config_drift_test.gd | - | SceneTree |
+| tools/codex_citizen_fall_respawn_test.gd | - | SceneTree |
 | tools/codex_citizen_stuck_escape_test.gd | - | SceneTree |
 | tools/codex_crosswalk_audit.gd | - | SceneTree |
 | tools/codex_dialogue_probe.gd | - | SceneTree, RefCounted |

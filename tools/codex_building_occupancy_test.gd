@@ -49,6 +49,8 @@ func _run_all_tests() -> void:
 		"world_unregisters_removed_park_from_queries",
 		"world_registers_scene_park_cluster_once",
 		"citizen_factory_spawns_at_home_entrance",
+		"citizen_death_cleanup_unregisters_and_queues_refill",
+		"population_refill_spawns_after_delay",
 		"citizen_crowd_push_separates_close_neighbors",
 		"citizen_auto_resolves_world_for_queries",
 		"hungry_citizen_uses_nearest_food_target",
@@ -121,6 +123,10 @@ func _run_test(test_name: String) -> String:
 			return _test_world_registers_scene_park_cluster_once()
 		"citizen_factory_spawns_at_home_entrance":
 			return _test_citizen_factory_spawns_at_home_entrance()
+		"citizen_death_cleanup_unregisters_and_queues_refill":
+			return _test_citizen_death_cleanup_unregisters_and_queues_refill()
+		"population_refill_spawns_after_delay":
+			return _test_population_refill_spawns_after_delay()
 		"citizen_crowd_push_separates_close_neighbors":
 			return _test_citizen_crowd_push_separates_close_neighbors()
 		"citizen_auto_resolves_world_for_queries":
@@ -640,6 +646,88 @@ func _test_citizen_factory_spawns_at_home_entrance() -> String:
 		if index == 0:
 			var center_spawn: Vector3 = home.get_navigation_points(world, 0.0).get("spawn", home.get_entrance_pos())
 			_expect(citizen.global_position.distance_to(center_spawn) < 0.15, "first same-home spawn should stay centered at the exit")
+
+	_free_world(world)
+	return _current_error
+
+func _test_citizen_death_cleanup_unregisters_and_queues_refill() -> String:
+	var world: World = _new_world()
+	var home: ResidentialBuilding = _new_residential("Death Home", Vector3(0.0, 0.0, 1.4), 2)
+	var workplace: Building = _new_building("Death Workplace", 1)
+	world.register_building(home)
+	world.register_building(workplace)
+
+	var spawned: Array[Citizen] = CitizenFactoryScript.spawn_citizens(_harness_root, world, 1)
+	_expect_eq(spawned.size(), 1, "factory should create the death-test citizen")
+	if spawned.is_empty():
+		_free_world(world)
+		return _current_error
+
+	var citizen := spawned[0]
+	var job := citizen.job if citizen.job != null else Job.new()
+	job.title = "Worker"
+	job.workplace = workplace
+	citizen.job = job
+	world.register_job(job)
+	_expect(workplace.try_hire(citizen), "workplace should hire the test citizen")
+	_expect(home.tenants.has(citizen), "death-test citizen should occupy a home before death")
+	_expect(world.citizens.has(citizen), "death-test citizen should be registered before death")
+	_expect(world.jobs.has(job), "death-test job should be registered before death")
+
+	citizen.needs.health = 0.0
+	citizen.die(world)
+
+	_expect(citizen.is_dying(), "death cleanup should mark the citizen as dying")
+	_expect(not world.citizens.has(citizen), "death cleanup should unregister the citizen immediately")
+	_expect(not home.tenants.has(citizen), "death cleanup should release the residential tenant slot")
+	_expect(not workplace.workers.has(citizen), "death cleanup should release the workplace worker slot")
+	_expect(job.workplace == null, "death cleanup should detach the job from the workplace")
+	_expect(not world.jobs.has(job), "death cleanup should unregister the citizen job from world/economy")
+	_expect(world.get_population_refill_pending_count() > 0, "death cleanup should queue a delayed population refill")
+
+	_free_world(world)
+	return _current_error
+
+func _test_population_refill_spawns_after_delay() -> String:
+	var world: World = _new_world()
+	world.minutes_per_tick = 60
+	world.time.minutes_total = 0
+	world.set_citizen_spawn_parent(_harness_root)
+	var home: ResidentialBuilding = _new_residential("Refill Home", Vector3(0.0, 0.0, 1.4), 2)
+	world.register_building(home)
+
+	var spawned: Array[Citizen] = CitizenFactoryScript.spawn_citizens(_harness_root, world, 1)
+	_expect_eq(spawned.size(), 1, "factory should create the refill-test citizen")
+	if spawned.is_empty():
+		_free_world(world)
+		return _current_error
+
+	var original := spawned[0]
+	original.needs.health = 0.0
+	original.die(world)
+	_expect_eq(world.get_active_citizen_count(), 0, "dead citizen should not count as active population")
+	_expect(world.get_population_refill_pending_count() > 0, "death should queue at least one refill request")
+
+	var replacement: Citizen = null
+	for _hour in range(181):
+		world._on_tick()
+		if world.get_active_citizen_count() <= 0:
+			continue
+		for candidate in world.citizens:
+			if candidate != null and is_instance_valid(candidate) and candidate != original:
+				replacement = candidate
+				break
+		if replacement != null:
+			break
+
+	_expect(replacement != null, "population refill should spawn a replacement after the configured delay window")
+	if replacement != null:
+		_expect(replacement.home == home, "refill citizen should prefer an available residential home")
+		_expect(home.tenants.has(replacement), "refill citizen should occupy the residential tenant slot")
+		_expect(replacement.current_location == home, "refill citizen should start logically at home")
+		_expect(replacement.is_inside_building(), "refill citizen should start hidden inside the home")
+		_expect(replacement.wallet.balance > 0, "refill citizen should receive the configured starting wallet")
+		_expect(replacement.home_food_stock > 0, "refill citizen should receive configured home food stock")
 
 	_free_world(world)
 	return _current_error

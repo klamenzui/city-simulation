@@ -77,7 +77,12 @@ static func _deep_merge(base: Dictionary, override: Dictionary) -> void:
 static func _default_data() -> Dictionary:
 	return {
 		"simulation": {
-			"initial_citizen_count": 15,
+			"initial_citizen_count": 150,
+			"target_citizen_count": 200,
+			"enable_spawn_refill": true,
+			"spawn_refill_delay_min": 30,
+			"spawn_refill_delay_max": 180,
+			"spawn_refill_max_per_tick": 1,
 		},
 		"debug": {
 			"enable_all_citizen_trace": false,

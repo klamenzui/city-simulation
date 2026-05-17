@@ -10,6 +10,9 @@ const REPLICA_ROTATION_INTERPOLATION_SPEED := 12.0
 const REPLICA_SNAP_DISTANCE_METERS := 8.0
 const REPLICA_TARGET_EPSILON_METERS := 0.02
 const LOCAL_PLAYER_DEFAULT_PREDICTION_SPEED := 0.5
+const LOCAL_PLAYER_RECONCILIATION_SPEED := 4.5
+const LOCAL_PLAYER_SOFT_ERROR_METERS := 0.18
+const LOCAL_PLAYER_SNAP_DISTANCE_METERS := 5.0
 
 var root_node: Node = null
 var world: World = null
@@ -32,6 +35,8 @@ var _camera_follow_target_id: String = ""
 var _last_sent_input_direction: Vector3 = Vector3.ZERO
 var _local_prediction_frame_count: int = 0
 var _local_prediction_distance: float = 0.0
+var _local_reconciliation_frame_count: int = 0
+var _local_reconciliation_distance: float = 0.0
 var _last_prediction_direction: Vector3 = Vector3.ZERO
 var _interaction_status: Dictionary = {}
 
@@ -134,6 +139,8 @@ func get_debug_status() -> Dictionary:
 		"prediction_distance": _local_prediction_distance,
 		"prediction_error": _get_local_player_prediction_error(),
 		"prediction_last_direction": _vec3_to_array(_last_prediction_direction),
+		"reconciliation_frame_count": _local_reconciliation_frame_count,
+		"reconciliation_distance": _local_reconciliation_distance,
 		"interaction_status": _interaction_status.duplicate(true),
 	}
 
@@ -245,12 +252,14 @@ func _apply_citizen_snapshot(entity_id: String, citizen: Citizen, data: Dictiona
 	var render_rotation_y := citizen.rotation.y
 	var target_position := WorldSnapshotSerializerScript.vector_from_snapshot(data.get("position", []), render_position)
 	var target_rotation_y := float(data.get("rotation_y", render_rotation_y))
+	var is_local_player := entity_id == local_player_citizen_id and not local_player_citizen_id.is_empty()
 	if citizen.has_method("apply_network_snapshot"):
 		citizen.apply_network_snapshot(data, building_lookup)
 	else:
 		citizen.global_position = target_position
 		citizen.rotation.y = target_rotation_y
-	var should_snap := not had_interpolation_state or render_position.distance_to(target_position) > REPLICA_SNAP_DISTANCE_METERS
+	var snap_distance := LOCAL_PLAYER_SNAP_DISTANCE_METERS if is_local_player else REPLICA_SNAP_DISTANCE_METERS
+	var should_snap := not had_interpolation_state or render_position.distance_to(target_position) > snap_distance
 	if should_snap:
 		citizen.global_position = target_position
 		citizen.rotation.y = target_rotation_y
@@ -316,11 +325,39 @@ func _update_replica_interpolation(delta: float) -> void:
 		var state := _replica_interpolation_by_id[entity_id] as Dictionary
 		var target_position: Vector3 = state.get("target_position", citizen.global_position)
 		var target_rotation_y := float(state.get("target_rotation_y", citizen.rotation.y))
+		if entity_id == local_player_citizen_id and not local_player_citizen_id.is_empty():
+			_update_local_player_reconciliation(citizen, target_position, target_rotation_y, delta)
+			continue
 		var distance := citizen.global_position.distance_to(target_position)
 		if distance > REPLICA_SNAP_DISTANCE_METERS or distance <= REPLICA_TARGET_EPSILON_METERS:
 			citizen.global_position = target_position
 		else:
 			citizen.global_position = citizen.global_position.lerp(target_position, position_alpha)
+		citizen.rotation.y = lerp_angle(citizen.rotation.y, target_rotation_y, rotation_alpha)
+
+func _update_local_player_reconciliation(
+	citizen: Citizen,
+	target_position: Vector3,
+	target_rotation_y: float,
+	delta: float
+) -> void:
+	var distance := citizen.global_position.distance_to(target_position)
+	if distance > LOCAL_PLAYER_SNAP_DISTANCE_METERS:
+		citizen.global_position = target_position
+	elif distance > LOCAL_PLAYER_SOFT_ERROR_METERS:
+		var position_alpha := clampf(delta * LOCAL_PLAYER_RECONCILIATION_SPEED, 0.0, 1.0)
+		var before := citizen.global_position
+		citizen.global_position = citizen.global_position.lerp(target_position, position_alpha)
+		_local_reconciliation_frame_count += 1
+		_local_reconciliation_distance += before.distance_to(citizen.global_position)
+	elif distance > REPLICA_TARGET_EPSILON_METERS and _last_prediction_direction.length_squared() <= 0.0001:
+		var settle_alpha := clampf(delta * LOCAL_PLAYER_RECONCILIATION_SPEED, 0.0, 1.0)
+		var before_settle := citizen.global_position
+		citizen.global_position = citizen.global_position.lerp(target_position, settle_alpha)
+		_local_reconciliation_frame_count += 1
+		_local_reconciliation_distance += before_settle.distance_to(citizen.global_position)
+	if _last_prediction_direction.length_squared() <= 0.0001:
+		var rotation_alpha := clampf(delta * REPLICA_ROTATION_INTERPOLATION_SPEED, 0.0, 1.0)
 		citizen.rotation.y = lerp_angle(citizen.rotation.y, target_rotation_y, rotation_alpha)
 
 func _get_replica_interpolation_max_error() -> float:
@@ -384,6 +421,8 @@ func _get_local_player_prediction_error() -> float:
 func _reset_local_prediction_debug() -> void:
 	_local_prediction_frame_count = 0
 	_local_prediction_distance = 0.0
+	_local_reconciliation_frame_count = 0
+	_local_reconciliation_distance = 0.0
 	_last_prediction_direction = Vector3.ZERO
 
 func _safe_node_name(value: String) -> String:
@@ -393,7 +432,7 @@ func _safe_node_name(value: String) -> String:
 	return result
 
 func _sync_local_player_camera() -> void:
-	if local_player_citizen_id.is_empty() or _camera_follow_target_id == local_player_citizen_id:
+	if local_player_citizen_id.is_empty():
 		return
 	var citizen := get_local_player_citizen()
 	if citizen == null or root_node == null:
@@ -401,7 +440,11 @@ func _sync_local_player_camera() -> void:
 	var viewport := root_node.get_viewport()
 	var camera := viewport.get_camera_3d() if viewport != null else null
 	if camera != null and camera.has_method("set_follow_target"):
-		camera.call("set_follow_target", citizen)
+		if _camera_follow_target_id == local_player_citizen_id \
+				and camera.has_method("is_following_controller_view") \
+				and bool(camera.call("is_following_controller_view")):
+			return
+		camera.call("set_follow_target", citizen, true)
 		_camera_follow_target_id = local_player_citizen_id
 
 func _get_player_input_direction() -> Vector3:

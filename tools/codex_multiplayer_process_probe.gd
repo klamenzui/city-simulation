@@ -94,6 +94,7 @@ func _build_report(phase: String) -> Dictionary:
 	var client_debug := status.get("client_debug", {}) as Dictionary
 	var active_interactions := host_debug.get("active_interaction_by_peer", {}) as Dictionary
 	var active_effects := host_debug.get("active_interaction_effect_by_peer", {}) as Dictionary
+	var camera := _get_camera()
 	return {
 		"phase": phase,
 		"probe_role": _probe_role,
@@ -113,6 +114,8 @@ func _build_report(phase: String) -> Dictionary:
 		"local_player_visible": _entry_bool(citizen_entries, local_player_id, "visible"),
 		"local_player_manual_control": _entry_bool(citizen_entries, local_player_id, "manual_control"),
 		"local_player_position": _entry_value(citizen_entries, local_player_id, "position", []),
+		"camera_follow_controller_view": _camera_follow_controller_view(camera),
+		"camera_follow_target_id": _camera_follow_target_id(camera),
 		"manual_control_citizen_count": _count_manual_control_citizens(citizen_entries),
 		"manual_control_citizen_ids": _ids_from_entries_with_bool(citizen_entries, "manual_control"),
 		"client_drive_commands_sent": _client_drive_commands_sent,
@@ -150,6 +153,8 @@ func _build_report(phase: String) -> Dictionary:
 		"client_prediction_frame_count": int(client_debug.get("prediction_frame_count", 0)),
 		"client_prediction_distance": float(client_debug.get("prediction_distance", 0.0)),
 		"client_prediction_error": float(client_debug.get("prediction_error", 0.0)),
+		"client_reconciliation_frame_count": int(client_debug.get("reconciliation_frame_count", 0)),
+		"client_reconciliation_distance": float(client_debug.get("reconciliation_distance", 0.0)),
 		"client_interaction_status": client_debug.get("interaction_status", {}),
 		"citizen_count": citizen_entries.size(),
 		"visible_citizen_count": _count_visible_citizens(citizen_entries),
@@ -476,6 +481,24 @@ func _get_session() -> Node:
 
 func _get_world() -> World:
 	return _main.get_node_or_null("World") as World if _main != null else null
+
+func _get_camera() -> Camera3D:
+	if _main == null:
+		return null
+	return _main.get_node_or_null("Camera3D") as Camera3D
+
+func _camera_follow_controller_view(camera: Camera3D) -> bool:
+	if camera == null or not camera.has_method("is_following_controller_view"):
+		return false
+	return bool(camera.call("is_following_controller_view"))
+
+func _camera_follow_target_id(camera: Camera3D) -> String:
+	if camera == null or not camera.has_method("get_follow_target"):
+		return ""
+	var target := camera.call("get_follow_target") as Node3D
+	if target == null:
+		return ""
+	return NetworkEntityRegistryScript.get_entity_id(target)
 
 func _parse_args(args: PackedStringArray) -> Dictionary:
 	var parsed: Dictionary = {}

@@ -9,6 +9,8 @@ const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
 const CITY_BENCH_NAME_HINTS := ["bench", "bank", "seat", "sit"]
 const CITY_BENCH_RESERVATIONS_META := "_world_city_bench_reservations"
+const CITY_SPAWN_POINT_GROUPS := ["city_spawn_point", "citizen_spawn_point", "spawn_point"]
+const CITY_SPAWN_POINT_NAME_HINTS := ["citizenspawnpoint", "cityspawnpoint", "spawnpoint", "spawn_point", "citizen_spawn"]
 
 @export var minutes_per_tick: int = 1
 @export var tick_interval_sec: float = 0.5
@@ -43,6 +45,8 @@ var simulation_authority_enabled: bool = true
 
 signal paused_changed(paused: bool)
 signal speed_changed(multiplier: float)
+signal citizen_registered(citizen: Citizen)
+signal citizen_unregistered(citizen: Citizen)
 
 var _timer: Timer
 var _simulation_tick_counter: int = 0
@@ -52,6 +56,14 @@ var _coarse_citizens: Array[Citizen] = []
 var _coarse_schedule: Dictionary = {}
 var _cached_city_bench_nodes: Array[Node3D] = []
 var _city_bench_cache_dirty: bool = true
+var _citizen_spawn_parent: Node = null
+var _spawn_refill_queue: Array[Dictionary] = []
+var _population_refill_enabled: bool = true
+var _population_target_count: int = 0
+var _spawn_refill_delay_min_hours: int = 30
+var _spawn_refill_delay_max_hours: int = 180
+var _spawn_refill_max_per_tick: int = 1
+var _spawn_refill_spawn_index: int = 0
 
 func _ready() -> void:
 	#use_collision = true
@@ -59,6 +71,7 @@ func _ready() -> void:
 	minutes_per_tick = BalanceConfig.get_int("world.minutes_per_tick", minutes_per_tick)
 	tick_interval_sec = BalanceConfig.get_float("world.tick_interval_sec", tick_interval_sec)
 	speed_multiplier = BalanceConfig.get_float("world.speed_multiplier", speed_multiplier)
+	_load_population_refill_config()
 
 	add_child(time)
 	add_child(economy)
@@ -117,6 +130,8 @@ func _on_tick() -> void:
 	_tick_citizen_bucket(_active_citizens)
 	_tick_due_coarse_citizens(tick_index)
 	_simulation_tick_counter = tick_index
+	_process_population_refill_queue()
+	_ensure_population_refill_target("target")
 
 func _on_day_changed(_day: int) -> void:
 	# Daily economy cycle is executed after payday in _on_payday().
@@ -627,14 +642,193 @@ func register_citizen(citizen: Citizen) -> void:
 	citizens.append(citizen)
 	citizen.set_world_ref(self)
 	_register_citizen_lod_state(citizen)
+	citizen_registered.emit(citizen)
 
 func unregister_citizen(citizen: Citizen) -> void:
 	if citizen == null:
 		return
+	var was_registered := citizens.has(citizen)
 	citizens.erase(citizen)
 	_unregister_citizen_lod_state(citizen)
 	if citizen.job != null:
 		unregister_job(citizen.job)
+	if was_registered:
+		citizen_unregistered.emit(citizen)
+		if _is_citizen_dying(citizen):
+			_ensure_population_refill_target("death")
+
+func set_citizen_spawn_parent(parent: Node) -> void:
+	_citizen_spawn_parent = parent
+
+func get_population_target_count() -> int:
+	return _population_target_count
+
+func get_population_refill_pending_count() -> int:
+	return _spawn_refill_queue.size()
+
+func get_active_citizen_count() -> int:
+	return _count_active_citizens()
+
+func capture_population_target_floor() -> void:
+	if not _population_refill_enabled:
+		return
+	_population_target_count = maxi(_population_target_count, _count_active_citizens() + _spawn_refill_queue.size())
+
+func get_citizen_spawn_position(spawn_index: int = 0) -> Vector3:
+	var spawn_pos := _get_citizen_spawn_base_position()
+	var ring := float(spawn_index / 8) * 0.35 + 0.6
+	var angle := float(posmod(spawn_index, 8)) * TAU / 8.0
+	spawn_pos += Vector3(cos(angle) * ring, 0.0, sin(angle) * ring)
+	spawn_pos = _get_navigation_closest_point(spawn_pos)
+	spawn_pos.y = maxf(spawn_pos.y, get_ground_fallback_y())
+	return spawn_pos
+
+func _load_population_refill_config() -> void:
+	var initial_count := BalanceConfig.get_int("simulation.initial_citizen_count", 0)
+	_population_refill_enabled = BalanceConfig.get_bool("simulation.enable_spawn_refill", true)
+	_population_target_count = maxi(BalanceConfig.get_int("simulation.target_citizen_count", initial_count), 0)
+	_spawn_refill_delay_min_hours = maxi(BalanceConfig.get_int("simulation.spawn_refill_delay_min", 30), 0)
+	_spawn_refill_delay_max_hours = maxi(BalanceConfig.get_int("simulation.spawn_refill_delay_max", 180), 0)
+	if _spawn_refill_delay_max_hours < _spawn_refill_delay_min_hours:
+		_spawn_refill_delay_max_hours = _spawn_refill_delay_min_hours
+	_spawn_refill_max_per_tick = maxi(BalanceConfig.get_int("simulation.spawn_refill_max_per_tick", 1), 1)
+
+func _ensure_population_refill_target(reason: String) -> void:
+	if not _population_refill_enabled or _population_target_count <= 0:
+		return
+	var deficit := _population_target_count - _count_active_citizens() - _spawn_refill_queue.size()
+	if deficit <= 0:
+		return
+	for _i in range(deficit):
+		_enqueue_population_refill(reason)
+
+func _enqueue_population_refill(reason: String) -> void:
+	var delay_hours := randi_range(_spawn_refill_delay_min_hours, _spawn_refill_delay_max_hours)
+	var delay_minutes := maxi(delay_hours * 60, maxi(minutes_per_tick, 1))
+	_spawn_refill_queue.append({
+		"due_minute": _get_absolute_sim_minute() + delay_minutes,
+		"reason": reason,
+	})
+	SimLogger.log("[Population] Refill queued reason=%s active=%d pending=%d target=%d delay=%dh" % [
+		reason,
+		_count_active_citizens(),
+		_spawn_refill_queue.size(),
+		_population_target_count,
+		delay_hours,
+	])
+
+func _process_population_refill_queue() -> void:
+	if not _population_refill_enabled or _spawn_refill_queue.is_empty():
+		return
+	_spawn_refill_queue.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return int(a.get("due_minute", 0)) < int(b.get("due_minute", 0))
+	)
+	var now := _get_absolute_sim_minute()
+	var spawned_this_tick := 0
+	var remaining: Array[Dictionary] = []
+
+	for entry in _spawn_refill_queue:
+		var due_minute := int(entry.get("due_minute", 0))
+		if due_minute > now or spawned_this_tick >= _spawn_refill_max_per_tick:
+			remaining.append(entry)
+			continue
+		if _count_active_citizens() >= _population_target_count:
+			continue
+
+		var spawned := _spawn_population_refill_citizen()
+		if spawned == null:
+			entry["due_minute"] = now + maxi(minutes_per_tick, 1)
+			remaining.append(entry)
+			continue
+		spawned_this_tick += 1
+		SimLogger.log("[Population] Refilled %s active=%d pending=%d target=%d" % [
+			spawned.citizen_name,
+			_count_active_citizens(),
+			remaining.size(),
+			_population_target_count,
+		])
+
+	_spawn_refill_queue = remaining
+
+func _spawn_population_refill_citizen() -> Citizen:
+	var parent := _get_citizen_spawn_parent()
+	if parent == null:
+		push_warning("World: Cannot refill population because no citizen spawn parent is available.")
+		return null
+	var citizen := CitizenFactoryScript.spawn_citizen(parent, self, _spawn_refill_spawn_index)
+	if citizen == null:
+		return null
+	_spawn_refill_spawn_index += 1
+	return citizen
+
+func _get_citizen_spawn_parent() -> Node:
+	if _citizen_spawn_parent != null and is_instance_valid(_citizen_spawn_parent):
+		return _citizen_spawn_parent
+	var parent := get_parent()
+	if parent != null:
+		return parent
+	return self
+
+func _count_active_citizens() -> int:
+	var count := 0
+	for citizen in citizens:
+		if citizen == null or not is_instance_valid(citizen):
+			continue
+		if _is_citizen_dying(citizen):
+			continue
+		count += 1
+	return count
+
+func _is_citizen_dying(citizen: Citizen) -> bool:
+	return citizen != null and is_instance_valid(citizen) \
+		and citizen.has_method("is_dying") \
+		and bool(citizen.call("is_dying"))
+
+func _get_absolute_sim_minute() -> int:
+	if time == null:
+		return 0
+	return maxi(time.day - 1, 0) * 24 * 60 + time.minutes_total
+
+func _get_citizen_spawn_base_position() -> Vector3:
+	var spawn_point := _find_city_spawn_point()
+	if spawn_point != null:
+		return spawn_point.global_position
+	var spawn_pos := get_world_center()
+	spawn_pos.y = get_ground_fallback_y()
+	return spawn_pos
+
+func _find_city_spawn_point() -> Node3D:
+	var tree := get_tree()
+	if tree != null:
+		for group_name in CITY_SPAWN_POINT_GROUPS:
+			for node in tree.get_nodes_in_group(group_name):
+				if node is Node3D:
+					return node as Node3D
+
+	var root := get_parent()
+	if root == null:
+		root = self
+	return _find_city_spawn_point_recursive(root)
+
+func _find_city_spawn_point_recursive(node: Node) -> Node3D:
+	if node == null:
+		return null
+	if node is Node3D and _is_city_spawn_point_node(node as Node3D):
+		return node as Node3D
+	for child in node.get_children():
+		var found := _find_city_spawn_point_recursive(child)
+		if found != null:
+			return found
+	return null
+
+func _is_city_spawn_point_node(node: Node3D) -> bool:
+	if node == null:
+		return false
+	var normalized_name := node.name.to_lower().replace(" ", "").replace("-", "_")
+	for hint in CITY_SPAWN_POINT_NAME_HINTS:
+		if normalized_name.contains(hint):
+			return true
+	return false
 
 func notify_citizen_lod_changed(citizen: Citizen) -> void:
 	if citizen == null or not citizens.has(citizen):
