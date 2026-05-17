@@ -6,6 +6,7 @@ var world: World = null
 var debug_panel: DebugPanel = null
 var selection_state_controller = null
 var hud_overlay_controller = null
+var coordinate_picker_controller = null
 var dialogue_runtime_service = null
 var conversation_manager = null
 var multiplayer_session = null
@@ -24,6 +25,9 @@ func bind_selection_state(selection_state_controller_ref, hud_overlay_controller
 	selection_state_controller = selection_state_controller_ref
 	hud_overlay_controller = hud_overlay_controller_ref
 	refresh_debug_panel_mode_controls()
+
+func bind_coordinate_picker(coordinate_picker_controller_ref) -> void:
+	coordinate_picker_controller = coordinate_picker_controller_ref
 
 func bind_dialogue_runtime_service(dialogue_runtime_service_ref) -> void:
 	dialogue_runtime_service = dialogue_runtime_service_ref
@@ -198,6 +202,16 @@ func on_economy_overview_pressed() -> void:
 	mark_ui_interacted()
 	if hud_overlay_controller != null:
 		hud_overlay_controller.toggle_economy_overview()
+
+func on_search_overview_pressed() -> void:
+	mark_ui_interacted()
+	if hud_overlay_controller != null:
+		hud_overlay_controller.toggle_search_overlay()
+
+func on_debug_tools_pressed() -> void:
+	mark_ui_interacted()
+	if coordinate_picker_controller != null:
+		coordinate_picker_controller.toggle_panel()
 
 func on_player_control_pressed() -> void:
 	mark_ui_interacted()
