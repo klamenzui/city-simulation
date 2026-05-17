@@ -2,6 +2,7 @@ extends RefCounted
 class_name CoordinatePickerController
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
+const CollapsiblePanelScript = preload("res://Simulation/UI/CollapsiblePanel.gd")
 
 ## Two debug toggles in the top-right of the HUD:
 ##
@@ -53,6 +54,7 @@ var owner_node: Node = null
 var world: World = null
 var city_camera: Camera3D = null
 var hud_canvas: CanvasLayer = null
+var _collapsible = null
 
 # Pick-mode state
 var _pick_active: bool = false
@@ -112,27 +114,19 @@ func handle_input(event: InputEvent) -> bool:
 func _build_panel() -> void:
 	if hud_canvas == null:
 		return
-	var panel := PanelContainer.new()
-	panel.name = "CoordinatePickerPanel"
-	panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	# Sits below the search panel at the same width.
-	panel.offset_left = -312
-	panel.offset_top = 252
-	panel.offset_right = -12
-	panel.offset_bottom = 440
-	panel.theme = UiThemeScript.get_or_build()
-	hud_canvas.add_child(panel)
-
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
-	panel.add_child(vbox)
-
-	# Small section heading so the panel reads as a named tool.
-	var heading := Label.new()
-	heading.text = "DEBUG TOOLS"
-	heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
-	heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
-	vbox.add_child(heading)
+	_collapsible = CollapsiblePanelScript.new()
+	_collapsible.build(
+		hud_canvas,
+		"DEBUG TOOLS",
+		"Tools",
+		-312.0,
+		252.0,
+		-12.0,
+		440.0,
+		true
+	)
+	var vbox: VBoxContainer = _collapsible.content
 
 	_pick_button = Button.new()
 	_pick_button.text = "Pick Coordinates"
