@@ -143,6 +143,11 @@ $availableTests = @(
 		Script = "res://tools/codex_game_smoke_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "fallsafe"
+		Label = "Citizen Fall Respawn"
+		Script = "res://tools/codex_citizen_fall_respawn_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "multiplayer"
 		Label = "Multiplayer Host Connect"
 		Script = "res://tools/codex_multiplayer_host_connect_test.gd"

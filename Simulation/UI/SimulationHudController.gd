@@ -10,6 +10,7 @@ const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 const NetworkRoleScript = preload("res://Simulation/Multiplayer/shared/NetworkRole.gd")
 
 const _SPEED_STEPS: Array[float] = [1.0, 2.0, 3.0, 4.0]
+const _HUD_STATUS_REFRESH_INTERVAL_SEC := 0.12
 
 var owner_node: Node = null
 var world: World = null
@@ -30,11 +31,13 @@ var _population_label: Label = null
 var _housing_jobs_label: Label = null
 var _satisfaction_label: Label = null
 var _network_status_label: Label = null
+var _network_interaction_label: Label = null
 var _control_mode_panel: PanelContainer = null
 var _control_mode_label: Label = null
 var _ai_runtime_label: Label = null
 var _ai_runtime_service = null
 var multiplayer_session = null
+var _hud_status_refresh_left: float = 0.0
 
 # Balance at the start of the current in-game day — drives the "today" delta.
 var _treasury_day_start: int = 0
@@ -65,6 +68,7 @@ func setup(
 	_refresh_pause_button()
 	_refresh_speed_label()
 	_refresh_network_status()
+	_refresh_network_interaction_status()
 	_refresh_authority_controls()
 	refresh_control_mode(null)
 	set_player_control_visible(false)
@@ -82,6 +86,14 @@ func get_citizen_overview_button() -> Button:
 
 func get_economy_overview_button() -> Button:
 	return economy_overview_button
+
+func update(delta: float) -> void:
+	_hud_status_refresh_left -= delta
+	if _hud_status_refresh_left > 0.0:
+		return
+	_hud_status_refresh_left = _HUD_STATUS_REFRESH_INTERVAL_SEC
+	_refresh_network_status()
+	_refresh_network_interaction_status()
 
 func refresh_control_mode(controlled_citizen: Citizen, mode_prefix: String = "CONTROL MODE", mode_hint: String = "") -> void:
 	if _control_mode_panel == null or _control_mode_label == null:
@@ -126,6 +138,7 @@ func bind_multiplayer_session(multiplayer_session_ref) -> void:
 	multiplayer_session = multiplayer_session_ref
 	_bind_multiplayer_session()
 	_refresh_network_status()
+	_refresh_network_interaction_status()
 	_refresh_authority_controls()
 
 func refresh_ai_runtime_state(ui_state: Dictionary) -> void:
@@ -218,6 +231,7 @@ func _build_top_bar(pause_pressed: Callable, speed_pressed: Callable) -> void:
 	hbox.add_child(_speed_button)
 
 	_network_status_label = _make_stat_chip(hbox, "NETZ", UiThemeScript.TEXT_SECONDARY, 120)
+	_network_interaction_label = _make_stat_chip(hbox, "AKTION", UiThemeScript.TEXT_SECONDARY, 116)
 
 	hbox.add_child(_make_v_divider())
 
@@ -379,6 +393,7 @@ func _on_ai_runtime_status_changed(_status: String, _detail: String) -> void:
 
 func _on_multiplayer_status_changed(_status: String, _detail: String) -> void:
 	_refresh_network_status()
+	_refresh_network_interaction_status()
 	_refresh_authority_controls()
 
 func _bind_world_signals() -> void:
@@ -484,6 +499,101 @@ func _refresh_network_status() -> void:
 	_network_status_label.text = text
 	_network_status_label.tooltip_text = tooltip
 	_network_status_label.add_theme_color_override("font_color", color)
+
+func _refresh_network_interaction_status() -> void:
+	if _network_interaction_label == null:
+		return
+	var status := _current_interaction_status_from_session()
+	if status.is_empty():
+		_network_interaction_label.text = "-"
+		_network_interaction_label.tooltip_text = ""
+		_network_interaction_label.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+		return
+	_network_interaction_label.text = _interaction_status_text(status)
+	_network_interaction_label.tooltip_text = _interaction_status_tooltip(status)
+	_network_interaction_label.add_theme_color_override("font_color", _interaction_status_color(status))
+
+func _current_interaction_status_from_session() -> Dictionary:
+	if multiplayer_session == null or not multiplayer_session.has_method("get_status"):
+		return {}
+	var session_status: Dictionary = multiplayer_session.get_status()
+	var role := str(session_status.get("role", NetworkRoleScript.OFFLINE))
+	if role == NetworkRoleScript.CLIENT:
+		var client_debug := _dictionary_from_variant(session_status.get("client_debug", {}))
+		return _dictionary_from_variant(client_debug.get("interaction_status", {}))
+	if role == NetworkRoleScript.HOST:
+		var host_debug := _dictionary_from_variant(session_status.get("host_debug", {}))
+		var statuses := _dictionary_from_variant(host_debug.get("interaction_status_by_peer", {}))
+		var local_status := _dictionary_from_variant(statuses.get("1", {}))
+		if not local_status.is_empty():
+			return local_status
+		var active_effects := _dictionary_from_variant(host_debug.get("active_interaction_effect_by_peer", {}))
+		var effect_status := _dictionary_from_variant(active_effects.get("1", {}))
+		if not effect_status.is_empty():
+			effect_status["state"] = "effect"
+			return effect_status
+		var active_interactions := _dictionary_from_variant(host_debug.get("active_interaction_by_peer", {}))
+		var active_status := _dictionary_from_variant(active_interactions.get("1", {}))
+		if not active_status.is_empty():
+			active_status["state"] = "travelling"
+			return active_status
+	return {}
+
+func _dictionary_from_variant(value: Variant) -> Dictionary:
+	if value is Dictionary:
+		return (value as Dictionary).duplicate(true)
+	return {}
+
+func _interaction_status_text(status: Dictionary) -> String:
+	match str(status.get("state", "")):
+		"requested":
+			return "Anfrage"
+		"travelling":
+			return "Unterwegs"
+		"arrived":
+			return "Am Ziel"
+		"effect", "entered_building", "citizen_interaction":
+			return "Aktiv"
+		"rejected", "travel_failed":
+			return "Abgelehnt"
+		"cancelled":
+			return "Abbruch"
+		"ready":
+			return "Bereit"
+	return "-"
+
+func _interaction_status_color(status: Dictionary) -> Color:
+	match str(status.get("state", "")):
+		"requested", "travelling":
+			return UiThemeScript.WARNING
+		"arrived", "effect", "entered_building", "citizen_interaction":
+			return UiThemeScript.SUCCESS
+		"rejected", "travel_failed", "cancelled":
+			return UiThemeScript.DANGER
+		"ready":
+			return UiThemeScript.TEXT_SECONDARY
+	return UiThemeScript.TEXT_MUTED
+
+func _interaction_status_tooltip(status: Dictionary) -> String:
+	var parts: Array[String] = []
+	var target_label := _compact_target_label(status)
+	if not target_label.is_empty():
+		parts.append(target_label)
+	var detail := str(status.get("detail", "")).strip_edges()
+	if detail.is_empty():
+		detail = str(status.get("reason", "")).strip_edges()
+	if not detail.is_empty():
+		parts.append(detail)
+	return " | ".join(parts)
+
+func _compact_target_label(status: Dictionary) -> String:
+	var target_name := str(status.get("target_name", "")).strip_edges()
+	var target_type := str(status.get("target_type", "")).strip_edges()
+	if target_name.is_empty():
+		return target_type.capitalize() if not target_type.is_empty() else ""
+	if target_type.is_empty():
+		return target_name
+	return "%s: %s" % [target_type.capitalize(), target_name]
 
 func _is_network_client() -> bool:
 	return multiplayer_session != null \

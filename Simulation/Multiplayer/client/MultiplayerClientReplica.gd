@@ -33,6 +33,7 @@ var _last_sent_input_direction: Vector3 = Vector3.ZERO
 var _local_prediction_frame_count: int = 0
 var _local_prediction_distance: float = 0.0
 var _last_prediction_direction: Vector3 = Vector3.ZERO
+var _interaction_status: Dictionary = {}
 
 func setup(root_ref: Node, world_ref: World, session_ref: Node) -> void:
 	root_node = root_ref
@@ -72,6 +73,7 @@ func stop() -> void:
 	_last_full_sequence = 0
 	_last_actor_state_sequence = 0
 	_last_world_state_sequence = 0
+	_interaction_status.clear()
 	_reset_local_prediction_debug()
 
 func update(delta: float) -> void:
@@ -132,12 +134,22 @@ func get_debug_status() -> Dictionary:
 		"prediction_distance": _local_prediction_distance,
 		"prediction_error": _get_local_player_prediction_error(),
 		"prediction_last_direction": _vec3_to_array(_last_prediction_direction),
+		"interaction_status": _interaction_status.duplicate(true),
 	}
 
 func send_command(command: Dictionary) -> void:
 	if str(command.get("type", "")) == "player_input":
 		_apply_player_input_command_prediction(command)
+	elif str(command.get("type", "")) == "interact_entity":
+		_interaction_status = {
+			"state": "requested",
+			"target_id": str(command.get("target_id", "")),
+			"detail": "Interaction request sent to host.",
+		}
 	_send_command_raw(command)
+
+func apply_interaction_status(status: Dictionary) -> void:
+	_interaction_status = status.duplicate(true)
 
 func _send_command_raw(command: Dictionary) -> void:
 	if session_node == null or command.is_empty():
