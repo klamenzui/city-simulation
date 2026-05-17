@@ -278,12 +278,22 @@ func _build_bottom_action_bar(
 	player_control_pressed: Callable,
 	ai_runtime_pressed: Callable
 ) -> void:
-	# Bottom-left bar. The left details panel reserves ~72 px here
-	# (DebugPanel offset_bottom = -84), so it never overlaps this bar.
+	# Full-width bottom bar, mirrors the top bar. The left details panel
+	# clears it (DebugPanel offset_bottom = -84 vs. this 72 px strip).
 	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	panel.position = Vector2(12, -72)
+	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	panel.offset_left = 0
+	panel.offset_top = -72
+	panel.offset_right = 0
+	panel.offset_bottom = 0
 	panel.theme = _theme
+	# Square edges — reads as an anchored bar, not a floating panel.
+	var bar_box := UiThemeScript._make_panel_box(0, UiThemeScript.BG_900, UiThemeScript.BORDER)
+	bar_box.content_margin_left = UiThemeScript.PADDING_PANEL_H
+	bar_box.content_margin_right = UiThemeScript.PADDING_PANEL_H
+	bar_box.content_margin_top = 6
+	bar_box.content_margin_bottom = 6
+	panel.add_theme_stylebox_override("panel", bar_box)
 	canvas.add_child(panel)
 
 	var hbox := HBoxContainer.new()
@@ -375,6 +385,7 @@ func _make_bar_button(parent: Node, text: String, min_width: int, on_pressed: Ca
 	var btn := Button.new()
 	btn.text = text
 	btn.custom_minimum_size = Vector2(min_width, 36)
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	btn.focus_mode = Control.FOCUS_NONE
 	if on_pressed.is_valid():
 		btn.pressed.connect(on_pressed)
