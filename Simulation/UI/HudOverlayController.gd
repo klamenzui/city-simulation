@@ -5,7 +5,6 @@ const BuildingOverviewControllerScript = preload("res://Simulation/UI/BuildingOv
 const CitizenOverviewControllerScript = preload("res://Simulation/UI/CitizenOverviewController.gd")
 const EconomyOverviewControllerScript = preload("res://Simulation/UI/EconomyOverviewController.gd")
 const EntitySearchControllerScript = preload("res://Simulation/UI/EntitySearchController.gd")
-const CollapsiblePanelScript = preload("res://Simulation/UI/CollapsiblePanel.gd")
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 
 var world: World = null
@@ -17,7 +16,8 @@ var building_overview_controller = null
 var citizen_overview_controller = null
 var economy_overview_controller = null
 var search_controller = null
-var search_panel_ui = null
+var search_panel: PanelContainer = null
+var search_overview_button: Button = null
 
 func setup(
 	world_ref: World,
@@ -26,6 +26,7 @@ func setup(
 	building_overview_button_ref: Button,
 	citizen_overview_button_ref: Button,
 	economy_overview_button_ref: Button,
+	search_overview_button_ref: Button,
 	select_citizen: Callable,
 	select_building: Callable,
 	status_color_resolver: Callable,
@@ -37,6 +38,7 @@ func setup(
 	world = world_ref
 	city_camera = camera_ref
 	canvas = canvas_ref
+	search_overview_button = search_overview_button_ref
 	if canvas == null:
 		return
 
@@ -90,6 +92,15 @@ func toggle_economy_overview() -> void:
 		if not _is_controller_visible(economy_overview_controller):
 			_hide_compact_overviews_if_visible()
 		economy_overview_controller.toggle_visibility()
+
+func toggle_search_overlay() -> void:
+	if search_panel == null:
+		return
+	search_panel.visible = not search_panel.visible
+	if search_overview_button != null:
+		UiThemeScript.apply_accent_state(search_overview_button, search_panel.visible)
+	if not search_panel.visible and search_results_list != null:
+		search_results_list.visible = false
 
 func get_search_input() -> LineEdit:
 	return search_input
@@ -306,19 +317,28 @@ func _build_search_overlay(
 	mark_ui_interacted: Callable,
 	search_result_limit: int
 ) -> void:
-	# Clear of the persistent top bar; same width as before.
-	search_panel_ui = CollapsiblePanelScript.new()
-	search_panel_ui.build(
-		canvas,
-		"SEARCH",
-		"Suche",
-		-312.0,
-		float(UiThemeScript.TOPBAR_HEIGHT + 12),
-		-12.0,
-		float(UiThemeScript.TOPBAR_HEIGHT + 240),
-		true
-	)
-	var search_vbox: VBoxContainer = search_panel_ui.content
+	# Top-right panel, hidden until the bottom-bar "Suche" button toggles it.
+	search_panel = PanelContainer.new()
+	search_panel.name = "SearchPanel"
+	search_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	search_panel.offset_left = -312
+	# Clear of the persistent top bar.
+	search_panel.offset_top = UiThemeScript.TOPBAR_HEIGHT + 12
+	search_panel.offset_right = -12
+	search_panel.offset_bottom = UiThemeScript.TOPBAR_HEIGHT + 240
+	search_panel.visible = false
+	search_panel.theme = UiThemeScript.get_or_build()
+	canvas.add_child(search_panel)
+
+	var search_vbox := VBoxContainer.new()
+	search_vbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
+	search_panel.add_child(search_vbox)
+
+	var search_heading := Label.new()
+	search_heading.text = "SEARCH"
+	search_heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+	search_heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+	search_vbox.add_child(search_heading)
 
 	search_input = LineEdit.new()
 	search_input.placeholder_text = "Citizen or building name…"

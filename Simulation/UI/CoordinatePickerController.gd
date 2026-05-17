@@ -2,7 +2,6 @@ extends RefCounted
 class_name CoordinatePickerController
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
-const CollapsiblePanelScript = preload("res://Simulation/UI/CollapsiblePanel.gd")
 
 ## Two debug toggles in the top-right of the HUD:
 ##
@@ -54,7 +53,8 @@ var owner_node: Node = null
 var world: World = null
 var city_camera: Camera3D = null
 var hud_canvas: CanvasLayer = null
-var _collapsible = null
+var _panel: PanelContainer = null
+var _toggle_button: Button = null
 
 # Pick-mode state
 var _pick_active: bool = false
@@ -72,12 +72,24 @@ var _scan_in_progress: bool = false
 var _scan_request_id: int = 0
 
 
-func setup(p_owner: Node, p_world: World, p_camera: Camera3D, p_canvas: CanvasLayer) -> void:
+func setup(p_owner: Node, p_world: World, p_camera: Camera3D, p_canvas: CanvasLayer,
+		p_toggle_button: Button = null) -> void:
 	owner_node = p_owner
 	world = p_world
 	city_camera = p_camera
 	hud_canvas = p_canvas
+	_toggle_button = p_toggle_button
 	_build_panel()
+
+
+## Show/hide the panel from the bottom-bar "Tools" button. Mirrors the
+## building/citizen/economy overview toggles.
+func toggle_panel() -> void:
+	if _panel == null:
+		return
+	_panel.visible = not _panel.visible
+	if _toggle_button != null:
+		UiThemeScript.apply_accent_state(_toggle_button, _panel.visible)
 
 
 func is_active() -> bool:
@@ -114,19 +126,29 @@ func handle_input(event: InputEvent) -> bool:
 func _build_panel() -> void:
 	if hud_canvas == null:
 		return
+	# Top-right panel, hidden until the bottom-bar "Tools" button toggles it.
 	# Sits below the search panel at the same width.
-	_collapsible = CollapsiblePanelScript.new()
-	_collapsible.build(
-		hud_canvas,
-		"DEBUG TOOLS",
-		"Tools",
-		-312.0,
-		252.0,
-		-12.0,
-		440.0,
-		true
-	)
-	var vbox: VBoxContainer = _collapsible.content
+	_panel = PanelContainer.new()
+	_panel.name = "CoordinatePickerPanel"
+	_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_panel.offset_left = -312
+	_panel.offset_top = 252
+	_panel.offset_right = -12
+	_panel.offset_bottom = 440
+	_panel.visible = false
+	_panel.theme = UiThemeScript.get_or_build()
+	hud_canvas.add_child(_panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
+	_panel.add_child(vbox)
+
+	# Small section heading so the panel reads as a named tool.
+	var heading := Label.new()
+	heading.text = "DEBUG TOOLS"
+	heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+	heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+	vbox.add_child(heading)
 
 	_pick_button = Button.new()
 	_pick_button.text = "Pick Coordinates"
