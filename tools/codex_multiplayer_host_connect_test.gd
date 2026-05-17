@@ -47,6 +47,10 @@ func _init() -> void:
 		printerr("FAIL: snapshot has no citizens")
 		quit(1)
 		return
+	if not _citizens_have_fall_respawn_debug(snapshot_a.get("citizens", [])):
+		printerr("FAIL: citizen snapshots missing fall respawn debug field")
+		quit(1)
+		return
 	if (snapshot_a.get("buildings", []) as Array).is_empty():
 		printerr("FAIL: snapshot has no buildings")
 		quit(1)
@@ -94,6 +98,17 @@ func _ids_match(left: Variant, right: Variant) -> bool:
 		if left_entry == null or right_entry == null:
 			return false
 		if str(left_entry.get("id", "")) != str(right_entry.get("id", "")):
+			return false
+	return true
+
+func _citizens_have_fall_respawn_debug(entries: Variant) -> bool:
+	if entries is not Array:
+		return false
+	var entry_array := entries as Array
+	for entry in entry_array:
+		if entry is not Dictionary:
+			return false
+		if not (entry as Dictionary).has("fall_respawn_count"):
 			return false
 	return true
 

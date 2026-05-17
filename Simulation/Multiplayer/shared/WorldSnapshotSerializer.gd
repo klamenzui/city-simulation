@@ -136,6 +136,7 @@ static func _build_citizen_snapshots(world: World, include_static: bool) -> Arra
 			"manual_control": manual_control,
 			"lod": citizen.get_simulation_lod_tier() if citizen.has_method("get_simulation_lod_tier") else "focus",
 			"inside": citizen.is_inside_building() if citizen.has_method("is_inside_building") else false,
+			"fall_respawn_count": citizen.get_fall_respawn_count() if citizen.has_method("get_fall_respawn_count") else 0,
 		}
 		if include_static:
 			data["scene"] = CITIZEN_SCENE_PATH

@@ -67,6 +67,7 @@ var _server_interaction_label: String = ""
 var _network_lod_tier: String = ""
 var _network_inside_building: bool = false
 var _network_manual_control: bool = false
+var _network_fall_respawn_count: int = 0
 var _network_server_control_enabled: bool = false
 var _network_server_control_direction: Vector3 = Vector3.ZERO
 var _network_server_control_input_age_sec: float = INF
@@ -227,6 +228,8 @@ func is_network_server_interaction_travelling() -> bool:
 	return _network_server_interaction_travel_enabled and _is_travelling
 
 func get_fall_respawn_count() -> int:
+	if network_replica_mode:
+		return _network_fall_respawn_count
 	return _fall_respawn_count
 
 func _post_physics_fall_safety(world: World) -> void:
@@ -399,6 +402,7 @@ func apply_network_snapshot(data: Dictionary, building_lookup: Dictionary) -> vo
 	_network_lod_tier = str(data.get("lod", _network_lod_tier))
 	_network_inside_building = bool(data.get("inside", _network_inside_building))
 	_network_manual_control = bool(data.get("manual_control", _network_manual_control))
+	_network_fall_respawn_count = int(data.get("fall_respawn_count", _network_fall_respawn_count))
 	_is_travelling = bool(data.get("travelling", _is_travelling))
 	velocity = Vector3.ZERO
 	set_physics_process(false)
