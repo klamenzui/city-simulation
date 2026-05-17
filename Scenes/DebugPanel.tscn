@@ -21,16 +21,6 @@ fit_content = false
 scroll_active = false
 custom_minimum_size = Vector2(336, 280)
 
-[node name="CitizenControlButton" type="Button" parent="Panel/VBoxContainer"]
-layout_mode = 2
-visible = false
-text = "Control Citizen"
-
-[node name="CitizenClickMoveButton" type="Button" parent="Panel/VBoxContainer"]
-layout_mode = 2
-visible = false
-text = "Click Move Citizen"
-
 [node name="CitizenDialogButton" type="Button" parent="Panel/VBoxContainer"]
 layout_mode = 2
 visible = false

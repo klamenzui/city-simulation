@@ -41,8 +41,16 @@ Purpose: compact decisions that should be checked before architectural edits.
 - Clients are view/input layers: they do not tick world simulation, spawn authoritative citizens, or mutate economy/building/citizen state directly.
 - Clients receive snapshots and may send command dictionaries; command execution must be validated on the host/server.
 - Client-owned player replicas may use local prediction, but authoritative snapshots should reconcile softly and avoid hard per-snapshot correction unless drift is large.
-- Controlled host/client player citizens use `CityBuilderCamera` controller-follow mode; normal selected-citizen follow remains the city follow camera.
 - Server-authorized Citizen interactions must not depend only on a stale approach point; live direct range to moving Citizen targets can complete the interaction.
+
+## Camera Ownership Rules
+
+- `CameraModeManager` (RefCounted, `Simulation/Camera/`) is the single owner of which camera is `current`; never set `Camera3D.current` for the player/builder cameras anywhere else. Modes: `PLAYER_THIRD_PERSON` (default) and `CITY_BUILDER`.
+- `PlayerThirdPersonCamera` is a decoupled rig (Node3D → SpringArm3D → Camera3D) that follows only the player's position and owns its own yaw/pitch — it is NOT a child of the citizen body (the body's per-frame `look_at` would otherwise spin it).
+- `CityBuilderCamera` stays as the builder/admin camera only. It is the safe fallback whenever there is no player target (pre-game menu, bootstrap).
+- Clients are locked to `PLAYER_THIRD_PERSON`; `toggle()`/`set_mode(CITY_BUILDER)` are no-ops for clients. Host/offline may toggle via the HUD bottom-bar button (hidden for clients).
+- Host/client player-follow and the offline ControlledCitizen route through the manager (`set_follow_target`/`set_player_target`), never by poking `get_viewport().get_camera_3d()`.
+- Direct WASD/click control of an arbitrary selected citizen was removed; only the real local player avatar (networked player or offline ControlledCitizen) is controllable.
 
 ## Knowledge Storage Rule
 
