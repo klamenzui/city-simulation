@@ -487,15 +487,24 @@ func _get_camera() -> Camera3D:
 		return null
 	return _main.get_node_or_null("Camera3D") as Camera3D
 
-func _camera_follow_controller_view(camera: Camera3D) -> bool:
-	if camera == null or not camera.has_method("is_following_controller_view"):
-		return false
-	return bool(camera.call("is_following_controller_view"))
+func _camera_mode_manager():
+	if _main == null or not _main.has_method("get_camera_mode_manager"):
+		return null
+	return _main.get_camera_mode_manager()
 
-func _camera_follow_target_id(camera: Camera3D) -> String:
-	if camera == null or not camera.has_method("get_follow_target"):
+# Player controller-follow state now lives on CameraModeManager, not on the
+# raw Camera3D. The `camera` arg is kept for call-site compatibility.
+func _camera_follow_controller_view(_camera: Camera3D) -> bool:
+	var manager = _camera_mode_manager()
+	if manager == null or not manager.has_method("is_following_controller_view"):
+		return false
+	return bool(manager.is_following_controller_view())
+
+func _camera_follow_target_id(_camera: Camera3D) -> String:
+	var manager = _camera_mode_manager()
+	if manager == null or not manager.has_method("get_follow_target"):
 		return ""
-	var target := camera.call("get_follow_target") as Node3D
+	var target := manager.get_follow_target() as Node3D
 	if target == null:
 		return ""
 	return NetworkEntityRegistryScript.get_entity_id(target)

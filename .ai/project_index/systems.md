@@ -117,7 +117,9 @@ World orchestration, economy, time, bootstrap, navigation, GOAP, UI, debug, logg
 | Simulation/Bootstrap/SceneBootstrapController.gd | SceneBootstrapController | RefCounted |
 | Simulation/Bootstrap/SceneRuntimeController.gd | SceneRuntimeController | RefCounted |
 | Simulation/Bootstrap/WorldSetup.gd | WorldSetup | - |
+| Simulation/Camera/CameraModeManager.gd | CameraModeManager | RefCounted |
 | Simulation/Camera/CityBuilderCamera.gd | CityBuilderCamera | Camera3D |
+| Simulation/Camera/PlayerThirdPersonCamera.gd | PlayerThirdPersonCamera | Node3D |
 | Simulation/Citizens/CitizenAgent.gd | CitizenAgent | RefCounted |
 | Simulation/Citizens/CitizenCrosswalkAwareness.gd | CitizenCrosswalkAwareness | RefCounted |
 | Simulation/Citizens/CitizenLocomotion.gd | CitizenLocomotion | RefCounted |
@@ -142,8 +144,6 @@ World orchestration, economy, time, bootstrap, navigation, GOAP, UI, debug, logg
 | Simulation/GOAP/GoapPlanner.gd | GoapPlanner | RefCounted |
 | Simulation/Logging/SimLogger.gd | SimLogger | RefCounted |
 | Simulation/Multiplayer/client/MultiplayerClientReplica.gd | MultiplayerClientReplica | RefCounted |
-| Simulation/Multiplayer/MultiplayerSession.gd | MultiplayerSession | Node |
-| Simulation/Multiplayer/server/MultiplayerHostAuthority.gd | MultiplayerHostAuthority | RefCounted |
 
 ## config
 

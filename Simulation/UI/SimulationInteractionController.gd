@@ -10,6 +10,7 @@ var coordinate_picker_controller = null
 var dialogue_runtime_service = null
 var conversation_manager = null
 var multiplayer_session = null
+var camera_mode_manager = null
 
 var _entity_clicked_this_frame: bool = false
 var _building_panel_refresh_left: float = 0.0
@@ -24,7 +25,9 @@ func setup(owner_ref: Node, world_ref: World, multiplayer_session_ref = null) ->
 func bind_selection_state(selection_state_controller_ref, hud_overlay_controller_ref) -> void:
 	selection_state_controller = selection_state_controller_ref
 	hud_overlay_controller = hud_overlay_controller_ref
-	refresh_debug_panel_mode_controls()
+
+func bind_camera_mode_manager(camera_mode_manager_ref) -> void:
+	camera_mode_manager = camera_mode_manager_ref
 
 func bind_coordinate_picker(coordinate_picker_controller_ref) -> void:
 	coordinate_picker_controller = coordinate_picker_controller_ref
@@ -76,16 +79,6 @@ func deselect() -> void:
 	if selection_state_controller != null:
 		selection_state_controller.deselect()
 
-func handle_debug_panel_citizen_control_toggled() -> void:
-	_entity_clicked_this_frame = true
-	if selection_state_controller != null:
-		selection_state_controller.toggle_selected_citizen_control()
-
-func handle_debug_panel_citizen_click_move_toggled() -> void:
-	_entity_clicked_this_frame = true
-	if selection_state_controller != null:
-		selection_state_controller.toggle_selected_citizen_click_move()
-
 func handle_debug_panel_citizen_dialog_toggled() -> void:
 	_entity_clicked_this_frame = true
 	if selection_state_controller == null or conversation_manager == null:
@@ -115,18 +108,15 @@ func mark_ui_interacted() -> void:
 
 func handle_input(event: InputEvent) -> bool:
 	var controlled_citizen: Citizen = selection_state_controller.get_controlled_citizen() if selection_state_controller != null else null
-	var click_move_active: bool = selection_state_controller.is_citizen_click_move_active() if selection_state_controller != null else false
+	var player_control_active: bool = selection_state_controller.is_player_control_active() if selection_state_controller != null else false
 	var search_input: LineEdit = hud_overlay_controller.get_search_input() if hud_overlay_controller != null else null
 	var search_results_list: ItemList = hud_overlay_controller.get_search_results_list() if hud_overlay_controller != null else null
 	var viewport := owner_node.get_viewport() if owner_node != null else null
 	var focus_owner: Control = viewport.gui_get_focus_owner() if viewport != null else null
 	var text_input_focused := focus_owner is LineEdit or focus_owner is TextEdit
 
-	if not text_input_focused and event.is_action_pressed("ui_cancel") and controlled_citizen != null:
-		set_citizen_control_mode(false)
-		return true
-	if not text_input_focused and event.is_action_pressed("ui_cancel") and click_move_active:
-		selection_state_controller.set_citizen_click_move_mode(false)
+	if not text_input_focused and event.is_action_pressed("ui_cancel") and player_control_active:
+		selection_state_controller.set_player_control_mode(false)
 		return true
 
 	if event.is_action_pressed("ui_accept") \
@@ -150,23 +140,11 @@ func handle_input(event: InputEvent) -> bool:
 		and event.button_index == MOUSE_BUTTON_LEFT \
 		and event.pressed:
 		var hovered_control: Control = viewport.gui_get_hovered_control() if viewport != null else null
-		if click_move_active and hovered_control == null:
-			if selection_state_controller.try_handle_click_move(event.position):
-				_entity_clicked_this_frame = true
-				return true
 		if hovered_control == null and _try_select_entity_under_cursor(event.position):
 			return true
 		call_deferred("_check_deselect_this_frame")
 
 	return false
-
-func set_citizen_control_mode(enabled: bool) -> void:
-	if selection_state_controller != null:
-		selection_state_controller.set_citizen_control_mode(enabled)
-
-func refresh_debug_panel_mode_controls() -> void:
-	if selection_state_controller != null:
-		selection_state_controller.refresh_debug_panel_mode_controls()
 
 func on_pause_pressed() -> void:
 	if _is_network_client():
@@ -218,6 +196,11 @@ func on_player_control_pressed() -> void:
 	if selection_state_controller != null:
 		selection_state_controller.toggle_player_control()
 
+func on_camera_mode_pressed() -> void:
+	mark_ui_interacted()
+	if camera_mode_manager != null:
+		camera_mode_manager.toggle()
+
 func on_ai_runtime_pressed() -> void:
 	mark_ui_interacted()
 	if dialogue_runtime_service != null and dialogue_runtime_service.has_method("trigger_ui_runtime_action"):
@@ -231,8 +214,6 @@ func _build_debug_panel() -> void:
 	owner_node.add_child(debug_panel)
 	debug_panel.visible = false
 	debug_panel.ui_interacted.connect(mark_ui_interacted)
-	debug_panel.citizen_control_toggled.connect(handle_debug_panel_citizen_control_toggled)
-	debug_panel.citizen_click_move_toggled.connect(handle_debug_panel_citizen_click_move_toggled)
 	debug_panel.citizen_dialog_toggled.connect(handle_debug_panel_citizen_dialog_toggled)
 	debug_panel.citizen_dialog_message_submitted.connect(handle_debug_panel_citizen_dialog_message_submitted)
 

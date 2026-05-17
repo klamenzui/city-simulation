@@ -260,11 +260,8 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	if keyboard_control_enabled:
-		if event.is_action_pressed("ui_cancel"):
-			exit_keyboard_control_mode()
-			var viewport := get_viewport()
-			if viewport != null:
-				viewport.set_input_as_handled()
+		# The offline player is permanent (no F8 debug toggle anymore); the
+		# keyboard-controlled body never processes click-selection on itself.
 		return
 	if not accept_click_input:
 		return
