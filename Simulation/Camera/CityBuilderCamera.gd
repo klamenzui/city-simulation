@@ -18,6 +18,13 @@ class_name CityBuilderCamera
 @export var follow_distance: float = 4.8
 @export var follow_pitch_deg: float = 20.0
 @export var follow_focus_height: float = 1.25
+@export var controller_follow_distance: float = 5.2
+@export var controller_follow_pitch_deg: float = 18.0
+@export var controller_follow_min_pitch_deg: float = 12.0
+@export var controller_follow_max_pitch_deg: float = 62.0
+@export var controller_follow_focus_height: float = 1.45
+@export var controller_follow_smoothing: float = 18.0
+@export var controller_follow_yaw_smoothing: float = 10.0
 
 @export var smoothing: float = 12.0
 @export var world_padding: float = 8.0
@@ -39,6 +46,7 @@ var _bounds_max: Vector2 = Vector2(40.0, 40.0)
 var _ground_y: float = 0.0
 var _rotating: bool = false
 var _follow_mode: bool = false
+var _follow_controller_view: bool = false
 var _follow_target: Node3D = null
 var _input_locked: bool = false
 
@@ -178,6 +186,9 @@ func _update_follow_targets(delta: float, input_blocked: bool = false) -> void:
 	if _follow_target == null or not is_instance_valid(_follow_target):
 		clear_follow_target()
 		return
+	if _follow_controller_view:
+		_update_controller_follow_targets(delta, input_blocked)
+		return
 
 	if input_blocked:
 		_rotating = false
@@ -194,6 +205,35 @@ func _update_follow_targets(delta: float, input_blocked: bool = false) -> void:
 	_distance = lerpf(_distance, _target_distance, t)
 
 	_apply_camera_transform()
+
+func _update_controller_follow_targets(delta: float, input_blocked: bool = false) -> void:
+	if input_blocked:
+		_rotating = false
+	var target_forward := _flattened_follow_target_forward()
+	var behind_dir := -target_forward
+	var desired_yaw := atan2(behind_dir.x, behind_dir.z)
+	var yaw_t := clampf(delta * controller_follow_yaw_smoothing, 0.0, 1.0)
+	_target_yaw = lerp_angle(_target_yaw, desired_yaw, yaw_t)
+	_target_pitch = _clamped_controller_follow_pitch()
+	_target_distance = clampf(controller_follow_distance, min_distance, max_distance)
+	_target_center = _follow_target.global_position + Vector3.UP * controller_follow_focus_height
+
+	var t: float = 1.0 - exp(-controller_follow_smoothing * delta)
+	_center = _center.lerp(_target_center, t)
+	_yaw = lerp_angle(_yaw, _target_yaw, t)
+	_pitch = lerpf(_pitch, _target_pitch, t)
+	_distance = lerpf(_distance, _target_distance, t)
+
+	_apply_camera_transform()
+
+func _flattened_follow_target_forward() -> Vector3:
+	if _follow_target == null or not is_instance_valid(_follow_target):
+		return Vector3.FORWARD
+	var target_forward := -_follow_target.global_transform.basis.z
+	target_forward.y = 0.0
+	if target_forward.length_squared() <= 0.0001:
+		return Vector3.FORWARD
+	return target_forward.normalized()
 
 func set_input_locked(locked: bool) -> void:
 	_input_locked = locked
@@ -314,24 +354,22 @@ func focus_on_world_position(pos: Vector3) -> void:
 	_target_center = Vector3(pos.x, _ground_y, pos.z)
 	_clamp_targets()
 
-func set_follow_target(target: Node3D) -> void:
+func set_follow_target(target: Node3D, controller_view: bool = false) -> void:
 	_follow_target = target
 	_follow_mode = target != null
+	_follow_controller_view = controller_view
 	if not _follow_mode:
 		return
-	var focus := target.global_position + Vector3.UP * follow_focus_height
+	var focus_height := controller_follow_focus_height if controller_view else follow_focus_height
+	var target_distance := controller_follow_distance if controller_view else follow_distance
+	var focus := target.global_position + Vector3.UP * focus_height
 	_target_center = focus
 	_center = focus
-	_target_pitch = clampf(follow_pitch_deg, min_pitch_deg, max_pitch_deg)
+	_target_pitch = _clamped_controller_follow_pitch() if controller_view else clampf(follow_pitch_deg, min_pitch_deg, max_pitch_deg)
 	_pitch = _target_pitch
-	_target_distance = clampf(follow_distance, min_distance, max_distance)
+	_target_distance = clampf(target_distance, min_distance, max_distance)
 	_distance = _target_distance
-	var target_forward := -target.global_transform.basis.z
-	target_forward.y = 0.0
-	if target_forward.length_squared() <= 0.0001:
-		target_forward = Vector3.FORWARD
-	else:
-		target_forward = target_forward.normalized()
+	var target_forward := _flattened_follow_target_forward()
 	var behind_dir := -target_forward
 	_target_yaw = atan2(behind_dir.x, behind_dir.z)
 	_yaw = _target_yaw
@@ -339,9 +377,23 @@ func set_follow_target(target: Node3D) -> void:
 
 func clear_follow_target() -> void:
 	_follow_mode = false
+	_follow_controller_view = false
 	_follow_target = null
 	_resolve_ground_height()
 	_clamp_targets()
 
 func is_follow_mode() -> bool:
 	return _follow_mode
+
+func is_following_controller_view() -> bool:
+	return _follow_mode and _follow_controller_view
+
+func get_follow_target() -> Node3D:
+	if _follow_target == null or not is_instance_valid(_follow_target):
+		return null
+	return _follow_target
+
+func _clamped_controller_follow_pitch() -> float:
+	var min_pitch := minf(controller_follow_min_pitch_deg, controller_follow_max_pitch_deg)
+	var max_pitch := maxf(controller_follow_min_pitch_deg, controller_follow_max_pitch_deg)
+	return clampf(controller_follow_pitch_deg, min_pitch, max_pitch)

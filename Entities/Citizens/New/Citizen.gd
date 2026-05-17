@@ -1521,28 +1521,7 @@ func _try_assign_best_job_offer(world: World, origin: Vector3) -> bool:
 
 
 func _build_job_from_offer(offer: Dictionary) -> Job:
-	var target_building := offer.get("building", null) as Building
-	if target_building == null:
-		return null
-	var job_title := str(offer.get("title", "Worker"))
-	var new_job := Job.new()
-	new_job.title = job_title
-	new_job.wage_per_hour = int(offer.get("wage_per_hour", CitizenFactory.get_wage_for_job_title(job_title)))
-	new_job.shift_hours = int(offer.get("shift_hours", 8))
-	new_job.required_education_level = int(offer.get(
-		"required_education_level",
-		CitizenFactory.get_required_education_for_job_title(job_title)
-	))
-	var expected_service_type := CitizenFactory.get_service_type_for_job_title(job_title)
-	new_job.workplace_service_type = expected_service_type \
-		if expected_service_type != "" and target_building.get_service_type() == expected_service_type \
-		else ""
-	new_job.allowed_building_types = []
-	for type_id in offer.get("allowed_building_types", CitizenFactory.get_allowed_building_types_for_job_title(job_title)):
-		new_job.allowed_building_types.append(int(type_id))
-	new_job.workplace = target_building
-	new_job.preferred_workplace = target_building
-	return new_job
+	return CitizenFactory.build_job_from_offer(offer)
 
 
 func _try_hire_current_job(world: World) -> bool:
@@ -1956,16 +1935,22 @@ func log_needs_changes(h_delta: float) -> void:
 func is_dead() -> bool:
 	return needs != null and needs.health <= 0.0
 
+func is_dying() -> bool:
+	return _is_dying
+
 
 ## Despawn-on-death. Idempotent: a second call is a no-op.
 ## Releases tenant/worker/visitor slots so a future spawn can fill them,
 ## cancels the current action, frees bench reservations, then queue_free()s
-## the node. The World's scene-tree listener picks up the removal and runs
-## unregister_citizen() / unregister_job() automatically.
+## the node. World cleanup is also invoked immediately so no simulation/debug
+## list keeps a dead citizen until the deferred queue_free() removal.
 func die(world: Node = null) -> void:
 	if _is_dying:
 		return
 	_is_dying = true
+	var cleanup_world: Node = world
+	if cleanup_world == null:
+		cleanup_world = _resolve_world_ref()
 
 	var hp := needs.health if needs != null else 0.0
 	var location_label := "outside"
@@ -1980,10 +1965,15 @@ func die(world: Node = null) -> void:
 	])
 
 	if current_action != null and current_action.has_method("finish"):
-		current_action.finish(world, self)
+		current_action.finish(cleanup_world, self)
 	current_action = null
 
-	release_reserved_benches(world)
+	cancel_network_server_interaction_travel()
+	clear_server_interaction_label()
+	clear_rest_pose(false)
+	release_reserved_benches(cleanup_world)
+	stop_travel()
+	velocity = Vector3.ZERO
 
 	# Tenant slot frei.
 	if home != null and home.has_method("remove_tenant"):
@@ -1996,11 +1986,14 @@ func die(world: Node = null) -> void:
 
 	# Aus aktuellem Building/Visit austreten.
 	if is_inside_building():
-		exit_current_building(world)
+		exit_current_building(cleanup_world)
 	elif current_location != null and current_location.has_method("on_citizen_exited"):
 		current_location.call("on_citizen_exited", self)
 	current_location = null
 
+	if cleanup_world != null and cleanup_world.has_method("unregister_citizen"):
+		cleanup_world.call("unregister_citizen", self)
+	set_physics_process(false)
 	queue_free()
 
 

@@ -430,15 +430,23 @@ func _update_active_interactions() -> void:
 			continue
 		var target_position: Vector3 = interaction.get("target_position", target.global_position)
 		var current_distance := _planar_distance(player.global_position, target_position)
+		var arrival_distance := current_distance
 		var arrived := current_distance <= _arrival_tolerance_for_target(target)
+		if not arrived and target is Citizen:
+			var direct_distance := _planar_distance(player.global_position, target.global_position)
+			if direct_distance <= CITIZEN_INTERACTION_DISTANCE + _arrival_tolerance_for_target(target):
+				arrived = true
+				arrival_distance = direct_distance
 		if not arrived and player.has_method("has_reached_travel_target"):
 			arrived = player.has_reached_travel_target()
+			if arrived:
+				arrival_distance = current_distance
 		if arrived:
 			_face_player_towards(player, target.global_position)
 			if player.has_method("finish_network_server_interaction_travel"):
 				player.finish_network_server_interaction_travel()
-			_apply_interaction_effect(int(peer_id), player, target, interaction, current_distance)
-			_finish_active_interaction(int(peer_id), interaction, "arrived", "", current_distance)
+			_apply_interaction_effect(int(peer_id), player, target, interaction, arrival_distance)
+			_finish_active_interaction(int(peer_id), interaction, "arrived", "", arrival_distance)
 			continue
 		if player.has_method("is_network_server_interaction_travelling") \
 				and not bool(player.is_network_server_interaction_travelling()):
@@ -733,7 +741,7 @@ func _sync_local_host_player_camera(entity_id: String) -> void:
 	var viewport := root_node.get_viewport()
 	var camera := viewport.get_camera_3d() if viewport != null else null
 	if camera != null and camera.has_method("set_follow_target"):
-		camera.call("set_follow_target", citizen)
+		camera.call("set_follow_target", citizen, true)
 		_local_host_camera_follow_target_id = entity_id
 
 func _get_local_host_input_direction() -> Vector3:

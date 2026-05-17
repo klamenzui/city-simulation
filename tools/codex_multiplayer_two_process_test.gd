@@ -364,6 +364,12 @@ func _validate_host_client_state(host_report: Dictionary, client_report: Diction
 	if not bool(host_report.get("local_player_manual_control", false)):
 		printerr("FAIL: host's assigned player citizen is not marked as server-controlled")
 		return false
+	if not bool(host_report.get("camera_follow_controller_view", false)):
+		printerr("FAIL: host player camera is not using controller follow view")
+		return false
+	if str(host_report.get("camera_follow_target_id", "")) != host_player_id:
+		printerr("FAIL: host player camera is not following the assigned player citizen")
+		return false
 	var local_player_id := str(client_report.get("local_player_citizen_id", ""))
 	if local_player_id.is_empty():
 		printerr("FAIL: client did not receive a local player citizen id")
@@ -376,6 +382,12 @@ func _validate_host_client_state(host_report: Dictionary, client_report: Diction
 		return false
 	if not bool(client_report.get("local_player_manual_control", false)):
 		printerr("FAIL: client's assigned player citizen is not marked as server-controlled")
+		return false
+	if not bool(client_report.get("camera_follow_controller_view", false)):
+		printerr("FAIL: client player camera is not using controller follow view")
+		return false
+	if str(client_report.get("camera_follow_target_id", "")) != local_player_id:
+		printerr("FAIL: client player camera is not following the assigned player citizen")
 		return false
 	var client_visible_ids := client_report.get("visible_citizen_ids", []) as Array
 	if not client_visible_ids.has(host_player_id):

@@ -255,7 +255,7 @@ func set_player_control_mode(enabled: bool) -> void:
 		_controlled_citizen.set_manual_control_input_locked(false)
 	_controlled_citizen.set_manual_control_enabled(true, world)
 	if city_camera != null:
-		city_camera.set_follow_target(_controlled_citizen)
+		city_camera.set_follow_target(_controlled_citizen, true)
 	_refresh_hud_control_mode()
 	_refresh_hud_player_control()
 	refresh_debug_panel_mode_controls()
