@@ -18,6 +18,8 @@ var canvas: CanvasLayer = null
 var building_overview_button: Button = null
 var citizen_overview_button: Button = null
 var economy_overview_button: Button = null
+var search_overview_button: Button = null
+var debug_tools_button: Button = null
 
 var _theme: Theme = null
 var _pause_button: Button = null
@@ -50,6 +52,8 @@ func setup(
 	building_overview_pressed: Callable,
 	citizen_overview_pressed: Callable,
 	economy_overview_pressed: Callable,
+	search_pressed: Callable,
+	debug_tools_pressed: Callable,
 	player_control_pressed: Callable,
 	ai_runtime_pressed: Callable,
 	multiplayer_session_ref = null
@@ -60,7 +64,8 @@ func setup(
 	if world != null and world.city_account != null:
 		_treasury_day_start = world.city_account.balance
 	_build_hud(pause_pressed, speed_pressed, building_overview_pressed, citizen_overview_pressed,
-			economy_overview_pressed, player_control_pressed, ai_runtime_pressed)
+			economy_overview_pressed, search_pressed, debug_tools_pressed,
+			player_control_pressed, ai_runtime_pressed)
 	_bind_world_signals()
 	_bind_multiplayer_session()
 	_refresh_time_hud()
@@ -86,6 +91,12 @@ func get_citizen_overview_button() -> Button:
 
 func get_economy_overview_button() -> Button:
 	return economy_overview_button
+
+func get_search_overview_button() -> Button:
+	return search_overview_button
+
+func get_debug_tools_button() -> Button:
+	return debug_tools_button
 
 func update(delta: float) -> void:
 	_hud_status_refresh_left -= delta
@@ -164,6 +175,8 @@ func _build_hud(
 	building_overview_pressed: Callable,
 	citizen_overview_pressed: Callable,
 	economy_overview_pressed: Callable,
+	search_pressed: Callable,
+	debug_tools_pressed: Callable,
 	player_control_pressed: Callable,
 	ai_runtime_pressed: Callable
 ) -> void:
@@ -179,7 +192,8 @@ func _build_hud(
 
 	_build_top_bar(pause_pressed, speed_pressed)
 	_build_bottom_action_bar(building_overview_pressed, citizen_overview_pressed,
-			economy_overview_pressed, player_control_pressed, ai_runtime_pressed)
+			economy_overview_pressed, search_pressed, debug_tools_pressed,
+			player_control_pressed, ai_runtime_pressed)
 	_build_control_mode_banner()
 
 
@@ -259,6 +273,8 @@ func _build_bottom_action_bar(
 	building_overview_pressed: Callable,
 	citizen_overview_pressed: Callable,
 	economy_overview_pressed: Callable,
+	search_pressed: Callable,
+	debug_tools_pressed: Callable,
 	player_control_pressed: Callable,
 	ai_runtime_pressed: Callable
 ) -> void:
@@ -277,6 +293,8 @@ func _build_bottom_action_bar(
 	building_overview_button = _make_bar_button(hbox, "Gebaeude", 110, building_overview_pressed)
 	citizen_overview_button = _make_bar_button(hbox, "Buerger", 110, citizen_overview_pressed)
 	economy_overview_button = _make_bar_button(hbox, "Finanzen", 110, economy_overview_pressed)
+	search_overview_button = _make_bar_button(hbox, "Suche", 90, search_pressed)
+	debug_tools_button = _make_bar_button(hbox, "Tools", 90, debug_tools_pressed)
 
 	hbox.add_child(_make_v_divider())
 
