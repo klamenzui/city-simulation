@@ -14,6 +14,8 @@ const MultiplayerSessionScript = preload("res://Simulation/Multiplayer/Multiplay
 const MultiplayerLaunchOptionsScript = preload("res://Simulation/Multiplayer/shared/MultiplayerLaunchOptions.gd")
 const NetworkRoleScript = preload("res://Simulation/Multiplayer/shared/NetworkRole.gd")
 const MultiplayerMenuControllerScript = preload("res://Simulation/UI/MultiplayerMenuController.gd")
+const PlayerThirdPersonCameraScript = preload("res://Simulation/Camera/PlayerThirdPersonCamera.gd")
+const CameraModeManagerScript = preload("res://Simulation/Camera/CameraModeManager.gd")
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
 const BUILDING_OVERVIEW_REFRESH_INTERVAL_SEC := 0.5
@@ -21,6 +23,8 @@ const BUILDING_OVERVIEW_REFRESH_INTERVAL_SEC := 0.5
 var _runtime_controller = null
 var _multiplayer_session = null
 var _multiplayer_menu = null
+var _player_camera: PlayerThirdPersonCamera = null
+var _camera_mode_manager: CameraModeManager = null
 var _enable_all_citizen_trace: bool = false
 var _enable_map_snapshot_log: bool = false
 
@@ -31,6 +35,7 @@ func _ready() -> void:
 
 	SceneBootstrapControllerScript.setup_scene(self, world)
 	_setup_multiplayer_session()
+	_setup_camera_system()
 
 	var launch_options := MultiplayerLaunchOptionsScript.from_command_line()
 	if _should_show_multiplayer_menu(launch_options):
@@ -58,12 +63,13 @@ func _start_runtime() -> void:
 		SEARCH_RESULT_LIMIT,
 		BUILDING_OVERVIEW_REFRESH_INTERVAL_SEC,
 		initial_citizen_count,
-		_multiplayer_session
+		_multiplayer_session,
+		_camera_mode_manager
 	)
 	if _is_network_host():
 		_multiplayer_session.ensure_local_host_player()
 	elif not _is_network_client():
-		_activate_controlled_citizen_debug_target()
+		_setup_offline_player()
 	call_deferred("_log_initial_debug_snapshot")
 
 func _load_debug_runtime_flags() -> void:
@@ -80,41 +86,30 @@ func _log_initial_debug_snapshot() -> void:
 	if _runtime_controller != null:
 		_runtime_controller.log_initial_debug_snapshot()
 
-func _activate_controlled_citizen_debug_target() -> void:
-	if _is_network_client() or _is_network_host():
+func _setup_camera_system() -> void:
+	_player_camera = PlayerThirdPersonCameraScript.new()
+	_player_camera.name = "PlayerThirdPersonCamera"
+	add_child(_player_camera)
+	_camera_mode_manager = CameraModeManagerScript.new()
+	_camera_mode_manager.setup(_city_camera, _player_camera, _multiplayer_session)
+
+func get_camera_mode_manager() -> CameraModeManager:
+	return _camera_mode_manager
+
+# Offline single-player: the in-scene ControlledCitizen IS the player. It is
+# permanently keyboard-controlled (camera-relative) and followed by the
+# 3rd-person rig. The camera itself is owned by CameraModeManager, so keyboard
+# control must NOT also grab the viewport camera.
+func _setup_offline_player() -> void:
+	if _controlled_citizen == null or not is_instance_valid(_controlled_citizen):
 		return
-	if _controlled_citizen == null:
-		return
-	_disable_legacy_player_control()
 	_controlled_citizen.set("accept_click_input", true)
 	if _controlled_citizen.has_method("enter_keyboard_control_mode"):
-		_controlled_citizen.call("enter_keyboard_control_mode", true)
+		_controlled_citizen.call("enter_keyboard_control_mode", false)
 	else:
 		_controlled_citizen.set("keyboard_control_enabled", true)
-		_city_camera.set_follow_target(_controlled_citizen)
-
-func _deactivate_controlled_citizen_debug_target() -> void:
-	if _controlled_citizen == null:
-		return
-	_controlled_citizen.set("accept_click_input", true)
-	if _controlled_citizen.has_method("exit_keyboard_control_mode"):
-		_controlled_citizen.call("exit_keyboard_control_mode")
-	else:
-		_controlled_citizen.set("keyboard_control_enabled", false)
-		if _controlled_citizen is CharacterBody3D:
-			(_controlled_citizen as CharacterBody3D).velocity = Vector3.ZERO
-		_city_camera.clear_follow_target()
-
-func _disable_legacy_player_control() -> void:
-	if world == null:
-		return
-	var legacy_player := world.get_node_or_null("Player")
-	if legacy_player == null:
-		return
-	if legacy_player.has_method("set_manual_control_enabled"):
-		legacy_player.call("set_manual_control_enabled", false, world)
-	if legacy_player.has_method("set_manual_control_input_locked"):
-		legacy_player.call("set_manual_control_input_locked", true)
+	if _camera_mode_manager != null:
+		_camera_mode_manager.set_player_target(_controlled_citizen)
 
 func _setup_multiplayer_session() -> void:
 	_multiplayer_session = MultiplayerSessionScript.new()
@@ -158,7 +153,6 @@ func _remove_legacy_controlled_citizen_for_network_host() -> void:
 	if _controlled_citizen == null or not is_instance_valid(_controlled_citizen):
 		_controlled_citizen = null
 		return
-	_deactivate_controlled_citizen_debug_target()
 	if world != null and _controlled_citizen is Citizen:
 		world.unregister_citizen(_controlled_citizen as Citizen)
 	_controlled_citizen.queue_free()
@@ -185,29 +179,5 @@ func _is_client_replica_node(node: Node) -> bool:
 	return false
 
 func _input(event: InputEvent) -> void:
-	if _handle_controlled_citizen_shortcuts(event):
-		return
 	if _runtime_controller != null:
 		_runtime_controller.handle_input(event)
-
-func _handle_controlled_citizen_shortcuts(event: InputEvent) -> bool:
-	if _is_network_client() or _is_network_host():
-		return false
-	if _controlled_citizen == null:
-		return false
-	if event is not InputEventKey:
-		return false
-	var key_event := event as InputEventKey
-	if not key_event.pressed or key_event.echo:
-		return false
-	if key_event.keycode != KEY_F8:
-		return false
-	var active := bool(_controlled_citizen.get("keyboard_control_enabled"))
-	if active:
-		_deactivate_controlled_citizen_debug_target()
-	else:
-		_activate_controlled_citizen_debug_target()
-	var viewport := get_viewport()
-	if viewport != null:
-		viewport.set_input_as_handled()
-	return true

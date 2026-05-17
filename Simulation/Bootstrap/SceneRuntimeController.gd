@@ -30,6 +30,7 @@ var citizen_lod_controller = null
 var citizen_conversation_manager = null
 var dialogue_runtime_service = null
 var multiplayer_session = null
+var camera_mode_manager = null
 
 func setup(
 	owner_ref: Node,
@@ -42,12 +43,14 @@ func setup(
 	search_result_limit: int,
 	building_overview_refresh_interval_sec: float,
 	initial_citizen_count: int,
-	multiplayer_session_ref = null
+	multiplayer_session_ref = null,
+	camera_mode_manager_ref = null
 ) -> void:
 	owner_node = owner_ref
 	world = world_ref
 	city_camera = camera_ref
 	multiplayer_session = multiplayer_session_ref
+	camera_mode_manager = camera_mode_manager_ref
 	if world != null and world.has_method("set_citizen_spawn_parent"):
 		world.set_citizen_spawn_parent(owner_node)
 	var headless_runtime := _is_headless_runtime()
@@ -168,6 +171,8 @@ func _setup_building_status_style_resolver() -> void:
 func _setup_interaction_controller() -> void:
 	interaction_controller = SimulationInteractionControllerScript.new()
 	interaction_controller.setup(owner_node, world, multiplayer_session)
+	if interaction_controller.has_method("bind_camera_mode_manager"):
+		interaction_controller.bind_camera_mode_manager(camera_mode_manager)
 	if dialogue_runtime_service != null and interaction_controller.has_method("bind_dialogue_runtime_service"):
 		interaction_controller.bind_dialogue_runtime_service(dialogue_runtime_service)
 	if citizen_conversation_manager != null and interaction_controller.has_method("bind_conversation_manager"):
@@ -185,6 +190,8 @@ func _setup_building_status_badge_controller() -> void:
 		Callable(building_status_style_resolver, "get_badge_icon"),
 		building_status_style_resolver.get_default_border_color()
 	)
+	if building_status_badge_controller.has_method("bind_camera_mode_manager"):
+		building_status_badge_controller.bind_camera_mode_manager(camera_mode_manager)
 
 func _build_hud(search_result_limit: int, building_overview_refresh_interval_sec: float) -> void:
 	hud_controller = SimulationHudControllerScript.new()
@@ -199,8 +206,10 @@ func _build_hud(search_result_limit: int, building_overview_refresh_interval_sec
 		Callable(interaction_controller, "on_search_overview_pressed"),
 		Callable(interaction_controller, "on_debug_tools_pressed"),
 		Callable(interaction_controller, "on_player_control_pressed"),
+		Callable(interaction_controller, "on_camera_mode_pressed"),
 		Callable(interaction_controller, "on_ai_runtime_pressed"),
-		multiplayer_session
+		multiplayer_session,
+		camera_mode_manager
 	)
 	if dialogue_runtime_service != null and hud_controller.has_method("bind_dialogue_runtime_service"):
 		hud_controller.bind_dialogue_runtime_service(dialogue_runtime_service)
@@ -246,7 +255,7 @@ func _setup_selection_state_controller() -> void:
 	selection_state_controller = SelectionStateControllerScript.new()
 	selection_state_controller.setup(
 		world,
-		city_camera,
+		camera_mode_manager,
 		interaction_controller.get_debug_panel() if interaction_controller != null else null,
 		hud_controller,
 		runtime_debug_logger,

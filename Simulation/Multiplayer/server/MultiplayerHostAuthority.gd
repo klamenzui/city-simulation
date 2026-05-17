@@ -738,10 +738,9 @@ func _sync_local_host_player_camera(entity_id: String) -> void:
 	var citizen := _find_citizen_by_id(entity_id)
 	if citizen == null or root_node == null:
 		return
-	var viewport := root_node.get_viewport()
-	var camera := viewport.get_camera_3d() if viewport != null else null
-	if camera != null and camera.has_method("set_follow_target"):
-		camera.call("set_follow_target", citizen, true)
+	var manager = root_node.get_camera_mode_manager() if root_node.has_method("get_camera_mode_manager") else null
+	if manager != null:
+		manager.set_follow_target(citizen, true)
 		_local_host_camera_follow_target_id = entity_id
 
 func _get_local_host_input_direction() -> Vector3:
