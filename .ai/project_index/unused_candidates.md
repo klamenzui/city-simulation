@@ -11,7 +11,6 @@ Purpose: candidate list only. Do not delete anything here without reference chec
 | .claude | local/generated or audit-only; do not scan by default |
 | .godot | local/generated or audit-only; do not scan by default |
 | .idea | local/generated or audit-only; do not scan by default |
-| .obsidian | local/generated or audit-only; do not scan by default |
 | AI | local/generated or audit-only; do not scan by default |
 | AI_RuntimeTest | local/generated or audit-only; do not scan by default |
 

@@ -5,6 +5,7 @@ const BuildingOverviewControllerScript = preload("res://Simulation/UI/BuildingOv
 const CitizenOverviewControllerScript = preload("res://Simulation/UI/CitizenOverviewController.gd")
 const EconomyOverviewControllerScript = preload("res://Simulation/UI/EconomyOverviewController.gd")
 const EntitySearchControllerScript = preload("res://Simulation/UI/EntitySearchController.gd")
+const CollapsiblePanelScript = preload("res://Simulation/UI/CollapsiblePanel.gd")
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 
 var world: World = null
@@ -16,6 +17,7 @@ var building_overview_controller = null
 var citizen_overview_controller = null
 var economy_overview_controller = null
 var search_controller = null
+var search_panel_ui = null
 
 func setup(
 	world_ref: World,
@@ -304,28 +306,19 @@ func _build_search_overlay(
 	mark_ui_interacted: Callable,
 	search_result_limit: int
 ) -> void:
-	var search_margin := MarginContainer.new()
-	search_margin.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	search_margin.offset_left = -312
-	# Clear of the persistent top bar.
-	search_margin.offset_top = UiThemeScript.TOPBAR_HEIGHT + 12
-	search_margin.offset_right = -12
-	search_margin.offset_bottom = UiThemeScript.TOPBAR_HEIGHT + 240
-	search_margin.theme = UiThemeScript.get_or_build()
-	canvas.add_child(search_margin)
-
-	var search_panel := PanelContainer.new()
-	search_margin.add_child(search_panel)
-
-	var search_vbox := VBoxContainer.new()
-	search_vbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
-	search_panel.add_child(search_vbox)
-
-	var search_heading := Label.new()
-	search_heading.text = "SEARCH"
-	search_heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
-	search_heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
-	search_vbox.add_child(search_heading)
+	# Clear of the persistent top bar; same width as before.
+	search_panel_ui = CollapsiblePanelScript.new()
+	search_panel_ui.build(
+		canvas,
+		"SEARCH",
+		"Suche",
+		-312.0,
+		float(UiThemeScript.TOPBAR_HEIGHT + 12),
+		-12.0,
+		float(UiThemeScript.TOPBAR_HEIGHT + 240),
+		true
+	)
+	var search_vbox: VBoxContainer = search_panel_ui.content
 
 	search_input = LineEdit.new()
 	search_input.placeholder_text = "Citizen or building name…"
