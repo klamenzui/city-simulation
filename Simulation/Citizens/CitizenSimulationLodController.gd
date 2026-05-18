@@ -6,6 +6,7 @@ const CONFIG_PATH := "res://config/citizen_simulation_lod.json"
 var world: World = null
 var city_camera: Camera3D = null
 var selection_state_controller = null
+var camera_mode_manager = null
 
 var _config: Dictionary = {}
 var _refresh_left: float = 0.0
@@ -13,13 +14,18 @@ var _runtime_sec: float = 0.0
 var _last_tier_change_sec: Dictionary = {}
 var _last_focus_sec: Dictionary = {}
 var _high_social_density_ids: Dictionary = {}
+var _initial_lod_application_done: bool = false
 
-func setup(world_ref: World, camera_ref: Camera3D, selection_state_controller_ref) -> void:
+func setup(world_ref: World, camera_ref: Camera3D, selection_state_controller_ref, camera_mode_manager_ref = null) -> void:
+	var keep_runtime_state := _initial_lod_application_done and world == world_ref
 	world = world_ref
 	city_camera = camera_ref
 	selection_state_controller = selection_state_controller_ref
+	camera_mode_manager = camera_mode_manager_ref
 	_config = _load_config()
 	_refresh_left = 0.0
+	if not keep_runtime_state:
+		_initial_lod_application_done = false
 
 func update(delta: float) -> void:
 	if world == null or city_camera == null or selection_state_controller == null:
@@ -36,10 +42,11 @@ func update(delta: float) -> void:
 func _apply_lod_tiers() -> void:
 	var selected_citizen: Citizen = selection_state_controller.get_selected_citizen()
 	var controlled_citizen: Citizen = selection_state_controller.get_controlled_citizen()
-	var player_avatar: Citizen = selection_state_controller.get_player_avatar() if selection_state_controller.has_method("get_player_avatar") else null
+	var player_avatar: Citizen = _resolve_local_player_citizen(controlled_citizen)
 	var player_control_active: bool = selection_state_controller.is_player_control_active() if selection_state_controller.has_method("is_player_control_active") else false
 	var focus_budget: int = _get_int("budgets.focus_citizens", 15)
-	var active_budget: int = _get_int("budgets.active_citizens", 30)
+	var active_budget: int = _get_int("budgets.active_citizens", 0)
+	var enforce_background_budget := _get_bool("rotation.enforce_background_budget", true)
 
 	var forced_focus: Dictionary = {}
 	var forced_active: Dictionary = {}
@@ -76,8 +83,20 @@ func _apply_lod_tiers() -> void:
 
 	scored.sort_custom(_sort_scored_desc)
 
-	var desired_focus: Dictionary = forced_focus.duplicate()
+	var desired_focus: Dictionary = {}
 	var focus_count := 0
+	var max_focus_count := maxi(focus_budget, forced_focus.size())
+	for entry in scored:
+		var citizen: Citizen = entry["citizen"] as Citizen
+		if citizen == null:
+			continue
+		var citizen_id := citizen.get_instance_id()
+		if not forced_focus.has(citizen_id):
+			continue
+		desired_focus[citizen_id] = true
+		focus_count += 1
+		if focus_count >= max_focus_count:
+			break
 	for entry in scored:
 		var citizen: Citizen = entry["citizen"] as Citizen
 		if citizen == null:
@@ -86,8 +105,10 @@ func _apply_lod_tiers() -> void:
 		var citizen_id := citizen.get_instance_id()
 		if desired_focus.has(citizen_id):
 			continue
-		if focus_count >= focus_budget:
+		if focus_count >= max_focus_count:
 			break
+		if _should_defer_in_view_materialization(citizen):
+			continue
 		if not _qualifies_for_focus(citizen, score):
 			continue
 		desired_focus[citizen_id] = true
@@ -107,10 +128,21 @@ func _apply_lod_tiers() -> void:
 			continue
 		if active_count >= active_budget:
 			break
+		if _should_defer_in_view_materialization(citizen):
+			continue
 		if not _qualifies_for_active(citizen, score, anchor_pos):
 			continue
 		desired_active[citizen_id] = true
 		active_count += 1
+
+	_reserve_antipop_visible_budget(
+		desired_focus,
+		desired_active,
+		forced_focus,
+		forced_active,
+		scored,
+		focus_budget + active_budget
+	)
 
 	for citizen in world.citizens:
 		if citizen == null:
@@ -122,11 +154,14 @@ func _apply_lod_tiers() -> void:
 		elif desired_active.has(citizen_id):
 			desired_tier = "active"
 
-		desired_tier = _apply_hold_rules(citizen, desired_tier)
-		if desired_tier == "coarse" and not _can_demote_to_coarse(citizen, selected_citizen, player_avatar):
+		desired_tier = _apply_hold_rules(citizen, desired_tier, enforce_background_budget)
+		if not enforce_background_budget \
+				and desired_tier == "coarse" \
+				and not _can_demote_to_coarse(citizen, selected_citizen, player_avatar):
 			desired_tier = "active"
 
 		_apply_tier(citizen, desired_tier)
+	_initial_lod_application_done = true
 
 func _score_citizen(citizen: Citizen, relevance_context: Dictionary, selected_citizen: Citizen, player_avatar: Citizen) -> float:
 	var score := 0.0
@@ -166,6 +201,33 @@ func _score_citizen(citizen: Citizen, relevance_context: Dictionary, selected_ci
 		score += _get_float("relevance_weights.recently_promoted_penalty", -20.0)
 
 	return score
+
+func _resolve_local_player_citizen(controlled_citizen: Citizen) -> Citizen:
+	if selection_state_controller != null and selection_state_controller.has_method("get_player_avatar"):
+		var avatar: Citizen = selection_state_controller.get_player_avatar()
+		if avatar != null and is_instance_valid(avatar):
+			return avatar
+	var camera_player := _get_camera_player_target()
+	if camera_player != null:
+		return camera_player
+	if controlled_citizen != null and is_instance_valid(controlled_citizen):
+		return controlled_citizen
+	return null
+
+func _get_camera_player_target() -> Citizen:
+	var manager = camera_mode_manager
+	if manager == null and selection_state_controller != null and selection_state_controller.has_method("get_camera_player_target"):
+		var target: Citizen = selection_state_controller.get_camera_player_target()
+		if target != null and is_instance_valid(target):
+			return target
+	if manager == null and selection_state_controller != null:
+		manager = selection_state_controller.get("camera_mode_manager")
+	if manager == null or not manager.has_method("get_player_target"):
+		return null
+	var target = manager.get_player_target()
+	if target is Citizen and is_instance_valid(target):
+		return target as Citizen
+	return null
 
 func _distance_score(distance: float) -> float:
 	var bands: Variant = _get_value("visibility.distance_bands_m", [])
@@ -217,8 +279,10 @@ func _can_demote_to_coarse(citizen: Citizen, selected_citizen: Citizen, player_a
 		return false
 	return int(citizen.get_home_rotation_candidate_day()) >= 0 and int(citizen.get_home_rotation_candidate_day()) < world.world_day()
 
-func _apply_hold_rules(citizen: Citizen, desired_tier: String) -> String:
+func _apply_hold_rules(citizen: Citizen, desired_tier: String, enforce_background_budget: bool = false) -> String:
 	if citizen == null or not citizen.has_method("get_simulation_lod_tier"):
+		return desired_tier
+	if enforce_background_budget:
 		return desired_tier
 	var current_tier := citizen.get_simulation_lod_tier()
 	if current_tier == desired_tier:
@@ -246,15 +310,20 @@ func _apply_tier(citizen: Citizen, tier: String) -> void:
 	var current_tier := citizen.get_simulation_lod_tier() if citizen.has_method("get_simulation_lod_tier") else ""
 	var tier_profile_variant: Variant = _get_value("tiers.%s" % tier, {})
 	var tier_profile: Dictionary = tier_profile_variant as Dictionary if tier_profile_variant is Dictionary else {}
+	var desired_rendered := _get_bool("tiers.%s.rendered" % tier, true)
+	var rendered := _resolve_rendered_for_transition(citizen, desired_rendered)
+	var physics_enabled := _get_bool("tiers.%s.physics" % tier, true)
+	if rendered and not desired_rendered:
+		physics_enabled = _get_bool("visibility.anti_pop_hold_physics", true)
+	var tick_interval := _get_int("refresh.coarse_tick_minutes_step", 5) if tier == "coarse" else 1
 	if current_tier == tier:
+		if _needs_presence_repair(citizen, rendered):
+			citizen.set_simulation_lod_state(tier, rendered, physics_enabled, tick_interval)
 		if citizen.has_method("apply_simulation_lod_runtime_profile"):
 			citizen.apply_simulation_lod_runtime_profile(tier_profile, world)
 		if tier == "focus":
 			_last_focus_sec[citizen.get_instance_id()] = _runtime_sec
 		return
-	var rendered := _get_bool("tiers.%s.rendered" % tier, true)
-	var physics_enabled := _get_bool("tiers.%s.physics" % tier, true)
-	var tick_interval := _get_int("refresh.coarse_tick_minutes_step", 5) if tier == "coarse" else 1
 	citizen.set_simulation_lod_state(tier, rendered, physics_enabled, tick_interval)
 	if citizen.has_method("apply_simulation_lod_runtime_profile"):
 		citizen.apply_simulation_lod_runtime_profile(tier_profile, world)
@@ -264,6 +333,132 @@ func _apply_tier(citizen: Citizen, tier: String) -> void:
 		_last_tier_change_sec[citizen_id] = _runtime_sec
 	if tier == "focus":
 		_last_focus_sec[citizen_id] = _runtime_sec
+
+func _resolve_rendered_for_transition(citizen: Citizen, desired_rendered: bool) -> bool:
+	if not _get_bool("visibility.anti_pop_enabled", true):
+		return desired_rendered
+	if not _initial_lod_application_done:
+		return desired_rendered
+	if citizen == null:
+		return desired_rendered
+	var inside := citizen.has_method("is_inside_building") and citizen.is_inside_building()
+	if inside:
+		return desired_rendered
+	var in_camera_view := _is_in_camera_view(citizen.global_position)
+	if desired_rendered:
+		if not citizen.visible \
+				and in_camera_view \
+				and _get_bool("visibility.materialize_offscreen_only", true) \
+				and not _is_player_or_selected_citizen(citizen):
+			return false
+		return true
+	if citizen.visible \
+			and in_camera_view \
+			and _get_bool("visibility.dematerialize_offscreen_only", true):
+		return true
+	return false
+
+func _reserve_antipop_visible_budget(
+		desired_focus: Dictionary,
+		desired_active: Dictionary,
+		forced_focus: Dictionary,
+		forced_active: Dictionary,
+		scored: Array,
+		visual_budget: int) -> void:
+	if visual_budget <= 0:
+		return
+	if not _get_bool("visibility.anti_pop_enabled", true):
+		return
+	if not _initial_lod_application_done:
+		return
+	if not _get_bool("visibility.dematerialize_offscreen_only", true):
+		return
+	var held_visible_count := 0
+	for citizen in world.citizens:
+		if citizen == null:
+			continue
+		var citizen_id := citizen.get_instance_id()
+		if desired_focus.has(citizen_id) or desired_active.has(citizen_id):
+			continue
+		if _should_hold_visible_for_antipop(citizen):
+			held_visible_count += 1
+	var overflow := desired_focus.size() + desired_active.size() + held_visible_count - visual_budget
+	if overflow <= 0:
+		return
+	for index in range(scored.size() - 1, -1, -1):
+		if overflow <= 0:
+			return
+		var citizen: Citizen = scored[index].get("citizen", null) as Citizen
+		if citizen == null:
+			continue
+		var citizen_id := citizen.get_instance_id()
+		if forced_focus.has(citizen_id) or forced_active.has(citizen_id):
+			continue
+		if desired_active.has(citizen_id):
+			desired_active.erase(citizen_id)
+			overflow -= 1
+	for index in range(scored.size() - 1, -1, -1):
+		if overflow <= 0:
+			return
+		var citizen: Citizen = scored[index].get("citizen", null) as Citizen
+		if citizen == null:
+			continue
+		var citizen_id := citizen.get_instance_id()
+		if forced_focus.has(citizen_id):
+			continue
+		if desired_focus.has(citizen_id):
+			desired_focus.erase(citizen_id)
+			overflow -= 1
+
+func _should_hold_visible_for_antipop(citizen: Citizen) -> bool:
+	if citizen == null or not citizen.visible:
+		return false
+	var inside := citizen.has_method("is_inside_building") and citizen.is_inside_building()
+	if inside:
+		return false
+	return _is_in_camera_view(citizen.global_position)
+
+func _should_defer_in_view_materialization(citizen: Citizen) -> bool:
+	if not _get_bool("visibility.anti_pop_enabled", true):
+		return false
+	if not _initial_lod_application_done:
+		return false
+	if not _get_bool("visibility.materialize_offscreen_only", true):
+		return false
+	if citizen == null or citizen.visible:
+		return false
+	if _is_player_or_selected_citizen(citizen):
+		return false
+	var inside := citizen.has_method("is_inside_building") and citizen.is_inside_building()
+	if inside:
+		return false
+	return _is_in_camera_view(citizen.global_position)
+
+func _is_player_or_selected_citizen(citizen: Citizen) -> bool:
+	if citizen == null or selection_state_controller == null:
+		return false
+	if selection_state_controller.has_method("get_selected_citizen"):
+		var selected: Citizen = selection_state_controller.get_selected_citizen()
+		if selected == citizen:
+			return true
+	if selection_state_controller.has_method("get_player_avatar"):
+		var player_avatar: Citizen = selection_state_controller.get_player_avatar()
+		if player_avatar == citizen:
+			return true
+	if selection_state_controller.has_method("get_controlled_citizen"):
+		var controlled: Citizen = selection_state_controller.get_controlled_citizen()
+		if controlled == citizen:
+			return true
+	var camera_player := _get_camera_player_target()
+	return camera_player == citizen
+
+func _needs_presence_repair(citizen: Citizen, rendered: bool) -> bool:
+	if citizen == null:
+		return false
+	if not rendered:
+		return citizen.visible
+	var inside := citizen.has_method("is_inside_building") and citizen.is_inside_building()
+	return not inside and not citizen.visible
 
 func _build_relevance_context(
 	anchor_pos: Vector3,
@@ -506,7 +701,7 @@ func _load_config() -> Dictionary:
 	var defaults := {
 		"budgets": {
 			"focus_citizens": 15,
-			"active_citizens": 30,
+			"active_citizens": 0,
 			"always_keep_selected_focus": true,
 			"always_keep_player_focus": true
 		},
@@ -521,6 +716,10 @@ func _load_config() -> Dictionary:
 			"camera_hotspot_distance_m": 18.0,
 			"camera_hotspot_radius_m": 8.0,
 			"screen_visibility_bonus_enabled": true,
+			"anti_pop_enabled": true,
+			"materialize_offscreen_only": true,
+			"dematerialize_offscreen_only": true,
+			"anti_pop_hold_physics": true,
 			"distance_bands_m": []
 		},
 		"hysteresis": {
@@ -554,6 +753,7 @@ func _load_config() -> Dictionary:
 			}
 		},
 		"rotation": {
+			"enforce_background_budget": true,
 			"home_arrival_swap_requires_next_day": true
 		},
 		"commitments": {

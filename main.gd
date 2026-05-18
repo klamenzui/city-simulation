@@ -110,6 +110,8 @@ func _setup_offline_player() -> void:
 		_controlled_citizen.set("keyboard_control_enabled", true)
 	if _camera_mode_manager != null:
 		_camera_mode_manager.set_player_target(_controlled_citizen)
+	if _runtime_controller != null and _runtime_controller.has_method("refresh_citizen_lod_now"):
+		_runtime_controller.refresh_citizen_lod_now()
 
 func _setup_multiplayer_session() -> void:
 	_multiplayer_session = MultiplayerSessionScript.new()

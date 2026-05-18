@@ -53,6 +53,14 @@ func get_controlled_citizen() -> Citizen:
 func get_player_avatar() -> Citizen:
 	return _player_avatar if _player_avatar != null and is_instance_valid(_player_avatar) else null
 
+func get_camera_player_target() -> Citizen:
+	if camera_mode_manager == null or not camera_mode_manager.has_method("get_player_target"):
+		return null
+	var target = camera_mode_manager.get_player_target()
+	if target is Citizen and is_instance_valid(target):
+		return target as Citizen
+	return null
+
 func is_player_control_active() -> bool:
 	var player_avatar := get_player_avatar()
 	return player_avatar != null and _controlled_citizen == player_avatar

@@ -1079,6 +1079,10 @@ func _is_eligible_for_cheap_lod() -> bool:
 ## body. The order matters: indoor presence is set via `_set_interior_presence`
 ## above; LOD presence reuses the same toggle but ORs the flag.
 func _apply_lod_presence_state() -> void:
+	_apply_combined_presence_state()
+
+
+func _apply_combined_presence_state() -> void:
 	if _sim == null or _sim.lod == null:
 		return
 	# When LOD wants to hide and we're not already hidden by indoor presence,
@@ -1323,15 +1327,18 @@ func exit_current_building(world: Node = null) -> void:
 
 func _set_interior_presence(hidden: bool) -> void:
 	_interior_presence_hidden = hidden
-	if hidden:
-		hide()
-		velocity = Vector3.ZERO
-		collision_layer = 0
-		collision_mask = 0
-	else:
-		show()
-		collision_layer = _saved_collision_layer
-		collision_mask = _saved_collision_mask
+	if _sim == null or _sim.lod == null:
+		if hidden:
+			hide()
+			velocity = Vector3.ZERO
+			collision_layer = 0
+			collision_mask = 0
+		else:
+			show()
+			collision_layer = _saved_collision_layer
+			collision_mask = _saved_collision_mask
+		return
+	_apply_combined_presence_state()
 
 
 func _set_position_grounded(pos: Vector3) -> void:

@@ -20,6 +20,11 @@ Purpose: compact decisions that should be checked before architectural edits.
 - Navigation helpers should not own schedule/economy decisions.
 - Citizen debug/logging helpers should not affect spawn/runtime performance unless explicitly enabled.
 - Population refill belongs to `World`: `Citizen.die()` cleans up and unregisters, but replacement Citizens are spawned later through the World refill queue and `CitizenFactory`.
+- Citizen LOD is a configurable hard render budget: `focus_citizens` defaults to 15 visible/full-sim Citizens, `active_citizens` defaults to 0 additional visible cheaper Citizens, and the remaining Citizens are coarse hidden/background-sim unless protected by explicit commitments such as player/dialog/meeting.
+- With `rotation.enforce_background_budget=true`, LOD hold/hysteresis must not exceed `focus_citizens + active_citizens`; local player and selected/dialog Citizens count inside the visible budget where possible.
+- Runtime must auto-start `CitizenSimulationLodController` once World, selection state, and a camera are available. A missing LOD controller must not silently leave every Citizen rendered.
+- Citizen visibility has independent interior and LOD reasons. Building exit/entry must apply the combined visibility state so interior logic cannot reveal coarse hidden LOD Citizens.
+- Citizen LOD anti-pop transitions must count against the visible budget. Do not materialize hidden outdoor Citizens or dematerialize visible Citizens inside the active camera view; keep temporary visible coarse holds moving until they leave view.
 
 ## Navigation Ownership Rules
 
@@ -48,6 +53,7 @@ Purpose: compact decisions that should be checked before architectural edits.
 
 - `CameraModeManager` (RefCounted, `Simulation/Camera/`) is the single owner of which camera is `current`; never set `Camera3D.current` for the player/builder cameras anywhere else. Modes: `PLAYER_THIRD_PERSON` (default) and `CITY_BUILDER`.
 - `PlayerThirdPersonCamera` is a decoupled rig (Node3D → SpringArm3D → Camera3D) that follows only the player's position and owns its own yaw/pitch — it is NOT a child of the citizen body (the body's per-frame `look_at` would otherwise spin it).
+- `PlayerThirdPersonCamera.follow_distance` is the initial SpringArm distance, clamped by `min_distance`/`max_distance`; if close camera tuning is wanted, lower `min_distance` too.
 - `CityBuilderCamera` stays as the builder/admin camera only. It is the safe fallback whenever there is no player target (pre-game menu, bootstrap).
 - Clients are locked to `PLAYER_THIRD_PERSON`; `toggle()`/`set_mode(CITY_BUILDER)` are no-ops for clients. Host/offline may toggle via the HUD bottom-bar button (hidden for clients).
 - Host/client player-follow and the offline ControlledCitizen route through the manager (`set_follow_target`/`set_player_target`), never by poking `get_viewport().get_camera_3d()`.
@@ -58,3 +64,4 @@ Purpose: compact decisions that should be checked before architectural edits.
 - Obsidian is the readable long-term memory.
 - Qdrant gets only short decisions, constraints, known bugs, and reusable patterns.
 - LightRAG is optional and reserved for larger cross-system architecture questions.
+- If Qdrant is unreachable, start Docker Desktop if needed, run `.ai/scripts/start-ai-stack.ps1`, then retry. The `city-sim-memory` collection must use named vector `fast-all-minilm-l6-v2` and payload field `document`; repair with `.ai/scripts/sync-important-notes-to-qdrant.py --execute --recreate`.

@@ -82,7 +82,7 @@ func setup(
 	if selection_state_controller != null:
 		selection_state_controller.setup(
 			world,
-			city_camera,
+			camera_mode_manager,
 			interaction_controller.get_debug_panel() if interaction_controller != null else null,
 			hud_controller,
 			runtime_debug_logger,
@@ -99,6 +99,7 @@ func update(delta: float) -> void:
 		selection_state_controller.ensure_valid_control_target()
 		selected_citizen = selection_state_controller.get_selected_citizen()
 		selected_building = selection_state_controller.get_selected_building()
+	_ensure_citizen_lod_controller_started()
 	if dialogue_runtime_service != null:
 		dialogue_runtime_service.update(delta)
 	if citizen_conversation_manager != null:
@@ -117,6 +118,15 @@ func update(delta: float) -> void:
 		hud_overlay_controller.update(delta)
 	if interaction_controller != null:
 		interaction_controller.update(delta)
+
+func refresh_citizen_lod_now() -> void:
+	_ensure_citizen_lod_controller_started()
+	if citizen_lod_controller == null:
+		return
+	var lod_camera := _resolve_lod_camera()
+	if lod_camera != null and citizen_lod_controller.city_camera != lod_camera:
+		citizen_lod_controller.setup(world, lod_camera, selection_state_controller, camera_mode_manager)
+	citizen_lod_controller.update(999.0)
 
 func handle_input(event: InputEvent) -> bool:
 	# Coordinate picker has priority — when active it consumes left-clicks so
@@ -270,8 +280,48 @@ func _setup_citizen_lod_controller() -> void:
 		return
 	if selection_state_controller == null:
 		return
+	var lod_camera := _resolve_lod_camera()
+	if lod_camera == null:
+		return
 	citizen_lod_controller = CitizenSimulationLodControllerScript.new()
-	citizen_lod_controller.setup(world, city_camera, selection_state_controller)
+	citizen_lod_controller.setup(world, lod_camera, selection_state_controller, camera_mode_manager)
+	citizen_lod_controller.update(999.0)
+
+func _ensure_citizen_lod_controller_started() -> void:
+	if world == null:
+		return
+	if world.has_method("has_simulation_authority") and not world.has_simulation_authority():
+		return
+	if selection_state_controller == null:
+		_setup_selection_state_controller()
+	if selection_state_controller == null:
+		return
+	var lod_camera := _resolve_lod_camera()
+	if lod_camera == null:
+		return
+	if citizen_lod_controller == null:
+		citizen_lod_controller = CitizenSimulationLodControllerScript.new()
+		citizen_lod_controller.setup(world, lod_camera, selection_state_controller, camera_mode_manager)
+		citizen_lod_controller.update(999.0)
+		return
+	if citizen_lod_controller.city_camera == null \
+			or not is_instance_valid(citizen_lod_controller.city_camera) \
+			or citizen_lod_controller.city_camera != lod_camera:
+		citizen_lod_controller.setup(world, lod_camera, selection_state_controller, camera_mode_manager)
+		citizen_lod_controller.update(999.0)
+
+func _resolve_lod_camera() -> Camera3D:
+	if camera_mode_manager != null and camera_mode_manager.has_method("get_active_camera"):
+		var active_camera: Camera3D = camera_mode_manager.get_active_camera()
+		if active_camera != null and is_instance_valid(active_camera):
+			return active_camera
+	if city_camera != null and is_instance_valid(city_camera):
+		return city_camera
+	if owner_node != null and owner_node.get_viewport() != null:
+		var viewport_camera := owner_node.get_viewport().get_camera_3d()
+		if viewport_camera != null and is_instance_valid(viewport_camera):
+			return viewport_camera
+	return null
 
 func _setup_dialogue_runtime(headless_runtime: bool) -> void:
 	dialogue_runtime_service = LocalDialogueRuntimeServiceScript.new()

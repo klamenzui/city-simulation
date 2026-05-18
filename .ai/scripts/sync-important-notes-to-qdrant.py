@@ -15,6 +15,7 @@ DEFAULT_VAULT = Path(r"C:\dev\projects\ai_brain")
 DEFAULT_QDRANT_URL = "http://localhost:6333"
 DEFAULT_COLLECTION = "city-sim-memory"
 DEFAULT_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+DEFAULT_VECTOR_NAME = "fast-all-minilm-l6-v2"
 IMPORTANT_PREFIXES = ("10_Notes", "30_Projects", "_Maps")
 
 
@@ -65,6 +66,7 @@ def build_memory_text(path: Path, vault: Path, max_chars: int) -> tuple[str, dic
         "links": links,
         "kind": "project-memory",
     }
+    payload["document"] = memory
     return memory, payload
 
 
@@ -79,6 +81,7 @@ def main() -> int:
     parser.add_argument("--qdrant-url", default=DEFAULT_QDRANT_URL)
     parser.add_argument("--collection", default=DEFAULT_COLLECTION)
     parser.add_argument("--embedding-model", default=DEFAULT_MODEL)
+    parser.add_argument("--vector-name", default=DEFAULT_VECTOR_NAME)
     parser.add_argument("--limit", type=int, default=50)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--max-chars", type=int, default=12_000)
@@ -138,7 +141,9 @@ def main() -> int:
             if args.recreate:
                 client.recreate_collection(
                     collection_name=args.collection,
-                    vectors_config=VectorParams(size=len(vectors[0]), distance=Distance.COSINE),
+                    vectors_config={
+                        args.vector_name: VectorParams(size=len(vectors[0]), distance=Distance.COSINE)
+                    },
                 )
                 collection_ready = True
             if not collection_ready:
@@ -148,13 +153,15 @@ def main() -> int:
                 except Exception:
                     client.create_collection(
                         collection_name=args.collection,
-                        vectors_config=VectorParams(size=len(vectors[0]), distance=Distance.COSINE),
+                        vectors_config={
+                            args.vector_name: VectorParams(size=len(vectors[0]), distance=Distance.COSINE)
+                        },
                     )
                     collection_ready = True
             initialized = True
 
         points = [
-            PointStruct(id=point_id, vector=vector.tolist(), payload=payload)
+            PointStruct(id=point_id, vector={args.vector_name: vector.tolist()}, payload=payload)
             for point_id, vector, payload in zip(ids, vectors, payloads)
         ]
         client.upsert(collection_name=args.collection, points=points)
