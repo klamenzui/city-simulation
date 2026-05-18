@@ -50,6 +50,23 @@ func _init() -> void:
 		printerr("FAIL: no residential tenants available for rent smoke")
 		quit(1)
 		return
+	var lod_probe := _run_lod_visibility_probe(main, world, 140)
+	print("lod_probe visible=%d focus=%d active=%d coarse=%d budget=%d controlled_visible=%s" % [
+		int(lod_probe.get("visible", 0)),
+		int(lod_probe.get("focus", 0)),
+		int(lod_probe.get("active", 0)),
+		int(lod_probe.get("coarse", 0)),
+		int(lod_probe.get("budget", 0)),
+		str(lod_probe.get("controlled_visible", false)),
+	])
+	if int(lod_probe.get("visible", 0)) > int(lod_probe.get("budget", 0)):
+		printerr("FAIL: visible citizens exceed configured LOD budget")
+		quit(1)
+		return
+	if not bool(lod_probe.get("controlled_visible", false)):
+		printerr("FAIL: offline third-person controlled citizen should stay visible")
+		quit(1)
+		return
 
 	var residential_balance_before := _sum_residential_account_balance(world)
 	var day_before := world.time.day
@@ -119,3 +136,56 @@ func _sum_residential_account_balance(world: World) -> int:
 		if building is ResidentialBuilding:
 			total += (building as ResidentialBuilding).account.balance
 	return total
+
+
+func _run_lod_visibility_probe(main: Node, world: World, tick_count: int) -> Dictionary:
+	var runtime = main.get("_runtime_controller") if main != null else null
+	for _i in range(tick_count):
+		world.call("_on_tick")
+		if runtime != null and runtime.has_method("update"):
+			runtime.update(0.5)
+	var counts := {
+		"visible": 0,
+		"focus": 0,
+		"active": 0,
+		"coarse": 0,
+		"budget": _read_lod_visible_budget(),
+		"controlled_visible": false,
+	}
+	var controlled: Citizen = null
+	if main != null:
+		controlled = main.get_node_or_null("ControlledCitizen") as Citizen
+	for citizen in world.citizens:
+		if citizen == null:
+			continue
+		if citizen.visible:
+			counts["visible"] = int(counts["visible"]) + 1
+		match citizen.get_simulation_lod_tier() if citizen.has_method("get_simulation_lod_tier") else "focus":
+			"focus":
+				counts["focus"] = int(counts["focus"]) + 1
+			"active":
+				counts["active"] = int(counts["active"]) + 1
+			"coarse":
+				counts["coarse"] = int(counts["coarse"]) + 1
+	if controlled != null:
+		counts["controlled_visible"] = controlled.visible
+	return counts
+
+
+func _read_lod_visible_budget() -> int:
+	var fallback := 15
+	var path := "res://config/citizen_simulation_lod.json"
+	if not FileAccess.file_exists(path):
+		return fallback
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return fallback
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	if parsed is not Dictionary:
+		return fallback
+	var budgets: Variant = (parsed as Dictionary).get("budgets", {})
+	if budgets is not Dictionary:
+		return fallback
+	var focus_budget := maxi(int((budgets as Dictionary).get("focus_citizens", fallback)), 0)
+	var active_budget := maxi(int((budgets as Dictionary).get("active_citizens", 0)), 0)
+	return focus_budget + active_budget

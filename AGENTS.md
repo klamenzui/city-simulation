@@ -15,6 +15,8 @@ Save tokens, avoid duplicated logic, remove unused files/methods when proven saf
 2. Read or update the compact project index in `.ai/project_index/`.
 3. For broad scans, use the Python scripts in `.ai/scripts/`; PowerShell should only launch them.
 4. Search Qdrant for existing decisions, bugs, snippets, or architecture patterns before repeating work.
+   - If Qdrant is unreachable, start Docker Desktop if needed, then run `.ai/scripts/start-ai-stack.ps1` and retry the Qdrant search.
+   - If the `city-sim-memory` collection schema is incompatible with the MCP vector name, run `.ai/scripts/sync-important-notes-to-qdrant.py --execute --recreate` and retry.
 5. Check Obsidian only for human-readable architecture decisions and design notes that are relevant to the task.
 6. Use Context7 only when current Godot or external API documentation matters.
 7. Use LightRAG only for larger architecture questions spanning multiple systems.

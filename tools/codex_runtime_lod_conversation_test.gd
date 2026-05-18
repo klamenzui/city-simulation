@@ -10,6 +10,14 @@ const CitizenConversationManagerScript = preload("res://Simulation/Conversation/
 const LocalDialogueRuntimeServiceScript = preload("res://Simulation/AI/LocalDialogueRuntimeService.gd")
 const SimulationInteractionControllerScript = preload("res://Simulation/UI/SimulationInteractionController.gd")
 
+class MockCameraModeManager:
+	extends RefCounted
+
+	var player_target: Citizen = null
+
+	func get_player_target() -> Node3D:
+		return player_target if player_target != null and is_instance_valid(player_target) else null
+
 class MockSelectionStateController:
 	extends RefCounted
 
@@ -19,6 +27,7 @@ class MockSelectionStateController:
 	var player_control_active: bool = false
 	var player_control_input_locked: bool = false
 	var selected_building: Building = null
+	var camera_mode_manager = null
 
 	func get_selected_citizen() -> Citizen:
 		return selected_citizen if selected_citizen != null and is_instance_valid(selected_citizen) else null
@@ -31,6 +40,14 @@ class MockSelectionStateController:
 
 	func get_player_avatar() -> Citizen:
 		return player_avatar if player_avatar != null and is_instance_valid(player_avatar) else null
+
+	func get_camera_player_target() -> Citizen:
+		if camera_mode_manager == null or not camera_mode_manager.has_method("get_player_target"):
+			return null
+		var target = camera_mode_manager.get_player_target()
+		if target is Citizen and is_instance_valid(target):
+			return target as Citizen
+		return null
 
 	func is_player_control_active() -> bool:
 		var avatar := get_player_avatar()
@@ -72,6 +89,9 @@ func _run_all_tests() -> void:
 		"conversation_manager_respects_materialize_hysteresis",
 		"conversation_start_rules_block_low_social_smalltalk",
 		"conversation_start_rules_allow_scheduled_meeting_pair",
+		"lod_controller_enforces_visible_budget",
+		"lod_controller_counts_camera_player_inside_visible_budget",
+		"lod_controller_avoids_in_view_visibility_pops",
 		"lod_controller_keeps_dialog_participants_active",
 		"lod_controller_applies_runtime_profile_knobs",
 		"lod_controller_uses_route_and_hotspot_relevance",
@@ -128,6 +148,12 @@ func _run_test(test_name: String) -> String:
 			return _test_conversation_start_rules_block_low_social_smalltalk()
 		"conversation_start_rules_allow_scheduled_meeting_pair":
 			return _test_conversation_start_rules_allow_scheduled_meeting_pair()
+		"lod_controller_enforces_visible_budget":
+			return _test_lod_controller_enforces_visible_budget()
+		"lod_controller_counts_camera_player_inside_visible_budget":
+			return _test_lod_controller_counts_camera_player_inside_visible_budget()
+		"lod_controller_avoids_in_view_visibility_pops":
+			return _test_lod_controller_avoids_in_view_visibility_pops()
 		"lod_controller_keeps_dialog_participants_active":
 			return _test_lod_controller_keeps_dialog_participants_active()
 		"lod_controller_applies_runtime_profile_knobs":
@@ -317,6 +343,131 @@ func _test_conversation_start_rules_allow_scheduled_meeting_pair() -> String:
 	var conversation := _get_single_conversation(manager.get_active_conversations())
 	_expect_eq(str(conversation.get("start_mode", "")), "committed_meeting", "scheduled meetings should use the committed meeting start mode")
 	_expect_eq(str(conversation.get("topic", "")), "food", "scheduled meetings should preserve their configured topic")
+
+	_free_world(world)
+	return _current_error
+
+func _test_lod_controller_enforces_visible_budget() -> String:
+	var world := _new_world()
+	var camera := _new_camera(Vector3(0.0, 16.0, 26.0), Vector3.ZERO)
+	var selection := MockSelectionStateController.new()
+	for index in range(30):
+		var citizen := _new_citizen("Budget Citizen %02d" % index, Vector3(float(index % 10), 0.0, float(index / 10)))
+		world.register_citizen(citizen)
+
+	var lod_controller = CitizenSimulationLodControllerScript.new()
+	lod_controller.setup(world, camera, selection)
+	lod_controller.update(1.0)
+	var configured_focus_budget := mini(
+			maxi(int(lod_controller._get_int("budgets.focus_citizens", 15)), 0),
+			world.citizens.size())
+
+	var focus_count := 0
+	var active_count := 0
+	var coarse_count := 0
+	var visible_count := 0
+	for citizen in world.citizens:
+		if citizen == null:
+			continue
+		match citizen.get_simulation_lod_tier():
+			"focus":
+				focus_count += 1
+			"active":
+				active_count += 1
+			"coarse":
+				coarse_count += 1
+		if citizen.visible:
+			visible_count += 1
+
+	_expect_eq(focus_count, configured_focus_budget, "LOD should keep only the configured focus citizens rendered by default")
+	_expect_eq(active_count, 0, "default LOD budget should not render extra active background citizens")
+	_expect_eq(coarse_count, 30 - configured_focus_budget, "citizens outside the visible budget should drop to coarse")
+	_expect_eq(visible_count, configured_focus_budget, "coarse citizens should be hidden from the city view")
+
+	_free_world(world)
+	return _current_error
+
+func _test_lod_controller_counts_camera_player_inside_visible_budget() -> String:
+	var world := _new_world()
+	var camera := _new_camera(Vector3(0.0, 16.0, 26.0), Vector3.ZERO)
+	var selection := MockSelectionStateController.new()
+	var camera_manager := MockCameraModeManager.new()
+	selection.camera_mode_manager = camera_manager
+	for index in range(30):
+		var citizen := _new_citizen("Camera Player Budget Citizen %02d" % index, Vector3(float(index % 10), 0.0, float(index / 10)))
+		world.register_citizen(citizen)
+		if index == 29:
+			camera_manager.player_target = citizen
+
+	var lod_controller = CitizenSimulationLodControllerScript.new()
+	lod_controller.setup(world, camera, selection)
+	lod_controller.update(1.0)
+	var configured_focus_budget := mini(
+			maxi(int(lod_controller._get_int("budgets.focus_citizens", 15)), 1),
+			world.citizens.size())
+
+	var focus_count := 0
+	var visible_count := 0
+	for citizen in world.citizens:
+		if citizen == null:
+			continue
+		if citizen.get_simulation_lod_tier() == "focus":
+			focus_count += 1
+		if citizen.visible:
+			visible_count += 1
+
+	_expect_eq(camera_manager.player_target.get_simulation_lod_tier(), "focus", "camera-followed offline player should stay in focus")
+	_expect_eq(focus_count, configured_focus_budget, "forced camera player should count inside the configured focus budget")
+	_expect_eq(visible_count, configured_focus_budget, "visible citizens should stay capped at the focus budget when active budget is zero")
+
+	_free_world(world)
+	return _current_error
+
+func _test_lod_controller_avoids_in_view_visibility_pops() -> String:
+	var world := _new_world()
+	var camera := _new_camera(Vector3(0.0, 16.0, 26.0), Vector3.ZERO)
+	var selection := MockSelectionStateController.new()
+	var candidate: Citizen = null
+	for index in range(30):
+		var position := Vector3(float(index % 5), 0.0, float(index / 5))
+		if index == 29:
+			position = Vector3(120.0, 0.0, 120.0)
+		var citizen := _new_citizen("Anti Pop Citizen %02d" % index, position)
+		world.register_citizen(citizen)
+		if index == 29:
+			candidate = citizen
+
+	var lod_controller = CitizenSimulationLodControllerScript.new()
+	lod_controller.setup(world, camera, selection)
+	lod_controller.update(1.0)
+	_expect(candidate != null and not candidate.visible, "initial LOD application should hard-hide citizens outside the budget")
+
+	candidate.global_position = Vector3.ZERO
+	candidate.upsert_lod_commitment("npc_dialog_materialized", world.world_day() + 1, 0, 100.0)
+	lod_controller.update(1.0)
+	_expect(candidate.get_simulation_lod_tier() != "coarse", "high relevance hidden citizen should be promoted")
+	_expect(not candidate.visible, "hidden citizen should not materialize inside the current camera view")
+
+	camera.look_at(Vector3(0.0, 0.0, 100.0), Vector3.UP)
+	lod_controller.update(1.0)
+	_expect(candidate.visible, "hidden promoted citizen may materialize once it is outside the camera view")
+
+	candidate.remove_lod_commitment("npc_dialog_materialized")
+	candidate.global_position = Vector3(50.0, 0.0, -10.0)
+	var filler_index := 0
+	for citizen in world.citizens:
+		if citizen == null or citizen == candidate:
+			continue
+		citizen.global_position = Vector3(float(filler_index % 5), 0.0, float(filler_index / 5))
+		filler_index += 1
+	camera.look_at(Vector3.ZERO, Vector3.UP)
+	lod_controller.update(1.0)
+	_expect_eq(candidate.get_simulation_lod_tier(), "coarse", "low relevance visible citizen should still demote to coarse")
+	_expect(candidate.visible, "visible citizen should not disappear inside the current camera view")
+
+	camera.look_at(Vector3(0.0, 0.0, 100.0), Vector3.UP)
+	lod_controller.update(1.0)
+	_expect(not candidate.visible, "coarse visible citizen should hide once it is outside the camera view")
 
 	_free_world(world)
 	return _current_error

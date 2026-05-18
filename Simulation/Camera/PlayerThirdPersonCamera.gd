@@ -15,11 +15,13 @@ class_name PlayerThirdPersonCamera
 ##    └── SpringArm3D
 ##         └── Camera3D
 
-@export var follow_distance: float = 5.2
-@export var min_distance: float = 2.5
+## Initial SpringArm distance from the player focus point. Runtime zoom clamps
+## this value into the min/max distance range.
+@export var follow_distance: float = 0.8
+@export var min_distance: float = 0.5
 @export var max_distance: float = 9.0
 @export var zoom_step: float = 0.6
-@export var focus_height: float = 1.45
+@export var focus_height: float = 0.7
 @export var pitch_deg: float = 16.0
 @export var min_pitch_deg: float = -8.0
 @export var max_pitch_deg: float = 62.0

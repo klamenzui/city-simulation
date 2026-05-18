@@ -116,6 +116,9 @@ func _build_report(phase: String) -> Dictionary:
 		"local_player_position": _entry_value(citizen_entries, local_player_id, "position", []),
 		"camera_follow_controller_view": _camera_follow_controller_view(camera),
 		"camera_follow_target_id": _camera_follow_target_id(camera),
+		"camera_follow_target_is_citizen": _camera_follow_target_is_citizen(),
+		"camera_follow_target_has_lod": _camera_follow_target_has_lod(),
+		"lod_controller_debug": _lod_controller_debug(),
 		"manual_control_citizen_count": _count_manual_control_citizens(citizen_entries),
 		"manual_control_citizen_ids": _ids_from_entries_with_bool(citizen_entries, "manual_control"),
 		"client_drive_commands_sent": _client_drive_commands_sent,
@@ -159,6 +162,11 @@ func _build_report(phase: String) -> Dictionary:
 		"citizen_count": citizen_entries.size(),
 		"visible_citizen_count": _count_visible_citizens(citizen_entries),
 		"inside_citizen_count": _count_inside_citizens(citizen_entries),
+		"lod_counts_by_tier": _count_lod_tiers(citizen_entries),
+		"visible_counts_by_lod_tier": _count_visible_lod_tiers(citizen_entries),
+		"focus_citizen_ids": _ids_from_entries_with_string(citizen_entries, "lod", "focus"),
+		"active_citizen_ids": _ids_from_entries_with_string(citizen_entries, "lod", "active"),
+		"coarse_visible_citizen_ids": _ids_from_entries_with_string_and_bool(citizen_entries, "lod", "coarse", "visible"),
 		"total_fall_respawn_count": _sum_int_entry_values(citizen_entries, "fall_respawn_count"),
 		"fall_respawn_counts_by_id": _int_values_by_id(citizen_entries, "fall_respawn_count"),
 		"citizen_ids": _ids_from_entries(citizen_entries),
@@ -395,6 +403,27 @@ func _count_inside_citizens(entries: Array) -> int:
 			total += 1
 	return total
 
+func _count_lod_tiers(entries: Array) -> Dictionary:
+	var counts: Dictionary = {}
+	for entry in entries:
+		if entry is not Dictionary:
+			continue
+		var tier := str((entry as Dictionary).get("lod", ""))
+		counts[tier] = int(counts.get(tier, 0)) + 1
+	return counts
+
+func _count_visible_lod_tiers(entries: Array) -> Dictionary:
+	var counts: Dictionary = {}
+	for entry in entries:
+		if entry is not Dictionary:
+			continue
+		var data := entry as Dictionary
+		if not bool(data.get("visible", false)):
+			continue
+		var tier := str(data.get("lod", ""))
+		counts[tier] = int(counts.get(tier, 0)) + 1
+	return counts
+
 func _count_manual_control_citizens(entries: Array) -> int:
 	var total := 0
 	for entry in entries:
@@ -409,6 +438,36 @@ func _ids_from_entries_with_bool(entries: Array, key: String) -> Array[String]:
 			continue
 		var data := entry as Dictionary
 		if not bool(data.get(key, false)):
+			continue
+		var entity_id := str(data.get("id", ""))
+		if not entity_id.is_empty():
+			ids.append(entity_id)
+	ids.sort()
+	return ids
+
+func _ids_from_entries_with_string(entries: Array, key: String, value: String) -> Array[String]:
+	var ids: Array[String] = []
+	for entry in entries:
+		if entry is not Dictionary:
+			continue
+		var data := entry as Dictionary
+		if str(data.get(key, "")) != value:
+			continue
+		var entity_id := str(data.get("id", ""))
+		if not entity_id.is_empty():
+			ids.append(entity_id)
+	ids.sort()
+	return ids
+
+func _ids_from_entries_with_string_and_bool(entries: Array, string_key: String, string_value: String, bool_key: String) -> Array[String]:
+	var ids: Array[String] = []
+	for entry in entries:
+		if entry is not Dictionary:
+			continue
+		var data := entry as Dictionary
+		if str(data.get(string_key, "")) != string_value:
+			continue
+		if not bool(data.get(bool_key, false)):
 			continue
 		var entity_id := str(data.get("id", ""))
 		if not entity_id.is_empty():
@@ -508,6 +567,39 @@ func _camera_follow_target_id(_camera: Camera3D) -> String:
 	if target == null:
 		return ""
 	return NetworkEntityRegistryScript.get_entity_id(target)
+
+func _camera_follow_target_is_citizen() -> bool:
+	var target := _camera_follow_target_node()
+	return target is Citizen
+
+func _camera_follow_target_has_lod() -> bool:
+	var target := _camera_follow_target_node()
+	return target != null and target.has_method("get_simulation_lod_tier")
+
+func _camera_follow_target_node() -> Node3D:
+	var manager = _camera_mode_manager()
+	if manager == null or not manager.has_method("get_follow_target"):
+		return null
+	return manager.get_follow_target() as Node3D
+
+func _lod_controller_debug() -> Dictionary:
+	var runtime = _main.get("_runtime_controller") if _main != null else null
+	if runtime == null:
+		return {}
+	var lod_controller = runtime.get("citizen_lod_controller")
+	if lod_controller == null:
+		return {"exists": false}
+	var target = null
+	if lod_controller.has_method("_get_camera_player_target"):
+		target = lod_controller._get_camera_player_target()
+	var world := _get_world()
+	return {
+		"exists": true,
+		"has_camera_mode_manager": lod_controller.get("camera_mode_manager") != null,
+		"player_target_id": NetworkEntityRegistryScript.get_entity_id(target),
+		"player_target_instance_id": target.get_instance_id() if target != null else 0,
+		"world_has_player_target": world.citizens.has(target) if world != null and target != null else false,
+	}
 
 func _parse_args(args: PackedStringArray) -> Dictionary:
 	var parsed: Dictionary = {}
