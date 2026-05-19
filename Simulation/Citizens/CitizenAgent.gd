@@ -45,7 +45,8 @@ func sim_tick(citizen, world) -> void:
 	if citizen.has_method("is_autonomous_simulation_enabled") \
 		and not citizen.is_autonomous_simulation_enabled() \
 		and not citizen.is_manual_control_enabled() \
-		and not citizen.is_click_move_mode_enabled():
+		and not citizen.is_click_move_mode_enabled() \
+		and not (citizen.has_method("is_keyboard_control_enabled") and citizen.is_keyboard_control_enabled()):
 		return
 	if citizen.has_method("get_simulation_lod_tier") and citizen.get_simulation_lod_tier() == "coarse":
 		_sim_tick_coarse(citizen, world)
@@ -62,6 +63,10 @@ func sim_tick(citizen, world) -> void:
 	if citizen.has_method("is_manual_control_enabled") and citizen.is_manual_control_enabled():
 		return
 	if citizen.has_method("is_click_move_mode_enabled") and citizen.is_click_move_mode_enabled():
+		return
+	if citizen.has_method("is_keyboard_control_enabled") and citizen.is_keyboard_control_enabled():
+		# Keyboard player: needs/health/death already ticked above; the user
+		# drives movement, so suppress GOAP planning and action ticking.
 		return
 	_clear_stale_rest_pose(citizen, world)
 	if _should_pause_for_player_dialog(citizen):
@@ -114,6 +119,8 @@ func _sim_tick_coarse(citizen, world) -> void:
 	if citizen.has_method("is_manual_control_enabled") and citizen.is_manual_control_enabled():
 		return
 	if citizen.has_method("is_click_move_mode_enabled") and citizen.is_click_move_mode_enabled():
+		return
+	if citizen.has_method("is_keyboard_control_enabled") and citizen.is_keyboard_control_enabled():
 		return
 	_clear_stale_rest_pose(citizen, world)
 	if _should_pause_for_player_dialog(citizen):

@@ -17,7 +17,7 @@ Purpose: likely duplication areas to inspect before adding new code.
 | debugpanel | 2 | Scenes/DebugPanel.gd<br>Scenes/DebugPanel.tscn |
 | factory | 2 | Entities/Buildings/Factory.gd<br>Scenes/Factory.tscn |
 | farm | 2 | Entities/Buildings/Farm.gd<br>Scenes/Farm.tscn |
-| main | 2 | main.gd<br>main.tscn |
+| main | 2 | main.gd<br>Main.tscn |
 | park | 2 | Entities/Buildings/Park.gd<br>Scenes/Park.tscn |
 | plant | 2 | ImportedCitySource/Plant.tscn<br>ImportedCitySource/scripts/plant/plant.gd |
 | residentialbuilding | 2 | Entities/Buildings/ResidentialBuilding.gd<br>Scenes/ResidentialBuilding.tscn |
@@ -35,6 +35,6 @@ Purpose: likely duplication areas to inspect before adding new code.
 
 ## Citizen Behavior Overlap
 
-- `Actions/*` files: Action, BuyClothingAction, BuyGroceriesAction, EatAtHomeAction, EatAtRestaurantAction, GoToBenchAction, GoToBuildingAction, Needs, RelaxAtBenchAction, RelaxAtHomeAction, RelaxAtParkAction, SleepAction, StudyAtUniversityAction, WatchCinemaAction, WorkAction.
-- `Simulation/GOAP/*` files: CitizenEducationGoap, CitizenEnergyGoap, CitizenFunGoap, CitizenHungerGoap, CitizenWorkGoap, GoapAction, GoapPlanner.
+- `Actions/*` files: Action, BuyClothingAction, BuyGroceriesAction, EatAtHomeAction, EatAtRestaurantAction, GoToBenchAction, GoToBuildingAction, Needs, RelaxAtBenchAction, RelaxAtHomeAction, RelaxAtParkAction, SleepAction, SocializeAction, StudyAtUniversityAction, WatchCinemaAction, WorkAction.
+- `Simulation/GOAP/*` files: CitizenEducationGoap, CitizenEnergyGoap, CitizenFunGoap, CitizenHungerGoap, CitizenSocialGoap, CitizenWorkGoap, GoapAction, GoapPlanner.
 - Overlapping behavior words: work.

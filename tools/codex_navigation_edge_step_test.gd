@@ -77,10 +77,53 @@ func _init() -> void:
 
 
 func _find_test_citizen(main_instance: Node) -> CharacterBody3D:
-	var node := main_instance.get_node_or_null("Citizen")
-	if node is CharacterBody3D:
-		return node as CharacterBody3D
+	var controlled := main_instance.get_node_or_null("ControlledCitizen")
+	if controlled is CharacterBody3D:
+		return _prepare_scripted_citizen(controlled as CharacterBody3D)
+	var world := main_instance.get_node_or_null("World") as World
+	if world != null:
+		for citizen in world.citizens:
+			if _is_preferred_scripted_citizen(citizen):
+				return _prepare_scripted_citizen(citizen as CharacterBody3D)
+		for citizen in world.citizens:
+			if citizen is CharacterBody3D:
+				return _prepare_scripted_citizen(citizen as CharacterBody3D)
+	for node_name in ["Citizen"]:
+		var node := main_instance.get_node_or_null(node_name)
+		if node is CharacterBody3D:
+			return _prepare_scripted_citizen(node as CharacterBody3D)
 	return null
+
+
+func _is_preferred_scripted_citizen(node) -> bool:
+	if node == null or not (node is CharacterBody3D):
+		return false
+	if node.has_method("is_keyboard_control_enabled") and node.is_keyboard_control_enabled():
+		return false
+	return node.has_method("set_global_target")
+
+
+func _prepare_scripted_citizen(citizen: CharacterBody3D) -> CharacterBody3D:
+	if citizen == null:
+		return null
+	if citizen.has_method("exit_keyboard_control_mode"):
+		citizen.exit_keyboard_control_mode()
+	elif "keyboard_control_enabled" in citizen:
+		citizen.keyboard_control_enabled = false
+	if "autonomous_simulation_enabled" in citizen:
+		citizen.autonomous_simulation_enabled = false
+	if citizen.has_method("set_manual_control_enabled"):
+		citizen.set_manual_control_enabled(false, null)
+	if citizen.has_method("set_click_move_mode_enabled"):
+		citizen.set_click_move_mode_enabled(false, null)
+	if citizen.has_method("set_simulation_lod_state"):
+		citizen.set_simulation_lod_state("focus", true, true, 1)
+	if citizen.has_method("is_inside_building") and citizen.is_inside_building() and citizen.has_method("exit_current_building"):
+		citizen.exit_current_building(null)
+	if citizen.has_method("stop_travel"):
+		citizen.stop_travel()
+	citizen.set_physics_process(true)
+	return citizen
 
 
 func _print_outcome(citizen: Node, stuck_emitted: bool, progress: float) -> bool:

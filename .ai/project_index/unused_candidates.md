@@ -11,7 +11,9 @@ Purpose: candidate list only. Do not delete anything here without reference chec
 | .claude | local/generated or audit-only; do not scan by default |
 | .godot | local/generated or audit-only; do not scan by default |
 | .idea | local/generated or audit-only; do not scan by default |
+| .obsidian | local/generated or audit-only; do not scan by default |
 | AI | local/generated or audit-only; do not scan by default |
+| AI_RuntimeTest | local/generated or audit-only; do not scan by default |
 
 ## Name-Based Candidates
 
@@ -20,6 +22,7 @@ Purpose: candidate list only. Do not delete anything here without reference chec
 | ImportedCitySource/scenes/units/character_body_3d_new.gd | name suggests variant/legacy; verify references before deletion |
 | ImportedCitySource/scenes/units/character_body_3d_new.tscn | name suggests variant/legacy; verify references before deletion |
 | ImportedCitySource/scripts/setup_city - Kopie.gd | name suggests variant/legacy; verify references before deletion |
+| tools/codex_goal_cooldown_test.gd | name suggests variant/legacy; verify references before deletion |
 
 ## Required Follow-Up
 

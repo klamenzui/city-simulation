@@ -127,6 +127,14 @@ func _prepare_citizen_for_instant_economy(
 		citizen.current_action = null
 	citizen.stop_travel()
 	citizen.set_world_ref(world)
+	if citizen.has_method("exit_keyboard_control_mode"):
+		citizen.exit_keyboard_control_mode()
+	citizen.autonomous_simulation_enabled = true
+	citizen.set_manual_control_enabled(false, world)
+	citizen.set_click_move_mode_enabled(false, world)
+	citizen.set_simulation_lod_state("focus", true, true, 1)
+	if citizen.is_inside_building():
+		citizen.exit_current_building(world)
 	citizen.favorite_restaurant = restaurant
 	citizen.favorite_supermarket = supermarket
 	if citizen.home == null:
@@ -143,6 +151,7 @@ func _prepare_citizen_for_instant_economy(
 func _test_restaurant_meal_flow(citizen: Citizen, world: World, restaurant: Restaurant) -> void:
 	_set_time(world, 12, 0)
 	_clear_action(citizen, world)
+	_prepare_direct_visitor_slot(restaurant, citizen)
 	citizen.current_location = restaurant
 	citizen.home_food_stock = 0
 	citizen.needs.hunger = 92.0
@@ -161,6 +170,19 @@ func _test_restaurant_meal_flow(citizen: Citizen, world: World, restaurant: Rest
 	_expect(citizen.wallet.balance < wallet_before, "Restaurant meal should charge the citizen")
 	_expect(restaurant.get_stock("meal") == stock_before - 1, "Restaurant meal should consume one meal stock")
 	_clear_action(citizen, world)
+
+
+func _prepare_direct_visitor_slot(building: Building, citizen: Citizen) -> void:
+	if building == null:
+		return
+	if building.has_method("remove_visitor"):
+		for visitor in building.visitors.duplicate():
+			building.remove_visitor(visitor)
+	var effective_capacity := building.get_effective_visitor_capacity()
+	if effective_capacity > 0 and building.visitors.size() >= effective_capacity:
+		building.capacity = building.visitors.size() + 1
+	if citizen != null and building.visitors.has(citizen):
+		building.remove_visitor(citizen)
 
 
 func _test_supermarket_grocery_flow(citizen: Citizen, world: World, supermarket: Supermarket) -> void:

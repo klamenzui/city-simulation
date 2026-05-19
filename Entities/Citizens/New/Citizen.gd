@@ -16,7 +16,8 @@ signal clicked
 
 ## True when this citizen takes part in autonomous GOAP simulation.
 ## Player-controlled NPCs and the lone test-citizen `$Citizen` set this
-## to false in the Inspector. CitizenAgent skips sim_tick when false.
+## to false in the Inspector. Keyboard-controlled local players still tick
+## needs/health, but skip autonomous GOAP planning and action execution.
 @export var autonomous_simulation_enabled: bool = true
 
 const SimLoggerScript = preload("res://Simulation/Logging/SimLogger.gd")
@@ -388,6 +389,7 @@ func apply_network_snapshot(data: Dictionary, building_lookup: Dictionary) -> vo
 		needs.hunger = float(data.get("hunger", needs.hunger))
 		needs.energy = float(data.get("energy", needs.energy))
 		needs.fun = float(data.get("fun", needs.fun))
+		needs.social = float(data.get("social", needs.social))
 		needs.health = float(data.get("health", needs.health))
 	if data.has("current_location_id"):
 		var location_id := str(data.get("current_location_id", ""))
@@ -792,6 +794,12 @@ var fun_target: float:
 	set(v):
 		if _sim != null and _sim.scheduler != null:
 			_sim.scheduler.fun_target = v
+
+var sociability: float:
+	get: return _sim.scheduler.sociability if _sim != null and _sim.scheduler != null else 0.5
+	set(v):
+		if _sim != null and _sim.scheduler != null:
+			_sim.scheduler.sociability = v
 
 var work_minutes_today: int:
 	get: return _sim.scheduler.work_minutes_today if _sim != null and _sim.scheduler != null else 0
@@ -1232,7 +1240,10 @@ func get_navigation_points_for_building(building: Building, world: Node = null) 
 			building, world, name_for_offset, global_position, reserved_bench)
 
 
-func enter_building(building: Building, world: Node = null, emit_log: bool = true) -> void:
+var _player_slot_building: Building = null
+var _player_slot_kind: String = ""
+
+func enter_building(building: Building, world: Node = null, emit_log: bool = true, skip_occupancy_callback: bool = false) -> void:
 	if building == null or _sim == null or _sim.location == null:
 		return
 	clear_rest_pose(true)
@@ -1251,7 +1262,7 @@ func enter_building(building: Building, world: Node = null, emit_log: bool = tru
 		if nav_points.has("spawn"):
 			_set_position_grounded(nav_points["spawn"] as Vector3)
 		_sim.location.set_inside_building(building)
-	if building.has_method("on_citizen_entered"):
+	if not skip_occupancy_callback and building.has_method("on_citizen_entered"):
 		# Use dynamic call() to bypass the legacy `Citizen` typed parameter on
 		# Building.on_citizen_entered. The Facade isn't `Citizen` (yet) but
 		# building callbacks only need a Node — type-tightening on Building's
@@ -1263,6 +1274,58 @@ func enter_building(building: Building, world: Node = null, emit_log: bool = tru
 				_get_log_name(),
 				building.get_display_name() if building.has_method("get_display_name") else "?",
 				_fmt_v3(entry_pos)])
+
+
+## Player-driven building entry (R key). Takes a real capacity slot by
+## building type (residential -> tenant, workplace -> worker, else visitor).
+## Returns false (no entry) when the building is full/closed. The player
+## becomes inside/hidden like an NPC; `skip_occupancy_callback` prevents the
+## generic visitor double-count since the slot is taken explicitly here.
+func player_enter_building(building: Building, world: Node = null) -> bool:
+	if building == null or _sim == null or _sim.location == null:
+		return false
+	if is_inside_building():
+		return false
+	var kind := ""
+	var ok := false
+	if building is ResidentialBuilding:
+		ok = building.add_tenant(self)
+		kind = "tenant"
+	elif int(building.job_capacity) > 0:
+		ok = building.try_hire(self)
+		kind = "worker"
+	else:
+		ok = building.try_add_visitor(self)
+		kind = "visitor"
+	if not ok:
+		return false
+	enter_building(building, world, true, true)
+	_player_slot_building = building
+	_player_slot_kind = kind
+	return true
+
+
+## Player-driven building exit (T key). Frees the slot taken on enter and
+## brings the player back out (visible) at the building spawn/exit point.
+func player_exit_building(world: Node = null) -> bool:
+	var b := _player_slot_building
+	if b == null and not is_inside_building():
+		return false
+	if b != null and is_instance_valid(b):
+		match _player_slot_kind:
+			"tenant":
+				if b.has_method("remove_tenant"):
+					b.remove_tenant(self)
+			"worker":
+				if b.has_method("fire"):
+					b.fire(self)
+			"visitor":
+				if b.has_method("remove_visitor"):
+					b.remove_visitor(self)
+	exit_current_building(world)
+	_player_slot_building = null
+	_player_slot_kind = ""
+	return true
 
 
 func leave_current_location(world: Node = null, emit_log: bool = true) -> void:
@@ -2066,6 +2129,7 @@ func _build_needs_section() -> Dictionary:
 			_build_need_row("Hunger", needs.hunger, true),
 			_build_need_row("Energie", needs.energy, false),
 			_build_need_row("Spass", needs.fun, false),
+			_build_need_row("Sozial", needs.social, false),
 			_build_need_row("Gesundheit", needs.health, false),
 		]
 	}

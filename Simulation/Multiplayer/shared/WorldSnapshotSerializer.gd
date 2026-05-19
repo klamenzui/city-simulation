@@ -127,6 +127,7 @@ static func _build_citizen_snapshots(world: World, include_static: bool) -> Arra
 			"hunger": needs.hunger if needs != null else 0.0,
 			"energy": needs.energy if needs != null else 0.0,
 			"fun": needs.fun if needs != null else 0.0,
+			"social": needs.social if needs != null else 0.0,
 			"health": needs.health if needs != null else 0.0,
 			"home_id": NetworkEntityRegistryScript.get_entity_id(citizen.home),
 			"current_location_id": NetworkEntityRegistryScript.get_entity_id(citizen.current_location),

@@ -31,7 +31,9 @@ class StubNeeds:
 	var energy: float = 90.0
 	var fun: float = 0.0
 	var health: float = 100.0
+	var social: float = 100.0
 	var TARGET_FUN_MIN: float = 30.0
+	var TARGET_SOCIAL_MIN: float = 30.0
 
 
 class StubJob:
@@ -50,6 +52,7 @@ class StubCitizen:
 	var work_minutes_today: int = 0
 	var work_motivation: float = 1.0
 	var fun_interest: float = 0.35
+	var sociability: float = 0.5
 
 
 func _make_world() -> StubWorld:
@@ -113,6 +116,29 @@ func _init() -> void:
 
 	_assert_true("work: base priority > 0", w1 > 0.0)
 	_assert_approx("work: wm1.4 ~ wm1.0 * 1.4", w14, w1 * 1.4, 0.0005)
+
+	# --- sociability scales the social candidate (low social = deficit) ---
+	_assert_approx("config: social pers scale", planner._pers_social_scale, 0.6, 0.0001)
+
+	var c_soc_mid := _make_citizen()
+	c_soc_mid.needs.social = 0.0
+	c_soc_mid.sociability = 0.5
+	var s_mid := _priority_of(planner._build_goal_candidates(world, c_soc_mid), "social")
+
+	var c_soc_hi := _make_citizen()
+	c_soc_hi.needs.social = 0.0
+	c_soc_hi.sociability = 1.0
+	var s_hi := _priority_of(planner._build_goal_candidates(world, c_soc_hi), "social")
+
+	var c_soc_lo := _make_citizen()
+	c_soc_lo.needs.social = 0.0
+	c_soc_lo.sociability = 0.0
+	var s_lo := _priority_of(planner._build_goal_candidates(world, c_soc_lo), "social")
+
+	_assert_true("social: mid priority > 0", s_mid > 0.0)
+	_assert_approx("social: soc1.0 ~ mid * 1.3", s_hi, s_mid * 1.3, 0.0005)
+	_assert_approx("social: soc0.0 ~ mid * 0.7", s_lo, s_mid * 0.7, 0.0005)
+	_assert_true("social: high sociability outranks low", s_hi > s_lo)
 
 	print()
 	if failures == 0:

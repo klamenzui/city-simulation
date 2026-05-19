@@ -372,6 +372,9 @@ func set_debug_visualization_enabled(enabled: bool) -> void:
 	_debug.clear_target_marker()
 
 
+func is_keyboard_control_enabled() -> bool:
+	return keyboard_control_enabled
+
 func enter_keyboard_control_mode(follow_camera: bool = true) -> void:
 	keyboard_control_enabled = true
 	_is_travelling = false

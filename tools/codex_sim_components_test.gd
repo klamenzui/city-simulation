@@ -377,6 +377,7 @@ func _test_scheduler_personality() -> void:
 	_assert_eq("hunger_threshold default", sched.hunger_threshold, 60.0)
 	_assert_eq("low_energy default", sched.low_energy_threshold, 35.0)
 	_assert_eq("work_motivation default", sched.work_motivation, 1.0)
+	_assert_eq("sociability default", sched.sociability, 0.5)
 
 	# init_personality must roll within base ± jitter, schedule_offset within range.
 	sched.schedule_offset_min = -10
@@ -394,6 +395,13 @@ func _test_scheduler_personality() -> void:
 			sched.fun_interest >= 0.0, true)
 	_assert_eq("fun_interest clamped upper",
 			sched.fun_interest <= 0.9, true)
+	# sociability is clamped to [0, 1].
+	sched.sociability_jitter = 2.0  # would push outside without clamp
+	sched.init_personality()
+	_assert_eq("sociability clamped lower",
+			sched.sociability >= 0.0, true)
+	_assert_eq("sociability clamped upper",
+			sched.sociability <= 1.0, true)
 
 
 func _test_scheduler_decision_cooldown() -> void:

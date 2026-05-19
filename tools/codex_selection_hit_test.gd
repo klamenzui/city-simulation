@@ -5,6 +5,14 @@ const SelectionStateControllerScript = preload("res://Simulation/Debug/Selection
 
 const SETTLE_FRAMES := 30
 
+class StubMultiplayerSession:
+	var requested_count: int = 0
+	var last_target: Node = null
+
+	func request_entity_interaction(target: Node) -> void:
+		requested_count += 1
+		last_target = target
+
 func _init() -> void:
 	print("=== Selection hit test ===")
 
@@ -62,6 +70,26 @@ func _init() -> void:
 		quit(1)
 		return
 
+	var building := _first_selectable_building(world)
+	if building == null:
+		printerr("FAIL: no selectable building found")
+		quit(1)
+		return
+	var session := StubMultiplayerSession.new()
+	interaction.multiplayer_session = session
+	interaction._handle_building_hit(building)
+	var expected_target: Building = building
+	if world.has_method("get_canonical_building"):
+		expected_target = world.get_canonical_building(building)
+	if session.requested_count != 1:
+		printerr("FAIL: building click did not request exactly one network interaction")
+		quit(1)
+		return
+	if session.last_target != expected_target:
+		printerr("FAIL: building click requested wrong interaction target")
+		quit(1)
+		return
+
 	print("SELECTION_HIT OK citizen=%s screen=%s" % [
 		citizen.citizen_name,
 		str(screen_pos)
@@ -75,4 +103,11 @@ func _first_selectable_citizen(world: World) -> Citizen:
 	for citizen in world.citizens:
 		if citizen != null and citizen.visible and not citizen.is_inside_building():
 			return citizen
+	return null
+
+
+func _first_selectable_building(world: World) -> Building:
+	for building in world.buildings:
+		if building != null and is_instance_valid(building):
+			return building
 	return null

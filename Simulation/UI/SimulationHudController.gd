@@ -746,8 +746,9 @@ func _compute_satisfaction_percent() -> int:
 			clampf(n.health, 0.0, 100.0)
 			+ clampf(n.energy, 0.0, 100.0)
 			+ clampf(n.fun, 0.0, 100.0)
+			+ clampf(n.social, 0.0, 100.0)
 			+ (100.0 - clampf(n.hunger, 0.0, 100.0))
-		) / 4.0
+		) / 5.0
 		total += score
 		counted += 1
 	if counted == 0:

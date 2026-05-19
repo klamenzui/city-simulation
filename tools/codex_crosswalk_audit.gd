@@ -1,6 +1,7 @@
 extends SceneTree
 
 const MAX_PRINT := 24
+const MAX_ROUTE_AUDIT_PAIRS := 800
 
 func _init() -> void:
 	var main_scene := load("res://Main.tscn")
@@ -44,10 +45,16 @@ func _init() -> void:
 	var route_findings: Array[Dictionary] = []
 	var total_routes := 0
 	var routes_with_crosswalk := 0
+	var route_budget_exhausted := false
 	for start_building in world.buildings:
+		if route_budget_exhausted:
+			break
 		if start_building == null:
 			continue
 		for target_building in world.buildings:
+			if total_routes >= MAX_ROUTE_AUDIT_PAIRS:
+				route_budget_exhausted = true
+				break
 			if target_building == null or target_building == start_building:
 				continue
 			total_routes += 1
@@ -67,6 +74,8 @@ func _init() -> void:
 	print(
 		"ROUTE_AUDIT total_routes=",
 		total_routes,
+		" capped=",
+		route_budget_exhausted,
 		" routes_with_crosswalk=",
 		routes_with_crosswalk,
 		" illegal_routes=",

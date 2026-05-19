@@ -14,6 +14,27 @@ const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
 const GoToBenchActionScript = preload("res://Actions/GoToBenchAction.gd")
 const RelaxAtParkActionScript = preload("res://Actions/RelaxAtParkAction.gd")
 const RelaxAtBenchActionScript = preload("res://Actions/RelaxAtBenchAction.gd")
+const SimulationInteractionControllerScript = preload("res://Simulation/UI/SimulationInteractionController.gd")
+
+class MockSelectionStateController:
+	extends RefCounted
+
+	var player_avatar: Citizen = null
+	var controlled_citizen: Citizen = null
+	var camera_player_target: Citizen = null
+	var player_control_active: bool = false
+
+	func get_player_avatar() -> Citizen:
+		return player_avatar if player_avatar != null and is_instance_valid(player_avatar) else null
+
+	func get_controlled_citizen() -> Citizen:
+		return controlled_citizen if controlled_citizen != null and is_instance_valid(controlled_citizen) else null
+
+	func get_camera_player_target() -> Citizen:
+		return camera_player_target if camera_player_target != null and is_instance_valid(camera_player_target) else null
+
+	func is_player_control_active() -> bool:
+		return player_control_active
 
 var _checks_run: int = 0
 var _current_error: String = ""
@@ -28,6 +49,9 @@ func _run_all_tests() -> void:
 	var failed: Array[String] = []
 	for test_name in [
 		"building_entry_updates_visitors",
+		"player_enter_takes_capacity_slot",
+		"offline_keyboard_player_building_input_uses_camera_target",
+		"keyboard_player_needs_tick_without_goap",
 		"university_requires_worker_for_study",
 		"university_accepts_education_service_staff",
 		"university_unstaffed_label_is_teaching_specific",
@@ -35,6 +59,7 @@ func _run_all_tests() -> void:
 		"park_reserved_bench_sets_visit_point",
 		"park_arrival_keeps_bench_reserved_without_auto_rest",
 		"go_to_park_finish_chains_relax_for_visitors",
+		"go_to_park_social_visit_suppresses_auto_rest",
 		"go_to_park_finish_uses_015_entrance_tolerance",
 		"go_to_bench_arrival_keeps_reservation_without_auto_rest",
 		"relax_park_uses_bench_bonus",
@@ -83,6 +108,12 @@ func _run_test(test_name: String) -> String:
 	match test_name:
 		"building_entry_updates_visitors":
 			return _test_building_entry_updates_visitors()
+		"player_enter_takes_capacity_slot":
+			return _test_player_enter_takes_capacity_slot()
+		"offline_keyboard_player_building_input_uses_camera_target":
+			return _test_offline_keyboard_player_building_input_uses_camera_target()
+		"keyboard_player_needs_tick_without_goap":
+			return _test_keyboard_player_needs_tick_without_goap()
 		"university_requires_worker_for_study":
 			return _test_university_requires_worker_for_study()
 		"university_accepts_education_service_staff":
@@ -97,6 +128,8 @@ func _run_test(test_name: String) -> String:
 			return _test_park_arrival_keeps_bench_reserved_without_auto_rest()
 		"go_to_park_finish_chains_relax_for_visitors":
 			return _test_go_to_park_finish_chains_relax_for_visitors()
+		"go_to_park_social_visit_suppresses_auto_rest":
+			return _test_go_to_park_social_visit_suppresses_auto_rest()
 		"go_to_park_finish_uses_015_entrance_tolerance":
 			return _test_go_to_park_finish_uses_015_entrance_tolerance()
 		"go_to_bench_arrival_keeps_reservation_without_auto_rest":
@@ -329,6 +362,30 @@ func _test_go_to_park_finish_chains_relax_for_visitors() -> String:
 	worker.stop_travel()
 	worker_action.finish(world, worker)
 	_expect(not (worker.current_action is RelaxAtParkAction), "park workers should enter the park without auto-starting RelaxPark")
+
+	_free_world(world)
+	return _current_error
+
+func _test_go_to_park_social_visit_suppresses_auto_rest() -> String:
+	var world: World = _new_world()
+	var park: Park = _new_park("Social Park")
+	var visitor: Citizen = _new_citizen("Social Visitor")
+	_add_bench(park, "Bench_A", Vector3(1.5, 0.0, 0.5), 0.4)
+
+	visitor.set_world_ref(world)
+	var social_trip: GoToBuildingAction = GoToBuildingActionScript.new(park, 10, false)
+	visitor.current_action = social_trip
+	social_trip._arrival_target = visitor.get_navigation_points_for_building(park, world).get("access", park.global_position)
+	visitor.set_position_grounded(social_trip._arrival_target)
+	visitor._travel_target = social_trip._arrival_target
+	visitor.stop_travel()
+
+	social_trip.finish(world, visitor)
+
+	_expect(visitor.current_location == park, "social park trip should still enter the park")
+	_expect(not (visitor.current_action is RelaxAtParkAction), "social park trip must not auto-chain into RelaxPark")
+	_expect(not visitor.has_active_rest_pose(), "social park trip should not lock a bench rest pose")
+	_expect_eq(visitor.decision_cooldown_left, 0, "social park trip should allow immediate Socialize replanning")
 
 	_free_world(world)
 	return _current_error
@@ -934,6 +991,128 @@ func _new_building(building_name: String, worker_capacity: int = 0) -> Building:
 	building.add_child(entrance)
 	_harness_root.add_child(building)
 	return building
+
+func _test_player_enter_takes_capacity_slot() -> String:
+	var world: World = _new_world()
+
+	# Residential -> tenant slot, capacity-gated, hidden, reversible.
+	var home: ResidentialBuilding = _new_residential("PlayerHome", Vector3.ZERO, 1)
+	home.capacity = 1  # override balance-applied default from _ready()
+	var p1: Citizen = _new_citizen("Player One")
+	_expect(p1.player_enter_building(home, world), "player should enter residential and take a tenant slot")
+	_expect_eq(home.tenants.size(), 1, "residential tenants should increase by 1")
+	_expect(home.tenants.has(p1), "player should be listed as tenant")
+	_expect(p1.is_inside_building(), "player should be marked inside (hidden) after entering")
+
+	var p2: Citizen = _new_citizen("Player Two")
+	_expect(not p2.player_enter_building(home, world), "full residential must reject the player")
+	_expect_eq(home.tenants.size(), 1, "rejected entry must not take a slot")
+	_expect(not p2.is_inside_building(), "rejected player must not be inside")
+
+	_expect(p1.player_exit_building(world), "player should exit residential")
+	_expect_eq(home.tenants.size(), 0, "exit should free the tenant slot")
+	_expect(not p1.is_inside_building(), "player should no longer be inside after exit")
+
+	# Workplace -> worker slot, no double visitor count.
+	var uni: University = _new_university("Player Work")
+	uni.job_capacity = 2
+	var p3: Citizen = _new_citizen("Player Three")
+	_expect(p3.player_enter_building(uni, world), "player should enter workplace and take a worker slot")
+	_expect_eq(uni.workers.size(), 1, "workplace workers should increase by 1")
+	_expect_eq(uni.visitors.size(), 0, "player worker must not be double-counted as visitor")
+	_expect(p3.is_inside_building(), "player should be inside the workplace")
+	_expect(p3.player_exit_building(world), "player should exit workplace")
+	_expect_eq(uni.workers.size(), 0, "exit should free the worker slot")
+
+	_free_world(world)
+	return _current_error
+
+func _test_offline_keyboard_player_building_input_uses_camera_target() -> String:
+	var world: World = _new_world()
+	var home: ResidentialBuilding = _new_residential("OfflineInputHome", Vector3.ZERO, 1)
+	world.register_building(home)
+
+	var player: Citizen = _new_citizen("Offline Keyboard Player")
+	player.keyboard_control_enabled = true
+	player.set_world_ref(world)
+	player.global_position = home.get_entrance_pos()
+
+	var selection := MockSelectionStateController.new()
+	selection.camera_player_target = player
+	selection.player_control_active = false
+
+	var interaction = SimulationInteractionControllerScript.new()
+	interaction.world = world
+	interaction.selection_state_controller = selection
+	interaction._ensure_dialog_interact_input_action()
+	interaction._ensure_player_building_input_actions()
+
+	var enter_event := InputEventAction.new()
+	enter_event.action = "player_enter_building"
+	enter_event.pressed = true
+
+	_expect(interaction.handle_input(enter_event), "R-enter should be handled for the offline keyboard camera target")
+	_expect(player.is_inside_building(), "offline keyboard player should enter the nearest building")
+	_expect(home.tenants.has(player), "offline keyboard player should take a residential capacity slot")
+
+	var exit_event := InputEventAction.new()
+	exit_event.action = "player_exit_building"
+	exit_event.pressed = true
+
+	_expect(interaction.handle_input(exit_event), "T-exit should be handled for the offline keyboard camera target")
+	_expect(not player.is_inside_building(), "offline keyboard player should exit the building")
+	_expect(not home.tenants.has(player), "offline keyboard player should free the residential slot on exit")
+
+	_free_world(world)
+	return _current_error
+
+func _test_keyboard_player_needs_tick_without_goap() -> String:
+	var world: World = _new_world()
+	world.minutes_per_tick = 10
+	var home: ResidentialBuilding = _new_residential("KeyboardNeedsHome", Vector3.ZERO, 1)
+	world.register_building(home)
+
+	var player: Citizen = _new_citizen("Keyboard Needs Player")
+	world.register_citizen(player)
+	player.set_world_ref(world)
+	player.autonomous_simulation_enabled = false
+	player.keyboard_control_enabled = true
+	player.home = home
+	player.current_location = home
+	player.home_food_stock = 2
+	player.needs.hunger = 85.0
+	player.needs.energy = 100.0
+	player.needs.fun = 70.0
+	player.needs.social = 70.0
+	player.needs.health = 100.0
+
+	var hunger_before: float = player.needs.hunger
+	var energy_before: float = player.needs.energy
+	var social_before: float = player.needs.social
+	var health_before: float = player.needs.health
+
+	player._agent.sim_tick(player, world)
+
+	_expect(player.needs.hunger > hunger_before, "keyboard player hunger should still tick while autonomous sim is disabled")
+	_expect(player.needs.energy < energy_before, "keyboard player energy should still decay while autonomous sim is disabled")
+	_expect(player.needs.social < social_before, "keyboard player social need should still decay while autonomous sim is disabled")
+	_expect(player.needs.health < health_before, "keyboard player should still receive health penalties from unmet needs")
+	_expect_eq(player.current_action, null, "keyboard player must not start GOAP actions after needs tick")
+	_expect_eq(player.decision_cooldown_left, 0, "keyboard player must not roll planner cooldown after needs tick")
+
+	var paused: Citizen = _new_citizen("Paused Non Keyboard")
+	world.register_citizen(paused)
+	paused.set_world_ref(world)
+	paused.autonomous_simulation_enabled = false
+	paused.keyboard_control_enabled = false
+	paused.needs.hunger = 85.0
+	var paused_hunger_before: float = paused.needs.hunger
+
+	paused._agent.sim_tick(paused, world)
+	_expect_eq(paused.needs.hunger, paused_hunger_before, "non-keyboard paused citizens should remain outside sim_tick")
+
+	_free_world(world)
+	return _current_error
 
 func _new_residential(building_name: String, entrance_pos: Vector3, home_capacity: int = 10) -> ResidentialBuilding:
 	var residential: ResidentialBuilding = ResidentialBuildingScript.new()

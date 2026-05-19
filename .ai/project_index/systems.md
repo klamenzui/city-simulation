@@ -22,6 +22,7 @@ Legacy/resource-style action classes for citizen behaviors.
 | Actions/RelaxAtHomeAction.gd | RelaxAtHomeAction | Action |
 | Actions/RelaxAtParkAction.gd | RelaxAtParkAction | Action |
 | Actions/SleepAction.gd | SleepAction | Action |
+| Actions/SocializeAction.gd | SocializeAction | Action |
 | Actions/StudyAtUniversityAction.gd | StudyAtUniversityAction | Action |
 | Actions/WatchCinemaAction.gd | WatchCinemaAction | Action |
 | Actions/WorkAction.gd | WorkAction | Action |
@@ -122,6 +123,7 @@ World orchestration, economy, time, bootstrap, navigation, GOAP, UI, debug, logg
 | Simulation/Camera/PlayerThirdPersonCamera.gd | PlayerThirdPersonCamera | Node3D |
 | Simulation/Citizens/CitizenAgent.gd | CitizenAgent | RefCounted |
 | Simulation/Citizens/CitizenCrosswalkAwareness.gd | CitizenCrosswalkAwareness | RefCounted |
+| Simulation/Citizens/CitizenEmotion.gd | CitizenEmotion | RefCounted |
 | Simulation/Citizens/CitizenLocomotion.gd | CitizenLocomotion | RefCounted |
 | Simulation/Citizens/CitizenNeedsComponent.gd | CitizenNeedsComponent | RefCounted |
 | Simulation/Citizens/CitizenObstacleAvoidance.gd | CitizenObstacleAvoidance | RefCounted |
@@ -139,11 +141,10 @@ World orchestration, economy, time, bootstrap, navigation, GOAP, UI, debug, logg
 | Simulation/GOAP/CitizenEnergyGoap.gd | CitizenEnergyGoap | RefCounted |
 | Simulation/GOAP/CitizenFunGoap.gd | CitizenFunGoap | RefCounted |
 | Simulation/GOAP/CitizenHungerGoap.gd | CitizenHungerGoap | RefCounted |
+| Simulation/GOAP/CitizenSocialGoap.gd | CitizenSocialGoap | RefCounted |
 | Simulation/GOAP/CitizenWorkGoap.gd | CitizenWorkGoap | RefCounted |
 | Simulation/GOAP/GoapAction.gd | GoapAction | RefCounted |
 | Simulation/GOAP/GoapPlanner.gd | GoapPlanner | RefCounted |
-| Simulation/Logging/SimLogger.gd | SimLogger | RefCounted |
-| Simulation/Multiplayer/client/MultiplayerClientReplica.gd | MultiplayerClientReplica | RefCounted |
 
 ## config
 
@@ -167,15 +168,17 @@ Headless probes, parse checks, audits, and regression tests.
 | Path | class_name | extends |
 | --- | --- | --- |
 | tools/codex_building_entry_travel_test.gd | - | SceneTree |
-| tools/codex_building_occupancy_test.gd | - | SceneTree |
+| tools/codex_building_occupancy_test.gd | - | SceneTree, RefCounted |
 | tools/codex_citizen_config_drift_test.gd | - | SceneTree |
 | tools/codex_citizen_fall_respawn_test.gd | - | SceneTree |
 | tools/codex_citizen_stuck_escape_test.gd | - | SceneTree |
 | tools/codex_crosswalk_audit.gd | - | SceneTree |
 | tools/codex_dialogue_probe.gd | - | SceneTree, RefCounted |
 | tools/codex_economy_test.gd | - | SceneTree |
+| tools/codex_emotion_test.gd | - | SceneTree |
 | tools/codex_facade_caller_drift_test.gd | - | SceneTree |
 | tools/codex_game_smoke_test.gd | - | SceneTree |
+| tools/codex_goal_cooldown_test.gd | - | SceneTree |
 | tools/codex_live_economy_food_test.gd | - | SceneTree |
 | tools/codex_live_sim_probe.gd | - | SceneTree |
 | tools/codex_local_grid_topology_test.gd | - | SceneTree |
@@ -186,10 +189,13 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_navigation_route_test.gd | - | SceneTree |
 | tools/codex_null_material_audit.gd | - | SceneTree |
 | tools/codex_parse_check.gd | - | SceneTree |
+| tools/codex_personality_scoring_test.gd | - | SceneTree |
 | tools/codex_route_probe.gd | - | SceneTree |
-| tools/codex_runtime_lod_conversation_test.gd | - | SceneTree, RefCounted |
+| tools/codex_runtime_lod_conversation_test.gd | - | SceneTree, RefCounted, RefCounted |
 | tools/codex_scan_diagnose_test.gd | - | SceneTree |
 | tools/codex_scene_warning_probe.gd | - | SceneTree |
 | tools/codex_selection_hit_test.gd | - | SceneTree |
 | tools/codex_sim_components_test.gd | - | SceneTree |
 | tools/codex_sky_probe.gd | - | SceneTree |
+| tools/codex_social_need_test.gd | - | SceneTree |
+| tools/codex_social_visit_test.gd | - | SceneTree |
