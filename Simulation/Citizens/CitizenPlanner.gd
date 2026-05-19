@@ -50,6 +50,23 @@ var _survival_supermarket_travel_minutes: int = BalanceConfig.get_int("planner.s
 var _work_travel_minutes: int = BalanceConfig.get_int("planner.work_travel_minutes", 20)
 var _night_start_hour: int = BalanceConfig.get_int("schedule.night_start_hour", 22)
 var _day_start_hour: int = BalanceConfig.get_int("schedule.day_start_hour", 6)
+var _personality_enabled: bool = BalanceConfig.get_bool("planner.personality.enabled", true)
+var _pers_work_weight: float = BalanceConfig.get_float("planner.personality.work_motivation_weight", 1.0)
+var _pers_work_min: float = BalanceConfig.get_float("planner.personality.work_motivation_min", 0.5)
+var _pers_work_max: float = BalanceConfig.get_float("planner.personality.work_motivation_max", 1.5)
+var _pers_fun_mid: float = BalanceConfig.get_float("planner.personality.fun_interest_midpoint", 0.35)
+var _pers_fun_scale: float = BalanceConfig.get_float("planner.personality.fun_interest_scale", 0.6)
+var _pers_fun_min: float = BalanceConfig.get_float("planner.personality.fun_personality_min", 0.7)
+var _pers_fun_max: float = BalanceConfig.get_float("planner.personality.fun_personality_max", 1.3)
+var _goal_cooldowns_enabled: bool = BalanceConfig.get_bool("planner.goal_cooldowns.enabled", true)
+var _goal_cooldown_minutes: Dictionary = {
+	"hunger": BalanceConfig.get_int("planner.goal_cooldowns.hunger", 0),
+	"energy": BalanceConfig.get_int("planner.goal_cooldowns.energy", 0),
+	"education": BalanceConfig.get_int("planner.goal_cooldowns.education", 0),
+	"work": BalanceConfig.get_int("planner.goal_cooldowns.work", 0),
+	"fun": BalanceConfig.get_int("planner.goal_cooldowns.fun", 0),
+}
+var _goal_cooldown_until: Dictionary = {}
 
 func plan_next_action(world, citizen) -> bool:
 	if world == null or citizen == null:
@@ -64,13 +81,18 @@ func plan_next_action(world, citizen) -> bool:
 	var candidates: Array = _build_goal_candidates(world, citizen)
 	candidates.sort_custom(_sort_goal_candidates)
 
+	var sim_now: int = _sim_total_minutes(world)
 	for candidate in candidates:
 		var score: float = float(candidate.get("priority", 0.0))
 		if score <= 0.01:
 			continue
 
 		var goal_id: String = str(candidate.get("id", ""))
+		if _is_goal_on_cooldown(citizen, goal_id, sim_now):
+			continue
 		if _try_goal(goal_id, world, citizen):
+			if not _should_defer_goal_cooldown(citizen):
+				_set_goal_cooldown(citizen, goal_id, sim_now)
 			return true
 
 	var hour: int = world.time.get_hour()
@@ -121,12 +143,20 @@ func _build_goal_candidates(world, citizen) -> Array:
 			var ratio_left: float = float(remaining_work) / float(maxi(shift_minutes, 1))
 			work_need = clamp(_work_need_base_priority + ratio_left * _work_need_remaining_weight, 0.0, 1.0)
 
+	var work_pers := 1.0
+	var fun_pers := 1.0
+	if _personality_enabled:
+		var wm: float = float(citizen.work_motivation) if "work_motivation" in citizen else 1.0
+		work_pers = clampf(wm * _pers_work_weight, _pers_work_min, _pers_work_max)
+		var fi: float = float(citizen.fun_interest) if "fun_interest" in citizen else _pers_fun_mid
+		fun_pers = clampf(1.0 + (fi - _pers_fun_mid) * _pers_fun_scale, _pers_fun_min, _pers_fun_max)
+
 	return [
 		{"id": "hunger", "priority": hunger_deficit * _goal_priority_hunger_weight},
 		{"id": "energy", "priority": energy_deficit * _goal_priority_energy_weight},
 		{"id": "education", "priority": education_need * _goal_priority_education_weight},
-		{"id": "work", "priority": work_need * _goal_priority_work_weight},
-		{"id": "fun", "priority": fun_deficit * _goal_priority_fun_weight},
+		{"id": "work", "priority": work_need * _goal_priority_work_weight * work_pers},
+		{"id": "fun", "priority": fun_deficit * _goal_priority_fun_weight * fun_pers},
 	]
 
 func _sort_goal_candidates(a, b) -> bool:
@@ -323,3 +353,47 @@ func _can_buy_groceries(world, citizen, supermarket: Supermarket) -> bool:
 
 func _is_night(hour: int) -> bool:
 	return hour >= _night_start_hour or hour < _day_start_hour
+
+## Per-goal cooldown - suppresses re-selecting a soft goal for N sim-minutes
+## after it starts a fulfilling action. Pure travel setup steps are allowed to
+## replan at arrival so a GOAP chain can continue. Hard overrides
+## (_try_survival_override, _try_work_schedule) run before the candidate loop
+## and are NOT affected.
+## Keyed by citizen instance id so it stays per-citizen even if the planner
+## is ever shared. A goal with 0 configured minutes is never throttled.
+func _is_goal_on_cooldown(citizen, goal_id: String, sim_now: int) -> bool:
+	if not _goal_cooldowns_enabled or citizen == null:
+		return false
+	var per: Dictionary = _goal_cooldown_until.get(citizen.get_instance_id(), {})
+	return sim_now < int(per.get(goal_id, 0))
+
+func _set_goal_cooldown(citizen, goal_id: String, sim_now: int) -> void:
+	if not _goal_cooldowns_enabled or citizen == null:
+		return
+	var minutes: int = int(_goal_cooldown_minutes.get(goal_id, 0))
+	if minutes <= 0:
+		return
+	var cid: int = citizen.get_instance_id()
+	var per: Dictionary = _goal_cooldown_until.get(cid, {})
+	per[goal_id] = sim_now + minutes
+	_goal_cooldown_until[cid] = per
+
+func _should_defer_goal_cooldown(citizen) -> bool:
+	if citizen == null or not "current_action" in citizen:
+		return false
+	var action = citizen.current_action
+	if action == null:
+		return false
+	return action is GoToBuildingActionScript
+
+static func _sim_total_minutes(world) -> int:
+	if world == null or not "time" in world or world.time == null:
+		return 0
+	var t = world.time
+	var day: int = int(t.day) if "day" in t else 1
+	var minutes_total: int = 0
+	if "minutes_total" in t:
+		minutes_total = int(t.minutes_total)
+	elif t.has_method("get_hour") and t.has_method("get_minute"):
+		minutes_total = t.get_hour() * 60 + t.get_minute()
+	return maxi(day - 1, 0) * 24 * 60 + minutes_total

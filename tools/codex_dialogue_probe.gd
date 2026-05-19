@@ -260,7 +260,7 @@ func _spawn_probe_citizen(world: World, scenario: Dictionary, places: Dictionary
 	world.register_citizen(citizen)
 	citizen.wallet.balance = int(citizen_config.get("wallet_balance", 145))
 	citizen.work_motivation = float(citizen_config.get("work_motivation", 0.8))
-	citizen.park_interest = float(citizen_config.get("park_interest", 0.2))
+	citizen.fun_interest = float(citizen_config.get("fun_interest", 0.2))
 	var needs := citizen_config.get("needs", {}) as Dictionary
 	citizen.needs.hunger = float(needs.get("hunger", citizen.needs.hunger))
 	citizen.needs.energy = float(needs.get("energy", citizen.needs.energy))

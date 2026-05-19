@@ -1,5 +1,25 @@
 {
   "version": 1,
+  "_spec": {
+    "status": "partially_implemented",
+    "note": "Geladen von Simulation/AI/LocalDialogueRuntimeService.gd. Keys unter planned_unused werden vom Code NICHT gelesen (dokumentierte Absicht, kein Laufzeit-Effekt). Dieser _spec-Block wird vom Loader ignoriert.",
+    "planned_unused": [
+      "runtime.provider",
+      "runtime.backend",
+      "runtime.max_parallel_jobs",
+      "packaging.prefer_project_local_runtime",
+      "output_rules.player_npc.allow_questions",
+      "output_rules.npc_npc.min_lines",
+      "memory.player_npc.keep_last_turns",
+      "memory.player_npc.summarize_after_turns",
+      "memory.player_npc.keep_world_facts_short",
+      "memory.npc_npc.cache_generated_block",
+      "memory.npc_npc.reuse_until_topic_changes",
+      "fallback.on_timeout",
+      "fallback.on_model_missing",
+      "fallback.template_style"
+    ]
+  },
   "runtime": {
     "provider": "local",
     "backend": "ollama_or_llama_cpp",

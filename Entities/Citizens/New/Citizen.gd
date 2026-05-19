@@ -781,11 +781,11 @@ var work_motivation: float:
 		if _sim != null and _sim.scheduler != null:
 			_sim.scheduler.work_motivation = v
 
-var park_interest: float:
-	get: return _sim.scheduler.park_interest if _sim != null and _sim.scheduler != null else 0.35
+var fun_interest: float:
+	get: return _sim.scheduler.fun_interest if _sim != null and _sim.scheduler != null else 0.35
 	set(v):
 		if _sim != null and _sim.scheduler != null:
-			_sim.scheduler.park_interest = v
+			_sim.scheduler.fun_interest = v
 
 var fun_target: float:
 	get: return _sim.scheduler.fun_target if _sim != null and _sim.scheduler != null else 65.0

@@ -1491,9 +1491,9 @@ func _describe_player_dialog_personality(citizen: Citizen) -> String:
 		traits.append("hardworking")
 	elif citizen.work_motivation <= 0.85:
 		traits.append("laid back")
-	if citizen.park_interest >= 0.55:
+	if citizen.fun_interest >= 0.55:
 		traits.append("likes parks")
-	elif citizen.park_interest <= 0.2:
+	elif citizen.fun_interest <= 0.2:
 		traits.append("prefers indoors")
 	if traits.is_empty():
 		traits.append("ordinary")

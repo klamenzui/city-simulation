@@ -387,13 +387,13 @@ func _test_scheduler_personality() -> void:
 			sched.schedule_offset >= -10 and sched.schedule_offset <= 10, true)
 	_assert_eq("hunger_threshold near base ± 5",
 			absf(sched.hunger_threshold - 60.0) <= 5.0, true)
-	# park_interest is clamped to [0, 0.9].
-	sched.park_interest_jitter = 1.0  # would push outside without clamp
+	# fun_interest is clamped to [0, 0.9].
+	sched.fun_interest_jitter = 1.0  # would push outside without clamp
 	sched.init_personality()
-	_assert_eq("park_interest clamped lower",
-			sched.park_interest >= 0.0, true)
-	_assert_eq("park_interest clamped upper",
-			sched.park_interest <= 0.9, true)
+	_assert_eq("fun_interest clamped lower",
+			sched.fun_interest >= 0.0, true)
+	_assert_eq("fun_interest clamped upper",
+			sched.fun_interest <= 0.9, true)
 
 
 func _test_scheduler_decision_cooldown() -> void:
