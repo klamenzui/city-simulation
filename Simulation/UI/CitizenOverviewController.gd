@@ -139,10 +139,11 @@ func _format_job_label(citizen: Citizen) -> String:
 func _format_needs_label(citizen: Citizen) -> String:
 	if citizen.needs == null:
 		return "?"
-	return "H%d E%d F%d HP%d" % [
+	return "H%d E%d F%d S%d HP%d" % [
 		int(round(citizen.needs.hunger)),
 		int(round(citizen.needs.energy)),
 		int(round(citizen.needs.fun)),
+		int(round(citizen.needs.social)),
 		int(round(citizen.needs.health)),
 	]
 

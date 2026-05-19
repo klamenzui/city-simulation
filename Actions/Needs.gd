@@ -6,11 +6,13 @@ const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 var TARGET_HUNGER_MAX: float = 20.0
 var TARGET_ENERGY_MIN: float = 80.0
 var TARGET_FUN_MIN: float = 30.0
+var TARGET_SOCIAL_MIN: float = 30.0
 var TARGET_HEALTH: float = 100.0
 
 var hunger_rate_per_min: float = 0.10
 var energy_rate_per_min: float = 0.08
 var fun_rate_per_min: float = 0.03
+var social_rate_per_min: float = 0.03
 var health_hunger_threshold: float = 80.0
 var health_hunger_penalty_per_min: float = 0.10
 var health_energy_threshold: float = 10.0
@@ -25,6 +27,7 @@ var health_recovery_per_min: float = 0.015
 var hunger: float = 0.0
 var energy: float = 100.0
 var fun: float = 70.0
+var social: float = 70.0
 var health: float = 100.0
 
 var _last_health: float = 100.0
@@ -34,10 +37,12 @@ func _init() -> void:
 	TARGET_HUNGER_MAX = float(settings.get("target_hunger_max", TARGET_HUNGER_MAX))
 	TARGET_ENERGY_MIN = float(settings.get("target_energy_min", TARGET_ENERGY_MIN))
 	TARGET_FUN_MIN = float(settings.get("target_fun_min", TARGET_FUN_MIN))
+	TARGET_SOCIAL_MIN = float(settings.get("target_social_min", TARGET_SOCIAL_MIN))
 	TARGET_HEALTH = float(settings.get("target_health", TARGET_HEALTH))
 	hunger_rate_per_min = float(settings.get("hunger_rate_per_min", hunger_rate_per_min))
 	energy_rate_per_min = float(settings.get("energy_rate_per_min", energy_rate_per_min))
 	fun_rate_per_min = float(settings.get("fun_rate_per_min", fun_rate_per_min))
+	social_rate_per_min = float(settings.get("social_rate_per_min", social_rate_per_min))
 	health_hunger_threshold = float(settings.get("health_hunger_threshold", health_hunger_threshold))
 	health_hunger_penalty_per_min = float(settings.get("health_hunger_penalty_per_min", health_hunger_penalty_per_min))
 	health_energy_threshold = float(settings.get("health_energy_threshold", health_energy_threshold))
@@ -64,6 +69,7 @@ func advance(
 	hunger += hunger_rate_per_min * m * hunger_mul
 	energy -= energy_rate_per_min * m * energy_mul
 	fun    -= fun_rate_per_min * m * fun_mul
+	social -= social_rate_per_min * m
 
 	# English comment: Additive deltas per minute (can be negative), e.g. sleep regen or eating.
 	hunger += hunger_add * m
@@ -99,4 +105,5 @@ func _clamp() -> void:
 	hunger = clamp(hunger, 0.0, 100.0)
 	energy = clamp(energy, 0.0, 100.0)
 	fun    = clamp(fun,    0.0, 100.0)
+	social = clamp(social, 0.0, 100.0)
 	health = clamp(health, 0.0, 100.0)

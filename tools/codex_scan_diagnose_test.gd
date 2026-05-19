@@ -35,9 +35,9 @@ func _init() -> void:
 	await physics_frame
 	await physics_frame
 
-	var citizen := main_instance.get_node_or_null("Citizen")
+	var citizen := _find_diagnostic_citizen(main_instance)
 	if citizen == null or not "_local_grid" in citizen:
-		printerr("FAIL: $Citizen not found or no _local_grid")
+		printerr("FAIL: diagnostic citizen not found or no _local_grid")
 		quit(1)
 		return
 
@@ -117,7 +117,7 @@ func _diagnose_at(citizen: Node, world_pos: Vector3) -> void:
 			blocked += 1
 			var r := str(c.get("blocked_reason", "?"))
 			by_reason[r] = int(by_reason.get(r, 0)) + 1
-			# Top-level collider name = last segment after the last '/' minus the trailing /StaticBody3D.
+			# Top-level collider name = last segment after the last "/" minus the trailing StaticBody3D.
 			var col := str(c.get("collider", ""))
 			if not col.is_empty():
 				var parts := col.split("/")
@@ -131,6 +131,53 @@ func _diagnose_at(citizen: Node, world_pos: Vector3) -> void:
 	print("  blocked: %d  reasons: %s" % [blocked, _fmt_count(by_reason)])
 	if not by_collider_top.is_empty():
 		print("  blocking colliders (top): %s" % _fmt_count_top(by_collider_top, 6))
+
+
+func _find_diagnostic_citizen(main_instance: Node) -> CharacterBody3D:
+	var world := main_instance.get_node_or_null("World") as World
+	if world != null:
+		for citizen in world.citizens:
+			if _has_local_grid(citizen) and not _is_keyboard_citizen(citizen):
+				return _prepare_diagnostic_citizen(citizen as CharacterBody3D)
+		for citizen in world.citizens:
+			if _has_local_grid(citizen):
+				return _prepare_diagnostic_citizen(citizen as CharacterBody3D)
+	for node_name in ["ControlledCitizen", "Citizen"]:
+		var node := main_instance.get_node_or_null(node_name)
+		if _has_local_grid(node):
+			return _prepare_diagnostic_citizen(node as CharacterBody3D)
+	return null
+
+
+func _has_local_grid(node) -> bool:
+	return node != null and node is CharacterBody3D and "_local_grid" in node
+
+
+func _is_keyboard_citizen(node) -> bool:
+	return node != null and node.has_method("is_keyboard_control_enabled") and node.is_keyboard_control_enabled()
+
+
+func _prepare_diagnostic_citizen(citizen: CharacterBody3D) -> CharacterBody3D:
+	if citizen == null:
+		return null
+	if citizen.has_method("exit_keyboard_control_mode"):
+		citizen.exit_keyboard_control_mode()
+	elif "keyboard_control_enabled" in citizen:
+		citizen.keyboard_control_enabled = false
+	if "autonomous_simulation_enabled" in citizen:
+		citizen.autonomous_simulation_enabled = false
+	if citizen.has_method("set_manual_control_enabled"):
+		citizen.set_manual_control_enabled(false, null)
+	if citizen.has_method("set_click_move_mode_enabled"):
+		citizen.set_click_move_mode_enabled(false, null)
+	if citizen.has_method("set_simulation_lod_state"):
+		citizen.set_simulation_lod_state("focus", true, true, 1)
+	if citizen.has_method("is_inside_building") and citizen.is_inside_building() and citizen.has_method("exit_current_building"):
+		citizen.exit_current_building(null)
+	if citizen.has_method("stop_travel"):
+		citizen.stop_travel()
+	citizen.set_physics_process(true)
+	return citizen
 
 
 func _print_scan_summary(result: Dictionary) -> void:

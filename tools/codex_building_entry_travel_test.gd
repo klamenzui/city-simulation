@@ -38,7 +38,11 @@ func _init() -> void:
 		quit(1)
 		return
 
-	var citizen := world.citizens[0] as Citizen
+	var citizen := _find_scripted_travel_citizen(world)
+	if citizen == null:
+		printerr("FAIL: no scriptable citizen registered")
+		quit(1)
+		return
 	var source: Building = route_case.get("source")
 	var target: Building = route_case.get("target")
 	var source_pos: Vector3 = route_case.get("source_pos")
@@ -105,6 +109,43 @@ func _init() -> void:
 	main.queue_free()
 	await process_frame
 	quit(0)
+
+
+func _find_scripted_travel_citizen(world: World) -> Citizen:
+	for citizen in world.citizens:
+		if _is_scriptable_travel_citizen(citizen):
+			return _prepare_scripted_travel_citizen(citizen)
+	for citizen in world.citizens:
+		if citizen != null and citizen is Citizen:
+			return _prepare_scripted_travel_citizen(citizen)
+	return null
+
+
+func _is_scriptable_travel_citizen(citizen) -> bool:
+	if citizen == null or not (citizen is Citizen):
+		return false
+	if citizen.has_method("is_keyboard_control_enabled") and citizen.is_keyboard_control_enabled():
+		return false
+	return citizen.is_inside_tree()
+
+
+func _prepare_scripted_travel_citizen(citizen: Citizen) -> Citizen:
+	if citizen == null:
+		return null
+	if citizen.has_method("exit_keyboard_control_mode"):
+		citizen.exit_keyboard_control_mode()
+	else:
+		citizen.keyboard_control_enabled = false
+	citizen.autonomous_simulation_enabled = false
+	citizen.set_manual_control_enabled(false, null)
+	citizen.set_click_move_mode_enabled(false, null)
+	citizen.set_simulation_lod_state("focus", true, true, 1)
+	if citizen.is_inside_building():
+		citizen.exit_current_building(null)
+	citizen.set_physics_process(true)
+	citizen.stop_travel()
+	citizen.current_action = null
+	return citizen
 
 
 func _find_short_entry_route(world: World) -> Dictionary:

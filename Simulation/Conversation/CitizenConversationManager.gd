@@ -980,9 +980,9 @@ func _get_rule_max_participants(rule: Dictionary) -> int:
 func _get_citizen_social_need_proxy(citizen: Citizen) -> float:
 	if citizen == null:
 		return 0.0
-	var fun_pressure := clampf((100.0 - citizen.needs.fun) / 100.0, 0.0, 1.0)
+	var social_pressure := clampf((100.0 - citizen.needs.social) / 100.0, 0.0, 1.0)
 	var idle_bonus := 0.15 if citizen.current_action == null and not citizen.is_travelling() else 0.0
-	return clampf(fun_pressure + idle_bonus, 0.0, 1.0)
+	return clampf(social_pressure + idle_bonus, 0.0, 1.0)
 
 func _get_citizen_stress_proxy(citizen: Citizen) -> float:
 	if citizen == null:

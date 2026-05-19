@@ -8,7 +8,7 @@ extends RefCounted
 ##   - **Decision cooldown** (CitizenAgent counts down until next GOAP replan)
 ##   - **Schedule offset** (per-citizen morning routine jitter, sim-minutes)
 ##   - **Personality thresholds** with jitter — hunger / low_energy /
-##     work_motivation / fun_interest / fun_target
+##     work_motivation / fun_interest / fun_target / sociability
 ##   - **Work-day tracking** — `work_minutes_today` reset on day rollover
 ##   - **Unreachable-target cache** — building_id → sim-minute-of-expiry
 ##
@@ -61,6 +61,10 @@ var fun_target_base: float = 65.0
 var fun_target_jitter: float = 15.0
 var fun_target: float = 65.0
 
+var sociability_base: float = 0.5
+var sociability_jitter: float = 0.2
+var sociability: float = 0.5
+
 # ----------------------------- Work-day -----------------------------
 
 var work_minutes_today: int = 0
@@ -101,6 +105,10 @@ func apply_balance_config() -> void:
 			"fun_target_base", fun_target_base))
 	fun_target_jitter = float(threshold_settings.get(
 			"fun_target_jitter", fun_target_jitter))
+	sociability_base = float(threshold_settings.get(
+			"sociability_base", sociability_base))
+	sociability_jitter = float(threshold_settings.get(
+			"sociability_jitter", sociability_jitter))
 
 
 ## Rolls schedule_offset and the five personality thresholds from their
@@ -118,6 +126,9 @@ func init_personality() -> void:
 			fun_interest_base + randf_range(-fun_interest_jitter, fun_interest_jitter),
 			0.0, 0.9)
 	fun_target = fun_target_base + randf_range(-fun_target_jitter, fun_target_jitter)
+	sociability = clampf(
+			sociability_base + randf_range(-sociability_jitter, sociability_jitter),
+			0.0, 1.0)
 
 
 # =================== Decision cooldown ===================

@@ -20,6 +20,7 @@ func setup(owner_ref: Node, world_ref: World, multiplayer_session_ref = null) ->
 	world = world_ref
 	multiplayer_session = multiplayer_session_ref
 	_ensure_dialog_interact_input_action()
+	_ensure_player_building_input_actions()
 	_build_debug_panel()
 
 func bind_selection_state(selection_state_controller_ref, hud_overlay_controller_ref) -> void:
@@ -109,6 +110,7 @@ func mark_ui_interacted() -> void:
 func handle_input(event: InputEvent) -> bool:
 	var controlled_citizen: Citizen = selection_state_controller.get_controlled_citizen() if selection_state_controller != null else null
 	var player_control_active: bool = selection_state_controller.is_player_control_active() if selection_state_controller != null else false
+	var player_building_input_active := _is_player_building_input_active()
 	var search_input: LineEdit = hud_overlay_controller.get_search_input() if hud_overlay_controller != null else null
 	var search_results_list: ItemList = hud_overlay_controller.get_search_results_list() if hud_overlay_controller != null else null
 	var viewport := owner_node.get_viewport() if owner_node != null else null
@@ -135,6 +137,14 @@ func handle_input(event: InputEvent) -> bool:
 		if _try_toggle_player_dialog_interaction():
 			_entity_clicked_this_frame = true
 			return true
+
+	if not text_input_focused and player_building_input_active:
+		if event.is_action_pressed("player_enter_building"):
+			if _try_player_enter_building():
+				return true
+		if event.is_action_pressed("player_exit_building"):
+			if _try_player_exit_building():
+				return true
 
 	if event is InputEventMouseButton \
 		and event.button_index == MOUSE_BUTTON_LEFT \
@@ -261,8 +271,7 @@ func _try_select_entity_under_cursor(screen_pos: Vector2) -> bool:
 			return true
 		var building := _resolve_building_from_collider(collider)
 		if building != null:
-			handle_building_clicked(building)
-			_request_network_interaction(building)
+			_handle_building_hit(building)
 			return true
 		if collider is CollisionObject3D:
 			excluded.append((collider as CollisionObject3D).get_rid())
@@ -308,6 +317,12 @@ func _resolve_building_from_collider(collider: Variant) -> Building:
 			return node as Building
 		node = node.get_parent()
 	return null
+
+func _handle_building_hit(building: Building) -> void:
+	if world != null and world.has_method("get_canonical_building"):
+		building = world.get_canonical_building(building)
+	handle_building_clicked(building)
+	_request_network_interaction(building)
 
 func _request_network_interaction(target: Node) -> void:
 	if multiplayer_session == null or not multiplayer_session.has_method("request_entity_interaction"):
@@ -365,3 +380,74 @@ func _ensure_dialog_interact_input_action() -> void:
 	key_event.keycode = KEY_F
 	key_event.physical_keycode = KEY_F
 	InputMap.action_add_event("dialog_interact", key_event)
+
+func _ensure_player_building_input_actions() -> void:
+	_ensure_key_action("player_enter_building", KEY_R)
+	_ensure_key_action("player_exit_building", KEY_T)
+
+func _ensure_key_action(action_name: String, keycode: int) -> void:
+	if InputMap.has_action(action_name):
+		for event in InputMap.action_get_events(action_name):
+			if event is InputEventKey and int(event.keycode) == keycode:
+				return
+	else:
+		InputMap.add_action(action_name)
+	var key_event := InputEventKey.new()
+	key_event.keycode = keycode
+	key_event.physical_keycode = keycode
+	InputMap.action_add_event(action_name, key_event)
+
+func _get_player_citizen() -> Citizen:
+	if selection_state_controller == null:
+		return null
+	if selection_state_controller.has_method("get_player_avatar"):
+		var avatar = selection_state_controller.get_player_avatar()
+		if avatar != null:
+			return avatar
+	if selection_state_controller.has_method("get_controlled_citizen"):
+		var controlled = selection_state_controller.get_controlled_citizen()
+		if controlled != null:
+			return controlled
+	if selection_state_controller.has_method("get_camera_player_target"):
+		var camera_target = selection_state_controller.get_camera_player_target()
+		if camera_target != null:
+			return camera_target
+	return null
+
+func _is_player_building_input_active() -> bool:
+	var player := _get_player_citizen()
+	if player == null:
+		return false
+	if selection_state_controller != null \
+			and selection_state_controller.has_method("is_player_control_active") \
+			and selection_state_controller.is_player_control_active():
+		return true
+	if player.has_method("is_keyboard_control_enabled") and player.is_keyboard_control_enabled():
+		return true
+	if player.has_method("is_manual_control_enabled") and player.is_manual_control_enabled():
+		return true
+	return false
+
+func _try_player_enter_building() -> bool:
+	var player: Citizen = _get_player_citizen()
+	if player == null or world == null or player.is_inside_building():
+		return false
+	var nearest: Building = null
+	var best := 3.5  # max flat distance to a building entrance to allow R-enter
+	for b in world.buildings:
+		if b == null or not is_instance_valid(b):
+			continue
+		var entrance: Vector3 = b.get_entrance_pos() if b.has_method("get_entrance_pos") else b.global_position
+		var d := Vector2(player.global_position.x - entrance.x, player.global_position.z - entrance.z).length()
+		if d <= best:
+			best = d
+			nearest = b
+	if nearest == null:
+		return false
+	return player.player_enter_building(nearest, world)
+
+func _try_player_exit_building() -> bool:
+	var player: Citizen = _get_player_citizen()
+	if player == null:
+		return false
+	return player.player_exit_building(world)

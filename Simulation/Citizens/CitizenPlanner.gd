@@ -7,6 +7,8 @@ const CitizenFunGoapScript = preload("res://Simulation/GOAP/CitizenFunGoap.gd")
 const CitizenEnergyGoapScript = preload("res://Simulation/GOAP/CitizenEnergyGoap.gd")
 const CitizenWorkGoapScript = preload("res://Simulation/GOAP/CitizenWorkGoap.gd")
 const CitizenEducationGoapScript = preload("res://Simulation/GOAP/CitizenEducationGoap.gd")
+const CitizenSocialGoapScript = preload("res://Simulation/GOAP/CitizenSocialGoap.gd")
+const CitizenEmotionScript = preload("res://Simulation/Citizens/CitizenEmotion.gd")
 const BuyGroceriesActionScript = preload("res://Actions/BuyGroceriesAction.gd")
 const EatAtHomeActionScript = preload("res://Actions/EatAtHomeAction.gd")
 const EatAtRestaurantActionScript = preload("res://Actions/EatAtRestaurantAction.gd")
@@ -20,6 +22,7 @@ var _fun_goap = CitizenFunGoapScript.new()
 var _energy_goap = CitizenEnergyGoapScript.new()
 var _work_goap = CitizenWorkGoapScript.new()
 var _education_goap = CitizenEducationGoapScript.new()
+var _social_goap = CitizenSocialGoapScript.new()
 
 var _critical_hunger: float = BalanceConfig.get_float("planner.critical_hunger", 80.0)
 var _critical_energy: float = BalanceConfig.get_float("planner.critical_energy", 10.0)
@@ -29,11 +32,13 @@ var _work_commute_buffer_min: int = BalanceConfig.get_int("planner.work_commute_
 var _hunger_priority_scale: float = BalanceConfig.get_float("planner.hunger_priority_scale", 40.0)
 var _energy_priority_scale: float = BalanceConfig.get_float("planner.energy_priority_scale", 40.0)
 var _fun_priority_scale: float = BalanceConfig.get_float("planner.fun_priority_scale", 35.0)
+var _social_priority_scale: float = BalanceConfig.get_float("planner.social_priority_scale", 35.0)
 var _goal_priority_hunger_weight: float = BalanceConfig.get_float("planner.goal_priority_hunger_weight", 1.25)
 var _goal_priority_energy_weight: float = BalanceConfig.get_float("planner.goal_priority_energy_weight", 1.1)
 var _goal_priority_education_weight: float = BalanceConfig.get_float("planner.goal_priority_education_weight", 0.95)
 var _goal_priority_work_weight: float = BalanceConfig.get_float("planner.goal_priority_work_weight", 0.9)
 var _goal_priority_fun_weight: float = BalanceConfig.get_float("planner.goal_priority_fun_weight", 0.65)
+var _goal_priority_social_weight: float = BalanceConfig.get_float("planner.goal_priority_social_weight", 0.6)
 var _work_need_base_priority: float = BalanceConfig.get_float("planner.work_need_base_priority", 0.45)
 var _work_need_remaining_weight: float = BalanceConfig.get_float("planner.work_need_remaining_weight", 0.55)
 var _low_health_hunger_alert_threshold: float = BalanceConfig.get_float("planner.low_health_hunger_alert_threshold", 65.0)
@@ -58,6 +63,10 @@ var _pers_fun_mid: float = BalanceConfig.get_float("planner.personality.fun_inte
 var _pers_fun_scale: float = BalanceConfig.get_float("planner.personality.fun_interest_scale", 0.6)
 var _pers_fun_min: float = BalanceConfig.get_float("planner.personality.fun_personality_min", 0.7)
 var _pers_fun_max: float = BalanceConfig.get_float("planner.personality.fun_personality_max", 1.3)
+var _pers_social_mid: float = BalanceConfig.get_float("planner.personality.sociability_midpoint", 0.5)
+var _pers_social_scale: float = BalanceConfig.get_float("planner.personality.sociability_scale", 0.6)
+var _pers_social_min: float = BalanceConfig.get_float("planner.personality.social_personality_min", 0.7)
+var _pers_social_max: float = BalanceConfig.get_float("planner.personality.social_personality_max", 1.3)
 var _goal_cooldowns_enabled: bool = BalanceConfig.get_bool("planner.goal_cooldowns.enabled", true)
 var _goal_cooldown_minutes: Dictionary = {
 	"hunger": BalanceConfig.get_int("planner.goal_cooldowns.hunger", 0),
@@ -65,8 +74,11 @@ var _goal_cooldown_minutes: Dictionary = {
 	"education": BalanceConfig.get_int("planner.goal_cooldowns.education", 0),
 	"work": BalanceConfig.get_int("planner.goal_cooldowns.work", 0),
 	"fun": BalanceConfig.get_int("planner.goal_cooldowns.fun", 0),
+	"social": BalanceConfig.get_int("planner.goal_cooldowns.social", 0),
 }
 var _goal_cooldown_until: Dictionary = {}
+var _emotion_enabled: bool = BalanceConfig.get_bool("planner.emotion.enabled", true)
+var _emotion_cfg: Dictionary = BalanceConfig.get_section("planner.emotion")
 
 func plan_next_action(world, citizen) -> bool:
 	if world == null or citizen == null:
@@ -128,6 +140,13 @@ func _build_goal_candidates(world, citizen) -> Array:
 	if citizen.needs.hunger >= _fun_block_hunger_threshold or citizen.needs.energy <= _fun_block_energy_threshold or low_health:
 		fun_deficit = 0.0
 
+	var social_priority_scale: float = maxf(_social_priority_scale, 0.001)
+	var social_deficit: float = clamp((citizen.needs.TARGET_SOCIAL_MIN - citizen.needs.social) / social_priority_scale, 0.0, 1.0)
+	if is_night:
+		social_deficit *= 0.3
+	if citizen.needs.hunger >= _fun_block_hunger_threshold or citizen.needs.energy <= _fun_block_energy_threshold or low_health:
+		social_deficit = 0.0
+
 	var education_need: float = 0.0
 	if citizen.job != null and not citizen.job.meets_requirements(citizen) and not is_night and not low_health:
 		education_need = 1.0
@@ -145,11 +164,23 @@ func _build_goal_candidates(world, citizen) -> Array:
 
 	var work_pers := 1.0
 	var fun_pers := 1.0
+	var social_pers := 1.0
 	if _personality_enabled:
 		var wm: float = float(citizen.work_motivation) if "work_motivation" in citizen else 1.0
 		work_pers = clampf(wm * _pers_work_weight, _pers_work_min, _pers_work_max)
 		var fi: float = float(citizen.fun_interest) if "fun_interest" in citizen else _pers_fun_mid
 		fun_pers = clampf(1.0 + (fi - _pers_fun_mid) * _pers_fun_scale, _pers_fun_min, _pers_fun_max)
+		var soc: float = float(citizen.sociability) if "sociability" in citizen else _pers_social_mid
+		social_pers = clampf(1.0 + (soc - _pers_social_mid) * _pers_social_scale, _pers_social_min, _pers_social_max)
+
+	var social_emo_mult := 1.0
+	if _emotion_enabled:
+		var is_home: bool = "home" in citizen and "current_location" in citizen \
+			and citizen.home != null and citizen.current_location == citizen.home
+		var emo: Dictionary = CitizenEmotionScript.compute(
+			citizen.needs.hunger, citizen.needs.energy, citizen.needs.social,
+			is_home, is_night, _emotion_cfg)
+		social_emo_mult = CitizenEmotionScript.social_priority_multiplier(emo, _emotion_cfg)
 
 	return [
 		{"id": "hunger", "priority": hunger_deficit * _goal_priority_hunger_weight},
@@ -157,6 +188,7 @@ func _build_goal_candidates(world, citizen) -> Array:
 		{"id": "education", "priority": education_need * _goal_priority_education_weight},
 		{"id": "work", "priority": work_need * _goal_priority_work_weight * work_pers},
 		{"id": "fun", "priority": fun_deficit * _goal_priority_fun_weight * fun_pers},
+		{"id": "social", "priority": social_deficit * _goal_priority_social_weight * social_emo_mult * social_pers},
 	]
 
 func _sort_goal_candidates(a, b) -> bool:
@@ -174,6 +206,8 @@ func _try_goal(goal_id: String, world, citizen) -> bool:
 			return _work_goap.try_plan(world, citizen)
 		"fun":
 			return _fun_goap.try_plan(world, citizen)
+		"social":
+			return _social_goap.try_plan(world, citizen)
 		_:
 			return false
 

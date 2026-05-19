@@ -214,6 +214,21 @@ $availableTests = @(
 		Script = "res://tools/codex_goal_cooldown_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "socialneed"
+		Label = "Social Need"
+		Script = "res://tools/codex_social_need_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "socialvisit"
+		Label = "Social Visit Goal"
+		Script = "res://tools/codex_social_visit_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "emotion"
+		Label = "Emotion Model"
+		Script = "res://tools/codex_emotion_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "navfacade"
 		Label = "Facade Caller Drift"
 		Script = "res://tools/codex_facade_caller_drift_test.gd"

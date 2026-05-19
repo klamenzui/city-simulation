@@ -6,6 +6,7 @@ const RelaxAtParkActionScript = preload("res://Actions/RelaxAtParkAction.gd")
 
 var target: Building
 var travel_minutes: int = 20
+var auto_relax_at_park: bool = true
 var _arrival_target: Vector3 = Vector3.ZERO
 var _travel_failed: bool = false
 var _start_repath_count: int = 0
@@ -17,11 +18,12 @@ const MAX_TRAVEL_SIM_MIN := 240
 const MAX_DYNAMIC_REROUTES := 2
 const PARK_ENTRY_ARRIVAL_TOLERANCE := 0.15
 
-func _init(_target: Building = null, _travel: int = 20) -> void:
+func _init(_target: Building = null, _travel: int = 20, _auto_relax_at_park: bool = true) -> void:
 	super()
 	label = "GoTo"
 	target = _target
 	travel_minutes = _travel
+	auto_relax_at_park = _auto_relax_at_park
 
 func start(world: World, citizen: Citizen) -> void:
 	super.start(world, citizen)
@@ -124,7 +126,7 @@ func finish(world: World, citizen: Citizen) -> void:
 		return
 	_reserve_park_bench(citizen, target)
 	citizen.enter_building(target, world)
-	if _is_park_target(target) and _should_use_park_bench(citizen, target):
+	if auto_relax_at_park and _is_park_target(target) and _should_use_park_bench(citizen, target):
 		citizen.start_action(RelaxAtParkActionScript.new(), world)
 		citizen.decision_cooldown_left = 0
 		return

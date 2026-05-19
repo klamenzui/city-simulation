@@ -296,8 +296,8 @@ func _test_conversation_start_rules_block_low_social_smalltalk() -> String:
 	world.register_citizen(citizen_a)
 	world.register_citizen(citizen_b)
 
-	citizen_a.needs.fun = 92.0
-	citizen_b.needs.fun = 95.0
+	citizen_a.needs.social = 92.0
+	citizen_b.needs.social = 95.0
 	citizen_a.needs.hunger = 5.0
 	citizen_b.needs.hunger = 5.0
 	citizen_a.needs.energy = 95.0
