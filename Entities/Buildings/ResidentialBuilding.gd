@@ -19,10 +19,10 @@ func has_free_slot() -> bool:
 func add_tenant(c: Citizen) -> bool:
 	if c == null:
 		return false
-	if not has_free_slot():
-		return false
 	if tenants.has(c):
 		return true
+	if not has_free_slot():
+		return false
 	tenants.append(c)
 	return true
 

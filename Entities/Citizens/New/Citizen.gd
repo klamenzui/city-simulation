@@ -24,6 +24,11 @@ const SimLoggerScript = preload("res://Simulation/Logging/SimLogger.gd")
 const CitizenAgentScript = preload("res://Simulation/Citizens/CitizenAgent.gd")
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const WorldSnapshotSerializerScript = preload("res://Simulation/Multiplayer/shared/WorldSnapshotSerializer.gd")
+const WorkActionScript = preload("res://Actions/WorkAction.gd")
+const EatAtHomeActionScript = preload("res://Actions/EatAtHomeAction.gd")
+const EatAtRestaurantActionScript = preload("res://Actions/EatAtRestaurantAction.gd")
+const SleepActionScript = preload("res://Actions/SleepAction.gd")
+const StudyAtUniversityActionScript = preload("res://Actions/StudyAtUniversityAction.gd")
 const FALL_RESPAWN_DEPTH_METERS := 8.0
 const FALL_RESPAWN_COOLDOWN_SEC := 1.0
 const FALL_RESPAWN_GROUND_OFFSET := 0.12
@@ -810,6 +815,347 @@ var work_minutes_today: int:
 ## Action ownership — kept directly on the Facade because GOAP-Action object
 ## has no natural Sim-component home. CitizenAgent reads + writes this.
 var current_action: Action = null
+var _player_action_active: bool = false
+# Last player-action rejection (e.g. work refused for missing education).
+# Shown in the player-action panel; cleared on the next start/enter/exit.
+var _player_action_notice: String = ""
+
+
+func is_player_action_active() -> bool:
+	return _player_action_active and current_action != null
+
+
+func clear_player_action_state() -> void:
+	if current_action == null:
+		_player_action_active = false
+
+
+func cancel_player_action(world: Node = null) -> void:
+	var resolved_world := _resolve_world_arg(world)
+	if current_action != null and current_action.has_method("finish"):
+		current_action.finish(resolved_world, self)
+	current_action = null
+	_player_action_active = false
+	_player_action_notice = ""
+
+
+## Applies for a job at the current workplace. Entering a workplace is only a
+## visit; this method is the explicit acceptance step and takes the worker slot
+## without starting a work action yet.
+func player_apply_for_work(world: Node = null) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	var workplace := _get_player_current_building()
+	if resolved_world == null or workplace == null:
+		return false
+	if current_action != null:
+		_player_action_notice = "Aktion laeuft noch."
+		return false
+	if int(workplace.job_capacity) <= 0:
+		_player_action_notice = "%s bietet keine Stelle." % _building_label(workplace)
+		return false
+	if _player_has_accepted_job_at(workplace):
+		_player_action_notice = "Angenommen bei %s." % _building_label(workplace)
+		return true
+	if job != null and job.workplace != null and job.workplace != workplace:
+		_player_action_notice = "Du hast schon einen Job bei %s." % _building_label(job.workplace)
+		return false
+	if not _workplace_has_open_application_slot(workplace, resolved_world):
+		_player_action_notice = "Bewerbung bei %s nicht moeglich (voll)." % _building_label(workplace)
+		return false
+
+	var candidate_job := _build_player_job_for_workplace(workplace)
+	if candidate_job == null:
+		return false
+	if not candidate_job.meets_requirements(self):
+		_player_action_notice = "Abgelehnt: %s braucht Bildung %d/%d - erst an der Uni weiterbilden." % [
+			candidate_job.title,
+			education_level,
+			candidate_job.required_education_level,
+		]
+		debug_log("Player work rejected: education %d/%d for %s." % [
+			education_level,
+			candidate_job.required_education_level,
+			candidate_job.title,
+		])
+		return false
+	job = candidate_job
+	if not _ensure_player_hired_for_current_job(resolved_world):
+		job = null
+		_player_action_notice = "Einstellung bei %s nicht moeglich (voll)." % _building_label(workplace)
+		return false
+	_player_action_notice = "Angenommen: %s bei %s." % [job.title, _building_label(workplace)]
+	return true
+
+
+## Starts the accepted player job at the current workplace. Wage payout remains
+## centralized in World._on_payday(), based on work_minutes_today.
+func player_work(world: Node = null) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	var workplace := _get_player_current_building()
+	if resolved_world == null or workplace == null:
+		return false
+	if not _player_has_accepted_job_at(workplace):
+		_player_action_notice = "Erst bei %s bewerben." % _building_label(workplace)
+		return false
+	if current_action is WorkActionScript:
+		return true
+	if current_action != null:
+		_player_action_notice = "Aktion laeuft noch."
+		return false
+	_player_action_notice = ""
+	return _start_player_action(WorkActionScript.new(job), resolved_world)
+
+
+func player_eat(world: Node = null) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	var location := _get_player_current_building()
+	if resolved_world == null or location == null:
+		return false
+	if location is Restaurant:
+		return _start_player_action(EatAtRestaurantActionScript.new(location as Restaurant), resolved_world)
+	if _is_player_home_location(location):
+		if home_food_stock <= 0:
+			debug_log("Player eat failed: no food stock at home.")
+			return false
+		return _start_player_action(EatAtHomeActionScript.new(), resolved_world)
+	debug_log("Player eat failed: not at home or in a restaurant.")
+	return false
+
+
+func player_sleep(world: Node = null) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	var location := _get_player_current_building()
+	if resolved_world == null or location == null:
+		return false
+	if not _is_player_home_location(location):
+		debug_log("Player sleep failed: not at home.")
+		return false
+	return _start_player_action(SleepActionScript.new(), resolved_world)
+
+
+func player_study(world: Node = null) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	var location := _get_player_current_building()
+	if resolved_world == null or location == null or location is not University:
+		return false
+	return _start_player_action(StudyAtUniversityActionScript.new(location as University), resolved_world)
+
+
+func player_quit_job(world: Node = null, exit_after: bool = true) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	if job == null:
+		return false
+	cancel_player_action(resolved_world)
+	var workplace := job.workplace
+	if workplace != null and workplace.has_method("fire"):
+		workplace.fire(self)
+	if resolved_world != null and resolved_world.has_method("unregister_job"):
+		resolved_world.unregister_job(job)
+	job = null
+	if is_inside_building() and exit_after:
+		exit_current_building(resolved_world)
+		_player_slot_building = null
+		_player_slot_kind = ""
+	return true
+
+
+## "Zur Uni": leave the current workplace so the player can walk to a
+## university and study. No job is required (entering never assigns one).
+func player_leave_for_training(world: Node = null) -> bool:
+	if not is_inside_building():
+		return false
+	var resolved_world := _resolve_world_arg(world)
+	cancel_player_action(resolved_world)
+	exit_current_building(resolved_world)
+	_player_slot_building = null
+	_player_slot_kind = ""
+	_player_action_notice = ""
+	return true
+
+
+func get_player_action_ui_state(world: Node = null) -> Dictionary:
+	var resolved_world := _resolve_world_arg(world)
+	var location := _get_player_current_building()
+	if location == null:
+		return {}
+	var buttons: Array = []
+	var status_lines: PackedStringArray = []
+	var location_label := _building_label(location)
+	status_lines.append("Ort: %s" % location_label)
+	if current_action != null:
+		status_lines.append("Aktiv: %s" % current_action.label)
+		buttons.append(_make_player_action_button("stop", "Aktion stoppen", true))
+
+	if _is_player_home_location(location):
+		buttons.append(_make_player_action_button("eat", "Essen", home_food_stock > 0, "Keine Vorraete zuhause."))
+		buttons.append(_make_player_action_button("sleep", "Schlafen", true))
+	elif location is Restaurant:
+		var restaurant := location as Restaurant
+		var can_eat := resolved_world != null \
+			and restaurant.is_open(resolved_world.time.get_hour()) \
+			and can_afford_restaurant_at(restaurant, resolved_world)
+		buttons.append(_make_player_action_button("eat", "Essen", can_eat, "Restaurant geschlossen oder zu wenig Geld."))
+	elif location is University:
+		var university := location as University
+		var can_study := resolved_world != null and university.can_study(self)
+		buttons.append(_make_player_action_button("study", "Studieren", can_study, "Uni ist geschlossen oder hat keine Lehrkraft."))
+
+	if int(location.job_capacity) > 0:
+		var prospective_title := location.get_default_job_title()
+		var required_edu := location.get_required_education_level()
+		var qualifies := education_level >= required_edu
+		var employed_here := _player_has_accepted_job_at(location)
+		if required_edu > 0:
+			status_lines.append("Stelle: %s - Bildung %d/%d" % [prospective_title, education_level, required_edu])
+		else:
+			status_lines.append("Stelle: %s - keine Bildung noetig" % prospective_title)
+		if employed_here:
+			var can_work := current_action == null or current_action is WorkActionScript
+			buttons.append(_make_player_action_button("work", "Arbeiten", can_work, "Aktion laeuft noch."))
+		else:
+			buttons.append(_make_player_action_button("apply_work", "Bewerben", current_action == null, "Aktion laeuft noch."))
+		if not qualifies:
+			buttons.append(_make_player_action_button("training", "Zur Uni", true))
+		if employed_here:
+			buttons.append(_make_player_action_button("quit_job", "Kuendigen", true))
+
+	if not _player_action_notice.is_empty():
+		status_lines.append(_player_action_notice)
+
+	if buttons.is_empty():
+		return {}
+	var active_id := _active_player_action_id()
+	for spec_var in buttons:
+		var spec := spec_var as Dictionary
+		spec["active"] = not active_id.is_empty() and str(spec.get("id", "")) == active_id
+	return {
+		"visible": true,
+		"title": "Spieler-Aktionen",
+		"status_text": "\n".join(status_lines),
+		"buttons": buttons,
+	}
+
+
+## Maps the running action back to its UI button id so the panel can show
+## which action is currently active (accent-highlighted button).
+func _active_player_action_id() -> String:
+	if current_action == null:
+		return ""
+	if current_action is WorkActionScript:
+		return "work"
+	if current_action is EatAtHomeActionScript or current_action is EatAtRestaurantActionScript:
+		return "eat"
+	if current_action is SleepActionScript:
+		return "sleep"
+	if current_action is StudyAtUniversityActionScript:
+		return "study"
+	return ""
+
+
+func _make_player_action_button(action_id: String, text: String, enabled: bool, disabled_reason: String = "") -> Dictionary:
+	return {
+		"id": action_id,
+		"text": text,
+		"enabled": enabled,
+		"tooltip": "" if enabled else disabled_reason,
+	}
+
+
+func _start_player_action(action: Action, world: World) -> bool:
+	if action == null or world == null:
+		return false
+	if current_action != null:
+		cancel_player_action(world)
+	start_action(action, world)
+	_player_action_active = current_action == action
+	if current_action != null and current_action.is_done():
+		current_action.finish(world, self)
+		if current_action == action:
+			current_action = null
+		_player_action_active = false
+		return false
+	return _player_action_active
+
+
+func _get_player_current_building() -> Building:
+	if current_location != null and is_instance_valid(current_location):
+		return current_location
+	if _sim != null and _sim.location != null and _sim.location.is_inside():
+		return _sim.location.get_inside_building()
+	return null
+
+
+func _is_player_home_location(building: Building) -> bool:
+	if building == null:
+		return false
+	if home != null and building == home:
+		return true
+	return building is ResidentialBuilding and _player_slot_building == building and _player_slot_kind == "tenant"
+
+
+func _ensure_player_hired_for_current_job(world: World) -> bool:
+	if job == null or job.workplace == null:
+		return false
+	if not job.try_get_employed(self):
+		return false
+	if _player_slot_building == job.workplace and _player_slot_kind == "visitor":
+		if job.workplace.has_method("remove_visitor"):
+			job.workplace.remove_visitor(self)
+		_player_slot_kind = "worker"
+	if world != null and world.has_method("register_job"):
+		world.register_job(job)
+	return true
+
+
+func _player_has_accepted_job_at(workplace: Building) -> bool:
+	return workplace != null \
+		and job != null \
+		and job.workplace == workplace \
+		and workplace.workers.has(self)
+
+
+func _workplace_has_open_application_slot(workplace: Building, world: World) -> bool:
+	if workplace == null:
+		return false
+	if not workplace.can_accept_workers():
+		return false
+	if workplace.workers.has(self):
+		return true
+	var committed: Dictionary = {}
+	if world != null and "jobs" in world:
+		for existing_job in world.jobs:
+			if existing_job == null or existing_job.workplace != workplace:
+				continue
+			committed[existing_job.get_instance_id()] = true
+	for worker in workplace.workers:
+		if worker == null:
+			continue
+		if worker.job != null and worker.job.workplace == workplace:
+			committed[worker.job.get_instance_id()] = true
+		else:
+			committed["worker_%d" % worker.get_instance_id()] = true
+	return committed.size() < int(workplace.job_capacity)
+
+
+func _build_player_job_for_workplace(workplace: Building) -> Job:
+	if workplace == null:
+		return null
+	var player_job := Job.new()
+	player_job.title = _get_player_job_title_for_workplace(workplace)
+	player_job.wage_per_hour = CitizenFactory.get_wage_for_job_title(player_job.title)
+	player_job.shift_hours = 8
+	player_job.required_education_level = CitizenFactory.get_required_education_for_job_title(player_job.title)
+	player_job.workplace = workplace
+	player_job.preferred_workplace = workplace
+	player_job.workplace_service_type = workplace.get_service_type()
+	player_job.allowed_building_types = [int(workplace.building_type)]
+	return player_job
+
+
+func _get_player_job_title_for_workplace(workplace: Building) -> String:
+	if workplace == null:
+		return "Worker"
+	return workplace.get_default_job_title()
 
 
 func _update_work_day(world: Node) -> void:
@@ -1276,24 +1622,26 @@ func enter_building(building: Building, world: Node = null, emit_log: bool = tru
 				_fmt_v3(entry_pos)])
 
 
-## Player-driven building entry (R key). Takes a real capacity slot by
-## building type (residential -> tenant, workplace -> worker, else visitor).
-## Returns false (no entry) when the building is full/closed. The player
-## becomes inside/hidden like an NPC; `skip_occupancy_callback` prevents the
-## generic visitor double-count since the slot is taken explicitly here.
+## Player-driven building entry (R key). Residential is gated to the player's
+## own/free home. Every other building (workplaces included) is entered as a
+## plain visitor — entering a workplace never assigns a job or a worker slot.
+## Employment is opt-in via the "Bewerben" action (player_apply_for_work).
 func player_enter_building(building: Building, world: Node = null) -> bool:
 	if building == null or _sim == null or _sim.location == null:
 		return false
 	if is_inside_building():
 		return false
+	_player_action_notice = ""
 	var kind := ""
 	var ok := false
 	if building is ResidentialBuilding:
-		ok = building.add_tenant(self)
+		var residential := building as ResidentialBuilding
+		if home != null and home != residential:
+			return false
+		ok = residential.tenants.has(self) or residential.add_tenant(self)
+		if ok and home == null:
+			home = residential
 		kind = "tenant"
-	elif int(building.job_capacity) > 0:
-		ok = building.try_hire(self)
-		kind = "worker"
 	else:
 		ok = building.try_add_visitor(self)
 		kind = "visitor"
@@ -1305,26 +1653,21 @@ func player_enter_building(building: Building, world: Node = null) -> bool:
 	return true
 
 
-## Player-driven building exit (T key). Frees the slot taken on enter and
-## brings the player back out (visible) at the building spawn/exit point.
+## Player-driven building exit (T key). Leaving your workplace quits the job
+## and frees the worker/reserved slot. Leaving home keeps the lease/home slot.
 func player_exit_building(world: Node = null) -> bool:
-	var b := _player_slot_building
-	if b == null and not is_inside_building():
+	if not is_inside_building():
 		return false
-	if b != null and is_instance_valid(b):
-		match _player_slot_kind:
-			"tenant":
-				if b.has_method("remove_tenant"):
-					b.remove_tenant(self)
-			"worker":
-				if b.has_method("fire"):
-					b.fire(self)
-			"visitor":
-				if b.has_method("remove_visitor"):
-					b.remove_visitor(self)
+	var resolved_world := _resolve_world_arg(world)
+	var current_building := _get_player_current_building()
+	if job != null and current_building != null and job.workplace == current_building:
+		player_quit_job(resolved_world, false)
+	else:
+		cancel_player_action(resolved_world)
 	exit_current_building(world)
 	_player_slot_building = null
 	_player_slot_kind = ""
+	_player_action_notice = ""
 	return true
 
 
@@ -1623,6 +1966,12 @@ func _resolve_world_ref() -> World:
 			_world_ref = node as World
 			return _world_ref
 	return null
+
+
+func _resolve_world_arg(world: Node = null) -> World:
+	if world is World:
+		return world as World
+	return _resolve_world_ref()
 
 
 func plan_next_action(world: World) -> void:

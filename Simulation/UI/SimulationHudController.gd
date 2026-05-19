@@ -17,6 +17,7 @@ var world: World = null
 var canvas: CanvasLayer = null
 var building_overview_button: Button = null
 var citizen_overview_button: Button = null
+var player_overview_button: Button = null
 var economy_overview_button: Button = null
 var search_overview_button: Button = null
 var debug_tools_button: Button = null
@@ -46,6 +47,17 @@ var _hud_status_refresh_left: float = 0.0
 # Balance at the start of the current in-game day — drives the "today" delta.
 var _treasury_day_start: int = 0
 
+# Persistent player hunger readout in the bottom bar. The resolver returns the
+# local player citizen (or null); fill styleboxes are built once and swapped.
+var _player_resolver: Callable = Callable()
+var _player_hunger_bar: ProgressBar = null
+var _player_hunger_caption: Label = null
+var _hunger_fill_good: StyleBoxFlat = null
+var _hunger_fill_warn: StyleBoxFlat = null
+var _hunger_fill_crit: StyleBoxFlat = null
+var _hunger_fill_idle: StyleBoxFlat = null
+var _hunger_state: int = -1
+
 func setup(
 	owner_ref: Node,
 	world_ref: World,
@@ -59,6 +71,8 @@ func setup(
 	player_control_pressed: Callable,
 	camera_mode_pressed: Callable,
 	ai_runtime_pressed: Callable,
+	player_overview_pressed: Callable,
+	player_resolver: Callable,
 	multiplayer_session_ref = null,
 	camera_mode_manager_ref = null
 ) -> void:
@@ -66,11 +80,13 @@ func setup(
 	world = world_ref
 	multiplayer_session = multiplayer_session_ref
 	camera_mode_manager = camera_mode_manager_ref
+	_player_resolver = player_resolver
 	if world != null and world.city_account != null:
 		_treasury_day_start = world.city_account.balance
 	_build_hud(pause_pressed, speed_pressed, building_overview_pressed, citizen_overview_pressed,
 			economy_overview_pressed, search_pressed, debug_tools_pressed,
-			player_control_pressed, camera_mode_pressed, ai_runtime_pressed)
+			player_control_pressed, camera_mode_pressed, ai_runtime_pressed,
+			player_overview_pressed)
 	_bind_world_signals()
 	_bind_multiplayer_session()
 	_refresh_time_hud()
@@ -85,6 +101,7 @@ func setup(
 	refresh_player_control_button(false)
 	refresh_camera_mode_button()
 	refresh_ai_runtime_state({})
+	_refresh_player_hunger()
 
 func get_canvas() -> CanvasLayer:
 	return canvas
@@ -111,6 +128,7 @@ func update(delta: float) -> void:
 	_hud_status_refresh_left = _HUD_STATUS_REFRESH_INTERVAL_SEC
 	_refresh_network_status()
 	_refresh_network_interaction_status()
+	_refresh_player_hunger()
 
 func refresh_control_mode(controlled_citizen: Citizen, mode_prefix: String = "CONTROL MODE", mode_hint: String = "") -> void:
 	if _control_mode_panel == null or _control_mode_label == null:
@@ -207,7 +225,8 @@ func _build_hud(
 	debug_tools_pressed: Callable,
 	player_control_pressed: Callable,
 	camera_mode_pressed: Callable,
-	ai_runtime_pressed: Callable
+	ai_runtime_pressed: Callable,
+	player_overview_pressed: Callable
 ) -> void:
 	if owner_node == null:
 		return
@@ -222,7 +241,8 @@ func _build_hud(
 	_build_top_bar(pause_pressed, speed_pressed)
 	_build_bottom_action_bar(building_overview_pressed, citizen_overview_pressed,
 			economy_overview_pressed, search_pressed, debug_tools_pressed,
-			player_control_pressed, camera_mode_pressed, ai_runtime_pressed)
+			player_control_pressed, camera_mode_pressed, ai_runtime_pressed,
+			player_overview_pressed)
 	_build_control_mode_banner()
 
 
@@ -306,7 +326,8 @@ func _build_bottom_action_bar(
 	debug_tools_pressed: Callable,
 	player_control_pressed: Callable,
 	camera_mode_pressed: Callable,
-	ai_runtime_pressed: Callable
+	ai_runtime_pressed: Callable,
+	player_overview_pressed: Callable
 ) -> void:
 	# Full-width bottom bar, mirrors the top bar. The left details panel
 	# clears it (DebugPanel offset_bottom = -84 vs. this 72 px strip).
@@ -332,10 +353,13 @@ func _build_bottom_action_bar(
 
 	building_overview_button = _make_bar_button(hbox, "Gebaeude", 110, building_overview_pressed)
 	citizen_overview_button = _make_bar_button(hbox, "Buerger", 110, citizen_overview_pressed)
+	player_overview_button = _make_bar_button(hbox, "Spieler", 100, player_overview_pressed)
 	economy_overview_button = _make_bar_button(hbox, "Finanzen", 110, economy_overview_pressed)
 	search_overview_button = _make_bar_button(hbox, "Suche", 90, search_pressed)
 	debug_tools_button = _make_bar_button(hbox, "Tools", 90, debug_tools_pressed)
 
+	hbox.add_child(_make_v_divider())
+	_build_player_hunger_widget(hbox)
 	hbox.add_child(_make_v_divider())
 
 	_player_control_button = _make_bar_button(hbox, "Control Player", 130, player_control_pressed)
@@ -437,6 +461,105 @@ func _make_v_divider() -> Control:
 	sb.bg_color = UiThemeScript.BORDER
 	divider_panel.add_theme_stylebox_override("panel", sb)
 	return divider_panel
+
+
+## Caption + ProgressBar for the local player's hunger. Fill styleboxes are
+## built once here and only swapped on severity change (no per-tick allocs).
+func _build_player_hunger_widget(parent: Node) -> void:
+	_hunger_fill_good = _make_hunger_fill_box(UiThemeScript.SUCCESS)
+	_hunger_fill_warn = _make_hunger_fill_box(UiThemeScript.WARNING)
+	_hunger_fill_crit = _make_hunger_fill_box(UiThemeScript.DANGER)
+	_hunger_fill_idle = _make_hunger_fill_box(UiThemeScript.TEXT_MUTED)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	box.custom_minimum_size = Vector2(168, 44)
+	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	parent.add_child(box)
+
+	_player_hunger_caption = Label.new()
+	_player_hunger_caption.text = "HUNGER (SPIELER)"
+	_player_hunger_caption.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+	_player_hunger_caption.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+	box.add_child(_player_hunger_caption)
+
+	_player_hunger_bar = ProgressBar.new()
+	_player_hunger_bar.min_value = 0.0
+	_player_hunger_bar.max_value = 100.0
+	_player_hunger_bar.step = 1.0
+	_player_hunger_bar.value = 0.0
+	_player_hunger_bar.show_percentage = true
+	_player_hunger_bar.custom_minimum_size = Vector2(168, 18)
+	_player_hunger_bar.focus_mode = Control.FOCUS_NONE
+	_player_hunger_bar.add_theme_stylebox_override("background", _make_hunger_bg_box())
+	_player_hunger_bar.add_theme_stylebox_override("fill", _hunger_fill_idle)
+	_hunger_state = 3
+	box.add_child(_player_hunger_bar)
+
+
+func _make_hunger_bg_box() -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = UiThemeScript.BG_800
+	box.border_color = UiThemeScript.BORDER
+	box.border_width_left = UiThemeScript.BORDER_WIDTH
+	box.border_width_top = UiThemeScript.BORDER_WIDTH
+	box.border_width_right = UiThemeScript.BORDER_WIDTH
+	box.border_width_bottom = UiThemeScript.BORDER_WIDTH
+	box.corner_radius_top_left = UiThemeScript.RADIUS_INPUT
+	box.corner_radius_top_right = UiThemeScript.RADIUS_INPUT
+	box.corner_radius_bottom_left = UiThemeScript.RADIUS_INPUT
+	box.corner_radius_bottom_right = UiThemeScript.RADIUS_INPUT
+	return box
+
+
+func _make_hunger_fill_box(color: Color) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = color
+	box.corner_radius_top_left = UiThemeScript.RADIUS_INPUT
+	box.corner_radius_top_right = UiThemeScript.RADIUS_INPUT
+	box.corner_radius_bottom_left = UiThemeScript.RADIUS_INPUT
+	box.corner_radius_bottom_right = UiThemeScript.RADIUS_INPUT
+	return box
+
+
+## Hunger is high-is-bad (0 = sated, 100 = starving); thresholds mirror
+## Citizen._classify_need_severity so the bar matches the DETAILS panel.
+func _refresh_player_hunger() -> void:
+	if _player_hunger_bar == null:
+		return
+	var player: Citizen = null
+	if _player_resolver.is_valid():
+		var resolved = _player_resolver.call()
+		if resolved is Citizen and is_instance_valid(resolved):
+			player = resolved
+	if player == null or player.needs == null:
+		_player_hunger_bar.value = 0.0
+		_player_hunger_bar.tooltip_text = "Kein Spieler aktiv"
+		_apply_hunger_fill(3)
+		return
+	var hunger := clampf(player.needs.hunger, 0.0, 100.0)
+	_player_hunger_bar.value = hunger
+	_player_hunger_bar.tooltip_text = "Hunger: %d / 100 (100 = am Verhungern)" % int(round(hunger))
+	if hunger >= 85.0:
+		_apply_hunger_fill(2)
+	elif hunger >= 70.0:
+		_apply_hunger_fill(1)
+	else:
+		_apply_hunger_fill(0)
+
+
+func _apply_hunger_fill(state: int) -> void:
+	if _player_hunger_bar == null or state == _hunger_state:
+		return
+	_hunger_state = state
+	var box: StyleBoxFlat = _hunger_fill_good
+	if state == 1:
+		box = _hunger_fill_warn
+	elif state == 2:
+		box = _hunger_fill_crit
+	elif state == 3:
+		box = _hunger_fill_idle
+	_player_hunger_bar.add_theme_stylebox_override("fill", box)
 
 
 func _on_speed_cycle_pressed(speed_pressed: Callable) -> void:

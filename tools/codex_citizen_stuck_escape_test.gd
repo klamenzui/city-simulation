@@ -35,17 +35,41 @@ func _run() -> void:
 	citizen.velocity = Vector3.ZERO
 	citizen._jump._coyote_time = 0.1
 
+	var jump_started: bool = citizen._try_stuck_jump_recovery()
+	_expect(jump_started, "stuck recovery should start with a jump-only phase")
+	_expect(citizen._stuck_jump_recovery_active, "jump-only recovery should stay active briefly")
+	_expect_eq(citizen._stuck_jump_recovery_attempts_used, 1, "jump-only recovery should count the first attempt")
+	_expect(citizen.velocity.y > 0.0, "jump-only recovery should add a vertical impulse")
+
+	var global_direction := Vector3.RIGHT
+	var jump_steered: Vector3 = citizen._choose_steered_direction(global_direction, 1.0 / 60.0)
+	_expect(jump_steered.dot(global_direction) > 0.98,
+			"jump-only recovery should keep following the global path before sidestepping")
+	_expect_eq(citizen._debug_avoidance_status, "stuck jump",
+			"debug status should expose jump-only recovery mode")
+
+	citizen._clear_stuck_jump_recovery()
+	citizen.velocity = Vector3.ZERO
+	citizen._jump._cooldown_timer = 0.0
+	citizen._jump._coyote_time = 0.1
 	var started: bool = citizen._begin_stuck_escape(false)
 	_expect(started, "stuck escape should start from a valid global path")
 	_expect(citizen._stuck_escape_timer > 0.0, "escape timer should be active")
 	_expect(citizen._stuck_escape_target != Vector3.ZERO, "escape should create a temporary local target")
-	_expect(citizen.velocity.y > 0.0, "escape should add a vertical jump impulse when floor grace is available")
+	_expect_eq(citizen.velocity.y, 0.0, "normal escape should sidestep without another jump")
 
-	var global_direction := Vector3.RIGHT
 	var steered: Vector3 = citizen._choose_steered_direction(global_direction, 1.0 / 60.0)
 	_expect(steered.length_squared() > 0.0001, "escape steering should return a movement direction")
 	_expect(steered.dot(global_direction) < 0.98, "escape steering should not blindly keep following the global path")
 	_expect_eq(citizen._debug_avoidance_status, "stuck escape", "debug status should expose escape mode")
+
+	citizen._clear_stuck_escape()
+	citizen.velocity = Vector3.ZERO
+	citizen._jump._cooldown_timer = 0.0
+	citizen._jump._coyote_time = 0.1
+	var strong_started: bool = citizen._begin_stuck_escape(true)
+	_expect(strong_started, "strong stuck escape should start from a valid global path")
+	_expect(citizen.velocity.y > 0.0, "strong escape should combine sidestep and jump")
 
 	citizen._clear_stuck_escape()
 	citizen.global_position = Vector3(0.75, 0.0, 0.0)

@@ -60,6 +60,8 @@ func sim_tick(citizen, world) -> void:
 		citizen.die(world)
 		return
 	citizen._update_debug(world, h_delta)
+	if _tick_explicit_player_action(citizen, world):
+		return
 	if citizen.has_method("is_manual_control_enabled") and citizen.is_manual_control_enabled():
 		return
 	if citizen.has_method("is_click_move_mode_enabled") and citizen.is_click_move_mode_enabled():
@@ -116,6 +118,8 @@ func _sim_tick_coarse(citizen, world) -> void:
 		citizen.die(world)
 		return
 	citizen._update_debug(world, h_delta)
+	if _tick_explicit_player_action(citizen, world):
+		return
 	if citizen.has_method("is_manual_control_enabled") and citizen.is_manual_control_enabled():
 		return
 	if citizen.has_method("is_click_move_mode_enabled") and citizen.is_click_move_mode_enabled():
@@ -145,6 +149,17 @@ func _sim_tick_coarse(citizen, world) -> void:
 
 	planner.plan_next_action(world, citizen)
 	citizen.decision_cooldown_left = _roll_decision_cooldown_minutes(citizen, world)
+
+func _tick_explicit_player_action(citizen, world) -> bool:
+	if citizen == null or not citizen.has_method("is_player_action_active"):
+		return false
+	if not citizen.is_player_action_active():
+		return false
+	if citizen.current_action != null:
+		_tick_current_action(citizen, world)
+	if citizen.has_method("clear_player_action_state"):
+		citizen.clear_player_action_state()
+	return true
 
 func _roll_decision_cooldown_minutes(citizen, world) -> int:
 	if citizen == null:

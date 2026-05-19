@@ -116,6 +116,8 @@ extends CharacterBody3D
 @export var stuck_escape_retarget_interval: float = 0.35
 @export var stuck_escape_rejoin_probe_interval: float = 0.22
 @export var stuck_escape_waypoint_skip_distance: float = 1.4
+@export_range(0, 8, 1) var stuck_jump_attempts_before_escape: int = 3
+@export var stuck_jump_retry_interval: float = 0.45
 @export var stuck_detection_jitter: float = 0.45
 
 # ---------------------------------------------------------- Exports: Logging
@@ -215,6 +217,9 @@ var _stuck_escape_timer: float = 0.0
 var _stuck_escape_retarget_timer: float = 0.0
 var _stuck_escape_rejoin_probe_timer: float = 0.0
 var _stuck_escape_start_pos: Vector3 = Vector3.ZERO
+var _stuck_jump_recovery_active: bool = false
+var _stuck_jump_recovery_attempts_used: int = 0
+var _stuck_jump_recovery_retry_timer: float = 0.0
 
 
 # ========================================================================
@@ -299,6 +304,7 @@ func set_global_target(target: Vector3) -> bool:
 	_steering.reset()
 	_clear_local_avoidance_path()
 	_clear_stuck_escape()
+	_clear_stuck_jump_recovery()
 	_stuck.reset_for_new_target(global_position)
 
 	if _is_travelling:
@@ -334,6 +340,7 @@ func stop_travel() -> void:
 	_stuck.reset_for_idle(global_position)
 	_clear_local_avoidance_path()
 	_clear_stuck_escape()
+	_clear_stuck_jump_recovery()
 	velocity = Vector3.ZERO
 	_debug.clear_global_path()
 	_debug.clear_target_marker()
@@ -385,6 +392,7 @@ func enter_keyboard_control_mode(follow_camera: bool = true) -> void:
 	_local_astar_follow_global_on_fail = false
 	_clear_local_avoidance_path()
 	_clear_live_debug_scan()
+	_clear_stuck_jump_recovery()
 	_debug.clear_target_marker()
 	if follow_camera:
 		var camera := get_viewport().get_camera_3d()
@@ -403,6 +411,7 @@ func exit_keyboard_control_mode() -> void:
 	_clear_local_avoidance_path()
 	_clear_live_debug_scan()
 	_clear_stuck_escape()
+	_clear_stuck_jump_recovery()
 	_debug.clear_avoidance()
 	var camera := get_viewport().get_camera_3d()
 	if camera != null and camera.has_method("clear_follow_target"):
@@ -845,6 +854,10 @@ func _is_walkable_exit_surface_kind(kind: String) -> bool:
 ## up.  All transitions are logged so the reason for any heading change is
 ## recoverable from the log.
 func _choose_steered_direction(desired_direction: Vector3, delta: float) -> Vector3:
+	if _stuck_jump_recovery_active:
+		_prepare_stuck_jump_only_recovery()
+		return desired_direction
+
 	var escape_direction := _get_stuck_escape_direction(desired_direction)
 	if escape_direction != Vector3.ZERO:
 		_cached_avoidance_blocked = true
@@ -1225,6 +1238,7 @@ func _reset_path_following_state_for_next_waypoint() -> void:
 	_local_astar_follow_global_on_fail = false
 	_clear_local_avoidance_path()
 	_clear_stuck_escape()
+	_clear_stuck_jump_recovery()
 
 
 func _is_at_path_index(index: int) -> bool:
@@ -1329,16 +1343,21 @@ func _tick_stuck_detection(delta: float) -> void:
 	var action := _stuck.tick(delta, global_position, dist_to_target,
 			_debug_avoidance_status,
 			_debug_local_grid_status,
-			_jump.status())
+			_jump.status(),
+			_has_stuck_jump_recovery_budget())
 	match action:
 		StuckRecovery.ACTION_REPLAN:
-			var recovered_locally := _try_stuck_escape_recovery(false)
-			if recovered_locally:
+			var jumped_first := _try_stuck_jump_recovery()
+			if jumped_first:
 				_stuck.reset_for_new_target(global_position)
 			else:
-				var replan_ok := _try_replan_from_stuck()
-				if replan_ok and _is_travelling:
+				var recovered_locally := _try_stuck_escape_recovery(false)
+				if recovered_locally:
 					_stuck.reset_for_new_target(global_position)
+				else:
+					var replan_ok := _try_replan_from_stuck()
+					if replan_ok and _is_travelling:
+						_stuck.reset_for_new_target(global_position)
 		StuckRecovery.ACTION_ABORT:
 			var started_escape := _try_stuck_escape_recovery(true)
 			if started_escape and _is_travelling:
@@ -1362,6 +1381,96 @@ func _tick_stuck_detection(delta: float) -> void:
 					})
 					stop_travel()
 					stuck.emit()
+
+
+func _try_stuck_jump_recovery() -> bool:
+	if _try_finish_stuck_near_target():
+		return true
+	if _stuck_jump_recovery_active:
+		return true
+	if _stuck_jump_recovery_attempts_used >= maxi(_config.stuck_jump_attempts_before_escape, 0):
+		return false
+	return _fire_stuck_jump_recovery()
+
+
+func _has_stuck_jump_recovery_budget() -> bool:
+	return _stuck_jump_recovery_active \
+			or _stuck_jump_recovery_attempts_used < maxi(_config.stuck_jump_attempts_before_escape, 0)
+
+
+func _fire_stuck_jump_recovery() -> bool:
+	var max_attempts := maxi(_config.stuck_jump_attempts_before_escape, 0)
+	if _stuck_jump_recovery_attempts_used >= max_attempts:
+		return false
+	var jumped := _jump.try_stuck_escape_jump(false)
+	if not jumped:
+		_logger.debug("CTRL", "STUCK_JUMP_RECOVERY_SKIPPED", {
+			"attempt": _stuck_jump_recovery_attempts_used + 1,
+			"max": max_attempts,
+			"status": _jump.status(),
+			"pos": global_position,
+		})
+		return false
+
+	_stuck_jump_recovery_active = true
+	_stuck_jump_recovery_attempts_used += 1
+	_stuck_jump_recovery_retry_timer = maxf(maxf(_config.stuck_jump_retry_interval,
+			_config.jump_cooldown), 0.05)
+	_prepare_stuck_jump_only_recovery()
+	_logger.warn("CTRL", "STUCK_JUMP_RECOVERY", {
+		"attempt": _stuck_jump_recovery_attempts_used,
+		"max": max_attempts,
+		"pos": global_position,
+		"target": _target_position,
+		"path_index": _path_index,
+	})
+	return true
+
+
+func _prepare_stuck_jump_only_recovery() -> void:
+	_clear_local_avoidance_path()
+	_green_corridor_direction = Vector3.ZERO
+	_green_corridor_timer = 0.0
+	_cached_avoidance_blocked = false
+	_debug_avoidance_status = "stuck jump"
+	_local_astar_follow_global_on_fail = false
+	_local_astar_replan_timer = maxf(_config.local_astar_fallback_replan_cooldown,
+			_config.local_astar_replan_interval)
+	_obstacle_check_timer = maxf(_config.jump_cooldown, _config.obstacle_check_interval)
+	_steering.reset()
+
+
+func _tick_stuck_jump_recovery(delta: float) -> void:
+	if not _stuck_jump_recovery_active:
+		return
+	_stuck_jump_recovery_retry_timer = maxf(_stuck_jump_recovery_retry_timer - delta, 0.0)
+	if _stuck_jump_recovery_retry_timer > 0.0:
+		return
+	if _stuck_jump_recovery_attempts_used >= maxi(_config.stuck_jump_attempts_before_escape, 0):
+		_finish_stuck_jump_recovery("attempts_exhausted")
+		return
+	if not _fire_stuck_jump_recovery():
+		_finish_stuck_jump_recovery("jump_unavailable")
+
+
+func _finish_stuck_jump_recovery(reason: String) -> void:
+	if not _stuck_jump_recovery_active:
+		return
+	_logger.info("CTRL", "STUCK_JUMP_RECOVERY_END", {
+		"reason": reason,
+		"attempts": _stuck_jump_recovery_attempts_used,
+		"pos": global_position,
+		"target": _target_position,
+	})
+	_stuck_jump_recovery_active = false
+	_stuck_jump_recovery_retry_timer = 0.0
+	_obstacle_check_timer = 0.0
+
+
+func _clear_stuck_jump_recovery() -> void:
+	_stuck_jump_recovery_active = false
+	_stuck_jump_recovery_attempts_used = 0
+	_stuck_jump_recovery_retry_timer = 0.0
 
 
 func _try_stuck_escape_recovery(strong: bool) -> bool:
@@ -1446,7 +1555,9 @@ func _begin_stuck_escape(strong: bool) -> bool:
 	_obstacle_check_timer = 0.0
 	_steering.reset()
 	_clear_local_avoidance_path()
-	var escape_jump_started := _jump.try_stuck_escape_jump(strong)
+	var escape_jump_started := false
+	if strong:
+		escape_jump_started = _jump.try_stuck_escape_jump(strong)
 	_logger.info("CTRL", "STUCK_ESCAPE_BEGIN", {
 		"pos": global_position,
 		"target": _target_position,
@@ -1698,6 +1809,7 @@ func _try_local_replan_from_stuck() -> void:
 func _tick_surface_escape(delta: float) -> void:
 	if _surface_escape_cooldown > 0.0:
 		_surface_escape_cooldown = maxf(_surface_escape_cooldown - delta, 0.0)
+	_tick_stuck_jump_recovery(delta)
 	if _stuck_escape_timer > 0.0:
 		_stuck_escape_timer = maxf(_stuck_escape_timer - delta, 0.0)
 		_stuck_escape_retarget_timer = maxf(_stuck_escape_retarget_timer - delta, 0.0)

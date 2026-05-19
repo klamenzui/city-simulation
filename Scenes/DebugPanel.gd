@@ -5,6 +5,7 @@ const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 
 signal citizen_dialog_toggled
 signal citizen_dialog_message_submitted(message: String)
+signal player_action_pressed(action_id: String)
 signal ui_interacted
 
 @onready var panel_root: Panel = $Panel
@@ -16,9 +17,15 @@ signal ui_interacted
 @onready var citizen_dialog_line_edit: LineEdit = $Panel/VBoxContainer/CitizenDialogInputRow/CitizenDialogLineEdit
 @onready var citizen_dialog_send_button: Button = $Panel/VBoxContainer/CitizenDialogInputRow/CitizenDialogSendButton
 var dbug_data: Dictionary = {}
+var player_action_container: VBoxContainer = null
+var player_action_title_label: Label = null
+var player_action_status_label: Label = null
+var player_action_button_grid: GridContainer = null
+var _player_action_signature: String = ""
 
 func _ready() -> void:
 	_apply_theme_and_layout()
+	_ensure_player_action_ui()
 	if panel_root != null:
 		panel_root.gui_input.connect(_on_panel_gui_input)
 	if citizen_dialog_button != null:
@@ -180,6 +187,53 @@ func update_sections(sections: Array) -> void:
 	label.append_text("\n".join(lines))
 
 
+func update_player_actions(ui_state: Dictionary) -> void:
+	_ensure_player_action_ui()
+	if player_action_container == null:
+		return
+	var visible := bool(ui_state.get("visible", false))
+	var buttons: Array = ui_state.get("buttons", [])
+	player_action_container.visible = visible and not buttons.is_empty()
+	if not player_action_container.visible:
+		if not _player_action_signature.is_empty():
+			_player_action_signature = ""
+			_clear_player_action_buttons()
+		return
+	if player_action_title_label != null:
+		player_action_title_label.text = str(ui_state.get("title", "Aktionen"))
+	if player_action_status_label != null:
+		player_action_status_label.text = str(ui_state.get("status_text", ""))
+	# Buttons are only rebuilt when their set/labels/state actually change.
+	# update_player_actions runs every frame, so rebuilding unconditionally
+	# would destroy/recreate the buttons each frame and kill hover/press
+	# feedback (the user can't tell a click registered).
+	var signature := _player_action_signature_for(buttons)
+	if signature == _player_action_signature:
+		return
+	_player_action_signature = signature
+	_clear_player_action_buttons()
+	for spec_var in buttons:
+		if spec_var is not Dictionary:
+			continue
+		var spec := spec_var as Dictionary
+		var action_id := str(spec.get("id", ""))
+		if action_id.is_empty():
+			continue
+		var btn := Button.new()
+		btn.text = str(spec.get("text", action_id))
+		btn.disabled = not bool(spec.get("enabled", true))
+		btn.tooltip_text = str(spec.get("tooltip", ""))
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.custom_minimum_size = Vector2(128, 34)
+		btn.gui_input.connect(_on_panel_gui_input)
+		btn.pressed.connect(_on_player_action_button_pressed.bind(action_id))
+		player_action_button_grid.add_child(btn)
+		# The currently-running action is accent-highlighted so it is obvious
+		# which action is active vs. merely available.
+		if bool(spec.get("active", false)):
+			UiThemeScript.apply_accent_state(btn, true)
+
+
 func _render_section_rows(rows: Array) -> PackedStringArray:
 	var out: PackedStringArray = []
 	for row_var in rows:
@@ -232,6 +286,58 @@ func update_citizen_dialog(ui_state: Dictionary) -> void:
 	if citizen_dialog_send_button != null:
 		citizen_dialog_send_button.disabled = not bool(ui_state.get("send_enabled", false))
 
+func _ensure_player_action_ui() -> void:
+	if player_action_container != null:
+		return
+	var vbox := $Panel/VBoxContainer as VBoxContainer
+	if vbox == null:
+		return
+	player_action_container = VBoxContainer.new()
+	player_action_container.visible = false
+	player_action_container.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
+	vbox.add_child(player_action_container)
+	if label != null:
+		vbox.move_child(player_action_container, label.get_index() + 1)
+
+	player_action_title_label = Label.new()
+	player_action_title_label.text = "Aktionen"
+	player_action_title_label.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+	player_action_title_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+	player_action_container.add_child(player_action_title_label)
+
+	player_action_status_label = Label.new()
+	player_action_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	player_action_status_label.add_theme_color_override("font_color", UiThemeScript.TEXT_SECONDARY)
+	player_action_status_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+	player_action_container.add_child(player_action_status_label)
+
+	player_action_button_grid = GridContainer.new()
+	player_action_button_grid.columns = 2
+	player_action_button_grid.add_theme_constant_override("h_separation", UiThemeScript.SEPARATION_DENSE)
+	player_action_button_grid.add_theme_constant_override("v_separation", UiThemeScript.SEPARATION_DENSE)
+	player_action_container.add_child(player_action_button_grid)
+
+func _player_action_signature_for(buttons: Array) -> String:
+	var parts: PackedStringArray = []
+	for spec_var in buttons:
+		if spec_var is not Dictionary:
+			continue
+		var spec := spec_var as Dictionary
+		parts.append("%s|%s|%d|%d|%s" % [
+			str(spec.get("id", "")),
+			str(spec.get("text", "")),
+			1 if bool(spec.get("enabled", true)) else 0,
+			1 if bool(spec.get("active", false)) else 0,
+			str(spec.get("tooltip", "")),
+		])
+	return "\n".join(parts)
+
+func _clear_player_action_buttons() -> void:
+	if player_action_button_grid == null:
+		return
+	for child in player_action_button_grid.get_children():
+		child.queue_free()
+
 func clear_citizen_dialog_input() -> void:
 	if citizen_dialog_line_edit != null:
 		citizen_dialog_line_edit.clear()
@@ -245,6 +351,10 @@ func focus_citizen_dialog_input() -> void:
 func _on_citizen_dialog_button_pressed() -> void:
 	ui_interacted.emit()
 	citizen_dialog_toggled.emit()
+
+func _on_player_action_button_pressed(action_id: String) -> void:
+	ui_interacted.emit()
+	player_action_pressed.emit(action_id)
 
 func _on_citizen_dialog_send_button_pressed() -> void:
 	_submit_citizen_dialog_message()
