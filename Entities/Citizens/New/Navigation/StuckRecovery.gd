@@ -46,7 +46,7 @@ func reset_for_idle(pos: Vector3) -> void:
 ## stuck event actually fires (~1× per 1.5 s in the worst case).
 func tick(delta: float, current_pos: Vector3, dist_to_target: float,
 		status_avoidance: String = "", status_local: String = "",
-		status_jump: String = "") -> int:
+		status_jump: String = "", prefer_jump_recovery: bool = false) -> int:
 	var cfg := _ctx.config
 	var too_close := dist_to_target <= maxf(cfg.stuck_detection_min_distance * 2.0,
 			cfg.final_waypoint_reach_distance * 2.0)
@@ -81,7 +81,8 @@ func tick(delta: float, current_pos: Vector3, dist_to_target: float,
 		_ctx.logger.error("STUCK", "EXHAUSTED", data)
 		return ACTION_ABORT
 
-	_ctx.logger.warn("STUCK", "REPLAN", data)
+	var event := "JUMP_RECOVERY" if prefer_jump_recovery else "REPLAN"
+	_ctx.logger.warn("STUCK", event, data)
 	return ACTION_REPLAN
 
 

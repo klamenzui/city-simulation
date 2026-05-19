@@ -521,6 +521,12 @@ func _build_building_occupancy_section(world = null) -> Dictionary:
 				"value": "%d / %d" % [workers.size(), max(job_capacity, 0)],
 				"severity": worker_severity,
 			})
+			var req_edu := get_required_education_level()
+			rows.append({
+				"label": "Bildung erforderl.",
+				"value": ("Stufe %d (%s)" % [req_edu, get_default_job_title()]) if req_edu > 0 \
+					else "keine (%s)" % get_default_job_title(),
+			})
 		var effective_cap := get_effective_visitor_capacity()
 		if effective_cap > 0:
 			rows.append({"label": "Besucher", "value": "%d / %d" % [visitors.size(), max(effective_cap, 0)]})
@@ -722,6 +728,34 @@ func get_building_type_name() -> String:
 			return "Gas Station"
 		_:
 			return "Generic"
+
+## Default job title offered by this building type. Single source of truth —
+## the player work flow (Citizen.player_work) and the info panel both read it.
+func get_default_job_title() -> String:
+	match building_type:
+		BuildingType.RESTAURANT, BuildingType.CAFE:
+			return "Kellner"
+		BuildingType.SHOP, BuildingType.SUPERMARKET:
+			return "Verkaeufer"
+		BuildingType.GAS_STATION:
+			return "Tankwart"
+		BuildingType.UNIVERSITY:
+			return "Teacher"
+		BuildingType.FARM:
+			return "Gardener"
+		BuildingType.FACTORY:
+			return "Technician"
+		BuildingType.CITY_HALL:
+			return "Programmierer"
+		_:
+			return "Worker"
+
+## Education level required to work here (0 = no requirement). Driven by the
+## same balance config the citizen factory uses, keyed on the job title.
+func get_required_education_level() -> int:
+	if int(job_capacity) <= 0:
+		return 0
+	return CitizenFactory.get_required_education_for_job_title(get_default_job_title())
 
 func apply_balance_settings(type_key: String) -> Dictionary:
 	var settings := BalanceConfig.get_section("buildings.%s" % type_key)

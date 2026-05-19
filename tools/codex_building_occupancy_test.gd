@@ -52,6 +52,10 @@ func _run_all_tests() -> void:
 		"player_enter_takes_capacity_slot",
 		"offline_keyboard_player_building_input_uses_camera_target",
 		"keyboard_player_needs_tick_without_goap",
+		"player_action_buttons_and_manual_actions",
+		"player_work_education_gate",
+		"player_university_unlocks_job",
+		"player_work_payday_uses_worked_minutes",
 		"university_requires_worker_for_study",
 		"university_accepts_education_service_staff",
 		"university_unstaffed_label_is_teaching_specific",
@@ -114,6 +118,14 @@ func _run_test(test_name: String) -> String:
 			return _test_offline_keyboard_player_building_input_uses_camera_target()
 		"keyboard_player_needs_tick_without_goap":
 			return _test_keyboard_player_needs_tick_without_goap()
+		"player_action_buttons_and_manual_actions":
+			return _test_player_action_buttons_and_manual_actions()
+		"player_work_education_gate":
+			return _test_player_work_education_gate()
+		"player_university_unlocks_job":
+			return _test_player_university_unlocks_job()
+		"player_work_payday_uses_worked_minutes":
+			return _test_player_work_payday_uses_worked_minutes()
 		"university_requires_worker_for_study":
 			return _test_university_requires_worker_for_study()
 		"university_accepts_education_service_staff":
@@ -1010,19 +1022,23 @@ func _test_player_enter_takes_capacity_slot() -> String:
 	_expect(not p2.is_inside_building(), "rejected player must not be inside")
 
 	_expect(p1.player_exit_building(world), "player should exit residential")
-	_expect_eq(home.tenants.size(), 0, "exit should free the tenant slot")
+	_expect_eq(home.tenants.size(), 1, "leaving home should keep the player's home slot")
+	_expect_eq(p1.home, home, "residential entry should persist as the player's home")
 	_expect(not p1.is_inside_building(), "player should no longer be inside after exit")
 
-	# Workplace -> worker slot, no double visitor count.
+	# Workplace entry is a plain visit: NO job and NO worker slot. Employment
+	# is opt-in via player_apply_for_work() ("Bewerben") only.
 	var uni: University = _new_university("Player Work")
 	uni.job_capacity = 2
 	var p3: Citizen = _new_citizen("Player Three")
-	_expect(p3.player_enter_building(uni, world), "player should enter workplace and take a worker slot")
-	_expect_eq(uni.workers.size(), 1, "workplace workers should increase by 1")
-	_expect_eq(uni.visitors.size(), 0, "player worker must not be double-counted as visitor")
+	_expect(p3.player_enter_building(uni, world), "player should enter the workplace as a visitor")
+	_expect_eq(uni.workers.size(), 0, "entering a workplace must not auto-hire the player")
+	_expect(uni.visitors.has(p3), "workplace entry should occupy a visitor slot")
+	_expect(p3.job == null, "entering a workplace must not assign any job")
 	_expect(p3.is_inside_building(), "player should be inside the workplace")
 	_expect(p3.player_exit_building(world), "player should exit workplace")
-	_expect_eq(uni.workers.size(), 0, "exit should free the worker slot")
+	_expect_eq(uni.workers.size(), 0, "exit should not leave a worker slot taken")
+	_expect_eq(uni.visitors.size(), 0, "exit should free the visitor slot")
 
 	_free_world(world)
 	return _current_error
@@ -1061,7 +1077,7 @@ func _test_offline_keyboard_player_building_input_uses_camera_target() -> String
 
 	_expect(interaction.handle_input(exit_event), "T-exit should be handled for the offline keyboard camera target")
 	_expect(not player.is_inside_building(), "offline keyboard player should exit the building")
-	_expect(not home.tenants.has(player), "offline keyboard player should free the residential slot on exit")
+	_expect(home.tenants.has(player), "offline keyboard player should keep their home slot on exit")
 
 	_free_world(world)
 	return _current_error
@@ -1110,6 +1126,207 @@ func _test_keyboard_player_needs_tick_without_goap() -> String:
 
 	paused._agent.sim_tick(paused, world)
 	_expect_eq(paused.needs.hunger, paused_hunger_before, "non-keyboard paused citizens should remain outside sim_tick")
+
+	_free_world(world)
+	return _current_error
+
+func _test_player_action_buttons_and_manual_actions() -> String:
+	var world: World = _new_world()
+	world.minutes_per_tick = 10
+	var home: ResidentialBuilding = _new_residential("PlayerActionHome", Vector3.ZERO, 1)
+	var workplace: Building = _new_building("PlayerActionShop", 1)
+	workplace.building_type = BuildingScript.BuildingType.SHOP
+	world.register_building(home)
+	world.register_building(workplace)
+
+	var player: Citizen = _new_citizen("Player Action")
+	world.register_citizen(player)
+	player.set_world_ref(world)
+	player.autonomous_simulation_enabled = false
+	player.keyboard_control_enabled = true
+	player.home_food_stock = 2
+	player.needs.hunger = 85.0
+	player.needs.energy = 100.0
+	player.needs.fun = 70.0
+	player.needs.health = 100.0
+
+	_expect(player.player_enter_building(home, world), "player should move into a free home")
+	var home_state := player.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(home_state, "eat"), "home UI should expose an enabled eat button")
+	_expect(_player_ui_button_enabled(home_state, "sleep"), "home UI should expose an enabled sleep button")
+	var hunger_before := player.needs.hunger
+	_expect(player.player_eat(world), "eat button action should start eating at home")
+	_expect_eq(player.home_food_stock, 1, "eat action should consume one home food stock immediately")
+	player._agent.sim_tick(player, world)
+	_expect(player.needs.hunger < hunger_before, "explicit player eat action should tick for keyboard player")
+	_expect(player.player_exit_building(world), "player should leave home after eating")
+	_expect(home.tenants.has(player), "leaving home should not cancel the home lease")
+
+	player.needs.hunger = 20.0
+	player.needs.energy = 100.0
+	player.needs.fun = 80.0
+	_expect(player.player_enter_building(workplace, world), "player should enter the workplace as a visitor")
+	_expect(not workplace.workers.has(player), "entering a workplace must not auto-hire the player")
+	_expect(player.job == null, "entering a workplace must not assign any job")
+	var work_state := player.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(work_state, "apply_work"), "workplace UI should expose an enabled apply button")
+	_expect_eq(_player_ui_button_text(work_state, "apply_work"), "Bewerben", "first workplace action should be Bewerben")
+	_expect(not _player_ui_button_present(work_state, "work"), "work must not appear before the player is accepted")
+	_expect(not _player_ui_button_present(work_state, "quit_job"), "quit must not appear before the player is employed")
+	_expect(player.player_apply_for_work(world), "apply button action should accept and hire the player")
+	_expect(workplace.workers.has(player), "accepted application should take the worker slot")
+	_expect(player.job != null and player.job.workplace == workplace, "accepted application should assign the workplace job")
+	var accepted_state := player.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(accepted_state, "work"), "accepted workplace UI should expose an enabled work button")
+	_expect_eq(_player_ui_button_text(accepted_state, "work"), "Arbeiten", "accepted workplace action should be Arbeiten")
+	_expect(not _player_ui_button_present(accepted_state, "apply_work"), "apply must disappear after acceptance")
+	_expect(_player_ui_button_enabled(accepted_state, "quit_job"), "quit should appear once the player is employed")
+	var worked_before := player.work_minutes_today
+	_expect(player.player_work(world), "work button action should start the accepted job")
+	player._agent.sim_tick(player, world)
+	_expect(player.work_minutes_today > worked_before, "explicit player work action should tick for keyboard player")
+	_expect(player.player_quit_job(world, true), "quit button action should leave and remove the job")
+	_expect(player.job == null, "quit should clear the player's job")
+	_expect(not workplace.workers.has(player), "quit should free the worker slot")
+	_expect(not player.is_inside_building(), "quit from UI should exit the workplace")
+
+	_free_world(world)
+	return _current_error
+
+func _test_player_work_education_gate() -> String:
+	var world: World = _new_world()
+	world.minutes_per_tick = 10
+	var uni: University = _new_university("EduGateUni")
+	uni.job_capacity = 1
+	world.register_building(uni)
+
+	var player: Citizen = _new_citizen("Edu Gate Player")
+	world.register_citizen(player)
+	player.set_world_ref(world)
+	player.autonomous_simulation_enabled = false
+	player.keyboard_control_enabled = true
+
+	var required: int = uni.get_required_education_level()
+	_expect(player.player_enter_building(uni, world), "player should enter the workplace as a visitor")
+	_expect(player.job == null, "entering a workplace must not assign a job")
+
+	if required > 0:
+		player.education_level = required - 1
+		_expect(not player.player_apply_for_work(world), "under-qualified player must be rejected by application")
+		_expect(not uni.workers.has(player), "rejected player must not take a worker slot")
+		_expect(player.job == null, "rejected player must not keep a job")
+		var rejected_state := player.get_player_action_ui_state(world)
+		_expect(str(rejected_state.get("status_text", "")).find("Abgelehnt") != -1,
+				"rejection must be shown in the player-action status text")
+
+	player.education_level = required
+	_expect(player.player_apply_for_work(world), "qualified application should hire the player")
+	_expect(uni.workers.has(player), "qualified application should take the worker slot")
+	_expect(player.job != null and player.job.workplace == uni, "qualified application should assign the job")
+	_expect(player.player_work(world), "accepted player_work should start work")
+
+	_free_world(world)
+	return _current_error
+
+func _test_player_university_unlocks_job() -> String:
+	var world: World = _new_world()
+	world.minutes_per_tick = 90
+	var university: University = _new_university("Player Training Uni")
+	var factory: Building = _new_building("Player Training Factory", 1)
+	factory.building_type = BuildingScript.BuildingType.FACTORY
+	university.job_capacity = 2
+	world.register_building(university)
+	world.register_building(factory)
+
+	var teacher: Citizen = _new_citizen("Player Training Teacher")
+	teacher.job = Job.new()
+	teacher.job.title = "Teacher"
+	teacher.job.workplace = university
+	teacher.job.workplace_service_type = "education"
+	_expect(university.try_hire(teacher), "university should have teaching staff for player study")
+
+	var player: Citizen = _new_citizen("Player Trainee")
+	world.register_citizen(player)
+	player.set_world_ref(world)
+	player.autonomous_simulation_enabled = false
+	player.keyboard_control_enabled = true
+	player.education_level = 0
+	player.needs.hunger = 20.0
+	player.needs.energy = 100.0
+	player.needs.fun = 80.0
+
+	# Enter the factory: visitor only, no job. Technician needs education 1.
+	_expect(player.player_enter_building(factory, world), "player should enter the factory as a visitor")
+	_expect(player.job == null, "entering the factory must not assign a job")
+	_expect(not factory.workers.has(player), "entering must not hire the player")
+	_expect_eq(factory.get_default_job_title(), "Technician", "factory job should be the technician role")
+	_expect_eq(factory.get_required_education_level(), 1, "technician role should require university education")
+	var factory_state := player.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(factory_state, "apply_work"), "apply button should stay clickable; the gate is in application")
+	_expect(not _player_ui_button_present(factory_state, "work"), "work button should wait until the player is accepted")
+	_expect(_player_ui_button_enabled(factory_state, "training"), "factory UI should offer a training exit while under-qualified")
+
+	# Applying while under-qualified is rejected and no job is kept.
+	_expect(not player.player_apply_for_work(world), "under-qualified application must be rejected")
+	_expect(not factory.workers.has(player), "rejected player must not be hired")
+	_expect(player.job == null, "rejected player must not keep a job")
+	_expect(player.player_leave_for_training(world), "training button should leave the factory")
+
+	# Study at the university until the requirement is met.
+	_expect(player.player_enter_building(university, world), "player should enter the university to study")
+	var uni_state := player.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(uni_state, "study"), "university UI should expose a study button")
+	_expect(player.player_study(world), "study button action should start studying")
+	player._agent.sim_tick(player, world)
+	_expect(player.education_level >= 1, "study should raise education to the job requirement")
+	_expect(player.player_exit_building(world), "player should leave the university after studying")
+
+	# Back at the factory, now qualified -> application accepts, then work starts.
+	_expect(player.player_enter_building(factory, world), "player should re-enter the factory")
+	_expect(player.player_apply_for_work(world), "qualified application should hire the player")
+	_expect(factory.workers.has(player), "qualified application should take the factory worker slot")
+	_expect(player.job != null and player.job.workplace == factory, "application should assign the factory job")
+	var accepted_factory_state := player.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(accepted_factory_state, "work"), "work should appear once the player is accepted")
+	_expect(player.player_work(world), "accepted player_work should start the factory job")
+
+	_free_world(world)
+	return _current_error
+
+func _test_player_work_payday_uses_worked_minutes() -> String:
+	var world: World = _new_world()
+	world.minutes_per_tick = 30
+	var workplace: Building = _new_building("Payday Shop", 1)
+	workplace.building_type = BuildingScript.BuildingType.SHOP
+	workplace.account.balance = 1000
+	world.register_building(workplace)
+
+	var player: Citizen = _new_citizen("Payday Player")
+	world.register_citizen(player)
+	player.set_world_ref(world)
+	player.autonomous_simulation_enabled = false
+	player.keyboard_control_enabled = true
+	player.wallet.balance = 100
+	player.needs.hunger = 20.0
+	player.needs.energy = 100.0
+	player.needs.fun = 80.0
+	player.needs.health = 100.0
+
+	_expect(player.player_enter_building(workplace, world), "player should enter the workplace")
+	_expect(player.player_apply_for_work(world), "player should be accepted before working")
+	_expect(player.player_work(world), "accepted player should start work")
+	player._agent.sim_tick(player, world)
+	player._agent.sim_tick(player, world)
+	_expect_eq(player.work_minutes_today, 60, "two 30-minute work ticks should record one hour")
+
+	var wallet_before := player.wallet.balance
+	var workplace_before := workplace.account.balance
+	var expected_wage := player.job.wage_per_hour
+	world._on_payday()
+	_expect_eq(player.wallet.balance, wallet_before + expected_wage,
+			"payday should pay exactly the wage for worked minutes")
+	_expect_eq(workplace.account.balance, workplace_before - expected_wage,
+			"workplace should pay only the earned wage")
 
 	_free_world(world)
 	return _current_error
@@ -1216,6 +1433,35 @@ func _expect_eq(actual, expected, message: String) -> void:
 	if actual == expected or _current_error != "":
 		return
 	_current_error = "%s | expected=%s actual=%s" % [message, str(expected), str(actual)]
+
+func _player_ui_button_enabled(ui_state: Dictionary, action_id: String) -> bool:
+	var buttons: Array = ui_state.get("buttons", [])
+	for spec_var in buttons:
+		if spec_var is not Dictionary:
+			continue
+		var spec := spec_var as Dictionary
+		if str(spec.get("id", "")) == action_id:
+			return bool(spec.get("enabled", false))
+	return false
+
+func _player_ui_button_present(ui_state: Dictionary, action_id: String) -> bool:
+	var buttons: Array = ui_state.get("buttons", [])
+	for spec_var in buttons:
+		if spec_var is not Dictionary:
+			continue
+		if str((spec_var as Dictionary).get("id", "")) == action_id:
+			return true
+	return false
+
+func _player_ui_button_text(ui_state: Dictionary, action_id: String) -> String:
+	var buttons: Array = ui_state.get("buttons", [])
+	for spec_var in buttons:
+		if spec_var is not Dictionary:
+			continue
+		var spec := spec_var as Dictionary
+		if str(spec.get("id", "")) == action_id:
+			return str(spec.get("text", ""))
+	return ""
 
 func _expect_vec3_near(actual: Vector3, expected: Vector3, tolerance: float, message: String) -> void:
 	_checks_run += 1

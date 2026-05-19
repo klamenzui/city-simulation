@@ -13,7 +13,7 @@ var multiplayer_session = null
 var camera_mode_manager = null
 
 var _entity_clicked_this_frame: bool = false
-var _building_panel_refresh_left: float = 0.0
+var _panel_refresh_left: float = 0.0
 
 func setup(owner_ref: Node, world_ref: World, multiplayer_session_ref = null) -> void:
 	owner_node = owner_ref
@@ -46,22 +46,34 @@ func update(delta: float) -> void:
 	if debug_panel == null or not debug_panel.visible:
 		return
 	_refresh_debug_panel_dialog_ui()
+	_refresh_player_action_ui()
 
-	var selected_building: Building = selection_state_controller.get_selected_building() if selection_state_controller != null else null
-	if selected_building == null:
+	if selection_state_controller == null:
 		return
 
-	_building_panel_refresh_left -= delta
-	if _building_panel_refresh_left > 0.0:
+	_panel_refresh_left -= delta
+	if _panel_refresh_left > 0.0:
+		return
+	_panel_refresh_left = 0.25
+
+	var selected_building: Building = selection_state_controller.get_selected_building()
+	if selected_building != null:
+		selected_building.refresh_info_panel(world)
 		return
 
-	_building_panel_refresh_left = 0.25
-	selected_building.refresh_info_panel(world)
+	# A selected citizen normally self-refreshes via its sim tick, but a
+	# citizen inside a building (notably the player after R-enter) is not
+	# ticked, so the panel kept stale building content. Refresh the selected
+	# citizen here the same way buildings are refreshed.
+	var selected_citizen: Citizen = selection_state_controller.get_selected_citizen()
+	if selected_citizen != null and selected_citizen.has_method("get_info_sections"):
+		debug_panel.update_sections(selected_citizen.get_info_sections(world))
 
 func handle_citizen_clicked(citizen: Citizen) -> void:
 	_entity_clicked_this_frame = true
 	if selection_state_controller != null:
 		selection_state_controller.handle_citizen_clicked(citizen)
+		_panel_refresh_left = 0.0
 
 func handle_building_clicked(building: Building) -> void:
 	_entity_clicked_this_frame = true
@@ -74,7 +86,7 @@ func handle_building_clicked(building: Building) -> void:
 
 	selection_state_controller.handle_building_clicked(building)
 	if selection_state_controller.get_selected_building() != null:
-		_building_panel_refresh_left = 0.0
+		_panel_refresh_left = 0.0
 
 func deselect() -> void:
 	if selection_state_controller != null:
@@ -186,6 +198,19 @@ func on_citizen_overview_pressed() -> void:
 	if hud_overlay_controller != null:
 		hud_overlay_controller.toggle_citizen_overview()
 
+## Toggles the left DETAILS panel on the local player citizen, mirroring a
+## citizen click — the player avatar is hard to click (camera target / hidden
+## indoors), so the bottom-bar button is the reliable way to inspect it.
+func on_player_overview_pressed() -> void:
+	mark_ui_interacted()
+	if selection_state_controller == null:
+		return
+	var player: Citizen = _get_player_citizen()
+	if player == null:
+		return
+	selection_state_controller.handle_citizen_clicked(player)
+	_panel_refresh_left = 0.0
+
 func on_economy_overview_pressed() -> void:
 	mark_ui_interacted()
 	if hud_overlay_controller != null:
@@ -226,6 +251,7 @@ func _build_debug_panel() -> void:
 	debug_panel.ui_interacted.connect(mark_ui_interacted)
 	debug_panel.citizen_dialog_toggled.connect(handle_debug_panel_citizen_dialog_toggled)
 	debug_panel.citizen_dialog_message_submitted.connect(handle_debug_panel_citizen_dialog_message_submitted)
+	debug_panel.player_action_pressed.connect(handle_debug_panel_player_action_pressed)
 
 func _check_deselect_this_frame() -> void:
 	if not _entity_clicked_this_frame:
@@ -341,6 +367,57 @@ func _refresh_debug_panel_dialog_ui() -> void:
 		return
 	debug_panel.update_citizen_dialog(conversation_manager.get_player_dialog_ui_state(selected_citizen))
 
+func handle_debug_panel_player_action_pressed(action_id: String) -> void:
+	mark_ui_interacted()
+	var player: Citizen = _get_player_citizen()
+	if player == null:
+		return
+	match action_id:
+		"apply_work":
+			player.player_apply_for_work(world)
+		"work":
+			player.player_work(world)
+		"eat":
+			player.player_eat(world)
+		"sleep":
+			player.player_sleep(world)
+		"study":
+			player.player_study(world)
+		"quit_job":
+			player.player_quit_job(world, true)
+		"training":
+			player.player_leave_for_training(world)
+		"stop":
+			player.cancel_player_action(world)
+		_:
+			return
+	_refresh_selected_player_details(player)
+	_refresh_player_action_ui()
+
+func _refresh_selected_player_details(player: Citizen) -> void:
+	if debug_panel == null or player == null:
+		return
+	if selection_state_controller == null or selection_state_controller.get_selected_citizen() != player:
+		return
+	if player.has_method("get_info_sections"):
+		debug_panel.update_sections(player.get_info_sections(world))
+
+func _refresh_player_action_ui() -> void:
+	if debug_panel == null:
+		return
+	if selection_state_controller == null:
+		debug_panel.update_player_actions({})
+		return
+	var player: Citizen = _get_player_citizen()
+	var selected: Citizen = selection_state_controller.get_selected_citizen()
+	if player == null or selected != player:
+		debug_panel.update_player_actions({})
+		return
+	if player.has_method("get_player_action_ui_state"):
+		debug_panel.update_player_actions(player.get_player_action_ui_state(world))
+	else:
+		debug_panel.update_player_actions({})
+
 func _try_toggle_player_dialog_interaction() -> bool:
 	if selection_state_controller == null or conversation_manager == null:
 		return false
@@ -396,6 +473,11 @@ func _ensure_key_action(action_name: String, keycode: int) -> void:
 	key_event.keycode = keycode
 	key_event.physical_keycode = keycode
 	InputMap.action_add_event(action_name, key_event)
+
+## Public accessor for the local player citizen (HUD reads it for the
+## persistent hunger bar). Resolution order lives in _get_player_citizen.
+func get_player_citizen() -> Citizen:
+	return _get_player_citizen()
 
 func _get_player_citizen() -> Citizen:
 	if selection_state_controller == null:

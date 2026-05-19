@@ -85,6 +85,8 @@ var stuck_escape_success_distance: float = 0.45
 var stuck_escape_retarget_interval: float = 0.35
 var stuck_escape_rejoin_probe_interval: float = 0.22
 var stuck_escape_waypoint_skip_distance: float = 1.4
+var stuck_jump_attempts_before_escape: int = 3
+var stuck_jump_retry_interval: float = 0.45
 var stuck_detection_jitter: float = 0.45
 
 # Click-to-move
@@ -173,6 +175,8 @@ const FIELD_NAMES: Array[String] = [
 	"stuck_escape_retarget_interval",
 	"stuck_escape_rejoin_probe_interval",
 	"stuck_escape_waypoint_skip_distance",
+	"stuck_jump_attempts_before_escape",
+	"stuck_jump_retry_interval",
 	"stuck_detection_jitter",
 	# Click-to-move
 	"click_ray_distance",

@@ -218,6 +218,8 @@ func _build_hud(search_result_limit: int, building_overview_refresh_interval_sec
 		Callable(interaction_controller, "on_player_control_pressed"),
 		Callable(interaction_controller, "on_camera_mode_pressed"),
 		Callable(interaction_controller, "on_ai_runtime_pressed"),
+		Callable(interaction_controller, "on_player_overview_pressed"),
+		Callable(interaction_controller, "get_player_citizen"),
 		multiplayer_session,
 		camera_mode_manager
 	)
