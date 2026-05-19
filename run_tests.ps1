@@ -204,6 +204,16 @@ $availableTests = @(
 		Script = "res://tools/codex_sim_components_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "personality"
+		Label = "Personality Scoring"
+		Script = "res://tools/codex_personality_scoring_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "goalcooldown"
+		Label = "Goal Cooldown"
+		Script = "res://tools/codex_goal_cooldown_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "navfacade"
 		Label = "Facade Caller Drift"
 		Script = "res://tools/codex_facade_caller_drift_test.gd"

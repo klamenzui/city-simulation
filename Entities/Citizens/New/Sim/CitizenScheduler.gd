@@ -8,7 +8,7 @@ extends RefCounted
 ##   - **Decision cooldown** (CitizenAgent counts down until next GOAP replan)
 ##   - **Schedule offset** (per-citizen morning routine jitter, sim-minutes)
 ##   - **Personality thresholds** with jitter — hunger / low_energy /
-##     work_motivation / park_interest / fun_target
+##     work_motivation / fun_interest / fun_target
 ##   - **Work-day tracking** — `work_minutes_today` reset on day rollover
 ##   - **Unreachable-target cache** — building_id → sim-minute-of-expiry
 ##
@@ -53,9 +53,9 @@ var work_motivation_base: float = 1.0
 var work_motivation_jitter: float = 0.4
 var work_motivation: float = 1.0
 
-var park_interest_base: float = 0.35
-var park_interest_jitter: float = 0.20
-var park_interest: float = 0.35
+var fun_interest_base: float = 0.35
+var fun_interest_jitter: float = 0.20
+var fun_interest: float = 0.35
 
 var fun_target_base: float = 65.0
 var fun_target_jitter: float = 15.0
@@ -93,10 +93,10 @@ func apply_balance_config() -> void:
 			"work_motivation_base", work_motivation_base))
 	work_motivation_jitter = float(threshold_settings.get(
 			"work_motivation_jitter", work_motivation_jitter))
-	park_interest_base = float(threshold_settings.get(
-			"park_interest_base", park_interest_base))
-	park_interest_jitter = float(threshold_settings.get(
-			"park_interest_jitter", park_interest_jitter))
+	fun_interest_base = float(threshold_settings.get(
+			"fun_interest_base", fun_interest_base))
+	fun_interest_jitter = float(threshold_settings.get(
+			"fun_interest_jitter", fun_interest_jitter))
 	fun_target_base = float(threshold_settings.get(
 			"fun_target_base", fun_target_base))
 	fun_target_jitter = float(threshold_settings.get(
@@ -114,8 +114,8 @@ func init_personality() -> void:
 			-low_energy_threshold_jitter, low_energy_threshold_jitter)
 	work_motivation = work_motivation_base + randf_range(
 			-work_motivation_jitter, work_motivation_jitter)
-	park_interest = clampf(
-			park_interest_base + randf_range(-park_interest_jitter, park_interest_jitter),
+	fun_interest = clampf(
+			fun_interest_base + randf_range(-fun_interest_jitter, fun_interest_jitter),
 			0.0, 0.9)
 	fun_target = fun_target_base + randf_range(-fun_target_jitter, fun_target_jitter)
 

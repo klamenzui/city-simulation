@@ -1,5 +1,26 @@
 {
   "version": 1,
+  "_spec": {
+    "status": "partially_implemented",
+    "note": "Geladen von Simulation/Conversation/CitizenConversationManager.gd. Keys unter planned_unused werden vom Code NICHT gelesen (dokumentierte Absicht, kein Laufzeit-Effekt). Dieser _spec-Block wird vom Loader ignoriert.",
+    "planned_unused": [
+      "lifecycle.background_ai_allowed",
+      "modes.abstract",
+      "modes.bark.allow_ai",
+      "modes.bark.use_templates",
+      "modes.materialized.allow_ai",
+      "modes.materialized.shared_context_for_all_participants",
+      "modes.materialized.max_lines",
+      "modes.interactive",
+      "transitions.materialized_to_interactive.requires_player_start",
+      "player_npc.max_response_sentences",
+      "player_npc.allow_topic_shift",
+      "npc_npc.use_single_shared_context",
+      "npc_npc.prefer_lazy_generation",
+      "npc_npc.materialize_only_when_player_near",
+      "npc_npc.allowed_relationships"
+    ]
+  },
   "lifecycle": {
     "background_ai_allowed": false,
     "default_topic": "smalltalk",
