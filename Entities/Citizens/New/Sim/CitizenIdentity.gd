@@ -29,6 +29,7 @@ var favorite_park: Building = null
 
 # Inventory + progression.
 var home_food_stock: int = 2
+var clothing_items: int = 0
 var education_level: int = 0
 
 # Always present: economy + needs models.

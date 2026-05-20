@@ -578,6 +578,9 @@ func apply_external_manual_direction(delta: float, desired_direction: Vector3) -
 
 
 func _physics_process_keyboard_control(delta: float) -> void:
+	if has_method("is_manual_control_input_locked") and bool(call("is_manual_control_input_locked")):
+		_physics_process_manual_direction(delta, Vector3.ZERO, false)
+		return
 	_physics_process_manual_direction(delta, _get_keyboard_control_direction(), true)
 
 

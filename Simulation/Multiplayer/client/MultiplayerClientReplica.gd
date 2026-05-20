@@ -153,6 +153,12 @@ func send_command(command: Dictionary) -> void:
 			"target_id": str(command.get("target_id", "")),
 			"detail": "Interaction request sent to host.",
 		}
+	elif str(command.get("type", "")) == "player_action":
+		_interaction_status = {
+			"state": "requested",
+			"action_id": str(command.get("action_id", "")),
+			"detail": "Player action request sent to host.",
+		}
 	_send_command_raw(command)
 
 func apply_interaction_status(status: Dictionary) -> void:

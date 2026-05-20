@@ -65,11 +65,6 @@ static func spawn_citizens(parent: Node, world: World, count: int) -> Array[Citi
 	if parent == null or world == null or count <= 0:
 		return spawned
 
-	var first_pool: Array = FIRST_NAMES.duplicate()
-	first_pool.shuffle()
-	var last_pool: Array = LAST_NAMES.duplicate()
-	last_pool.shuffle()
-
 	var citizen_scene: PackedScene = load(CITIZEN_SCENE_PATH)
 	if citizen_scene == null:
 		push_error("CitizenFactory: Could not load %s" % CITIZEN_SCENE_PATH)
@@ -82,9 +77,7 @@ static func spawn_citizens(parent: Node, world: World, count: int) -> Array[Citi
 			world,
 			citizen_scene,
 			i,
-			spawn_count_by_home,
-			first_pool,
-			last_pool
+			spawn_count_by_home
 		)
 		if citizen != null:
 			spawned.append(citizen)
@@ -106,9 +99,7 @@ static func _spawn_citizen_from_scene(
 	world: World,
 	citizen_scene: PackedScene,
 	spawn_index: int,
-	spawn_count_by_home: Dictionary,
-	first_pool: Array = [],
-	last_pool: Array = []
+	spawn_count_by_home: Dictionary
 ) -> Citizen:
 	var candidate := citizen_scene.instantiate()
 	if candidate is not Citizen:
@@ -117,7 +108,7 @@ static func _spawn_citizen_from_scene(
 	var citizen := candidate as Citizen
 	var serial := _claim_citizen_serial(world)
 	citizen.name = "Citizen_%04d" % serial
-	citizen.citizen_name = _build_citizen_display_name(serial, spawn_index, first_pool, last_pool)
+	citizen.citizen_name = _build_citizen_display_name(serial)
 	citizen.set_world_ref(world)
 
 	var home := _assign_home(citizen, world)
@@ -269,23 +260,15 @@ static func _claim_citizen_serial(world: World) -> int:
 	world.set_meta(CITIZEN_SERIAL_META, next_serial + 1)
 	return next_serial
 
-static func _build_citizen_display_name(
-	serial: int,
-	spawn_index: int,
-	first_pool: Array,
-	last_pool: Array
-) -> String:
-	var first_name: String
-	var last_name: String
-	if first_pool.is_empty():
-		first_name = str(FIRST_NAMES[posmod(serial - 1, FIRST_NAMES.size())])
-	else:
-		first_name = str(first_pool[posmod(spawn_index, first_pool.size())])
-	if last_pool.is_empty():
-		last_name = str(LAST_NAMES[posmod(int((serial - 1) / FIRST_NAMES.size()), LAST_NAMES.size())])
-	else:
-		last_name = str(last_pool[posmod(spawn_index, last_pool.size())])
-	return "%s %s" % [first_name, last_name]
+static func _build_citizen_display_name(serial: int) -> String:
+	var combo_count := FIRST_NAMES.size() * LAST_NAMES.size()
+	var combo_index := maxi(serial - 1, 0)
+	var first_name := str(FIRST_NAMES[posmod(combo_index, FIRST_NAMES.size())])
+	var last_name := str(LAST_NAMES[posmod(int(combo_index / FIRST_NAMES.size()), LAST_NAMES.size())])
+	if serial <= combo_count:
+		return "%s %s" % [first_name, last_name]
+	var repeat_index := int((serial - 1) / combo_count) + 1
+	return "%s %s %d" % [first_name, last_name, repeat_index]
 
 static func get_wage_for_job_title(job_title: String) -> int:
 	var configured_wage := BalanceConfig.get_int("economy.jobs.wage_per_hour_by_title.%s" % job_title, -1)

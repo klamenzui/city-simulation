@@ -2,19 +2,30 @@ extends SceneTree
 
 const BuildingScript = preload("res://Entities/Buildings/Building.gd")
 const ParkScript = preload("res://Entities/Buildings/Park.gd")
+const CinemaScript = preload("res://Entities/Buildings/Cinema.gd")
 const RestaurantScript = preload("res://Entities/Buildings/Restaurant.gd")
 const ResidentialBuildingScript = preload("res://Entities/Buildings/ResidentialBuilding.gd")
+const ShopScript = preload("res://Entities/Buildings/Shop.gd")
+const SupermarketScript = preload("res://Entities/Buildings/Supermarket.gd")
 const UniversityScript = preload("res://Entities/Buildings/University.gd")
 const CitizenScript = preload("res://Entities/Citizens/New/Citizen.gd")
 const WorldScript = preload("res://Simulation/World.gd")
 const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
 const ActionScript = preload("res://Actions/Action.gd")
+const WorkActionScript = preload("res://Actions/WorkAction.gd")
 const StudyAtUniversityActionScript = preload("res://Actions/StudyAtUniversityAction.gd")
+const RelaxAtHomeActionScript = preload("res://Actions/RelaxAtHomeAction.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
 const GoToBenchActionScript = preload("res://Actions/GoToBenchAction.gd")
 const RelaxAtParkActionScript = preload("res://Actions/RelaxAtParkAction.gd")
 const RelaxAtBenchActionScript = preload("res://Actions/RelaxAtBenchAction.gd")
+const SocializeActionScript = preload("res://Actions/SocializeAction.gd")
+const WatchCinemaActionScript = preload("res://Actions/WatchCinemaAction.gd")
 const SimulationInteractionControllerScript = preload("res://Simulation/UI/SimulationInteractionController.gd")
+const ToastControllerScript = preload("res://Simulation/UI/ToastController.gd")
+const MultiplayerHostAuthorityScript = preload("res://Simulation/Multiplayer/server/MultiplayerHostAuthority.gd")
+const NetworkEntityRegistryScript = preload("res://Simulation/Multiplayer/shared/NetworkEntityRegistry.gd")
+const WorldSnapshotSerializerScript = preload("res://Simulation/Multiplayer/shared/WorldSnapshotSerializer.gd")
 
 class MockSelectionStateController:
 	extends RefCounted
@@ -36,6 +47,38 @@ class MockSelectionStateController:
 	func is_player_control_active() -> bool:
 		return player_control_active
 
+class MockMultiplayerSession:
+	extends RefCounted
+
+	var client_mode: bool = true
+	var host_mode: bool = false
+	var requested_player_actions: Array[String] = []
+	var requested_entity_targets: Array[Node] = []
+
+	func is_client() -> bool:
+		return client_mode
+
+	func is_host() -> bool:
+		return host_mode
+
+	func request_player_action(action_id: String) -> bool:
+		requested_player_actions.append(action_id)
+		return true
+
+	func request_entity_interaction(target: Node) -> bool:
+		requested_entity_targets.append(target)
+		return target != null
+
+class MockToastController:
+	extends RefCounted
+
+	var messages: Array[String] = []
+	var kinds: Array[String] = []
+
+	func show_toast(message: String, kind: String = "info", _duration_sec: float = 0.0) -> void:
+		messages.append(message)
+		kinds.append(kind)
+
 var _checks_run: int = 0
 var _current_error: String = ""
 var _harness_root: Node3D
@@ -50,9 +93,15 @@ func _run_all_tests() -> void:
 	for test_name in [
 		"building_entry_updates_visitors",
 		"player_enter_takes_capacity_slot",
+		"pause_uses_explicit_action_not_ui_accept",
 		"offline_keyboard_player_building_input_uses_camera_target",
 		"keyboard_player_needs_tick_without_goap",
+		"toast_controller_lifecycle",
 		"player_action_buttons_and_manual_actions",
+		"player_home_move_quit_and_info",
+		"multiplayer_controller_routes_player_actions_as_commands",
+		"multiplayer_host_authority_applies_player_actions",
+		"network_snapshot_rebuilds_player_work_and_home_ui",
 		"player_work_education_gate",
 		"player_university_unlocks_job",
 		"player_work_payday_uses_worked_minutes",
@@ -78,6 +127,7 @@ func _run_all_tests() -> void:
 		"world_unregisters_removed_park_from_queries",
 		"world_registers_scene_park_cluster_once",
 		"citizen_factory_spawns_at_home_entrance",
+		"citizen_factory_display_names_stay_unique",
 		"job_offer_prefers_training_and_reserves_slot",
 		"study_finish_hires_reserved_trainee",
 		"citizen_death_cleanup_unregisters_and_queues_refill",
@@ -114,12 +164,24 @@ func _run_test(test_name: String) -> String:
 			return _test_building_entry_updates_visitors()
 		"player_enter_takes_capacity_slot":
 			return _test_player_enter_takes_capacity_slot()
+		"pause_uses_explicit_action_not_ui_accept":
+			return _test_pause_uses_explicit_action_not_ui_accept()
 		"offline_keyboard_player_building_input_uses_camera_target":
 			return _test_offline_keyboard_player_building_input_uses_camera_target()
 		"keyboard_player_needs_tick_without_goap":
 			return _test_keyboard_player_needs_tick_without_goap()
+		"toast_controller_lifecycle":
+			return _test_toast_controller_lifecycle()
 		"player_action_buttons_and_manual_actions":
 			return _test_player_action_buttons_and_manual_actions()
+		"player_home_move_quit_and_info":
+			return _test_player_home_move_quit_and_info()
+		"multiplayer_controller_routes_player_actions_as_commands":
+			return _test_multiplayer_controller_routes_player_actions_as_commands()
+		"multiplayer_host_authority_applies_player_actions":
+			return _test_multiplayer_host_authority_applies_player_actions()
+		"network_snapshot_rebuilds_player_work_and_home_ui":
+			return _test_network_snapshot_rebuilds_player_work_and_home_ui()
 		"player_work_education_gate":
 			return _test_player_work_education_gate()
 		"player_university_unlocks_job":
@@ -170,6 +232,8 @@ func _run_test(test_name: String) -> String:
 			return _test_world_registers_scene_park_cluster_once()
 		"citizen_factory_spawns_at_home_entrance":
 			return _test_citizen_factory_spawns_at_home_entrance()
+		"citizen_factory_display_names_stay_unique":
+			return _test_citizen_factory_display_names_stay_unique()
 		"job_offer_prefers_training_and_reserves_slot":
 			return _test_job_offer_prefers_training_and_reserves_slot()
 		"study_finish_hires_reserved_trainee":
@@ -725,6 +789,15 @@ func _test_citizen_factory_spawns_at_home_entrance() -> String:
 	_free_world(world)
 	return _current_error
 
+func _test_citizen_factory_display_names_stay_unique() -> String:
+	var names := {}
+	for serial in range(1, 121):
+		var display_name := str(CitizenFactoryScript._build_citizen_display_name(serial))
+		_expect(not names.has(display_name), "citizen display name should not repeat before exhausting the full name pool: %s" % display_name)
+		names[display_name] = true
+	_expect_eq(names.size(), 120, "first 120 citizen display names should be unique")
+	return _current_error
+
 func _test_job_offer_prefers_training_and_reserves_slot() -> String:
 	var world: World = _new_world()
 	var factory: Building = _new_building("Training Factory", 1)
@@ -1007,19 +1080,29 @@ func _new_building(building_name: String, worker_capacity: int = 0) -> Building:
 func _test_player_enter_takes_capacity_slot() -> String:
 	var world: World = _new_world()
 
-	# Residential -> tenant slot, capacity-gated, hidden, reversible.
+	# Residential entry is only inspection. Renting is explicit and persists.
 	var home: ResidentialBuilding = _new_residential("PlayerHome", Vector3.ZERO, 1)
 	home.capacity = 1  # override balance-applied default from _ready()
 	var p1: Citizen = _new_citizen("Player One")
-	_expect(p1.player_enter_building(home, world), "player should enter residential and take a tenant slot")
-	_expect_eq(home.tenants.size(), 1, "residential tenants should increase by 1")
-	_expect(home.tenants.has(p1), "player should be listed as tenant")
+	p1.set_world_ref(world)
+	_expect(p1.player_enter_building(home, world), "player should enter residential to inspect it")
+	_expect_eq(home.tenants.size(), 0, "residential inspection must not take a tenant slot")
+	_expect(p1.home == null, "residential inspection must not assign a home")
 	_expect(p1.is_inside_building(), "player should be marked inside (hidden) after entering")
+	var rent_state := p1.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(rent_state, "rent_home"), "residential UI should expose an enabled rent button")
+	_expect_eq(_player_ui_button_text(rent_state, "rent_home"), "Mieten", "first residential action should be Mieten")
+	_expect(p1.player_rent_home(world), "rent button should assign the player home")
+	_expect_eq(home.tenants.size(), 1, "renting should take the tenant slot")
+	_expect(home.tenants.has(p1), "player should be listed as tenant after renting")
+	_expect_eq(p1.home, home, "rented residential should persist as the player's home")
 
 	var p2: Citizen = _new_citizen("Player Two")
-	_expect(not p2.player_enter_building(home, world), "full residential must reject the player")
-	_expect_eq(home.tenants.size(), 1, "rejected entry must not take a slot")
-	_expect(not p2.is_inside_building(), "rejected player must not be inside")
+	p2.set_world_ref(world)
+	_expect(p2.player_enter_building(home, world), "full residential can still be inspected")
+	_expect(not p2.player_rent_home(world), "full residential must reject rental")
+	_expect_eq(home.tenants.size(), 1, "rejected rental must not take a slot")
+	_expect(p2.home == null, "rejected rental must not assign a home")
 
 	_expect(p1.player_exit_building(world), "player should exit residential")
 	_expect_eq(home.tenants.size(), 1, "leaving home should keep the player's home slot")
@@ -1039,6 +1122,29 @@ func _test_player_enter_takes_capacity_slot() -> String:
 	_expect(p3.player_exit_building(world), "player should exit workplace")
 	_expect_eq(uni.workers.size(), 0, "exit should not leave a worker slot taken")
 	_expect_eq(uni.visitors.size(), 0, "exit should free the visitor slot")
+
+	_free_world(world)
+	return _current_error
+
+func _test_pause_uses_explicit_action_not_ui_accept() -> String:
+	var world: World = _new_world()
+	var interaction = SimulationInteractionControllerScript.new()
+	interaction.world = world
+	interaction.selection_state_controller = MockSelectionStateController.new()
+	interaction._ensure_pause_input_action()
+	interaction._ensure_dialog_interact_input_action()
+
+	var accept_event := InputEventAction.new()
+	accept_event.action = "ui_accept"
+	accept_event.pressed = true
+	_expect(not interaction.handle_input(accept_event), "ui_accept should not toggle simulation pause")
+	_expect(not world.is_paused, "ui_accept should leave the world unpaused")
+
+	var pause_event := InputEventAction.new()
+	pause_event.action = "simulation_pause"
+	pause_event.pressed = true
+	_expect(interaction.handle_input(pause_event), "simulation_pause should be handled")
+	_expect(world.is_paused, "simulation_pause should toggle world pause")
 
 	_free_world(world)
 	return _current_error
@@ -1069,7 +1175,9 @@ func _test_offline_keyboard_player_building_input_uses_camera_target() -> String
 
 	_expect(interaction.handle_input(enter_event), "R-enter should be handled for the offline keyboard camera target")
 	_expect(player.is_inside_building(), "offline keyboard player should enter the nearest building")
-	_expect(home.tenants.has(player), "offline keyboard player should take a residential capacity slot")
+	_expect(not home.tenants.has(player), "offline keyboard entry should inspect before renting")
+	_expect(player.player_rent_home(world), "offline keyboard player should rent after entering residential")
+	_expect(home.tenants.has(player), "offline keyboard player should take a residential slot after renting")
 
 	var exit_event := InputEventAction.new()
 	exit_event.action = "player_exit_building"
@@ -1130,6 +1238,19 @@ func _test_keyboard_player_needs_tick_without_goap() -> String:
 	_free_world(world)
 	return _current_error
 
+func _test_toast_controller_lifecycle() -> String:
+	var canvas := CanvasLayer.new()
+	_harness_root.add_child(canvas)
+	var toasts = ToastControllerScript.new()
+	toasts.setup(canvas)
+	toasts.show_toast("Testmeldung", "success", 0.2)
+	_expect_eq(toasts.get_active_toast_count(), 1, "toast should be tracked after creation")
+	var messages := toasts.get_active_toast_messages()
+	_expect(messages.has("Testmeldung"), "toast should keep its visible message for tests and diagnostics")
+	toasts.update(0.3)
+	_expect_eq(toasts.get_active_toast_count(), 0, "toast should expire after its duration")
+	return _current_error
+
 func _test_player_action_buttons_and_manual_actions() -> String:
 	var world: World = _new_world()
 	world.minutes_per_tick = 10
@@ -1151,9 +1272,34 @@ func _test_player_action_buttons_and_manual_actions() -> String:
 	player.needs.health = 100.0
 
 	_expect(player.player_enter_building(home, world), "player should move into a free home")
+	var rent_home_state := player.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(rent_home_state, "rent_home"), "residential UI should expose an enabled rent button")
+	_expect(player.player_rent_home(world), "rent button action should set the player's home")
+	var selection := MockSelectionStateController.new()
+	selection.camera_player_target = player
+	var interaction = SimulationInteractionControllerScript.new()
+	interaction.world = world
+	interaction.selection_state_controller = selection
+	interaction._refresh_player_home_marker()
+	var home_marker := home.get_node_or_null("PlayerHomeMarker") as Label3D
+	_expect(home_marker != null and home_marker.text.find("ZUHAUSE") != -1,
+			"rented player home should get a visible home marker")
 	var home_state := player.get_player_action_ui_state(world)
+	_expect_eq(_player_ui_button_text(home_state, "quit_home"), "Wohnung kuendigen", "home UI should expose explicit lease cancellation")
 	_expect(_player_ui_button_enabled(home_state, "eat"), "home UI should expose an enabled eat button")
 	_expect(_player_ui_button_enabled(home_state, "sleep"), "home UI should expose an enabled sleep button")
+	_expect(_player_ui_button_enabled(home_state, "relax"), "home UI should expose an enabled relax button")
+	player.needs.hunger = 20.0
+	player.needs.energy = 90.0
+	player.needs.fun = 0.0
+	var home_fun_before := player.needs.fun
+	_expect(player.player_relax(world), "home relax action should start for the player")
+	_expect(player.current_action is RelaxAtHomeActionScript, "home relax should use RelaxAtHomeAction")
+	player._agent.sim_tick(player, world)
+	_expect(player.needs.fun > home_fun_before, "home relax should improve player fun")
+	player.cancel_player_action(world)
+
+	player.needs.hunger = 85.0
 	var hunger_before := player.needs.hunger
 	_expect(player.player_eat(world), "eat button action should start eating at home")
 	_expect_eq(player.home_food_stock, 1, "eat action should consume one home food stock immediately")
@@ -1185,10 +1331,296 @@ func _test_player_action_buttons_and_manual_actions() -> String:
 	_expect(player.player_work(world), "work button action should start the accepted job")
 	player._agent.sim_tick(player, world)
 	_expect(player.work_minutes_today > worked_before, "explicit player work action should tick for keyboard player")
+	_expect(player.player_exit_building(world), "leaving workplace should exit without quitting")
+	_expect(player.job != null and player.job.workplace == workplace, "leaving workplace should keep the accepted job")
+	_expect(workplace.workers.has(player), "leaving workplace should keep the worker slot")
+	_expect(player.player_enter_building(workplace, world), "player should re-enter accepted workplace")
+	var reentered_state := player.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(reentered_state, "work"), "accepted job should still show Arbeit after re-entering")
+	_expect(not _player_ui_button_present(reentered_state, "apply_work"), "accepted job should not require re-application")
 	_expect(player.player_quit_job(world, true), "quit button action should leave and remove the job")
 	_expect(player.job == null, "quit should clear the player's job")
 	_expect(not workplace.workers.has(player), "quit should free the worker slot")
 	_expect(not player.is_inside_building(), "quit from UI should exit the workplace")
+
+	var shop: Shop = _new_shop("Player Inventory Shop", Vector3(6.0, 0.0, 0.0))
+	var market: Supermarket = _new_supermarket("Player Inventory Market", Vector3(8.0, 0.0, 0.0))
+	world.register_building(shop)
+	world.register_building(market)
+	world.time.minutes_total = 10 * 60
+	player.wallet.balance = 120
+	player.needs.fun = 30.0
+
+	_expect(player.player_enter_building(shop, world), "player should enter a shop as a visitor")
+	var shop_action_state := player.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(shop_action_state, "inventory"), "player UI should expose the inventory button")
+	_expect(_player_ui_button_enabled(shop_action_state, "shop"), "shop UI should expose the shopping window button")
+	var shop_inventory_state := player.get_player_inventory_ui_state(world, "shop")
+	_expect(_player_ui_button_enabled(shop_inventory_state, "buy_shop_item"), "shop inventory should expose clothing purchase")
+	var clothing_price := shop.get_item_price_quote(1.0)
+	var shop_stock_before := shop.get_stock("clothing")
+	var shop_balance_before := shop.account.balance
+	var wallet_before_shop := player.wallet.balance
+	var fun_before_shop := player.needs.fun
+	_expect(player.player_buy_shop_item(world), "player should buy clothing directly from the shop")
+	_expect_eq(player.clothing_items, 1, "clothing purchase should add to player inventory")
+	_expect_eq(player.wallet.balance, wallet_before_shop - clothing_price, "clothing purchase should charge the player")
+	_expect_eq(shop.account.balance, shop_balance_before + clothing_price, "shop should receive clothing revenue")
+	_expect_eq(shop.get_stock("clothing"), shop_stock_before - 1, "shop clothing stock should decrease")
+	_expect(player.needs.fun > fun_before_shop, "clothing purchase should improve fun")
+	_expect(player.player_exit_building(world), "player should leave the shop before entering the market")
+
+	_expect(player.player_enter_building(market, world), "player should enter a supermarket as a visitor")
+	var grocery_inventory_state := player.get_player_inventory_ui_state(world, "shop")
+	_expect(_player_ui_button_enabled(grocery_inventory_state, "buy_groceries"), "supermarket inventory should expose grocery purchase")
+	var grocery_price := market.get_grocery_price(world)
+	var grocery_stock_before := market.get_stock("grocery_bundle")
+	var wallet_before_grocery := player.wallet.balance
+	var food_before := player.home_food_stock
+	_expect(player.player_buy_groceries(world), "player should buy groceries from the supermarket")
+	_expect_eq(player.home_food_stock, food_before + market.groceries_per_purchase, "grocery purchase should add home food stock")
+	_expect_eq(player.wallet.balance, wallet_before_grocery - grocery_price, "grocery purchase should charge the player")
+	_expect_eq(market.get_stock("grocery_bundle"), grocery_stock_before - 1, "supermarket grocery stock should decrease")
+	_expect(player.player_exit_building(world), "player should leave the market before park actions")
+
+	var park: Park = _new_park("Player Social Park")
+	world.register_building(park)
+	player.needs.hunger = 20.0
+	player.needs.energy = 90.0
+	player.needs.health = 100.0
+	player.needs.social = 0.0
+	player.needs.fun = 0.0
+	_expect(player.player_enter_building(park, world), "player should enter park for social and fun actions")
+	var park_action_state := player.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(park_action_state, "socialize"), "park UI should expose socialize")
+	_expect(_player_ui_button_enabled(park_action_state, "relax"), "park UI should expose relax")
+	var social_before := player.needs.social
+	_expect(player.player_socialize(world), "park socialize action should start for the player")
+	_expect(player.current_action is SocializeActionScript, "socialize should use SocializeAction")
+	player._agent.sim_tick(player, world)
+	_expect(player.needs.social > social_before, "socialize should improve player social")
+	player.cancel_player_action(world)
+	_expect(player.player_enter_building(park, world), "player should re-enter park after cancelling socialize")
+	var park_fun_before := player.needs.fun
+	_expect(player.player_relax(world), "park relax action should start for the player")
+	_expect(player.current_action is RelaxAtParkActionScript, "park relax should use RelaxAtParkAction")
+	player._agent.sim_tick(player, world)
+	_expect(player.needs.fun > park_fun_before, "park relax should improve player fun")
+	player.cancel_player_action(world)
+	_expect(not player.is_inside_building(), "cancelled park relax should leave the park")
+
+	var cinema: Cinema = _new_cinema("Player Cinema", Vector3(10.0, 0.0, 0.0))
+	world.register_building(cinema)
+	world.time.minutes_total = 13 * 60
+	player.wallet.balance = 100
+	player.needs.fun = 0.0
+	_expect(player.player_enter_building(cinema, world), "player should enter cinema as visitor")
+	var cinema_action_state := player.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(cinema_action_state, "watch_cinema"), "cinema UI should expose watch action")
+	var cinema_fun_before := player.needs.fun
+	_expect(player.player_watch_cinema(world), "watch cinema action should start for the player")
+	_expect(player.current_action is WatchCinemaActionScript, "cinema action should use WatchCinemaAction")
+	player._agent.sim_tick(player, world)
+	_expect(player.needs.fun > cinema_fun_before, "watching cinema should improve player fun")
+
+	_free_world(world)
+	return _current_error
+
+func _test_player_home_move_quit_and_info() -> String:
+	var world: World = _new_world()
+	var first_home: ResidentialBuilding = _new_residential("First Player Home", Vector3.ZERO, 1)
+	var second_home: ResidentialBuilding = _new_residential("Second Player Home", Vector3(4.0, 0.0, 0.0), 1)
+	world.register_building(first_home)
+	world.register_building(second_home)
+
+	var player: Citizen = _new_citizen("Player Tenant")
+	world.register_citizen(player)
+	player.set_world_ref(world)
+
+	_expect(player.player_enter_building(first_home, world), "player should inspect first home")
+	_expect(player.player_rent_home(world), "player should rent first home")
+	_expect_eq(_info_row_value(player.get_info_sections(world), "Wohnung"), "First Player Home",
+			"player info should show rented home")
+	_expect(player.player_exit_building(world), "player should leave first home without ending lease")
+
+	_expect(player.player_enter_building(second_home, world), "player should inspect second home")
+	var move_state := player.get_player_action_ui_state(world)
+	_expect_eq(_player_ui_button_text(move_state, "rent_home"), "Umziehen",
+			"second residential should offer moving instead of first rental")
+	_expect(player.player_rent_home(world), "player should move to second home")
+	_expect_eq(player.home, second_home, "move should replace the player home")
+	_expect(not first_home.tenants.has(player), "move should release the old tenant slot")
+	_expect(second_home.tenants.has(player), "move should take the new tenant slot")
+	_expect_eq(_info_row_value(player.get_info_sections(world), "Wohnung"), "Second Player Home",
+			"player info should show moved home")
+
+	_expect(player.player_quit_home(world, true), "player should be able to cancel the home lease")
+	_expect(player.home == null, "home cancellation should clear player home")
+	_expect(not second_home.tenants.has(player), "home cancellation should release tenant slot")
+	_expect_eq(_info_row_value(player.get_info_sections(world), "Wohnung"), "keine",
+			"player info should show no home after cancellation")
+
+	_free_world(world)
+	return _current_error
+
+func _test_multiplayer_controller_routes_player_actions_as_commands() -> String:
+	var world: World = _new_world()
+	var home: ResidentialBuilding = _new_residential("NetworkCommandHome", Vector3.ZERO, 1)
+	world.register_building(home)
+
+	var player: Citizen = _new_citizen("Network Command Player")
+	world.register_citizen(player)
+	player.set_world_ref(world)
+
+	var selection := MockSelectionStateController.new()
+	selection.camera_player_target = player
+	selection.player_control_active = true
+	var session := MockMultiplayerSession.new()
+	var interaction = SimulationInteractionControllerScript.new()
+	interaction.world = world
+	interaction.selection_state_controller = selection
+	interaction.multiplayer_session = session
+	var toasts := MockToastController.new()
+	interaction.bind_toast_controller(toasts)
+
+	interaction.handle_debug_panel_player_action_pressed("rent_home")
+	_expect_eq(session.requested_player_actions.size(), 1,
+			"network player action should be routed as a command")
+	_expect_eq(toasts.messages.size(), 1,
+			"network player action should show a request toast")
+	var first_action := session.requested_player_actions[0] if session.requested_player_actions.size() > 0 else ""
+	_expect_eq(first_action, "rent_home",
+			"network player action command should keep the action id")
+	_expect(player.home == null, "network controller must not mutate the client replica directly")
+
+	_expect(interaction._try_player_enter_building(), "network R-enter should be handled as a command")
+	_expect_eq(session.requested_entity_targets.size(), 1,
+			"network R-enter should request one entity interaction")
+	_expect_eq(toasts.messages.size(), 2,
+			"network R-enter should show a request toast")
+	var first_target := session.requested_entity_targets[0] if session.requested_entity_targets.size() > 0 else null
+	_expect_eq(first_target, home,
+			"network R-enter should target the nearest building")
+	_expect(not player.is_inside_building(), "network R-enter must not locally enter the building")
+
+	_expect(interaction._try_player_exit_building(), "network T-exit should be handled as a command")
+	_expect_eq(toasts.messages.size(), 3,
+			"network T-exit should show a request toast")
+	var exit_action := session.requested_player_actions[1] if session.requested_player_actions.size() > 1 else ""
+	_expect_eq(exit_action, "exit_building",
+			"network T-exit should request an authoritative exit action")
+
+	_free_world(world)
+	return _current_error
+
+func _test_multiplayer_host_authority_applies_player_actions() -> String:
+	var world: World = _new_world()
+	world.minutes_per_tick = 10
+	var home: ResidentialBuilding = _new_residential("HostActionHome", Vector3.ZERO, 1)
+	var workplace: Building = _new_building("HostActionShop", 1)
+	workplace.building_type = BuildingScript.BuildingType.SHOP
+	world.register_building(home)
+	world.register_building(workplace)
+
+	var player: Citizen = _new_citizen("Host Action Player")
+	world.register_citizen(player)
+	player.set_world_ref(world)
+	player.autonomous_simulation_enabled = true
+	player.needs.hunger = 20.0
+	player.needs.energy = 100.0
+	player.needs.fun = 80.0
+	player.needs.health = 100.0
+
+	var authority = MultiplayerHostAuthorityScript.new()
+	authority.setup(_harness_root, world, null)
+	authority._assign_player_citizen(1)
+
+	_expect(player.player_enter_building(home, world), "host command player should inspect home first")
+	authority.handle_local_command({"type": "player_action", "action_id": "rent_home"})
+	_expect_eq(player.home, home, "host player_action rent_home should assign home")
+	_expect(home.tenants.has(player), "host player_action rent_home should take tenant slot")
+
+	_expect(player.player_exit_building(world), "host command player should leave home before work")
+	_expect(player.player_enter_building(workplace, world), "host command player should enter workplace")
+	authority.handle_local_command({"type": "player_action", "action_id": "apply_work"})
+	_expect(player.job != null and player.job.workplace == workplace,
+			"host player_action apply_work should assign the workplace job")
+	_expect(workplace.workers.has(player), "host player_action apply_work should take worker slot")
+	authority.handle_local_command({"type": "player_action", "action_id": "work"})
+	_expect(player.current_action is WorkActionScript,
+			"host player_action work should start the explicit work action")
+
+	authority.handle_local_command({"type": "player_action", "action_id": "stop"})
+	_expect(player.current_action == null, "host player_action stop should cancel the explicit work action")
+	_expect(player.player_exit_building(world), "host command player should leave workplace before shopping")
+	var shop: Shop = _new_shop("HostActionInventoryShop", Vector3(4.0, 0.0, 0.0))
+	world.register_building(shop)
+	world.time.minutes_total = 10 * 60
+	player.wallet.balance = 100
+	_expect(player.player_enter_building(shop, world), "host command player should enter shop before buying")
+	authority.handle_local_command({"type": "player_action", "action_id": "buy_shop_item"})
+	_expect_eq(player.clothing_items, 1, "host player_action buy_shop_item should add clothing inventory")
+
+	var status: Dictionary = authority.get_debug_status()
+	_expect(int(status.get("accepted_player_action_command_count", 0)) >= 3,
+			"host debug should count accepted player action commands")
+
+	_free_world(world)
+	return _current_error
+
+func _test_network_snapshot_rebuilds_player_work_and_home_ui() -> String:
+	var world: World = _new_world()
+	world.minutes_per_tick = 10
+	var home: ResidentialBuilding = _new_residential("SnapshotHome", Vector3.ZERO, 1)
+	var workplace: Building = _new_building("SnapshotShop", 1)
+	workplace.building_type = BuildingScript.BuildingType.SHOP
+	world.register_building(home)
+	world.register_building(workplace)
+
+	var player: Citizen = _new_citizen("Snapshot Player")
+	world.register_citizen(player)
+	player.set_world_ref(world)
+	player.home_food_stock = 3
+	player.needs.hunger = 20.0
+	player.needs.energy = 100.0
+	player.needs.fun = 80.0
+	player.needs.health = 100.0
+
+	_expect(player.player_enter_building(home, world), "snapshot player should inspect home")
+	_expect(player.player_rent_home(world), "snapshot player should rent home")
+	_expect(player.player_exit_building(world), "snapshot player should leave home")
+	_expect(player.player_enter_building(workplace, world), "snapshot player should enter workplace")
+	_expect(player.player_apply_for_work(world), "snapshot player should be accepted for work")
+	_expect(player.player_work(world), "snapshot player should start work")
+	player.work_minutes_today = 45
+	player.clothing_items = 2
+
+	var registry = NetworkEntityRegistryScript.new()
+	var snapshot := WorldSnapshotSerializerScript.build_snapshot(world, _harness_root, 1, registry)
+	var player_id := NetworkEntityRegistryScript.get_entity_id(player)
+	var player_entry := _snapshot_entry_by_id(snapshot.get("citizens", []), player_id)
+	var building_lookup := WorldSnapshotSerializerScript.build_building_lookup(
+			_harness_root,
+			snapshot.get("buildings", []) as Array)
+
+	var replica: Citizen = _new_citizen("Snapshot Replica")
+	replica.apply_network_snapshot(player_entry, building_lookup)
+	var ui_state := replica.get_player_action_ui_state(world)
+	_expect_eq(replica.home, home, "replica snapshot should restore player home")
+	_expect(replica.job != null and replica.job.workplace == workplace,
+			"replica snapshot should restore accepted job")
+	_expect_eq(replica.work_minutes_today, 45,
+			"replica snapshot should restore worked minutes")
+	_expect_eq(replica.clothing_items, 2,
+			"replica snapshot should restore player clothing inventory")
+	_expect(_player_ui_button_present(ui_state, "work"),
+			"replica UI should show Arbeiten after accepted job snapshot")
+	_expect(not _player_ui_button_present(ui_state, "apply_work"),
+			"replica UI must not show Bewerben after accepted job snapshot")
+	_expect(_player_ui_button_enabled(ui_state, "stop"),
+			"replica UI should expose stop while work action is active")
+	_expect_eq(_info_row_value(replica.get_info_sections(world), "Wohnung"), "SnapshotHome",
+			"replica info should show the snapshot home")
 
 	_free_world(world)
 	return _current_error
@@ -1365,6 +1797,51 @@ func _new_restaurant(building_name: String, position: Vector3) -> Restaurant:
 	_harness_root.add_child(restaurant)
 	return restaurant
 
+func _new_shop(building_name: String, position: Vector3 = Vector3.ZERO) -> Shop:
+	var shop: Shop = ShopScript.new()
+	shop.name = building_name
+	shop.building_name = building_name
+	shop.position = position
+	var entrance := Node3D.new()
+	entrance.name = "Entrance"
+	entrance.position = Vector3(0.0, 0.0, 1.1)
+	shop.add_child(entrance)
+	_harness_root.add_child(shop)
+	shop.job_capacity = 0
+	if shop.get_stock("clothing") <= 0:
+		shop.define_stock_item("clothing", 8, shop.item_price, 12, 4, "clothes")
+	return shop
+
+func _new_cinema(building_name: String, position: Vector3 = Vector3.ZERO) -> Cinema:
+	var cinema: Cinema = CinemaScript.new()
+	cinema.name = building_name
+	cinema.building_name = building_name
+	cinema.position = position
+	var entrance := Node3D.new()
+	entrance.name = "Entrance"
+	entrance.position = Vector3(0.0, 0.0, 1.1)
+	cinema.add_child(entrance)
+	_harness_root.add_child(cinema)
+	cinema.job_capacity = 0
+	return cinema
+
+func _new_supermarket(building_name: String, position: Vector3 = Vector3.ZERO) -> Supermarket:
+	var market: Supermarket = SupermarketScript.new()
+	market.name = building_name
+	market.building_name = building_name
+	market.position = position
+	var entrance := Node3D.new()
+	entrance.name = "Entrance"
+	entrance.position = Vector3(0.0, 0.0, 1.1)
+	market.add_child(entrance)
+	_harness_root.add_child(market)
+	market.job_capacity = 0
+	if market.get_stock("clothing") <= 0:
+		market.define_stock_item("clothing", 8, market.clothing_price, 12, 4, "clothes")
+	if market.get_stock("grocery_bundle") <= 0:
+		market.define_stock_item("grocery_bundle", 8, market.grocery_price, 12, 4, "food")
+	return market
+
 func _new_park(building_name: String) -> Park:
 	var cluster := Node3D.new()
 	cluster.name = "%sCluster" % building_name
@@ -1442,6 +1919,17 @@ func _player_ui_button_enabled(ui_state: Dictionary, action_id: String) -> bool:
 		var spec := spec_var as Dictionary
 		if str(spec.get("id", "")) == action_id:
 			return bool(spec.get("enabled", false))
+	# Inventory state uses a categories[].items[] layout where the button id
+	# lives in each item's "action_id" field; consult it as a secondary source.
+	for cat_var in ui_state.get("categories", []):
+		if cat_var is not Dictionary:
+			continue
+		for item_var in (cat_var as Dictionary).get("items", []):
+			if item_var is not Dictionary:
+				continue
+			var item := item_var as Dictionary
+			if str(item.get("action_id", "")) == action_id:
+				return bool(item.get("enabled", false))
 	return false
 
 func _player_ui_button_present(ui_state: Dictionary, action_id: String) -> bool:
@@ -1451,6 +1939,12 @@ func _player_ui_button_present(ui_state: Dictionary, action_id: String) -> bool:
 			continue
 		if str((spec_var as Dictionary).get("id", "")) == action_id:
 			return true
+	for cat_var in ui_state.get("categories", []):
+		if cat_var is not Dictionary:
+			continue
+		for item_var in (cat_var as Dictionary).get("items", []):
+			if item_var is Dictionary and str((item_var as Dictionary).get("action_id", "")) == action_id:
+				return true
 	return false
 
 func _player_ui_button_text(ui_state: Dictionary, action_id: String) -> String:
@@ -1462,6 +1956,30 @@ func _player_ui_button_text(ui_state: Dictionary, action_id: String) -> String:
 		if str(spec.get("id", "")) == action_id:
 			return str(spec.get("text", ""))
 	return ""
+
+func _info_row_value(sections: Array, label: String) -> String:
+	for section_var in sections:
+		if section_var is not Dictionary:
+			continue
+		var rows: Array = (section_var as Dictionary).get("rows", [])
+		for row_var in rows:
+			if row_var is not Dictionary:
+				continue
+			var row := row_var as Dictionary
+			if str(row.get("label", "")) == label:
+				return str(row.get("value", ""))
+	return ""
+
+func _snapshot_entry_by_id(entries: Variant, entity_id: String) -> Dictionary:
+	if entries is not Array:
+		return {}
+	for entry_var in entries as Array:
+		if entry_var is not Dictionary:
+			continue
+		var entry := entry_var as Dictionary
+		if str(entry.get("id", "")) == entity_id:
+			return entry
+	return {}
 
 func _expect_vec3_near(actual: Vector3, expected: Vector3, tolerance: float, message: String) -> void:
 	_checks_run += 1

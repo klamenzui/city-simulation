@@ -29,6 +29,11 @@ const EatAtHomeActionScript = preload("res://Actions/EatAtHomeAction.gd")
 const EatAtRestaurantActionScript = preload("res://Actions/EatAtRestaurantAction.gd")
 const SleepActionScript = preload("res://Actions/SleepAction.gd")
 const StudyAtUniversityActionScript = preload("res://Actions/StudyAtUniversityAction.gd")
+const RelaxAtHomeActionScript = preload("res://Actions/RelaxAtHomeAction.gd")
+const RelaxAtParkActionScript = preload("res://Actions/RelaxAtParkAction.gd")
+const SocializeActionScript = preload("res://Actions/SocializeAction.gd")
+const WatchCinemaActionScript = preload("res://Actions/WatchCinemaAction.gd")
+const PlayerInventoryCatalogScript = preload("res://Simulation/UI/PlayerInventoryCatalog.gd")
 const FALL_RESPAWN_DEPTH_METERS := 8.0
 const FALL_RESPAWN_COOLDOWN_SEC := 1.0
 const FALL_RESPAWN_GROUND_OFFSET := 0.12
@@ -69,6 +74,7 @@ var _runtime_conversation_partner: String = ""
 var _runtime_conversation_topic: String = ""
 var network_replica_mode: bool = false
 var _network_action_label: String = ""
+var _network_player_action_id: String = ""
 var _server_interaction_label: String = ""
 var _network_lod_tier: String = ""
 var _network_inside_building: bool = false
@@ -390,6 +396,9 @@ func apply_network_snapshot(data: Dictionary, building_lookup: Dictionary) -> vo
 		collision_mask = 0
 	if wallet != null:
 		wallet.balance = int(data.get("wallet", wallet.balance))
+	home_food_stock = int(data.get("home_food_stock", home_food_stock))
+	clothing_items = int(data.get("clothing_items", clothing_items))
+	education_level = int(data.get("education_level", education_level))
 	if needs != null:
 		needs.hunger = float(data.get("hunger", needs.hunger))
 		needs.energy = float(data.get("energy", needs.energy))
@@ -402,10 +411,31 @@ func apply_network_snapshot(data: Dictionary, building_lookup: Dictionary) -> vo
 	if data.has("home_id"):
 		var home_id := str(data.get("home_id", ""))
 		home = building_lookup.get(home_id, null) as ResidentialBuilding
-	if job != null and data.has("workplace_id"):
+	if data.has("workplace_id"):
 		var workplace_id := str(data.get("workplace_id", ""))
-		job.workplace = building_lookup.get(workplace_id, null) as Building
+		var workplace := building_lookup.get(workplace_id, null) as Building
+		if workplace_id.is_empty() or workplace == null:
+			job = null
+		else:
+			if job == null:
+				job = Job.new()
+			job.workplace = workplace
+			job.preferred_workplace = workplace
+			job.title = str(data.get("job_title", job.title))
+			job.wage_per_hour = int(data.get("job_wage_per_hour", job.wage_per_hour))
+			job.shift_hours = int(data.get("job_shift_hours", job.shift_hours))
+			job.required_education_level = int(data.get("job_required_education_level", job.required_education_level))
+			job.workplace_service_type = str(data.get("job_workplace_service_type", job.workplace_service_type))
+			var allowed_types: Variant = data.get("job_allowed_building_types", job.allowed_building_types)
+			if allowed_types is Array:
+				var converted_types: Array[int] = []
+				for allowed_type in allowed_types as Array:
+					converted_types.append(int(allowed_type))
+				job.allowed_building_types = converted_types
+	work_minutes_today = int(data.get("work_minutes_today", work_minutes_today))
 	_network_action_label = str(data.get("action", _network_action_label))
+	_network_player_action_id = str(data.get("player_action_id", _network_player_action_id))
+	_player_action_notice = str(data.get("player_action_notice", _player_action_notice))
 	_network_lod_tier = str(data.get("lod", _network_lod_tier))
 	_network_inside_building = bool(data.get("inside", _network_inside_building))
 	_network_manual_control = bool(data.get("manual_control", _network_manual_control))
@@ -564,6 +594,15 @@ var home_food_stock: int:
 	set(value):
 		if _sim != null and _sim.identity != null:
 			_sim.identity.home_food_stock = value
+
+var clothing_items: int:
+	get:
+		if _sim != null and _sim.identity != null:
+			return _sim.identity.clothing_items
+		return 0
+	set(value):
+		if _sim != null and _sim.identity != null:
+			_sim.identity.clothing_items = maxi(value, 0)
 
 var education_level: int:
 	get:
@@ -839,6 +878,57 @@ func cancel_player_action(world: Node = null) -> void:
 	_player_action_notice = ""
 
 
+func get_player_action_notice() -> String:
+	return _player_action_notice
+
+
+func get_network_player_action_id() -> String:
+	return _active_player_action_id()
+
+
+func player_rent_home(world: Node = null) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	var location := _get_player_current_building()
+	if location == null or location is not ResidentialBuilding:
+		return false
+	var residential := location as ResidentialBuilding
+	if home == residential and residential.tenants.has(self):
+		_player_action_notice = "Du wohnst bereits hier."
+		return true
+	if not residential.has_free_slot():
+		_player_action_notice = "%s hat keine freie Wohnung." % _building_label(residential)
+		return false
+	cancel_player_action(resolved_world)
+	var old_home := home
+	if not residential.add_tenant(self):
+		_player_action_notice = "%s hat keine freie Wohnung." % _building_label(residential)
+		return false
+	if old_home != null and old_home != residential:
+		old_home.remove_tenant(self)
+	home = residential
+	_player_slot_building = residential
+	_player_slot_kind = "tenant"
+	_player_action_notice = "Wohnung gemietet: %s." % _building_label(residential)
+	return true
+
+
+func player_quit_home(world: Node = null, exit_after: bool = true) -> bool:
+	if home == null:
+		return false
+	var resolved_world := _resolve_world_arg(world)
+	var old_home := home
+	cancel_player_action(resolved_world)
+	if old_home.has_method("remove_tenant"):
+		old_home.remove_tenant(self)
+	home = null
+	if is_inside_building() and _get_player_current_building() == old_home and exit_after:
+		exit_current_building(resolved_world)
+		_player_slot_building = null
+		_player_slot_kind = ""
+	_player_action_notice = "Wohnung gekuendigt."
+	return true
+
+
 ## Applies for a job at the current workplace. Entering a workplace is only a
 ## visit; this method is the explicit acceptance step and takes the worker slot
 ## without starting a work action yet.
@@ -941,6 +1031,109 @@ func player_study(world: Node = null) -> bool:
 	return _start_player_action(StudyAtUniversityActionScript.new(location as University), resolved_world)
 
 
+func player_relax(world: Node = null) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	var location := _get_player_current_building()
+	if resolved_world == null or location == null:
+		return false
+	if location is Park:
+		_player_action_notice = ""
+		return _start_player_action(RelaxAtParkActionScript.new(), resolved_world)
+	if _is_player_home_location(location):
+		_player_action_notice = ""
+		return _start_player_action(RelaxAtHomeActionScript.new(), resolved_world)
+	_player_action_notice = "Entspannen geht zuhause oder im Park."
+	return false
+
+
+func player_socialize(world: Node = null) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	var location := _get_player_current_building()
+	if resolved_world == null or location == null or location is not Park:
+		_player_action_notice = "Sozialisieren geht im Park."
+		return false
+	if needs != null and needs.hunger >= 70.0:
+		_player_action_notice = "Erst essen, dann sozialisieren."
+		return false
+	if needs != null and needs.health <= 35.0:
+		_player_action_notice = "Gesundheit zu niedrig."
+		return false
+	_player_action_notice = ""
+	return _start_player_action(SocializeActionScript.new(), resolved_world)
+
+
+func player_watch_cinema(world: Node = null) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	var location := _get_player_current_building()
+	if resolved_world == null or location == null or location is not Cinema:
+		_player_action_notice = "Du bist in keinem Kino."
+		return false
+	var cinema := location as Cinema
+	if not cinema.is_open(resolved_world.time.get_hour()):
+		_player_action_notice = "%s ist geschlossen." % _building_label(cinema)
+		return false
+	if wallet == null or wallet.balance < cinema.ticket_price:
+		_player_action_notice = "Zu wenig Geld: %d EUR noetig." % cinema.ticket_price
+		return false
+	_player_action_notice = ""
+	return _start_player_action(WatchCinemaActionScript.new(cinema), resolved_world)
+
+
+func player_buy_shop_item(world: Node = null) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	var location := _get_player_current_building()
+	if resolved_world == null or location == null or location is not Shop:
+		return false
+	if current_action != null:
+		_player_action_notice = "Aktion laeuft noch."
+		return false
+	var shop := location as Shop
+	if not shop.is_open(resolved_world.time.get_hour()):
+		_player_action_notice = "%s ist geschlossen." % _building_label(shop)
+		return false
+	if not shop.can_sell_item("clothing", 1):
+		_player_action_notice = "Kleidung ist ausverkauft."
+		return false
+	var price := _get_shop_item_price(shop)
+	if wallet == null or wallet.balance < price:
+		_player_action_notice = "Zu wenig Geld: %d EUR noetig." % price
+		return false
+	if not shop.buy_item(resolved_world, self, 1.0):
+		_player_action_notice = "Kauf bei %s nicht moeglich." % _building_label(shop)
+		return false
+	clothing_items += 1
+	_player_action_notice = "Gekauft: Kleidung (%d EUR)." % price
+	return true
+
+
+func player_buy_groceries(world: Node = null) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	var location := _get_player_current_building()
+	if resolved_world == null or location == null or location is not Supermarket:
+		return false
+	if current_action != null:
+		_player_action_notice = "Aktion laeuft noch."
+		return false
+	var market := location as Supermarket
+	if not market.is_open(resolved_world.time.get_hour()):
+		_player_action_notice = "%s ist geschlossen." % _building_label(market)
+		return false
+	if not market.can_sell_item("grocery_bundle", 1):
+		_player_action_notice = "Lebensmittel sind ausverkauft."
+		return false
+	var price := market.get_grocery_price(resolved_world)
+	if wallet == null or wallet.balance < price:
+		_player_action_notice = "Zu wenig Geld: %d EUR noetig." % price
+		return false
+	var purchased_units := market.buy_groceries(resolved_world, self)
+	if purchased_units <= 0:
+		_player_action_notice = "Lebensmittelkauf bei %s nicht moeglich." % _building_label(market)
+		return false
+	home_food_stock += purchased_units
+	_player_action_notice = "Gekauft: %d Vorraete (%d EUR)." % [purchased_units, price]
+	return true
+
+
 func player_quit_job(world: Node = null, exit_after: bool = true) -> bool:
 	var resolved_world := _resolve_world_arg(world)
 	if job == null:
@@ -976,55 +1169,78 @@ func player_leave_for_training(world: Node = null) -> bool:
 func get_player_action_ui_state(world: Node = null) -> Dictionary:
 	var resolved_world := _resolve_world_arg(world)
 	var location := _get_player_current_building()
-	if location == null:
-		return {}
 	var buttons: Array = []
 	var status_lines: PackedStringArray = []
-	var location_label := _building_label(location)
+	var location_label := _building_label(location) if location != null else "unterwegs"
+	var active_id := _active_player_action_id()
+	var action_running := not active_id.is_empty()
 	status_lines.append("Ort: %s" % location_label)
-	if current_action != null:
-		status_lines.append("Aktiv: %s" % current_action.label)
+	status_lines.append("Wohnung: %s" % (_building_label(home) if home != null else "keine"))
+	buttons.append(_make_player_action_button("inventory", "Inventar", true))
+	if action_running:
+		status_lines.append("Aktiv: %s" % _active_player_action_label())
 		buttons.append(_make_player_action_button("stop", "Aktion stoppen", true))
 
-	if _is_player_home_location(location):
-		buttons.append(_make_player_action_button("eat", "Essen", home_food_stock > 0, "Keine Vorraete zuhause."))
-		buttons.append(_make_player_action_button("sleep", "Schlafen", true))
-	elif location is Restaurant:
-		var restaurant := location as Restaurant
-		var can_eat := resolved_world != null \
-			and restaurant.is_open(resolved_world.time.get_hour()) \
-			and can_afford_restaurant_at(restaurant, resolved_world)
-		buttons.append(_make_player_action_button("eat", "Essen", can_eat, "Restaurant geschlossen oder zu wenig Geld."))
-	elif location is University:
-		var university := location as University
-		var can_study := resolved_world != null and university.can_study(self)
-		buttons.append(_make_player_action_button("study", "Studieren", can_study, "Uni ist geschlossen oder hat keine Lehrkraft."))
+	if location != null:
+		if _is_player_home_location(location):
+			buttons.append(_make_player_action_button("eat", "Essen", home_food_stock > 0, "Keine Vorraete zuhause."))
+			buttons.append(_make_player_action_button("sleep", "Schlafen", true))
+			buttons.append(_make_player_action_button("relax", "Entspannen", true))
+			buttons.append(_make_player_action_button("quit_home", "Wohnung kuendigen", not action_running, "Aktion laeuft noch."))
+		elif location is ResidentialBuilding:
+			var residential := location as ResidentialBuilding
+			var can_rent := not action_running and (residential.tenants.has(self) or residential.has_free_slot())
+			var rent_label := "Umziehen" if home != null else "Mieten"
+			buttons.append(_make_player_action_button("rent_home", rent_label, can_rent, "Keine freie Wohnung."))
+		elif location is Restaurant:
+			var restaurant := location as Restaurant
+			var can_eat := resolved_world != null \
+				and restaurant.is_open(resolved_world.time.get_hour()) \
+				and can_afford_restaurant_at(restaurant, resolved_world)
+			buttons.append(_make_player_action_button("eat", "Essen", can_eat, "Restaurant geschlossen oder zu wenig Geld."))
+		elif location is University:
+			var university := location as University
+			var can_study := resolved_world != null and university.can_study(self)
+			buttons.append(_make_player_action_button("study", "Studieren", can_study, "Uni ist geschlossen oder hat keine Lehrkraft."))
+		elif location is Park:
+			var can_socialize := needs == null or (needs.hunger < 70.0 and needs.health > 35.0)
+			buttons.append(_make_player_action_button("relax", "Entspannen", true))
+			buttons.append(_make_player_action_button("socialize", "Sozialisieren", can_socialize, "Erst essen oder erholen."))
+		elif location is Cinema:
+			var cinema := location as Cinema
+			var can_watch := resolved_world != null \
+				and cinema.is_open(resolved_world.time.get_hour()) \
+				and wallet != null \
+				and wallet.balance >= cinema.ticket_price
+			buttons.append(_make_player_action_button("watch_cinema", "Film schauen", can_watch, "Kino geschlossen oder zu wenig Geld."))
 
-	if int(location.job_capacity) > 0:
-		var prospective_title := location.get_default_job_title()
-		var required_edu := location.get_required_education_level()
-		var qualifies := education_level >= required_edu
-		var employed_here := _player_has_accepted_job_at(location)
-		if required_edu > 0:
-			status_lines.append("Stelle: %s - Bildung %d/%d" % [prospective_title, education_level, required_edu])
-		else:
-			status_lines.append("Stelle: %s - keine Bildung noetig" % prospective_title)
-		if employed_here:
-			var can_work := current_action == null or current_action is WorkActionScript
-			buttons.append(_make_player_action_button("work", "Arbeiten", can_work, "Aktion laeuft noch."))
-		else:
-			buttons.append(_make_player_action_button("apply_work", "Bewerben", current_action == null, "Aktion laeuft noch."))
-		if not qualifies:
-			buttons.append(_make_player_action_button("training", "Zur Uni", true))
-		if employed_here:
-			buttons.append(_make_player_action_button("quit_job", "Kuendigen", true))
+		if location is Shop:
+			buttons.append(_make_player_action_button("shop", "Einkaufen", true))
+
+		if int(location.job_capacity) > 0:
+			var prospective_title := location.get_default_job_title()
+			var required_edu := location.get_required_education_level()
+			var qualifies := education_level >= required_edu
+			var employed_here := _player_has_accepted_job_at(location)
+			if required_edu > 0:
+				status_lines.append("Stelle: %s - Bildung %d/%d" % [prospective_title, education_level, required_edu])
+			else:
+				status_lines.append("Stelle: %s - keine Bildung noetig" % prospective_title)
+			if employed_here:
+				var can_work := not action_running or active_id == "work"
+				buttons.append(_make_player_action_button("work", "Arbeiten", can_work, "Aktion laeuft noch."))
+			else:
+				buttons.append(_make_player_action_button("apply_work", "Bewerben", not action_running, "Aktion laeuft noch."))
+			if not qualifies:
+				buttons.append(_make_player_action_button("training", "Zur Uni", true))
+			if employed_here:
+				buttons.append(_make_player_action_button("quit_job", "Kuendigen", true))
 
 	if not _player_action_notice.is_empty():
 		status_lines.append(_player_action_notice)
 
 	if buttons.is_empty():
 		return {}
-	var active_id := _active_player_action_id()
 	for spec_var in buttons:
 		var spec := spec_var as Dictionary
 		spec["active"] = not active_id.is_empty() and str(spec.get("id", "")) == active_id
@@ -1036,9 +1252,131 @@ func get_player_action_ui_state(world: Node = null) -> Dictionary:
 	}
 
 
+func get_player_inventory_ui_state(world: Node = null, mode: String = "player") -> Dictionary:
+	var clean_mode := mode.strip_edges()
+	if clean_mode.is_empty():
+		return {}
+	var resolved_world := _resolve_world_arg(world)
+	var location := _get_player_current_building()
+	var show_shop := clean_mode == "shop" and location is Shop
+	var resolved_mode := "shop" if show_shop else "player"
+	var status_lines: PackedStringArray = []
+	status_lines.append("Geld: %d EUR" % (wallet.balance if wallet != null else 0))
+	if show_shop:
+		var shop_for_status := location as Shop
+		status_lines.append("Shop: %s" % _building_label(shop_for_status))
+		if resolved_world != null:
+			status_lines.append("Status: %s" % shop_for_status.get_open_status_display_label(resolved_world.time.get_hour()))
+	else:
+		status_lines.append("Ort: %s" % (_building_label(location) if location != null else "unterwegs"))
+	if not _player_action_notice.is_empty():
+		status_lines.append(_player_action_notice)
+
+	var title := "Einkaufen" if show_shop else "Inventar"
+	if show_shop:
+		title = "Einkaufen: %s" % _building_label(location)
+
+	return {
+		"visible": true,
+		"mode": resolved_mode,
+		"title": title,
+		"status_text": "\n".join(status_lines),
+		"player_slots": _build_player_inventory_slots(),
+		"categories": _build_shop_inventory_categories(location, resolved_world) if show_shop else [],
+	}
+
+
+func get_inventory_count(item_id: String) -> int:
+	# Single point that translates inventory item ids to concrete citizen slots.
+	# Extend here when a new item id is added to PlayerInventoryCatalog.
+	match item_id:
+		"food":
+			return home_food_stock
+		"clothing":
+			return clothing_items
+	return 0
+
+
+func _build_player_inventory_slots() -> Array:
+	var slots: Array = []
+	for id_var in PlayerInventoryCatalogScript.item_ids():
+		var id := str(id_var)
+		slots.append({
+			"id": id,
+			"label": PlayerInventoryCatalogScript.get_label(id),
+			"icon": PlayerInventoryCatalogScript.get_icon(id),
+			"count": get_inventory_count(id),
+		})
+	return slots
+
+
+func _build_shop_inventory_categories(location: Building, resolved_world: Node) -> Array:
+	if location == null or location is not Shop:
+		return []
+	var shop := location as Shop
+	var categories: Array = []
+	var active := not _active_player_action_id().is_empty()
+	if shop is Supermarket:
+		categories.append(_build_shop_food_category(shop as Supermarket, resolved_world, active))
+	categories.append(_build_shop_clothing_category(shop, resolved_world, active))
+	return categories
+
+
+func _build_shop_food_category(market: Supermarket, resolved_world: Node, action_running: bool) -> Dictionary:
+	var price := market.get_grocery_price(resolved_world) if resolved_world != null else 0
+	var enabled := not action_running and resolved_world != null and can_buy_groceries_at(market, resolved_world as World)
+	var tooltip := _shop_buy_disabled_reason(market, resolved_world as World, "grocery_bundle", price) if not enabled else ""
+	return {
+		"id": "food",
+		"label": PlayerInventoryCatalogScript.get_tab_label("food"),
+		"icon": PlayerInventoryCatalogScript.get_icon("food"),
+		"items": [
+			{
+				"id": "food",
+				"label": PlayerInventoryCatalogScript.get_label("food"),
+				"icon": PlayerInventoryCatalogScript.get_icon("food"),
+				"price": price,
+				"stock": market.get_stock("grocery_bundle"),
+				"owned": get_inventory_count("food"),
+				"enabled": enabled,
+				"tooltip": tooltip,
+				"button_text": "Kaufen",
+				"action_id": "buy_groceries",
+			},
+		],
+	}
+
+
+func _build_shop_clothing_category(shop: Shop, resolved_world: Node, action_running: bool) -> Dictionary:
+	var price := _get_shop_item_price(shop)
+	var enabled := not action_running and resolved_world != null and can_buy_shop_item_at(shop, resolved_world as World)
+	var tooltip := _shop_buy_disabled_reason(shop, resolved_world as World, "clothing", price) if not enabled else ""
+	return {
+		"id": "clothing",
+		"label": PlayerInventoryCatalogScript.get_tab_label("clothing"),
+		"icon": PlayerInventoryCatalogScript.get_icon("clothing"),
+		"items": [
+			{
+				"id": "clothing",
+				"label": PlayerInventoryCatalogScript.get_label("clothing"),
+				"icon": PlayerInventoryCatalogScript.get_icon("clothing"),
+				"price": price,
+				"stock": shop.get_stock("clothing"),
+				"owned": get_inventory_count("clothing"),
+				"enabled": enabled,
+				"tooltip": tooltip,
+				"button_text": "Kaufen",
+				"action_id": "buy_shop_item",
+			},
+		],
+	}
+
+
 ## Maps the running action back to its UI button id so the panel can show
 ## which action is currently active (accent-highlighted button).
 func _active_player_action_id() -> String:
+	if network_replica_mode and not _network_player_action_id.is_empty():
+		return _network_player_action_id
 	if current_action == null:
 		return ""
 	if current_action is WorkActionScript:
@@ -1049,7 +1387,21 @@ func _active_player_action_id() -> String:
 		return "sleep"
 	if current_action is StudyAtUniversityActionScript:
 		return "study"
+	if current_action is RelaxAtHomeActionScript or current_action is RelaxAtParkActionScript:
+		return "relax"
+	if current_action is SocializeActionScript:
+		return "socialize"
+	if current_action is WatchCinemaActionScript:
+		return "watch_cinema"
 	return ""
+
+
+func _active_player_action_label() -> String:
+	if network_replica_mode and not _network_player_action_id.is_empty():
+		if not _network_action_label.is_empty():
+			return _network_action_label
+		return _network_player_action_id
+	return current_action.label if current_action != null else ""
 
 
 func _make_player_action_button(action_id: String, text: String, enabled: bool, disabled_reason: String = "") -> Dictionary:
@@ -1108,6 +1460,10 @@ func _ensure_player_hired_for_current_job(world: World) -> bool:
 
 
 func _player_has_accepted_job_at(workplace: Building) -> bool:
+	if network_replica_mode:
+		return workplace != null \
+			and job != null \
+			and job.workplace == workplace
 	return workplace != null \
 		and job != null \
 		and job.workplace == workplace \
@@ -1572,6 +1928,8 @@ func release_reserved_benches(world: Node = null, building: Building = null) -> 
 # ========================================================================
 
 func is_inside_building() -> bool:
+	if network_replica_mode:
+		return _network_inside_building
 	return _sim != null and _sim.location != null and _sim.location.is_inside()
 
 
@@ -1622,9 +1980,9 @@ func enter_building(building: Building, world: Node = null, emit_log: bool = tru
 				_fmt_v3(entry_pos)])
 
 
-## Player-driven building entry (R key). Residential is gated to the player's
-## own/free home. Every other building (workplaces included) is entered as a
-## plain visitor — entering a workplace never assigns a job or a worker slot.
+## Player-driven building entry (R key). Residential entry is an inspection
+## unless it is already the player's home. Every other building is entered as
+## a plain visitor unless the player is already accepted as a worker there.
 ## Employment is opt-in via the "Bewerben" action (player_apply_for_work).
 func player_enter_building(building: Building, world: Node = null) -> bool:
 	if building == null or _sim == null or _sim.location == null:
@@ -1636,12 +1994,15 @@ func player_enter_building(building: Building, world: Node = null) -> bool:
 	var ok := false
 	if building is ResidentialBuilding:
 		var residential := building as ResidentialBuilding
-		if home != null and home != residential:
-			return false
-		ok = residential.tenants.has(self) or residential.add_tenant(self)
-		if ok and home == null:
-			home = residential
-		kind = "tenant"
+		if home == residential:
+			ok = residential.tenants.has(self) or residential.add_tenant(self)
+			kind = "tenant"
+		else:
+			ok = true
+			kind = "residential_visit"
+	elif job != null and job.workplace == building and building.workers.has(self):
+		ok = true
+		kind = "worker"
 	else:
 		ok = building.try_add_visitor(self)
 		kind = "visitor"
@@ -1653,17 +2014,13 @@ func player_enter_building(building: Building, world: Node = null) -> bool:
 	return true
 
 
-## Player-driven building exit (T key). Leaving your workplace quits the job
-## and frees the worker/reserved slot. Leaving home keeps the lease/home slot.
+## Player-driven building exit (T key). Exiting only leaves the building.
+## Jobs and home leases persist until their explicit quit buttons are used.
 func player_exit_building(world: Node = null) -> bool:
 	if not is_inside_building():
 		return false
 	var resolved_world := _resolve_world_arg(world)
-	var current_building := _get_player_current_building()
-	if job != null and current_building != null and job.workplace == current_building:
-		player_quit_job(resolved_world, false)
-	else:
-		cancel_player_action(resolved_world)
+	cancel_player_action(resolved_world)
 	exit_current_building(world)
 	_player_slot_building = null
 	_player_slot_kind = ""
@@ -2167,13 +2524,52 @@ func can_afford_groceries(world: World) -> bool:
 	return can_afford_groceries_at(favorite_supermarket, world)
 
 
-func can_afford_shop_item(_world: World) -> bool:
-	if favorite_shop == null or wallet == null:
+func can_afford_shop_item_at(shop: Shop, _world: World) -> bool:
+	if shop == null or wallet == null:
 		return false
-	var price: int = favorite_shop.item_price
-	if favorite_shop.has_method("get_item_price_quote"):
-		price = int(favorite_shop.get_item_price_quote(1.0))
-	return wallet.balance >= price
+	return wallet.balance >= _get_shop_item_price(shop)
+
+
+func can_afford_shop_item(world: World) -> bool:
+	return can_afford_shop_item_at(favorite_shop, world)
+
+
+func can_buy_shop_item_at(shop: Shop, world: World) -> bool:
+	if shop == null or world == null:
+		return false
+	return shop.is_open(world.time.get_hour()) \
+		and shop.can_sell_item("clothing", 1) \
+		and can_afford_shop_item_at(shop, world)
+
+
+func can_buy_groceries_at(supermarket: Supermarket, world: World) -> bool:
+	if supermarket == null or world == null:
+		return false
+	return supermarket.is_open(world.time.get_hour()) \
+		and supermarket.can_sell_item("grocery_bundle", 1) \
+		and can_afford_groceries_at(supermarket, world)
+
+
+func _get_shop_item_price(shop: Shop) -> int:
+	if shop == null:
+		return 0
+	if shop.has_method("get_item_price_quote"):
+		return int(shop.get_item_price_quote(1.0))
+	return maxi(int(shop.item_price), 1)
+
+
+func _shop_buy_disabled_reason(shop: Shop, world: World, item: String, price: int) -> String:
+	if current_action != null:
+		return "Aktion laeuft noch."
+	if shop == null or world == null:
+		return "Kein Shop aktiv."
+	if not shop.is_open(world.time.get_hour()):
+		return "Shop geschlossen."
+	if not shop.can_sell_item(item, 1):
+		return "Ausverkauft."
+	if wallet == null or wallet.balance < price:
+		return "Zu wenig Geld."
+	return ""
 
 
 func can_afford_cinema(_world: World) -> bool:
@@ -2440,6 +2836,7 @@ func get_info_sections(_world = null) -> Array:
 
 func _build_identity_section() -> Dictionary:
 	var rows: Array = [{"label": "Name", "value": citizen_name}]
+	rows.append({"label": "Wohnung", "value": _building_label(home) if home != null else "keine"})
 	var job_str := _format_job_status_text()
 	if not job_str.is_empty():
 		rows.append({"label": "Beruf", "value": job_str})
@@ -2556,8 +2953,12 @@ func _format_travel_target_label() -> String:
 
 func _build_finance_section() -> Dictionary:
 	var rows: Array = [{"label": "Geld", "value": "%d EUR" % (wallet.balance if wallet != null else 0)}]
+	if home != null:
+		rows.append({"label": "Miete/Tag", "value": "%d EUR" % home.rent_per_day})
 	if home_food_stock > 0:
 		rows.append({"label": "Vorraete", "value": str(home_food_stock)})
+	if clothing_items > 0:
+		rows.append({"label": "Kleidung", "value": str(clothing_items)})
 	return {"title": "Finanzen", "rows": rows}
 
 
@@ -2573,7 +2974,9 @@ func _get_flat_info_fallback() -> Dictionary:
 		"Fun": "%.1f / 100" % (needs.fun if needs != null else 0.0),
 		"Health": "%.1f / 100" % (needs.health if needs != null else 0.0),
 		"Money": "%d EUR" % (wallet.balance if wallet != null else 0),
+		"Home": _building_label(home) if home != null else "none",
 		"Groceries": str(home_food_stock),
+		"Clothing": str(clothing_items),
 		"Education": "%d" % education_level,
 		"Workplace": _building_label(job.workplace) if (job != null and job.workplace != null) else "unemployed",
 		"LOD": get_simulation_lod_tier(),

@@ -100,6 +100,7 @@ func _run_all_tests() -> void:
 		"player_dialog_session_gets_template_reply",
 		"player_dialog_ui_state_switches_to_active_session",
 		"dialog_interact_starts_nearest_player_dialog_and_faces_citizen",
+		"dialog_button_uses_offline_keyboard_camera_target",
 		"player_dialog_queue_full_uses_template_reply",
 		"player_dialog_prioritizes_over_warmup_queue",
 		"player_dialog_locks_player_input",
@@ -170,6 +171,8 @@ func _run_test(test_name: String) -> String:
 			return _test_player_dialog_ui_state_switches_to_active_session()
 		"dialog_interact_starts_nearest_player_dialog_and_faces_citizen":
 			return _test_dialog_interact_starts_nearest_player_dialog_and_faces_citizen()
+		"dialog_button_uses_offline_keyboard_camera_target":
+			return _test_dialog_button_uses_offline_keyboard_camera_target()
 		"player_dialog_queue_full_uses_template_reply":
 			return _test_player_dialog_queue_full_uses_template_reply()
 		"player_dialog_prioritizes_over_warmup_queue":
@@ -780,6 +783,50 @@ func _test_dialog_interact_starts_nearest_player_dialog_and_faces_citizen() -> S
 	if interaction_controller.debug_panel != null and is_instance_valid(interaction_controller.debug_panel):
 		interaction_controller.debug_panel.queue_free()
 	interaction_controller.debug_panel = null
+	_free_world(world)
+	return _current_error
+
+func _test_dialog_button_uses_offline_keyboard_camera_target() -> String:
+	var world := _new_world()
+	var camera := _new_camera(Vector3(0.0, 10.0, 14.0), Vector3.ZERO)
+	var selection := MockSelectionStateController.new()
+	var camera_manager := MockCameraModeManager.new()
+	var offline_player := _new_citizen("Offline Player", Vector3.ZERO)
+	var nearby_citizen := _new_citizen("Offline Talk Target", Vector3(1.2, 0.0, 0.0))
+	world.register_citizen(offline_player)
+	world.register_citizen(nearby_citizen)
+	offline_player.keyboard_control_enabled = true
+	offline_player.needs.social = 0.0
+	nearby_citizen.needs.social = 0.0
+	camera_manager.player_target = offline_player
+	selection.camera_mode_manager = camera_manager
+	selection.selected_citizen = offline_player
+
+	var manager = CitizenConversationManagerScript.new()
+	manager.setup(world, camera, selection)
+
+	var availability := manager.get_player_dialog_availability(nearby_citizen)
+	_expect(bool(availability.get("available", false)),
+			"offline keyboard camera target should make nearby citizen dialogue available")
+
+	var interaction_controller = SimulationInteractionControllerScript.new()
+	interaction_controller.world = world
+	interaction_controller.selection_state_controller = selection
+	interaction_controller.conversation_manager = manager
+
+	interaction_controller.handle_debug_panel_citizen_dialog_toggled()
+	_expect_eq(selection.get_selected_citizen(), nearby_citizen,
+			"dialog button from selected offline player should retarget to nearest talkable citizen")
+	var session := manager.get_player_dialog_session(nearby_citizen)
+	_expect(bool(session.get("active", false)),
+			"dialog button should start a player dialog for the nearest offline target")
+
+	manager.update(0.5)
+	_expect(offline_player.needs.social > 0.0,
+			"active offline player dialog should improve the player's social need")
+	_expect(nearby_citizen.needs.social > 0.0,
+			"active offline player dialog should improve the target citizen's social need")
+
 	_free_world(world)
 	return _current_error
 

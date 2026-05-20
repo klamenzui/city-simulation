@@ -8,6 +8,7 @@ const BuildingStatusStyleResolverScript = preload("res://Simulation/UI/BuildingS
 const HudOverlayControllerScript = preload("res://Simulation/UI/HudOverlayController.gd")
 const SimulationInteractionControllerScript = preload("res://Simulation/UI/SimulationInteractionController.gd")
 const SimulationHudControllerScript = preload("res://Simulation/UI/SimulationHudController.gd")
+const ToastControllerScript = preload("res://Simulation/UI/ToastController.gd")
 const CoordinatePickerControllerScript = preload("res://Simulation/UI/CoordinatePickerController.gd")
 const BuildingStatusBadgeControllerScript = preload("res://Simulation/UI/BuildingStatusBadgeController.gd")
 const CitizenSimulationLodControllerScript = preload("res://Simulation/Citizens/CitizenSimulationLodController.gd")
@@ -24,6 +25,7 @@ var interaction_controller = null
 var building_status_badge_controller = null
 var hud_controller = null
 var hud_overlay_controller = null
+var toast_controller = null
 var coordinate_picker_controller = null
 var selection_state_controller = null
 var citizen_lod_controller = null
@@ -114,6 +116,8 @@ func update(delta: float) -> void:
 		building_status_badge_controller.update(selected_building, world)
 	if hud_controller != null and hud_controller.has_method("update"):
 		hud_controller.update(delta)
+	if toast_controller != null and toast_controller.has_method("update"):
+		toast_controller.update(delta)
 	if hud_overlay_controller != null:
 		hud_overlay_controller.update(delta)
 	if interaction_controller != null:
@@ -229,6 +233,11 @@ func _build_hud(search_result_limit: int, building_overview_refresh_interval_sec
 	var canvas: CanvasLayer = hud_controller.get_canvas()
 	if canvas == null:
 		return
+
+	toast_controller = ToastControllerScript.new()
+	toast_controller.setup(canvas)
+	if interaction_controller != null and interaction_controller.has_method("bind_toast_controller"):
+		interaction_controller.bind_toast_controller(toast_controller)
 
 	hud_overlay_controller = HudOverlayControllerScript.new()
 	hud_overlay_controller.setup(
