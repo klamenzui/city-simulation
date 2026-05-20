@@ -219,19 +219,24 @@ func update_player_actions(ui_state: Dictionary) -> void:
 		var action_id := str(spec.get("id", ""))
 		if action_id.is_empty():
 			continue
-		var btn := Button.new()
-		btn.text = str(spec.get("text", action_id))
-		btn.disabled = not bool(spec.get("enabled", true))
-		btn.tooltip_text = str(spec.get("tooltip", ""))
-		btn.focus_mode = Control.FOCUS_NONE
-		btn.custom_minimum_size = Vector2(128, 34)
-		btn.gui_input.connect(_on_panel_gui_input)
-		btn.pressed.connect(_on_player_action_button_pressed.bind(action_id))
+		var btn := _create_player_panel_button(spec, action_id)
 		player_action_button_grid.add_child(btn)
 		# The currently-running action is accent-highlighted so it is obvious
 		# which action is active vs. merely available.
 		if bool(spec.get("active", false)):
 			UiThemeScript.apply_accent_state(btn, true)
+
+
+func _create_player_panel_button(spec: Dictionary, action_id: String) -> Button:
+	var btn := Button.new()
+	btn.text = str(spec.get("text", action_id))
+	btn.disabled = not bool(spec.get("enabled", true))
+	btn.tooltip_text = str(spec.get("tooltip", ""))
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.custom_minimum_size = Vector2(128, 34)
+	btn.gui_input.connect(_on_panel_gui_input)
+	btn.pressed.connect(_on_player_action_button_pressed.bind(action_id))
+	return btn
 
 
 func _render_section_rows(rows: Array) -> PackedStringArray:

@@ -110,6 +110,7 @@
     "summary_after_turns": 4,
     "max_response_sentences": 3,
     "allow_topic_shift": true,
+    "social_add_per_min": 1.0,
     "commitment_lock_minutes": 20,
     "cancel_if_player_leaves_range": true,
     "farewell_auto_close_sec": 2.0,

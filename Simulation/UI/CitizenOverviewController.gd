@@ -67,18 +67,27 @@ func _refresh_citizen_overview() -> void:
 	if label == null or world == null:
 		return
 
-	var entries: Array[Dictionary] = []
-	var critical_count := 0
+	var valid_citizens: Array[Citizen] = []
+	var name_counts: Dictionary = {}
 	for citizen in world.citizens:
 		if citizen == null or not is_instance_valid(citizen):
 			continue
+		valid_citizens.append(citizen)
+		var raw_name := citizen.citizen_name.strip_edges()
+		var base_name := raw_name if not raw_name.is_empty() else str(citizen.name)
+		name_counts[base_name] = int(name_counts.get(base_name, 0)) + 1
+
+	var entries: Array[Dictionary] = []
+	var critical_count := 0
+	for citizen in valid_citizens:
 		var severity := _classify_citizen_severity(citizen)
+		var display_name := _get_overview_citizen_name(citizen, name_counts)
 		if severity == "critical":
 			critical_count += 1
 		entries.append({
 			"severity_rank": _severity_rank(severity),
-			"name": citizen.citizen_name,
-			"line": _format_citizen_overview_line(citizen, severity),
+			"name": display_name,
+			"line": _format_citizen_overview_line(citizen, severity, display_name),
 		})
 
 	entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
@@ -100,10 +109,10 @@ func _refresh_citizen_overview() -> void:
 		maxf(272.0, label.get_content_height() + 16.0)
 	)
 
-func _format_citizen_overview_line(citizen: Citizen, severity: String) -> String:
+func _format_citizen_overview_line(citizen: Citizen, severity: String, display_name: String) -> String:
 	var color := _severity_to_hex(severity)
 	var icon := _severity_icon(severity)
-	var name_text := _overview_escape(citizen.citizen_name)
+	var name_text := _overview_escape(display_name)
 	var job_label := _format_job_label(citizen)
 	var action_label := citizen.current_action.label if citizen.current_action != null else "Idle"
 	var needs_label := _format_needs_label(citizen)
@@ -117,6 +126,19 @@ func _format_citizen_overview_line(citizen: Citizen, severity: String) -> String
 	]
 	return "[url=%d]%s[/url]" % [citizen.get_instance_id(), inner]
 
+
+func _get_overview_citizen_name(citizen: Citizen, name_counts: Dictionary) -> String:
+	var raw_name := citizen.citizen_name.strip_edges()
+	var base_name := raw_name if not raw_name.is_empty() else str(citizen.name)
+	if int(name_counts.get(base_name, 0)) <= 1:
+		return base_name
+	return "%s #%s" % [base_name, _stable_citizen_suffix(citizen)]
+
+func _stable_citizen_suffix(citizen: Citizen) -> String:
+	var node_name := str(citizen.name)
+	if node_name.begins_with("Citizen_") and node_name.length() > "Citizen_".length():
+		return node_name.substr("Citizen_".length())
+	return "%04d" % int(citizen.get_instance_id() % 10000)
 
 func _on_meta_clicked(meta: Variant) -> void:
 	_mark_interacted()

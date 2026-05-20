@@ -25,6 +25,10 @@ var _active: bool = false
 var _player_citizen_id_by_peer: Dictionary = {}
 var _player_input_command_count_by_peer: Dictionary = {}
 var _last_player_input_direction_by_peer: Dictionary = {}
+var _player_action_command_count_by_peer: Dictionary = {}
+var _accepted_player_action_command_count_by_peer: Dictionary = {}
+var _rejected_player_action_command_count_by_peer: Dictionary = {}
+var _last_player_action_by_peer: Dictionary = {}
 var _interaction_command_count_by_peer: Dictionary = {}
 var _accepted_interaction_command_count_by_peer: Dictionary = {}
 var _rejected_interaction_command_count_by_peer: Dictionary = {}
@@ -116,6 +120,13 @@ func get_debug_status() -> Dictionary:
 		"player_input_command_count_by_peer": command_counts,
 		"assigned_player_citizen_ids_by_peer": assigned_players,
 		"last_player_input_direction_by_peer": _last_player_input_direction_by_peer.duplicate(true),
+		"player_action_command_count": _sum_int_values(_player_action_command_count_by_peer),
+		"accepted_player_action_command_count": _sum_int_values(_accepted_player_action_command_count_by_peer),
+		"rejected_player_action_command_count": _sum_int_values(_rejected_player_action_command_count_by_peer),
+		"player_action_command_count_by_peer": _string_keyed_int_dictionary(_player_action_command_count_by_peer),
+		"accepted_player_action_command_count_by_peer": _string_keyed_int_dictionary(_accepted_player_action_command_count_by_peer),
+		"rejected_player_action_command_count_by_peer": _string_keyed_int_dictionary(_rejected_player_action_command_count_by_peer),
+		"last_player_action_by_peer": _last_player_action_by_peer.duplicate(true),
 		"interaction_command_count": _sum_int_values(_interaction_command_count_by_peer),
 		"accepted_interaction_command_count": _sum_int_values(_accepted_interaction_command_count_by_peer),
 		"rejected_interaction_command_count": _sum_int_values(_rejected_interaction_command_count_by_peer),
@@ -196,6 +207,8 @@ func _handle_authoritative_command(peer_id: int, command: Dictionary) -> void:
 			_handle_player_input_command(peer_id, command)
 		"interact_entity":
 			_handle_interact_entity_command(peer_id, command)
+		"player_action":
+			_handle_player_action_command(peer_id, command)
 
 func _connect_signals() -> void:
 	if session_node == null:
@@ -269,6 +282,7 @@ func _release_player_citizen(peer_id: int) -> void:
 	_interaction_command_cooldown_by_peer.erase(peer_id)
 	_clear_interaction_effect_for_peer(peer_id)
 	_last_interaction_status_by_peer.erase(str(peer_id))
+	_last_player_action_by_peer.erase(str(peer_id))
 	if peer_id == LOCAL_HOST_PEER_ID:
 		_local_host_camera_follow_target_id = ""
 	var citizen := _find_citizen_by_id(entity_id)
@@ -291,6 +305,84 @@ func _handle_player_input_command(peer_id: int, command: Dictionary) -> void:
 	_player_input_command_count_by_peer[peer_id] = int(_player_input_command_count_by_peer.get(peer_id, 0)) + 1
 	_last_player_input_direction_by_peer[str(peer_id)] = [direction.x, direction.y, direction.z]
 	citizen.apply_network_server_control_input(direction, world)
+
+func _handle_player_action_command(peer_id: int, command: Dictionary) -> void:
+	_player_action_command_count_by_peer[peer_id] = int(_player_action_command_count_by_peer.get(peer_id, 0)) + 1
+	var result := _apply_player_action_command(peer_id, str(command.get("action_id", "")))
+	if bool(result.get("accepted", false)):
+		_accepted_player_action_command_count_by_peer[peer_id] = int(_accepted_player_action_command_count_by_peer.get(peer_id, 0)) + 1
+	else:
+		_rejected_player_action_command_count_by_peer[peer_id] = int(_rejected_player_action_command_count_by_peer.get(peer_id, 0)) + 1
+	_last_player_action_by_peer[str(peer_id)] = result
+	_record_interaction_status(peer_id, str(result.get("state", "rejected")), result)
+
+func _apply_player_action_command(peer_id: int, action_id: String) -> Dictionary:
+	var clean_id := action_id.strip_edges()
+	var citizen_id := str(_player_citizen_id_by_peer.get(peer_id, ""))
+	if citizen_id.is_empty():
+		citizen_id = _assign_player_citizen(peer_id)
+	var player := _find_citizen_by_id(citizen_id)
+	var result := {
+		"action_id": clean_id,
+		"accepted": false,
+		"player_id": NetworkEntityRegistryScript.get_entity_id(player),
+		"state": "rejected",
+		"reason": "",
+		"detail": "",
+	}
+	if player == null:
+		result["reason"] = "missing_player"
+		result["detail"] = "Player action rejected: missing player."
+		return result
+	if clean_id.is_empty():
+		result["reason"] = "missing_action"
+		result["detail"] = "Player action rejected: missing action."
+		return result
+	_clear_interaction_effect_for_peer(peer_id)
+	var accepted := false
+	match clean_id:
+		"rent_home":
+			accepted = player.player_rent_home(world)
+		"quit_home":
+			accepted = player.player_quit_home(world, true)
+		"apply_work":
+			accepted = player.player_apply_for_work(world)
+		"work":
+			accepted = player.player_work(world)
+		"eat":
+			accepted = player.player_eat(world)
+		"sleep":
+			accepted = player.player_sleep(world)
+		"study":
+			accepted = player.player_study(world)
+		"relax":
+			accepted = player.player_relax(world)
+		"socialize":
+			accepted = player.player_socialize(world)
+		"watch_cinema":
+			accepted = player.player_watch_cinema(world)
+		"buy_shop_item":
+			accepted = player.player_buy_shop_item(world)
+		"buy_groceries":
+			accepted = player.player_buy_groceries(world)
+		"quit_job":
+			accepted = player.player_quit_job(world, true)
+		"training":
+			accepted = player.player_leave_for_training(world)
+		"stop":
+			player.cancel_player_action(world)
+			accepted = true
+		"exit_building":
+			accepted = player.player_exit_building(world)
+		_:
+			result["reason"] = "unsupported_action"
+			result["detail"] = "Player action rejected: unsupported action."
+			return result
+	result["accepted"] = accepted
+	result["state"] = "effect" if accepted else "rejected"
+	result["reason"] = "" if accepted else "action_refused"
+	result["detail"] = _player_action_status_detail(clean_id, accepted, player)
+	return result
 
 func _handle_interact_entity_command(peer_id: int, command: Dictionary) -> void:
 	_interaction_command_count_by_peer[peer_id] = int(_interaction_command_count_by_peer.get(peer_id, 0)) + 1
@@ -520,8 +612,16 @@ func _apply_interaction_effect(
 			effect["reason"] = blocked_reason
 			_record_interaction_effect(peer_id, effect, false)
 			return effect
-		if player.has_method("enter_building"):
+		var entered := false
+		if player.has_method("player_enter_building"):
+			entered = bool(player.player_enter_building(building, world))
+		elif player.has_method("enter_building"):
 			player.enter_building(building, world, false)
+			entered = true
+		if not entered:
+			effect["reason"] = "enter_rejected"
+			_record_interaction_effect(peer_id, effect, false)
+			return effect
 		var player_label := "Visiting %s" % _entity_display_name(building)
 		_set_citizen_interaction_label(player, player_label)
 		effect["state"] = "entered_building"
@@ -896,6 +996,52 @@ func _interaction_status_detail(state: String, target_name: String, reason: Stri
 		"ready":
 			return "Ready."
 	return str(state).capitalize()
+
+func _player_action_status_detail(action_id: String, accepted: bool, player: Citizen) -> String:
+	var label := _player_action_label(action_id)
+	if not accepted:
+		if player != null and player.has_method("get_player_action_notice"):
+			var notice := str(player.get_player_action_notice()).strip_edges()
+			if not notice.is_empty():
+				return notice
+		return "%s abgelehnt." % label
+	return "%s ausgefuehrt." % label
+
+func _player_action_label(action_id: String) -> String:
+	match action_id:
+		"rent_home":
+			return "Wohnung"
+		"quit_home":
+			return "Wohnung kuendigen"
+		"apply_work":
+			return "Bewerben"
+		"work":
+			return "Arbeiten"
+		"eat":
+			return "Essen"
+		"sleep":
+			return "Schlafen"
+		"study":
+			return "Studieren"
+		"relax":
+			return "Entspannen"
+		"socialize":
+			return "Sozialisieren"
+		"watch_cinema":
+			return "Film schauen"
+		"buy_shop_item":
+			return "Kleidung kaufen"
+		"buy_groceries":
+			return "Vorraete kaufen"
+		"quit_job":
+			return "Kuendigen"
+		"training":
+			return "Zur Uni"
+		"stop":
+			return "Aktion stoppen"
+		"exit_building":
+			return "Gebaeude verlassen"
+	return action_id
 
 func _active_interaction_debug_dictionary() -> Dictionary:
 	var result: Dictionary = {}

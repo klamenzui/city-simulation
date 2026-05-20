@@ -97,6 +97,10 @@ static func _build_building_snapshots(world: World, root: Node, include_static: 
 			data["display_name"] = building.get_display_name() if building.has_method("get_display_name") else building.building_name
 			data["type"] = int(building.building_type)
 			data["type_name"] = building.get_building_type_name() if building.has_method("get_building_type_name") else ""
+		if building is CommercialBuilding:
+			var commercial := building as CommercialBuilding
+			data["inventory"] = commercial.inventory.duplicate(true)
+			data["base_prices"] = commercial.base_prices.duplicate(true)
 		snapshots.append(data)
 	return snapshots
 
@@ -118,20 +122,18 @@ static func _build_citizen_snapshots(world: World, include_static: bool) -> Arra
 		var manual_control := citizen.is_manual_control_enabled() if citizen.has_method("is_manual_control_enabled") else false
 		if citizen.has_method("is_network_manual_controlled"):
 			manual_control = manual_control or citizen.is_network_manual_controlled()
+		var include_player_state := include_static or manual_control
+		var player_action_id := ""
+		if citizen.has_method("get_network_player_action_id"):
+			player_action_id = str(citizen.get_network_player_action_id())
+		var player_action_notice := ""
+		if citizen.has_method("get_player_action_notice"):
+			player_action_notice = str(citizen.get_player_action_notice())
 		var data := {
 			"id": entity_id,
 			"position": _vec3_to_array(citizen.global_position),
 			"rotation_y": citizen.rotation.y,
 			"visible": citizen.visible,
-			"wallet": citizen.wallet.balance if citizen.wallet != null else 0,
-			"hunger": needs.hunger if needs != null else 0.0,
-			"energy": needs.energy if needs != null else 0.0,
-			"fun": needs.fun if needs != null else 0.0,
-			"social": needs.social if needs != null else 0.0,
-			"health": needs.health if needs != null else 0.0,
-			"home_id": NetworkEntityRegistryScript.get_entity_id(citizen.home),
-			"current_location_id": NetworkEntityRegistryScript.get_entity_id(citizen.current_location),
-			"workplace_id": NetworkEntityRegistryScript.get_entity_id(job_workplace),
 			"action": action_label,
 			"travelling": citizen.is_travelling() if citizen.has_method("is_travelling") else false,
 			"manual_control": manual_control,
@@ -139,6 +141,28 @@ static func _build_citizen_snapshots(world: World, include_static: bool) -> Arra
 			"inside": citizen.is_inside_building() if citizen.has_method("is_inside_building") else false,
 			"fall_respawn_count": citizen.get_fall_respawn_count() if citizen.has_method("get_fall_respawn_count") else 0,
 		}
+		if include_player_state:
+			data["wallet"] = citizen.wallet.balance if citizen.wallet != null else 0
+			data["hunger"] = needs.hunger if needs != null else 0.0
+			data["energy"] = needs.energy if needs != null else 0.0
+			data["fun"] = needs.fun if needs != null else 0.0
+			data["social"] = needs.social if needs != null else 0.0
+			data["health"] = needs.health if needs != null else 0.0
+			data["home_id"] = NetworkEntityRegistryScript.get_entity_id(citizen.home)
+			data["current_location_id"] = NetworkEntityRegistryScript.get_entity_id(citizen.current_location)
+			data["workplace_id"] = NetworkEntityRegistryScript.get_entity_id(job_workplace)
+			data["home_food_stock"] = citizen.home_food_stock
+			data["clothing_items"] = citizen.clothing_items
+			data["education_level"] = citizen.education_level
+			data["job_title"] = citizen.job.title if citizen.job != null else ""
+			data["job_wage_per_hour"] = citizen.job.wage_per_hour if citizen.job != null else 0
+			data["job_shift_hours"] = citizen.job.shift_hours if citizen.job != null else 0
+			data["job_required_education_level"] = citizen.job.required_education_level if citizen.job != null else 0
+			data["job_workplace_service_type"] = citizen.job.workplace_service_type if citizen.job != null else ""
+			data["job_allowed_building_types"] = citizen.job.allowed_building_types.duplicate() if citizen.job != null else []
+			data["work_minutes_today"] = citizen.work_minutes_today
+			data["player_action_id"] = player_action_id
+			data["player_action_notice"] = player_action_notice
 		if include_static:
 			data["scene"] = CITIZEN_SCENE_PATH
 			data["name"] = citizen.citizen_name
@@ -228,6 +252,20 @@ static func _apply_building_snapshots(root: Node, entries: Variant, building_loo
 			building.account.balance = int(data.get("balance", building.account.balance))
 		building.condition = float(data.get("condition", building.condition))
 		building.forced_closed_reason = str(data.get("forced_closed_reason", building.forced_closed_reason))
+		if building is CommercialBuilding:
+			_apply_commercial_snapshot(building as CommercialBuilding, data)
+
+static func _apply_commercial_snapshot(commercial: CommercialBuilding, data: Dictionary) -> void:
+	if commercial == null:
+		return
+	if data.get("inventory", null) is Dictionary:
+		var inventory_data := data.get("inventory", {}) as Dictionary
+		for key in inventory_data.keys():
+			commercial.inventory[str(key)] = maxi(int(inventory_data.get(key, 0)), 0)
+	if data.get("base_prices", null) is Dictionary:
+		var price_data := data.get("base_prices", {}) as Dictionary
+		for key in price_data.keys():
+			commercial.base_prices[str(key)] = maxi(int(price_data.get(key, 1)), 1)
 
 static func _node_path(root: Node, node: Node) -> String:
 	if root == null or node == null:

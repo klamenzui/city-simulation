@@ -37,6 +37,7 @@ func update(delta: float) -> void:
 		return
 
 	_runtime_sec += delta
+	_apply_player_dialog_social_tick(delta)
 	_refresh_left -= delta
 	if _refresh_left > 0.0:
 		return
@@ -44,8 +45,8 @@ func update(delta: float) -> void:
 
 	var selected_citizen: Citizen = selection_state_controller.get_selected_citizen()
 	var controlled_citizen: Citizen = selection_state_controller.get_controlled_citizen()
-	var player_avatar: Citizen = selection_state_controller.get_player_avatar() if selection_state_controller.has_method("get_player_avatar") else null
-	var player_control_active: bool = selection_state_controller.is_player_control_active() if selection_state_controller.has_method("is_player_control_active") else false
+	var player_avatar := _resolve_player_dialog_avatar()
+	var player_control_active := _is_player_dialog_control_active(player_avatar)
 
 	_clear_runtime_conversation_states()
 	_remove_transient_commitments()
@@ -63,9 +64,40 @@ func get_dialogue_runtime_status_label() -> String:
 		return str(dialogue_runtime.get_status_label())
 	return "template_only"
 
+func _resolve_player_dialog_avatar() -> Citizen:
+	if selection_state_controller == null:
+		return null
+	if selection_state_controller.has_method("get_player_avatar"):
+		var avatar = selection_state_controller.get_player_avatar()
+		if avatar is Citizen and is_instance_valid(avatar):
+			return avatar as Citizen
+	if selection_state_controller.has_method("get_controlled_citizen"):
+		var controlled = selection_state_controller.get_controlled_citizen()
+		if controlled is Citizen and is_instance_valid(controlled):
+			return controlled as Citizen
+	if selection_state_controller.has_method("get_camera_player_target"):
+		var camera_target = selection_state_controller.get_camera_player_target()
+		if camera_target is Citizen and is_instance_valid(camera_target):
+			return camera_target as Citizen
+	return null
+
+func _is_player_dialog_control_active(player_avatar: Citizen) -> bool:
+	if selection_state_controller == null or player_avatar == null:
+		return false
+	if selection_state_controller.has_method("is_player_control_active") \
+			and selection_state_controller.is_player_control_active():
+		return true
+	if player_avatar.has_method("is_keyboard_control_enabled") and player_avatar.is_keyboard_control_enabled():
+		return true
+	if player_avatar.has_method("is_manual_control_enabled") and player_avatar.is_manual_control_enabled():
+		return true
+	if player_avatar.has_method("is_click_move_mode_enabled") and player_avatar.is_click_move_mode_enabled():
+		return true
+	return false
+
 func get_player_dialog_availability(citizen: Citizen) -> Dictionary:
-	var player_avatar: Citizen = selection_state_controller.get_player_avatar() if selection_state_controller != null and selection_state_controller.has_method("get_player_avatar") else null
-	var player_control_active: bool = selection_state_controller.is_player_control_active() if selection_state_controller != null and selection_state_controller.has_method("is_player_control_active") else false
+	var player_avatar := _resolve_player_dialog_avatar()
+	var player_control_active := _is_player_dialog_control_active(player_avatar)
 	var result := {
 		"available": false,
 		"reason": "no_citizen",
@@ -376,6 +408,51 @@ func _apply_active_player_dialog_sessions(
 				continue
 		citizen.set_runtime_conversation_state("interactive", "Player", "player_dialog")
 		_upsert_commitment(citizen, "player_dialog", _get_int("player_npc.commitment_lock_minutes", 20))
+
+func _apply_player_dialog_social_tick(delta: float) -> void:
+	if delta <= 0.0 or world == null:
+		return
+	if "is_paused" in world and bool(world.is_paused):
+		return
+	var social_add_per_min := maxf(_get_float("player_npc.social_add_per_min", 1.0), 0.0)
+	if social_add_per_min <= 0.0:
+		return
+	var sim_minutes := _simulation_minutes_from_delta(delta)
+	if sim_minutes <= 0.0:
+		return
+	var social_gain := social_add_per_min * sim_minutes
+	var player_avatar := _resolve_player_dialog_avatar()
+	for citizen_id_variant in _player_dialog_sessions.keys():
+		var session_variant: Variant = _player_dialog_sessions.get(citizen_id_variant, {})
+		if session_variant is not Dictionary:
+			continue
+		if not bool((session_variant as Dictionary).get("active", false)):
+			continue
+		var citizen := instance_from_id(int(citizen_id_variant)) as Citizen
+		if citizen == null or not is_instance_valid(citizen):
+			continue
+		_add_social_need(citizen, social_gain)
+		if player_avatar != null and is_instance_valid(player_avatar) and player_avatar != citizen:
+			_add_social_need(player_avatar, social_gain)
+
+func _simulation_minutes_from_delta(delta: float) -> float:
+	if world == null:
+		return 0.0
+	var minutes_per_tick := 1.0
+	if "minutes_per_tick" in world:
+		minutes_per_tick = maxf(float(world.minutes_per_tick), 1.0)
+	var tick_interval_sec := 0.5
+	if "tick_interval_sec" in world:
+		tick_interval_sec = maxf(float(world.tick_interval_sec), 0.001)
+	var speed_multiplier := 1.0
+	if "speed_multiplier" in world:
+		speed_multiplier = maxf(float(world.speed_multiplier), 0.1)
+	return clampf(delta * speed_multiplier / tick_interval_sec * minutes_per_tick, 0.0, 5.0)
+
+func _add_social_need(citizen: Citizen, amount: float) -> void:
+	if citizen == null or citizen.needs == null or amount <= 0.0:
+		return
+	citizen.needs.social = clampf(citizen.needs.social + amount, 0.0, 100.0)
 
 func _update_npc_conversations(player_avatar: Citizen, player_control_active: bool) -> void:
 	var anchor_position := _get_anchor_position(player_avatar, player_control_active)
@@ -1625,7 +1702,7 @@ func _refresh_player_dialog_control_lock() -> void:
 func _face_player_dialog_participants(citizen: Citizen) -> void:
 	if citizen == null:
 		return
-	var player_avatar: Citizen = selection_state_controller.get_player_avatar() if selection_state_controller != null and selection_state_controller.has_method("get_player_avatar") else null
+	var player_avatar := _resolve_player_dialog_avatar()
 	if player_avatar == null or not is_instance_valid(player_avatar):
 		return
 	if citizen.has_method("face_position_horizontal"):
@@ -1702,6 +1779,7 @@ func _load_config() -> Dictionary:
 		"player_npc": {
 			"session_memory_turns": 6,
 			"summary_after_turns": 4,
+			"social_add_per_min": 1.0,
 			"commitment_lock_minutes": 20,
 			"cancel_if_player_leaves_range": true,
 			"farewell_auto_close_sec": 2.0,

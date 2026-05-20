@@ -144,20 +144,39 @@ func send_command(command: Dictionary) -> void:
 		return
 	_client_replica.send_command(command)
 
-func request_entity_interaction(target: Node) -> void:
+func request_entity_interaction(target: Node) -> bool:
 	if target == null:
-		return
+		return false
 	var target_id := NetworkEntityRegistryScript.get_entity_id(target)
 	if target_id.is_empty():
-		return
+		return false
 	var command := {
 		"type": "interact_entity",
 		"target_id": target_id,
 	}
 	if is_client():
 		send_command(command)
+		return true
 	elif is_host() and _host_authority != null and _host_authority.has_method("handle_local_command"):
 		_host_authority.handle_local_command(command)
+		return true
+	return false
+
+func request_player_action(action_id: String) -> bool:
+	var clean_id := action_id.strip_edges()
+	if clean_id.is_empty():
+		return false
+	var command := {
+		"type": "player_action",
+		"action_id": clean_id,
+	}
+	if is_client():
+		send_command(command)
+		return true
+	if is_host() and _host_authority != null and _host_authority.has_method("handle_local_command"):
+		_host_authority.handle_local_command(command)
+		return true
+	return false
 
 func _enter_offline_mode() -> void:
 	if world != null and world.has_method("set_simulation_authority_enabled"):

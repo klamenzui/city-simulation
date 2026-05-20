@@ -66,13 +66,13 @@ func is_player_control_active() -> bool:
 	return player_avatar != null and _controlled_citizen == player_avatar
 
 func is_player_control_input_locked() -> bool:
-	var player_avatar := get_player_avatar()
+	var player_avatar := _get_player_input_lock_target()
 	if player_avatar == null or not player_avatar.has_method("is_manual_control_input_locked"):
 		return false
 	return bool(player_avatar.is_manual_control_input_locked())
 
 func set_player_control_input_locked(locked: bool) -> void:
-	var player_avatar := get_player_avatar()
+	var player_avatar := _get_player_input_lock_target()
 	if player_avatar == null or not player_avatar.has_method("set_manual_control_input_locked"):
 		return
 	player_avatar.set_manual_control_input_locked(locked)
@@ -93,12 +93,18 @@ func is_player_dialog_input_locked() -> bool:
 	return is_player_control_input_locked() or is_camera_input_locked()
 
 func set_player_dialog_input_locked(locked: bool) -> void:
-	var player_avatar := get_player_avatar()
+	var player_avatar := _get_player_input_lock_target()
 	if player_avatar != null and player_avatar.has_method("set_manual_control_input_locked"):
 		player_avatar.set_manual_control_input_locked(locked)
 	if camera_mode_manager != null and camera_mode_manager.has_method("set_input_locked"):
 		camera_mode_manager.set_input_locked(locked)
 	_refresh_hud_control_mode()
+
+func _get_player_input_lock_target() -> Citizen:
+	var player_avatar := get_player_avatar()
+	if player_avatar != null:
+		return player_avatar
+	return get_camera_player_target()
 
 func ensure_valid_control_target() -> void:
 	if _player_avatar != null and not is_instance_valid(_player_avatar):
