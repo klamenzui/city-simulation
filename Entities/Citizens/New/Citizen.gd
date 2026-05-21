@@ -33,6 +33,7 @@ const RelaxAtHomeActionScript = preload("res://Actions/RelaxAtHomeAction.gd")
 const RelaxAtParkActionScript = preload("res://Actions/RelaxAtParkAction.gd")
 const SocializeActionScript = preload("res://Actions/SocializeAction.gd")
 const WatchCinemaActionScript = preload("res://Actions/WatchCinemaAction.gd")
+const SocialVisitActionScript = preload("res://Actions/SocialVisitAction.gd")
 const PlayerInventoryCatalogScript = preload("res://Simulation/UI/PlayerInventoryCatalog.gd")
 const FALL_RESPAWN_DEPTH_METERS := 8.0
 const FALL_RESPAWN_COOLDOWN_SEC := 1.0
@@ -1078,6 +1079,27 @@ func player_watch_cinema(world: Node = null) -> bool:
 	_player_action_notice = ""
 	return _start_player_action(WatchCinemaActionScript.new(cinema), resolved_world)
 
+func start_social_visit(world: Node, target: Building, activity: String, as_player_action: bool = false) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	if resolved_world == null or target == null:
+		return false
+	if current_action != null and current_action.has_method("finish"):
+		current_action.finish(resolved_world, self)
+	current_action = null
+	_player_action_active = false
+	var action := SocialVisitActionScript.new(target, activity, as_player_action)
+	start_action(action, resolved_world)
+	_player_action_active = as_player_action and current_action == action
+	if current_action != null and current_action.is_done():
+		current_action.finish(resolved_world, self)
+		if current_action == action:
+			current_action = null
+		_player_action_active = false
+	if as_player_action and current_action != null:
+		_player_action_notice = "Verabredung: %s." % _building_label(target)
+	decision_cooldown_left = 0
+	return current_action != null
+
 
 func player_buy_shop_item(world: Node = null) -> bool:
 	var resolved_world := _resolve_world_arg(world)
@@ -1134,6 +1156,40 @@ func player_buy_groceries(world: Node = null) -> bool:
 	return true
 
 
+func player_buy_current_building(world: Node = null) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	var location := _get_player_current_building()
+	if resolved_world == null or location == null:
+		return false
+	if current_action != null:
+		_player_action_notice = "Aktion laeuft noch."
+		return false
+	if not location.is_citizen_ownable():
+		_player_action_notice = "%s kann nicht gekauft werden." % _building_label(location)
+		return false
+	if location.is_owned_by(self):
+		_player_action_notice = "%s gehoert dir bereits." % _building_label(location)
+		return true
+	if location.has_citizen_owner():
+		_player_action_notice = "%s gehoert bereits %s." % [
+			_building_label(location),
+			location.get_owner_display_name(),
+		]
+		return false
+	if location.is_financially_closed():
+		_player_action_notice = "%s ist geschlossen und wird noch nicht verkauft." % _building_label(location)
+		return false
+	var price := location.get_purchase_price()
+	if wallet == null or wallet.balance < price:
+		_player_action_notice = "Zu wenig Geld: %d EUR noetig." % price
+		return false
+	if not location.buy_for_citizen(self, resolved_world):
+		_player_action_notice = "Kauf von %s nicht moeglich." % _building_label(location)
+		return false
+	_player_action_notice = "Gekauft: %s fuer %d EUR." % [_building_label(location), price]
+	return true
+
+
 func player_quit_job(world: Node = null, exit_after: bool = true) -> bool:
 	var resolved_world := _resolve_world_arg(world)
 	if job == null:
@@ -1176,12 +1232,29 @@ func get_player_action_ui_state(world: Node = null) -> Dictionary:
 	var action_running := not active_id.is_empty()
 	status_lines.append("Ort: %s" % location_label)
 	status_lines.append("Wohnung: %s" % (_building_label(home) if home != null else "keine"))
+	var owned_count := get_owned_building_count(resolved_world)
+	if owned_count > 0:
+		status_lines.append("Besitz: %d Gebaeude" % owned_count)
 	buttons.append(_make_player_action_button("inventory", "Inventar", true))
 	if action_running:
 		status_lines.append("Aktiv: %s" % _active_player_action_label())
 		buttons.append(_make_player_action_button("stop", "Aktion stoppen", true))
 
 	if location != null:
+		if location.is_citizen_ownable():
+			status_lines.append("Besitzer: %s" % location.get_owner_display_name())
+			if not location.has_citizen_owner():
+				var purchase_price := location.get_purchase_price()
+				status_lines.append("Kaufpreis: %d EUR" % purchase_price)
+				var can_buy := not action_running \
+					and resolved_world != null \
+					and location.can_be_bought_by(self, resolved_world)
+				buttons.append(_make_player_action_button(
+					"buy_building",
+					"Gebaeude kaufen",
+					can_buy,
+					_buy_building_disabled_reason(location, resolved_world, action_running)
+				))
 		if _is_player_home_location(location):
 			buttons.append(_make_player_action_button("eat", "Essen", home_food_stock > 0, "Keine Vorraete zuhause."))
 			buttons.append(_make_player_action_button("sleep", "Schlafen", true))
@@ -1393,6 +1466,8 @@ func _active_player_action_id() -> String:
 		return "socialize"
 	if current_action is WatchCinemaActionScript:
 		return "watch_cinema"
+	if current_action is SocialVisitActionScript:
+		return "social_visit"
 	return ""
 
 
@@ -1435,6 +1510,39 @@ func _get_player_current_building() -> Building:
 	if _sim != null and _sim.location != null and _sim.location.is_inside():
 		return _sim.location.get_inside_building()
 	return null
+
+func get_owned_buildings(world: Node = null) -> Array[Building]:
+	var resolved_world := _resolve_world_arg(world)
+	var owned_buildings: Array[Building] = []
+	if resolved_world == null or not ("buildings" in resolved_world):
+		return owned_buildings
+	for building in resolved_world.buildings:
+		if building == null or not is_instance_valid(building):
+			continue
+		if building.is_owned_by(self):
+			owned_buildings.append(building)
+	return owned_buildings
+
+func get_owned_building_count(world: Node = null) -> int:
+	return get_owned_buildings(world).size()
+
+func _buy_building_disabled_reason(building: Building, world: Node, action_running: bool) -> String:
+	if action_running:
+		return "Aktion laeuft noch."
+	if building == null or not building.is_citizen_ownable():
+		return "Gebaeude ist nicht kaufbar."
+	if building.is_owned_by(self):
+		return "Gehoert dir bereits."
+	if building.has_citizen_owner():
+		return "Bereits verkauft."
+	if building.is_financially_closed():
+		return "Geschlossene Gebaeude werden noch nicht verkauft."
+	if world == null:
+		return "Welt nicht bereit."
+	var price := building.get_purchase_price()
+	if wallet == null or wallet.balance < price:
+		return "Zu wenig Geld: %d EUR noetig." % price
+	return "Kauf nicht moeglich."
 
 
 func _is_player_home_location(building: Building) -> bool:
@@ -2830,7 +2938,7 @@ func get_info_sections(_world = null) -> Array:
 		_build_identity_section(),
 		_build_needs_section(),
 		_build_activity_section(),
-		_build_finance_section(),
+		_build_finance_section(_world),
 	]
 
 
@@ -2951,8 +3059,11 @@ func _format_travel_target_label() -> String:
 	return target_building.building_name
 
 
-func _build_finance_section() -> Dictionary:
+func _build_finance_section(world = null) -> Dictionary:
 	var rows: Array = [{"label": "Geld", "value": "%d EUR" % (wallet.balance if wallet != null else 0)}]
+	var owned_count := get_owned_building_count(world)
+	if owned_count > 0:
+		rows.append({"label": "Besitz", "value": "%d Gebaeude" % owned_count})
 	if home != null:
 		rows.append({"label": "Miete/Tag", "value": "%d EUR" % home.rent_per_day})
 	if home_food_stock > 0:

@@ -34,13 +34,33 @@ func ensure_building_ids(world: World, root: Node) -> void:
 func ensure_citizen_ids(world: World) -> void:
 	if world == null:
 		return
+	var used_numeric_ids: Dictionary = _collect_used_citizen_numeric_ids(world)
 	for citizen in world.citizens:
 		if citizen == null or not is_instance_valid(citizen):
 			continue
 		if not get_entity_id(citizen).is_empty():
 			continue
+		while used_numeric_ids.has(_next_citizen_id):
+			_next_citizen_id += 1
 		set_entity_id(citizen, CITIZEN_PREFIX + ("%04d" % _next_citizen_id))
+		used_numeric_ids[_next_citizen_id] = true
 		_next_citizen_id += 1
+
+func _collect_used_citizen_numeric_ids(world: World) -> Dictionary:
+	var used: Dictionary = {}
+	for citizen in world.citizens:
+		if citizen == null or not is_instance_valid(citizen):
+			continue
+		var entity_id := get_entity_id(citizen)
+		if not entity_id.begins_with(CITIZEN_PREFIX):
+			continue
+		var raw_number := entity_id.substr(CITIZEN_PREFIX.length())
+		if not raw_number.is_valid_int():
+			continue
+		var numeric_id := int(raw_number)
+		used[numeric_id] = true
+		_next_citizen_id = maxi(_next_citizen_id, numeric_id + 1)
+	return used
 
 static func get_entity_id(node: Node) -> String:
 	if node == null or not node.has_meta(META_ENTITY_ID):

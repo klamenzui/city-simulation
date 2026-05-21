@@ -172,7 +172,7 @@ func handle_input(event: InputEvent) -> bool:
 		selection_state_controller.set_player_control_mode(false)
 		return true
 
-	if event.is_action_pressed("simulation_pause") \
+	if _event_action_pressed(event, "simulation_pause") \
 		and not text_input_focused \
 		and (search_input == null or not search_input.has_focus()) \
 		and not _is_network_client():
@@ -183,7 +183,7 @@ func handle_input(event: InputEvent) -> bool:
 		search_results_list.visible = false
 		return true
 
-	if event.is_action_pressed("dialog_interact") and not text_input_focused:
+	if _event_action_pressed(event, "dialog_interact") and not text_input_focused:
 		if _try_toggle_player_dialog_interaction():
 			_entity_clicked_this_frame = true
 			return true
@@ -192,24 +192,24 @@ func handle_input(event: InputEvent) -> bool:
 	# steal keystrokes from the search field. Each routes through the same
 	# handler the bottom-bar button uses, so the single-window mutex applies.
 	if not text_input_focused:
-		if event.is_action_pressed("overview_buildings"):
+		if _event_action_pressed(event, "overview_buildings"):
 			on_building_overview_pressed()
 			return true
-		if event.is_action_pressed("overview_citizens"):
+		if _event_action_pressed(event, "overview_citizens"):
 			on_citizen_overview_pressed()
 			return true
-		if event.is_action_pressed("overview_economy"):
+		if _event_action_pressed(event, "overview_economy"):
 			on_economy_overview_pressed()
 			return true
-		if event.is_action_pressed("overview_search"):
+		if _event_action_pressed(event, "overview_search"):
 			on_search_overview_pressed()
 			return true
 
 	if not text_input_focused and player_building_input_active:
-		if event.is_action_pressed("player_enter_building"):
+		if _event_action_pressed(event, "player_enter_building"):
 			if _try_player_enter_building():
 				return true
-		if event.is_action_pressed("player_exit_building"):
+		if _event_action_pressed(event, "player_exit_building"):
 			if _try_player_exit_building():
 				return true
 
@@ -611,6 +611,8 @@ func _player_action_label(action_id: String) -> String:
 			return "Kleidung kaufen"
 		"buy_groceries":
 			return "Vorräte kaufen"
+		"buy_building":
+			return "Gebaeude kaufen"
 		"quit_job":
 			return "Job kündigen"
 		"training":
@@ -701,6 +703,8 @@ func handle_debug_panel_player_action_pressed(action_id: String) -> void:
 			accepted = player.player_buy_shop_item(world)
 		"buy_groceries":
 			accepted = player.player_buy_groceries(world)
+		"buy_building":
+			accepted = player.player_buy_current_building(world)
 		"quit_job":
 			accepted = player.player_quit_job(world, true)
 		"training":
@@ -843,6 +847,9 @@ func _ensure_key_action(action_name: String, keycode: int) -> void:
 	key_event.keycode = keycode
 	key_event.physical_keycode = keycode
 	InputMap.action_add_event(action_name, key_event)
+
+func _event_action_pressed(event: InputEvent, action_name: String) -> bool:
+	return InputMap.has_action(action_name) and event.is_action_pressed(action_name)
 
 ## Public accessor for the local player citizen (HUD reads it for the
 ## persistent hunger bar). Resolution order lives in _get_player_citizen.

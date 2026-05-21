@@ -35,6 +35,6 @@ Purpose: likely duplication areas to inspect before adding new code.
 
 ## Citizen Behavior Overlap
 
-- `Actions/*` files: Action, BuyClothingAction, BuyGroceriesAction, EatAtHomeAction, EatAtRestaurantAction, GoToBenchAction, GoToBuildingAction, Needs, RelaxAtBenchAction, RelaxAtHomeAction, RelaxAtParkAction, SleepAction, SocializeAction, StudyAtUniversityAction, WatchCinemaAction, WorkAction.
+- `Actions/*` files: Action, BuyClothingAction, BuyGroceriesAction, EatAtHomeAction, EatAtRestaurantAction, GoToBenchAction, GoToBuildingAction, Needs, RelaxAtBenchAction, RelaxAtHomeAction, RelaxAtParkAction, SleepAction, SocialVisitAction, SocializeAction, StudyAtUniversityAction, WatchCinemaAction, WorkAction.
 - `Simulation/GOAP/*` files: CitizenEducationGoap, CitizenEnergyGoap, CitizenFunGoap, CitizenHungerGoap, CitizenSocialGoap, CitizenWorkGoap, GoapAction, GoapPlanner.
 - Overlapping behavior words: work.

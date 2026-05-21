@@ -17,6 +17,7 @@ var owner_node: Node = null
 var session: MultiplayerSession = null
 
 var _on_started: Callable = Callable()
+var _on_back: Callable = Callable()
 var _theme: Theme = null
 var _canvas: CanvasLayer = null
 var _host_port_edit: LineEdit = null
@@ -29,10 +30,16 @@ var _buttons: Array[Button] = []
 var _started: bool = false
 var _join_in_progress: bool = false
 
-func setup(owner_ref: Node, session_ref: MultiplayerSession, on_started: Callable) -> void:
+func setup(
+	owner_ref: Node,
+	session_ref: MultiplayerSession,
+	on_started: Callable,
+	on_back: Callable = Callable()
+) -> void:
 	owner_node = owner_ref
 	session = session_ref
 	_on_started = on_started
+	_on_back = on_back
 	_build_menu()
 	if session != null and session.has_signal("status_changed"):
 		var status_cb := Callable(self, "_on_session_status_changed")
@@ -160,6 +167,15 @@ func _build_menu() -> void:
 
 	vbox.add_child(_make_separator())
 
+	# "Back" only makes sense when the parent provided a return hook.
+	if _on_back.is_valid():
+		var back_btn := Button.new()
+		back_btn.text = "Zurück zum Hauptmenü"
+		back_btn.custom_minimum_size = Vector2(0, 34)
+		back_btn.pressed.connect(Callable(self, "_on_back_pressed"))
+		vbox.add_child(back_btn)
+		_buttons.append(back_btn)
+
 	_status_label = Label.new()
 	_status_label.text = "Bereit."
 	_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -214,6 +230,18 @@ func _on_cancel_join_pressed() -> void:
 	session.start_offline()
 	_set_join_pending(false)
 	_set_status("Verbindung abgebrochen.")
+
+# Hands control back to the parent menu. We do NOT mutate session state here:
+# the menu was only browsed, no host/join was committed, so leaving the
+# session in its initial OFFLINE form is enough for the main menu to re-enter.
+func _on_back_pressed() -> void:
+	if _started:
+		return
+	if _join_in_progress and session != null:
+		session.start_offline()
+		_set_join_pending(false)
+	if _on_back.is_valid():
+		_on_back.call()
 
 func _finish() -> void:
 	if _started:

@@ -23,6 +23,7 @@ Legacy/resource-style action classes for citizen behaviors.
 | Actions/RelaxAtParkAction.gd | RelaxAtParkAction | Action |
 | Actions/SleepAction.gd | SleepAction | Action |
 | Actions/SocializeAction.gd | SocializeAction | Action |
+| Actions/SocialVisitAction.gd | SocialVisitAction | Action |
 | Actions/StudyAtUniversityAction.gd | StudyAtUniversityAction | Action |
 | Actions/WatchCinemaAction.gd | WatchCinemaAction | Action |
 | Actions/WorkAction.gd | WorkAction | Action |
@@ -192,6 +193,7 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_personality_scoring_test.gd | - | SceneTree |
 | tools/codex_route_probe.gd | - | SceneTree |
 | tools/codex_runtime_lod_conversation_test.gd | - | SceneTree, RefCounted, RefCounted |
+| tools/codex_savegame_roundtrip_probe.gd | - | SceneTree |
 | tools/codex_scan_diagnose_test.gd | - | SceneTree |
 | tools/codex_scene_warning_probe.gd | - | SceneTree |
 | tools/codex_selection_hit_test.gd | - | SceneTree |

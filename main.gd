@@ -14,6 +14,9 @@ const MultiplayerSessionScript = preload("res://Simulation/Multiplayer/Multiplay
 const MultiplayerLaunchOptionsScript = preload("res://Simulation/Multiplayer/shared/MultiplayerLaunchOptions.gd")
 const NetworkRoleScript = preload("res://Simulation/Multiplayer/shared/NetworkRole.gd")
 const MultiplayerMenuControllerScript = preload("res://Simulation/UI/MultiplayerMenuController.gd")
+const MainMenuControllerScript = preload("res://Simulation/UI/MainMenuController.gd")
+const SaveSlotMenuControllerScript = preload("res://Simulation/UI/SaveSlotMenuController.gd")
+const SaveGameServiceScript = preload("res://Simulation/Persistence/SaveGameService.gd")
 const PlayerThirdPersonCameraScript = preload("res://Simulation/Camera/PlayerThirdPersonCamera.gd")
 const CameraModeManagerScript = preload("res://Simulation/Camera/CameraModeManager.gd")
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
@@ -23,6 +26,9 @@ const BUILDING_OVERVIEW_REFRESH_INTERVAL_SEC := 0.5
 var _runtime_controller = null
 var _multiplayer_session = null
 var _multiplayer_menu = null
+var _main_menu = null
+var _save_slot_menu = null
+var _pending_load_payload: Dictionary = {}
 var _player_camera: PlayerThirdPersonCamera = null
 var _camera_mode_manager: CameraModeManager = null
 var _enable_all_citizen_trace: bool = false
@@ -38,8 +44,8 @@ func _ready() -> void:
 	_setup_camera_system()
 
 	var launch_options := MultiplayerLaunchOptionsScript.from_command_line()
-	if _should_show_multiplayer_menu(launch_options):
-		_show_multiplayer_menu()
+	if _should_show_main_menu(launch_options):
+		_show_main_menu()
 	else:
 		_begin_session(launch_options)
 
@@ -120,9 +126,9 @@ func _setup_multiplayer_session() -> void:
 	_multiplayer_session.bind(self, world)
 
 # Interactive launches without an explicit --mp-host / --mp-client flag get the
-# pre-game menu. Headless and CLI-role launches keep the original auto-start so
-# the test suite and scripted hosting are unaffected.
-func _should_show_multiplayer_menu(launch_options: Dictionary) -> bool:
+# pre-game main menu. Headless and CLI-role launches keep the original
+# auto-start so the test suite and scripted hosting are unaffected.
+func _should_show_main_menu(launch_options: Dictionary) -> bool:
 	if _is_headless_runtime():
 		return false
 	var requested_role := NetworkRoleScript.normalize(str(launch_options.get("role", NetworkRoleScript.OFFLINE)))
@@ -135,14 +141,88 @@ func _begin_session(launch_options: Dictionary) -> void:
 	_multiplayer_session.apply_options(launch_options)
 	_start_runtime()
 
+func _show_main_menu() -> void:
+	_main_menu = MainMenuControllerScript.new()
+	_main_menu.setup(
+		self,
+		Callable(self, "_on_main_menu_singleplayer"),
+		Callable(self, "_on_main_menu_load"),
+		Callable(self, "_on_main_menu_multiplayer")
+	)
+
+func _close_main_menu() -> void:
+	if _main_menu != null:
+		_main_menu.close()
+		_main_menu = null
+
+func _on_main_menu_singleplayer() -> void:
+	_close_main_menu()
+	if _multiplayer_session != null:
+		_multiplayer_session.start_offline()
+	_start_runtime()
+
+func _on_main_menu_load() -> void:
+	_show_save_slot_menu(SaveSlotMenuControllerScript.Mode.LOAD, Callable(self, "_on_main_menu_load_chosen"))
+
+func _on_main_menu_load_chosen(slot: int) -> void:
+	var payload := SaveGameServiceScript.read_payload(slot)
+	if payload.is_empty():
+		if _save_slot_menu != null:
+			_save_slot_menu.set_status("Slot %d konnte nicht gelesen werden." % slot)
+			_save_slot_menu.set_interaction_enabled(true)
+		return
+	_pending_load_payload = payload
+	_close_save_slot_menu()
+	_close_main_menu()
+	if _multiplayer_session != null:
+		_multiplayer_session.start_offline()
+	_start_runtime()
+	# Apply runs deferred so the runtime controller finished spawning citizens.
+	call_deferred("_apply_pending_load_payload")
+
+# The main menu stays in place behind the multiplayer modal so "Zurück" can
+# return to it without rebuilding state.
+func _on_main_menu_multiplayer() -> void:
+	_show_multiplayer_menu()
+
+func _show_save_slot_menu(mode: int, on_chosen: Callable) -> void:
+	_close_save_slot_menu()
+	_save_slot_menu = SaveSlotMenuControllerScript.new()
+	_save_slot_menu.setup(self, mode, on_chosen, Callable(self, "_on_save_slot_menu_cancelled"))
+
+func _close_save_slot_menu() -> void:
+	if _save_slot_menu != null:
+		_save_slot_menu.close()
+		_save_slot_menu = null
+
+func _on_save_slot_menu_cancelled() -> void:
+	_close_save_slot_menu()
+	if _main_menu != null:
+		_main_menu.reactivate()
+
 func _show_multiplayer_menu() -> void:
 	_multiplayer_menu = MultiplayerMenuControllerScript.new()
-	_multiplayer_menu.setup(self, _multiplayer_session, Callable(self, "_on_multiplayer_session_started"))
+	_multiplayer_menu.setup(
+		self,
+		_multiplayer_session,
+		Callable(self, "_on_multiplayer_session_started"),
+		Callable(self, "_on_multiplayer_menu_back")
+	)
+
+func _on_multiplayer_menu_back() -> void:
+	if _multiplayer_menu != null:
+		_multiplayer_menu.close()
+		_multiplayer_menu = null
+	if _main_menu != null:
+		_main_menu.reactivate()
+	else:
+		_show_main_menu()
 
 func _on_multiplayer_session_started() -> void:
 	if _multiplayer_menu != null:
 		_multiplayer_menu.close()
 		_multiplayer_menu = null
+	_close_main_menu()
 	_start_runtime()
 
 func _is_network_client() -> bool:
@@ -181,5 +261,106 @@ func _is_client_replica_node(node: Node) -> bool:
 	return false
 
 func _input(event: InputEvent) -> void:
+	if _handle_save_load_hotkeys(event):
+		return
 	if _runtime_controller != null:
 		_runtime_controller.handle_input(event)
+
+# In-game shortcuts: F5 quicksave, F9 quickload, F6 save-slot picker, F7
+# load-slot picker. They only fire once the runtime is up and no menu modal
+# is active, so menu navigation does not collide with hotkeys.
+func _handle_save_load_hotkeys(event: InputEvent) -> bool:
+	if _runtime_controller == null:
+		return false
+	if _main_menu != null or _multiplayer_menu != null or _save_slot_menu != null:
+		return false
+	if not _can_use_local_savegames():
+		return false
+	if event is not InputEventKey:
+		return false
+	var key_event := event as InputEventKey
+	if not key_event.pressed or key_event.echo:
+		return false
+	match key_event.keycode:
+		KEY_F5:
+			_perform_save(SaveGameServiceScript.QUICKSAVE_SLOT)
+			return true
+		KEY_F9:
+			_perform_quickload()
+			return true
+		KEY_F6:
+			_show_save_slot_menu(SaveSlotMenuControllerScript.Mode.SAVE, Callable(self, "_on_ingame_save_chosen"))
+			return true
+		KEY_F7:
+			_show_save_slot_menu(SaveSlotMenuControllerScript.Mode.LOAD, Callable(self, "_on_ingame_load_chosen"))
+			return true
+	return false
+
+func _on_ingame_save_chosen(slot: int) -> void:
+	if not _can_use_local_savegames():
+		_close_save_slot_menu()
+		return
+	_perform_save(slot)
+	_close_save_slot_menu()
+
+func _on_ingame_load_chosen(slot: int) -> void:
+	if not _can_use_local_savegames():
+		_close_save_slot_menu()
+		return
+	var payload := SaveGameServiceScript.read_payload(slot)
+	if payload.is_empty():
+		if _save_slot_menu != null:
+			_save_slot_menu.set_status("Slot %d konnte nicht gelesen werden." % slot)
+			_save_slot_menu.set_interaction_enabled(true)
+		return
+	_close_save_slot_menu()
+	var err: int = SaveGameServiceScript.apply_payload(payload, world, self, _get_active_player())
+	if err != OK:
+		push_warning("Quickload failed with error %d" % err)
+
+func _perform_save(slot: int) -> void:
+	if world == null or not _can_use_local_savegames():
+		return
+	var err: int = SaveGameServiceScript.save_to_slot(slot, world, self, _get_active_player())
+	if err != OK:
+		push_warning("Save to slot %d failed with error %d" % [slot, err])
+
+func _perform_quickload() -> void:
+	if not _can_use_local_savegames():
+		return
+	var payload := SaveGameServiceScript.read_payload(SaveGameServiceScript.QUICKSAVE_SLOT)
+	if payload.is_empty():
+		var slots := SaveGameServiceScript.list_slots()
+		for entry in slots:
+			var info := entry as Dictionary
+			if bool(info.get("exists", false)):
+				payload = SaveGameServiceScript.read_payload(int(info.get("slot", 0)))
+				break
+	if payload.is_empty():
+		return
+	var err: int = SaveGameServiceScript.apply_payload(payload, world, self, _get_active_player())
+	if err != OK:
+		push_warning("Quickload failed with error %d" % err)
+
+func _apply_pending_load_payload() -> void:
+	if _pending_load_payload.is_empty():
+		return
+	var payload := _pending_load_payload
+	_pending_load_payload = {}
+	var err: int = SaveGameServiceScript.apply_payload(payload, world, self, _get_active_player())
+	if err != OK:
+		push_warning("Apply load payload failed with error %d" % err)
+
+func _can_use_local_savegames() -> bool:
+	if _multiplayer_session == null:
+		return true
+	return not _multiplayer_session.is_host() and not _multiplayer_session.is_client()
+
+# Save/load is built around the offline ControlledCitizen. Multiplayer hosts
+# tear that node down (see _remove_legacy_controlled_citizen_for_network_host),
+# so this returns null in network sessions and the snapshot is anchored solely
+# via citizen entity_ids in the snapshot itself.
+func _get_active_player() -> Node3D:
+	if _controlled_citizen != null and is_instance_valid(_controlled_citizen):
+		return _controlled_citizen
+	return null

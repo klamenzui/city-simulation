@@ -9,6 +9,7 @@ const CitizenSimulationLodControllerScript = preload("res://Simulation/Citizens/
 const CitizenConversationManagerScript = preload("res://Simulation/Conversation/CitizenConversationManager.gd")
 const LocalDialogueRuntimeServiceScript = preload("res://Simulation/AI/LocalDialogueRuntimeService.gd")
 const SimulationInteractionControllerScript = preload("res://Simulation/UI/SimulationInteractionController.gd")
+const SocialVisitActionScript = preload("res://Actions/SocialVisitAction.gd")
 
 class MockCameraModeManager:
 	extends RefCounted
@@ -98,6 +99,7 @@ func _run_all_tests() -> void:
 		"world_district_index_supports_lod_same_district_relevance",
 		"materialized_conversation_gets_template_lines_from_dialogue_runtime",
 		"player_dialog_session_gets_template_reply",
+		"player_dialog_invitation_starts_shared_restaurant_visit",
 		"player_dialog_ui_state_switches_to_active_session",
 		"dialog_interact_starts_nearest_player_dialog_and_faces_citizen",
 		"dialog_button_uses_offline_keyboard_camera_target",
@@ -167,6 +169,8 @@ func _run_test(test_name: String) -> String:
 			return _test_materialized_conversation_gets_template_lines_from_dialogue_runtime()
 		"player_dialog_session_gets_template_reply":
 			return _test_player_dialog_session_gets_template_reply()
+		"player_dialog_invitation_starts_shared_restaurant_visit":
+			return _test_player_dialog_invitation_starts_shared_restaurant_visit()
 		"player_dialog_ui_state_switches_to_active_session":
 			return _test_player_dialog_ui_state_switches_to_active_session()
 		"dialog_interact_starts_nearest_player_dialog_and_faces_citizen":
@@ -701,6 +705,58 @@ func _test_player_dialog_session_gets_template_reply() -> String:
 		_expect_eq(str(citizen_line.get("speaker", "")), "Kevin", "player dialogue reply should use the citizen name as speaker")
 		_expect(not str(citizen_line.get("text", "")).begins_with("Kevin says:"), "template reply should not duplicate the speaker label in the message text")
 		_expect(not str(citizen_line.get("text", "")).strip_edges().is_empty(), "template reply text should not be empty")
+
+	_free_world(world)
+	return _current_error
+
+func _test_player_dialog_invitation_starts_shared_restaurant_visit() -> String:
+	var world := _new_world()
+	var camera := _new_camera(Vector3(0.0, 10.0, 14.0), Vector3.ZERO)
+	var restaurant := _new_restaurant("Shared Bistro", Vector3(4.0, 0.0, 0.0))
+	restaurant.job_capacity = maxi(restaurant.job_capacity, 1)
+	restaurant.define_stock_item("meal", 6, restaurant.meal_price, 6, 2, "food")
+	world.register_building(restaurant)
+	var worker := _new_citizen("Shared Bistro Worker", Vector3(4.0, 0.0, 0.0))
+	worker.job = Job.new()
+	worker.job.workplace = restaurant
+	_expect(restaurant.try_hire(worker), "restaurant should have staff before accepting an invitation")
+
+	var selection := MockSelectionStateController.new()
+	var player_avatar := _new_citizen("Player", Vector3(0.0, 0.0, 0.0))
+	var citizen := _new_citizen("Kevin", Vector3(1.5, 0.0, 0.0))
+	player_avatar.wallet.balance = 100
+	citizen.wallet.balance = 100
+	world.register_citizen(player_avatar)
+	world.register_citizen(citizen)
+	selection.player_avatar = player_avatar
+	selection.player_control_active = true
+	selection.controlled_citizen = player_avatar
+	selection.selected_citizen = citizen
+
+	var manager = CitizenConversationManagerScript.new()
+	manager.setup(world, camera, selection)
+	manager.update(1.0)
+	manager.begin_player_dialog(citizen)
+
+	var session := manager.submit_player_dialog_message(citizen, "Lass uns essen gehen.")
+	_expect(player_avatar.current_action is SocialVisitActionScript,
+		"player invitation should start a social visit action for the player")
+	_expect(citizen.current_action is SocialVisitActionScript,
+		"player invitation should start a social visit action for the NPC")
+	if player_avatar.current_action is SocialVisitActionScript:
+		var player_visit: Variant = player_avatar.current_action
+		_expect_eq(player_visit.call("get_target_building"), restaurant,
+			"player social visit should target the selected restaurant")
+		_expect_eq(player_visit.call("get_activity"), "restaurant",
+			"player social visit should be a restaurant activity")
+	if citizen.current_action is SocialVisitActionScript:
+		var citizen_visit: Variant = citizen.current_action
+		_expect_eq(citizen_visit.call("get_target_building"), restaurant,
+			"NPC social visit should target the same restaurant")
+	_expect(player_avatar.is_player_action_active(),
+		"player social visit should tick as an explicit player action")
+	_expect(float(session.get("auto_close_due_at_sec", -1.0)) > 0.0,
+		"accepted invitation should close the dialog after the acknowledgement")
 
 	_free_world(world)
 	return _current_error

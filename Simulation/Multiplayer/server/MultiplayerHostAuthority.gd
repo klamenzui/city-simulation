@@ -365,6 +365,8 @@ func _apply_player_action_command(peer_id: int, action_id: String) -> Dictionary
 			accepted = player.player_buy_shop_item(world)
 		"buy_groceries":
 			accepted = player.player_buy_groceries(world)
+		"buy_building":
+			accepted = player.player_buy_current_building(world)
 		"quit_job":
 			accepted = player.player_quit_job(world, true)
 		"training":
@@ -1033,6 +1035,8 @@ func _player_action_label(action_id: String) -> String:
 			return "Kleidung kaufen"
 		"buy_groceries":
 			return "Vorraete kaufen"
+		"buy_building":
+			return "Gebaeude kaufen"
 		"quit_job":
 			return "Kuendigen"
 		"training":
