@@ -69,6 +69,12 @@ var _need_fill_crit: StyleBoxFlat = null
 var _need_fill_idle: StyleBoxFlat = null
 var _player_need_bars: Array[Dictionary] = []
 
+# Context-aware bottom-bar hint. The resolver returns the hint string for the
+# current selection / player-control state; it is polled in update() and falls
+# back to a static default when unbound.
+var _action_hint_label: Label = null
+var _action_hint_resolver: Callable = Callable()
+
 func setup(
 	owner_ref: Node,
 	world_ref: World,
@@ -138,6 +144,28 @@ func update(delta: float) -> void:
 	_hud_status_refresh_left = _HUD_STATUS_REFRESH_INTERVAL_SEC
 	_refresh_network_status()
 	_refresh_player_status()
+	_refresh_action_hint()
+
+## Binds the resolver that supplies the context-aware bottom-bar hint. The
+## interaction controller exposes get_action_hint(); SceneRuntimeController
+## wires it here. Without a resolver the hint stays at its static default.
+func bind_action_hint_resolver(resolver: Callable) -> void:
+	_action_hint_resolver = resolver
+	_refresh_action_hint()
+
+func _refresh_action_hint() -> void:
+	if _action_hint_label == null:
+		return
+	var text := _default_action_hint()
+	if _action_hint_resolver.is_valid():
+		var resolved = _action_hint_resolver.call()
+		if resolved is String and not (resolved as String).is_empty():
+			text = resolved
+	if _action_hint_label.text != text:
+		_action_hint_label.text = text
+
+func _default_action_hint() -> String:
+	return "Klick: Infos · F1–F4: Übersichten"
 
 func refresh_control_mode(controlled_citizen: Citizen, mode_prefix: String = "CONTROL MODE", mode_hint: String = "") -> void:
 	if _control_mode_panel == null or _control_mode_label == null:
@@ -361,11 +389,11 @@ func _build_bottom_action_bar(
 	hbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_NORMAL)
 	panel.add_child(hbox)
 
-	building_overview_button = _make_bar_button(hbox, "Gebaeude", 110, building_overview_pressed)
-	citizen_overview_button = _make_bar_button(hbox, "Buerger", 110, citizen_overview_pressed)
+	building_overview_button = _make_bar_button(hbox, "Gebäude (F1)", 132, building_overview_pressed)
+	citizen_overview_button = _make_bar_button(hbox, "Bürger (F2)", 124, citizen_overview_pressed)
 	player_overview_button = _make_bar_button(hbox, "Spieler", 100, player_overview_pressed)
-	economy_overview_button = _make_bar_button(hbox, "Finanzen", 110, economy_overview_pressed)
-	search_overview_button = _make_bar_button(hbox, "Suche", 90, search_pressed)
+	economy_overview_button = _make_bar_button(hbox, "Finanzen (F3)", 132, economy_overview_pressed)
+	search_overview_button = _make_bar_button(hbox, "Suche (F4)", 112, search_pressed)
 	debug_tools_button = _make_bar_button(hbox, "Tools", 90, debug_tools_pressed)
 
 	hbox.add_child(_make_v_divider())
@@ -385,13 +413,13 @@ func _build_bottom_action_bar(
 
 	hbox.add_child(_make_v_divider())
 
-	var hint := Label.new()
-	hint.text = "Klick auf Buerger / Gebaeude fuer Infos"
-	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	hint.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
-	hint.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
-	hint.custom_minimum_size = Vector2(0, 36)
-	hbox.add_child(hint)
+	_action_hint_label = Label.new()
+	_action_hint_label.text = _default_action_hint()
+	_action_hint_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_action_hint_label.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+	_action_hint_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+	_action_hint_label.custom_minimum_size = Vector2(0, 36)
+	hbox.add_child(_action_hint_label)
 
 
 func _build_control_mode_banner() -> void:

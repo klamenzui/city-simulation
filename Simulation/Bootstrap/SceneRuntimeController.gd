@@ -229,6 +229,9 @@ func _build_hud(search_result_limit: int, building_overview_refresh_interval_sec
 	)
 	if dialogue_runtime_service != null and hud_controller.has_method("bind_dialogue_runtime_service"):
 		hud_controller.bind_dialogue_runtime_service(dialogue_runtime_service)
+	if interaction_controller != null and hud_controller.has_method("bind_action_hint_resolver") \
+			and interaction_controller.has_method("get_action_hint"):
+		hud_controller.bind_action_hint_resolver(Callable(interaction_controller, "get_action_hint"))
 
 	var canvas: CanvasLayer = hud_controller.get_canvas()
 	if canvas == null:

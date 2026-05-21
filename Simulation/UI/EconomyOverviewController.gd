@@ -110,20 +110,20 @@ func _refresh_city_label() -> void:
 	lines.append("[b]STADT[/b]")
 	lines.append("")
 	lines.append("[color=#76c68f]EINNAHMEN heute[/color]")
-	lines.append("  Aller Gebaeude: %d EUR" % income_today)
+	lines.append("  Aller Gebäude: %d EUR" % income_today)
 	lines.append("  davon Steuern: %d EUR%s" % [
 		taxes_today,
 		" (offen: %d)" % taxes_unpaid if taxes_unpaid > 0 else ""
 	])
 	lines.append("")
 	lines.append("[color=#d88c57]AUSGABEN heute[/color]")
-	lines.append("  Loehne: %d EUR%s" % [
+	lines.append("  Löhne: %d EUR%s" % [
 		wages_today,
 		" (offen: %d)" % wages_unpaid if wages_unpaid > 0 else ""
 	])
 	lines.append("  Wartung: %d EUR" % maintenance_today)
 	lines.append("  Betrieb: %d EUR" % operating_today)
-	lines.append("  Foerderung gezahlt: %d / %d EUR" % [funding_today, funding_requested])
+	lines.append("  Förderung gezahlt: %d / %d EUR" % [funding_today, funding_requested])
 	lines.append("  Summe Ausgaben: %d EUR" % expenses_today)
 	lines.append("")
 	var profit_color := "#76c68f" if profit > 0 else ("#d95c5c" if profit < 0 else "#909090")
@@ -148,7 +148,7 @@ func _refresh_building_list() -> void:
 	)
 
 	var lines: PackedStringArray = []
-	lines.append("[b]GEBAEUDE-GRUPPEN[/b] (Klick fuer Details)")
+	lines.append("[b]GEBÄUDE-GRUPPEN[/b] (Klick für Details)")
 	lines.append("")
 	for entry in entries:
 		lines.append(_format_building_list_line(entry))
@@ -180,12 +180,12 @@ func _refresh_building_detail() -> void:
 		return
 	if _selected_detail_group_key.is_empty():
 		building_detail_label.clear()
-		building_detail_label.append_text("[color=#909090]Waehle ein Gebaeude aus der Liste...[/color]")
+		building_detail_label.append_text("[color=#909090]Wähle ein Gebäude aus der Liste...[/color]")
 		return
 	var group := _get_building_group_by_key(_selected_detail_group_key)
 	if group.is_empty():
 		building_detail_label.clear()
-		building_detail_label.append_text("[color=#909090](Gebaeude nicht mehr verfuegbar)[/color]")
+		building_detail_label.append_text("[color=#909090](Gebäude nicht mehr verfügbar)[/color]")
 		return
 
 	var profit := int(group.get("profit", 0))
@@ -202,12 +202,12 @@ func _refresh_building_detail() -> void:
 	lines.append("[b]Gewinn: [color=%s]%+d EUR[/color][/b]" % [profit_color, profit])
 	lines.append("")
 	lines.append("[b]Aufschluesselung[/b]")
-	lines.append("  Loehne: %d / %d offen" % [int(group.get("wages", 0)), int(group.get("wages_unpaid", 0))])
+	lines.append("  Löhne: %d / %d offen" % [int(group.get("wages", 0)), int(group.get("wages_unpaid", 0))])
 	lines.append("  Steuern: %d / %d offen" % [int(group.get("taxes", 0)), int(group.get("taxes_unpaid", 0))])
 	lines.append("  Wartung: %d / %d offen" % [int(group.get("maintenance", 0)), int(group.get("maintenance_unpaid", 0))])
 	lines.append("  Betrieb: %d / %d offen" % [int(group.get("operating", 0)), int(group.get("operating_unpaid", 0))])
 	if int(group.get("funding_requested", 0)) > 0:
-		lines.append("  Foerderung: %d / %d EUR" % [int(group.get("funding", 0)), int(group.get("funding_requested", 0))])
+		lines.append("  Förderung: %d / %d EUR" % [int(group.get("funding", 0)), int(group.get("funding_requested", 0))])
 	lines.append("")
 	lines.append("[b]Bilanz gesamt[/b]: %d EUR" % int(group.get("balance", 0)))
 	lines.append("[b]Status[/b]: %s" % _escape(_format_state_counts(group.get("state_counts", {}))))

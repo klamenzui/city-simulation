@@ -150,7 +150,7 @@ func _build_building_overview_overlay(
 	building_overview_panel.add_child(building_vbox)
 
 	var building_heading := Label.new()
-	building_heading.text = "BUILDINGS"
+	building_heading.text = "GEBÄUDE"
 	building_heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
 	building_heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
 	building_vbox.add_child(building_heading)
@@ -205,7 +205,7 @@ func _build_citizen_overview_overlay(
 	citizen_overview_panel.add_child(citizen_vbox)
 
 	var citizen_heading := Label.new()
-	citizen_heading.text = "CITIZENS"
+	citizen_heading.text = "BÜRGER"
 	citizen_heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
 	citizen_heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
 	citizen_vbox.add_child(citizen_heading)
@@ -265,7 +265,7 @@ func _build_economy_overview_overlay(
 	economy_panel.add_child(outer_vbox)
 
 	var economy_heading := Label.new()
-	economy_heading.text = "ECONOMY"
+	economy_heading.text = "FINANZEN"
 	economy_heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
 	economy_heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
 	outer_vbox.add_child(economy_heading)
@@ -360,7 +360,7 @@ func _build_search_overlay(
 	search_panel.add_child(search_vbox)
 
 	var search_heading := Label.new()
-	search_heading.text = "SEARCH"
+	search_heading.text = "SUCHE"
 	search_heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
 	search_heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
 	search_vbox.add_child(search_heading)

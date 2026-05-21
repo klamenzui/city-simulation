@@ -112,7 +112,7 @@ func handle_input(event: InputEvent) -> bool:
 		return true
 	if _scan_active:
 		if _scan_in_progress:
-			_set_result("Scan laeuft bereits, warte auf Abschluss...")
+			_set_result("Scan läuft bereits, warte auf Abschluss...")
 			return true
 		_scan_request_id += 1
 		_scan_in_progress = true
@@ -322,7 +322,7 @@ func _set_result(text: String) -> void:
 func _drop_and_scan(world_pos: Vector3, screen_pos: Vector2, scan_request_id: int) -> void:
 	var citizen := _find_citizen_for_scan()
 	if citizen == null:
-		_finish_scan_request(scan_request_id, "(kein Citizen-Node gefunden - Scan unmoeglich)")
+		_finish_scan_request(scan_request_id, "(kein Citizen-Node gefunden - Scan unmöglich)")
 		return
 	var local_grid = citizen._local_grid if "_local_grid" in citizen else null
 	if local_grid == null or not local_grid.has_method("scan_at"):
@@ -376,7 +376,7 @@ func _drop_and_scan(world_pos: Vector3, screen_pos: Vector2, scan_request_id: in
 			"capsule_y_offset_local": capsule_y_offset,
 			"physics_process_enabled": citizen.is_processing_physics() if citizen.has_method("is_processing_physics") else true,
 		})
-	_set_result("Drop laeuft ... von Y=%.2f, warte auf Boden" % drop_pos.y)
+	_set_result("Drop läuft ... von Y=%.2f, warte auf Boden" % drop_pos.y)
 
 	# Wait for landing. Skip is_on_floor() checks for the first MIN_FRAMES
 	# frames because the cache from the pre-teleport state can lie. Log
@@ -389,7 +389,7 @@ func _drop_and_scan(world_pos: Vector3, screen_pos: Vector2, scan_request_id: in
 		if not _is_scan_request_current(scan_request_id):
 			return
 		if citizen == null or not is_instance_valid(citizen):
-			_finish_scan_request(scan_request_id, "(Citizen nicht mehr verfuegbar - Scan abgebrochen)")
+			_finish_scan_request(scan_request_id, "(Citizen nicht mehr verfügbar - Scan abgebrochen)")
 			return
 		landing_frame = i + 1
 		if landing_frame >= SCAN_DROP_MIN_FRAMES \
