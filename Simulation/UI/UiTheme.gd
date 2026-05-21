@@ -70,6 +70,10 @@ const SEPARATION_LOOSE: int = 16
 # so panels never overlap that chrome.
 const TOPBAR_HEIGHT: int = 56
 
+# Persistent bottom-bar height — same role as TOPBAR_HEIGHT but for the
+# action bar. Used by overlay panels to compute their lower offset.
+const BOTTOMBAR_HEIGHT: int = 72
+
 
 # ============================================================================
 # Public API — build a Theme resource and reuse it across the whole HUD.

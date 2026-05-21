@@ -111,10 +111,20 @@ func _refresh_building_overview() -> void:
 func _format_building_overview_line(building: Building, status_key: String, active: bool, hour: int) -> String:
 	var status_text := building.get_open_status_display_label(hour)
 	var color := _status_key_to_hex(status_key)
+	# Detail row composed from name|status plus an optional staff/edu chunk so
+	# the player can see at a glance whether a workplace is hiring and what
+	# education it expects. Required-education comes from get_required_education_level().
+	var detail_parts: Array[String] = ["%s | %s" % [building.get_display_name(), status_text]]
+	if int(building.job_capacity) > 0:
+		var staff_text := "Mitarb. %d/%d" % [building.workers.size(), maxi(int(building.job_capacity), 0)]
+		var req_edu := building.get_required_education_level()
+		if req_edu > 0:
+			staff_text += " . Edu %d" % req_edu
+		detail_parts.append(staff_text)
 	var inner := "[color=%s]%s[/color]  %s  (%d EUR)" % [
 		color,
 		_status_icon_for_overview(status_key),
-		_building_overview_escape("%s | %s" % [building.get_display_name(), status_text]),
+		_building_overview_escape("  -  ".join(detail_parts)),
 		building.account.balance
 	]
 	var styled := "[b]%s[/b]" % inner if active else inner
