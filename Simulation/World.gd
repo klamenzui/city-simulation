@@ -64,6 +64,13 @@ var _spawn_refill_delay_min_hours: int = 30
 var _spawn_refill_delay_max_hours: int = 180
 var _spawn_refill_max_per_tick: int = 1
 var _spawn_refill_spawn_index: int = 0
+var _citizen_property_purchase_max_per_day: int = 1
+var _citizen_property_purchase_wallet_reserve: int = 300
+var _citizen_property_purchase_living_reserve_days: int = 14
+var _citizen_property_purchase_min_business_aptitude: float = 0.62
+# Lifetime death counter — incremented when a dying citizen is unregistered.
+# Surfaced in the top-bar HUD chip; not persisted across sessions.
+var _total_deaths: int = 0
 
 func _ready() -> void:
 	#use_collision = true
@@ -218,6 +225,12 @@ func _on_payday() -> void:
 	if city_hall != null:
 		city_hall.pay_infrastructure(self)
 
+	var owner_payout_total := 0
+	for building in buildings:
+		if building == null:
+			continue
+		owner_payout_total += building.settle_owner_profit(self)
+
 	var struggling_buildings := 0
 	var closed_buildings := 0
 	# Group by display-name + type so the daily summary stays compact when
@@ -244,11 +257,12 @@ func _on_payday() -> void:
 		var group_buildings: Array = building_groups[group_key]
 		SimLogger.log("  [BUILDING] %s" % _format_building_group_summary(group_buildings))
 
-	SimLogger.log("  [SUMMARY] salaries=%d welfare=%d operating=%d maintenance=%d city_hall_balance=%d city_reserve_balance=%d reserve_transfers_today=%d public_funding_requested=%d public_funding_paid=%d struggling_buildings=%d closed_buildings=%d" % [
+	SimLogger.log("  [SUMMARY] salaries=%d welfare=%d operating=%d maintenance=%d owner_payouts=%d city_hall_balance=%d city_reserve_balance=%d reserve_transfers_today=%d public_funding_requested=%d public_funding_paid=%d struggling_buildings=%d closed_buildings=%d" % [
 		salaries_total,
 		welfare_total,
 		operating_total,
 		maintenance_total,
+		owner_payout_total,
 		city_hall.account.balance if city_hall != null else 0,
 		city_account.balance,
 		city_hall.reserve_transfer_amount_today if city_hall != null else 0,
@@ -260,6 +274,7 @@ func _on_payday() -> void:
 	SimLogger.log("===========================\n")
 
 	_rollover_building_finances()
+	_run_citizen_property_purchase_cycle()
 	_run_daily_market_cycle()
 
 
@@ -281,6 +296,7 @@ func _format_building_group_summary(group: Array) -> String:
 	var maintenance_unpaid_sum: int = 0
 	var operating_sum: int = 0
 	var operating_unpaid_sum: int = 0
+	var owner_payout_sum: int = 0
 	var funding_req_sum: int = 0
 	var funding_paid_sum: int = 0
 	var condition_min: float = INF
@@ -299,6 +315,7 @@ func _format_building_group_summary(group: Array) -> String:
 		maintenance_unpaid_sum += b.maintenance_unpaid_today
 		operating_sum += b.operating_costs_today
 		operating_unpaid_sum += b.operating_unpaid_today
+		owner_payout_sum += b.owner_payout_today
 		funding_req_sum += b.public_funding_requested_today
 		funding_paid_sum += b.public_funding_today
 		condition_min = minf(condition_min, b.condition)
@@ -312,7 +329,7 @@ func _format_building_group_summary(group: Array) -> String:
 	else:
 		condition_str = "%.1f..%.1f" % [condition_min, condition_max]
 
-	return "name=%s x%d type=%s balance=%d income=%d wages=%d/%d taxes=%d/%d maintenance=%d/%d operating=%d/%d funding=%d/%d state=%s condition=%s" % [
+	return "name=%s x%d type=%s balance=%d income=%d wages=%d/%d taxes=%d/%d maintenance=%d/%d operating=%d/%d owner_payout=%d funding=%d/%d state=%s condition=%s" % [
 		first.get_display_name(),
 		count,
 		first.get_building_type_name(),
@@ -322,6 +339,7 @@ func _format_building_group_summary(group: Array) -> String:
 		taxes_sum, taxes_unpaid_sum,
 		maintenance_sum, maintenance_unpaid_sum,
 		operating_sum, operating_unpaid_sum,
+		owner_payout_sum,
 		funding_req_sum, funding_paid_sum,
 		_format_state_counts(state_counts),
 		condition_str
@@ -499,6 +517,130 @@ func _rollover_building_finances() -> void:
 		if building != null:
 			building.begin_new_day()
 
+func try_citizen_buy_building(citizen: Citizen, building: Building) -> bool:
+	if citizen == null or building == null:
+		return false
+	return building.buy_for_citizen(citizen, self)
+
+func _run_citizen_property_purchase_cycle() -> int:
+	var purchases := 0
+	for citizen in citizens:
+		if purchases >= _citizen_property_purchase_max_per_day:
+			break
+		if citizen == null or not is_instance_valid(citizen):
+			continue
+		if _is_manual_player_citizen(citizen):
+			continue
+		if citizen.get_owned_building_count(self) > 0:
+			continue
+		if not _citizen_can_consider_property_purchase(citizen):
+			continue
+		var candidate := _find_affordable_property_for(citizen)
+		if candidate == null:
+			continue
+		var price := candidate.get_purchase_price()
+		if not try_citizen_buy_building(citizen, candidate):
+			continue
+		purchases += 1
+		SimLogger.log("  [PROPERTY] %s bought %s for %d EUR (aptitude=%.2f reserve=%d wallet=%d)" % [
+			citizen.citizen_name,
+			candidate.get_display_name(),
+			price,
+			_get_citizen_business_aptitude(citizen),
+			_estimate_citizen_living_reserve(citizen),
+			citizen.wallet.balance,
+		])
+	return purchases
+
+func _find_affordable_property_for(citizen: Citizen) -> Building:
+	if citizen == null or citizen.wallet == null:
+		return null
+	var best: Building = null
+	var best_score := INF
+	for building in buildings:
+		if building == null or not is_instance_valid(building):
+			continue
+		if not building.is_citizen_ownable() or building.has_citizen_owner():
+			continue
+		if building.is_financially_closed():
+			continue
+		var price := building.get_purchase_price()
+		if not _citizen_can_afford_property_after_living_reserve(citizen, price):
+			continue
+		var dist := citizen.global_position.distance_to(building.global_position)
+		var score := float(price) + dist * 0.25 - _get_citizen_business_aptitude(citizen) * 250.0
+		if score < best_score:
+			best_score = score
+			best = building
+	return best
+
+func _citizen_can_consider_property_purchase(citizen: Citizen) -> bool:
+	if citizen == null or citizen.wallet == null:
+		return false
+	if citizen.needs != null:
+		if citizen.needs.health < 55.0 or citizen.needs.hunger >= 75.0:
+			return false
+	var aptitude := _get_citizen_business_aptitude(citizen)
+	return aptitude >= _citizen_property_purchase_min_business_aptitude
+
+func _get_citizen_business_aptitude(citizen: Citizen) -> float:
+	if citizen == null:
+		return 0.0
+	var work_drive := clampf((citizen.work_motivation - 0.85) / 0.55, 0.0, 1.0)
+	var education_factor := clampf(float(citizen.education_level) / 3.0, 0.0, 1.0)
+	var frugality_proxy := clampf((0.65 - citizen.fun_interest) / 0.65, 0.0, 1.0)
+	var social_factor := clampf(citizen.sociability, 0.0, 1.0)
+	var job_factor := 0.0
+	if citizen.job != null:
+		job_factor = clampf(float(citizen.job.wage_per_hour - 10) / 16.0, 0.0, 1.0)
+		if citizen.job.workplace != null and citizen.job.workplace.is_citizen_ownable():
+			job_factor = maxf(job_factor, 0.55)
+	return clampf(
+		work_drive * 0.38
+			+ education_factor * 0.22
+			+ frugality_proxy * 0.18
+			+ job_factor * 0.14
+			+ social_factor * 0.08,
+		0.0,
+		1.0
+	)
+
+func _citizen_can_afford_property_after_living_reserve(citizen: Citizen, price: int) -> bool:
+	if citizen == null or citizen.wallet == null or price <= 0:
+		return false
+	var living_reserve := _estimate_citizen_living_reserve(citizen)
+	if citizen.wallet.balance - price < living_reserve:
+		return false
+	var aptitude := _get_citizen_business_aptitude(citizen)
+	var max_spend_ratio := lerpf(0.45, 0.70, aptitude)
+	return float(price) <= float(citizen.wallet.balance) * max_spend_ratio
+
+func _estimate_citizen_living_reserve(citizen: Citizen) -> int:
+	var days := maxi(_citizen_property_purchase_living_reserve_days, 1)
+	var rent_per_day := BalanceConfig.get_int("economy.default_rent_per_day", 15)
+	if citizen != null and citizen.home != null:
+		rent_per_day = citizen.home.rent_per_day
+	var grocery_price := BalanceConfig.get_int("buildings.supermarket.grocery_price", 10)
+	var reserve := maxi(
+		_citizen_property_purchase_wallet_reserve,
+		(rent_per_day + grocery_price) * days
+	)
+	if citizen != null:
+		if citizen.job == null:
+			reserve += 200
+		if citizen.home_food_stock <= 1:
+			reserve += grocery_price * 2
+	return reserve
+
+func _is_manual_player_citizen(citizen: Citizen) -> bool:
+	if citizen == null:
+		return false
+	if citizen.has_method("is_manual_control_enabled") and citizen.is_manual_control_enabled():
+		return true
+	if citizen.has_method("is_network_manual_controlled") and citizen.is_network_manual_controlled():
+		return true
+	return false
+
 func toggle_pause() -> void:
 	if not simulation_authority_enabled:
 		return
@@ -655,6 +797,7 @@ func unregister_citizen(citizen: Citizen) -> void:
 	if was_registered:
 		citizen_unregistered.emit(citizen)
 		if _is_citizen_dying(citizen):
+			_total_deaths += 1
 			_ensure_population_refill_target("death")
 
 func set_citizen_spawn_parent(parent: Node) -> void:
@@ -668,6 +811,9 @@ func get_population_refill_pending_count() -> int:
 
 func get_active_citizen_count() -> int:
 	return _count_active_citizens()
+
+func get_total_deaths() -> int:
+	return _total_deaths
 
 func capture_population_target_floor() -> void:
 	if not _population_refill_enabled:

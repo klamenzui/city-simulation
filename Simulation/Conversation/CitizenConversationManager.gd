@@ -4,6 +4,10 @@ class_name CitizenConversationManager
 const CONFIG_PATH := "res://config/conversation_rules.json"
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
 
+const SOCIAL_INVITATION_RESTAURANT := "restaurant"
+const SOCIAL_INVITATION_PARK := "park"
+const SOCIAL_INVITATION_CINEMA := "cinema"
+
 var world: World = null
 var city_camera: Camera3D = null
 var selection_state_controller = null
@@ -304,6 +308,17 @@ func submit_player_dialog_message(citizen: Citizen, player_text: String) -> Dict
 	session["player_flagged_repetition"] = _player_line_flags_repetition(clean_text)
 	session["auto_close_due_at_sec"] = -1.0
 	_compress_player_dialog_session_memory(session)
+
+	var social_invitation := _build_social_invitation_from_text(clean_text, citizen)
+	if not social_invitation.is_empty() and _try_start_social_invitation(citizen, social_invitation):
+		_apply_player_dialog_reply_to_session(session, citizen, {
+			"state": "ready",
+			"source": "social_invitation",
+			"text": _build_social_invitation_acceptance(social_invitation)
+		})
+		session["auto_close_due_at_sec"] = _runtime_sec + _get_float("player_npc.farewell_auto_close_sec", 2.0)
+		_player_dialog_sessions[citizen.get_instance_id()] = session
+		return session.duplicate(true)
 
 	var request_key := "%s_turn_%d" % [str(session.get("session_id", citizen.citizen_name.to_lower())), int(session.get("turn_count", 1))]
 	session["pending_request_key"] = request_key
@@ -1219,6 +1234,185 @@ func _contains_any_dialogue_token(text: String, tokens: Array[String]) -> bool:
 			return true
 	return false
 
+func _build_social_invitation_from_text(text: String, citizen: Citizen) -> Dictionary:
+	var lower_text := text.to_lower().strip_edges()
+	if lower_text.is_empty() or not _is_social_invitation_phrase(lower_text):
+		return {}
+	var activity := _infer_social_invitation_activity(lower_text)
+	if activity.is_empty():
+		return {}
+	var player_avatar := _resolve_player_dialog_avatar()
+	if player_avatar == null or player_avatar == citizen:
+		return {}
+	var target := _select_social_invitation_target(activity, player_avatar, citizen)
+	if target == null:
+		return {}
+	return {
+		"activity": activity,
+		"target": target
+	}
+
+func _is_social_invitation_phrase(lower_text: String) -> bool:
+	if not _contains_any_dialogue_token(lower_text, [
+		"lass uns",
+		"laß uns",
+		"gehen wir",
+		"komm wir",
+		"komm, wir",
+		"wollen wir",
+		"zusammen",
+		"let's",
+		"lets",
+		"shall we",
+		"come with me"
+	]):
+		return false
+	return _contains_any_dialogue_token(lower_text, [
+		"gehen",
+		"essen",
+		"restaurant",
+		"park",
+		"kino",
+		"film",
+		"cinema",
+		"eat"
+	])
+
+func _infer_social_invitation_activity(lower_text: String) -> String:
+	if _contains_any_dialogue_token(lower_text, ["essen", "restaurant", "food", "eat"]):
+		return SOCIAL_INVITATION_RESTAURANT
+	if _contains_any_dialogue_token(lower_text, ["park", "spazier", "rausgehen"]):
+		return SOCIAL_INVITATION_PARK
+	if _contains_any_dialogue_token(lower_text, ["kino", "film", "cinema", "movie"]):
+		return SOCIAL_INVITATION_CINEMA
+	return ""
+
+func _select_social_invitation_target(activity: String, player_avatar: Citizen, citizen: Citizen) -> Building:
+	if world == null or player_avatar == null or citizen == null:
+		return null
+	var candidates: Array = []
+	var seen: Dictionary = {}
+	_add_social_invitation_candidate(candidates, seen, citizen.current_location, activity, player_avatar, citizen)
+	_add_social_invitation_candidate(candidates, seen, player_avatar.current_location, activity, player_avatar, citizen)
+	match activity:
+		SOCIAL_INVITATION_RESTAURANT:
+			_add_social_invitation_candidate(candidates, seen, citizen.favorite_restaurant, activity, player_avatar, citizen)
+			_add_social_invitation_candidate(candidates, seen, player_avatar.favorite_restaurant, activity, player_avatar, citizen)
+		SOCIAL_INVITATION_PARK:
+			_add_social_invitation_candidate(candidates, seen, citizen.favorite_park, activity, player_avatar, citizen)
+			_add_social_invitation_candidate(candidates, seen, player_avatar.favorite_park, activity, player_avatar, citizen)
+		SOCIAL_INVITATION_CINEMA:
+			_add_social_invitation_candidate(candidates, seen, citizen.favorite_cinema, activity, player_avatar, citizen)
+			_add_social_invitation_candidate(candidates, seen, player_avatar.favorite_cinema, activity, player_avatar, citizen)
+	for building in world.buildings:
+		_add_social_invitation_candidate(candidates, seen, building, activity, player_avatar, citizen)
+	candidates.sort_custom(_sort_social_invitation_candidates)
+	if candidates.is_empty():
+		return null
+	return (candidates[0] as Dictionary).get("building", null) as Building
+
+func _add_social_invitation_candidate(
+	candidates: Array,
+	seen: Dictionary,
+	building: Building,
+	activity: String,
+	player_avatar: Citizen,
+	citizen: Citizen
+) -> void:
+	if building == null or not is_instance_valid(building):
+		return
+	var key := building.get_instance_id()
+	if seen.has(key):
+		return
+	if not _building_matches_social_invitation_activity(building, activity):
+		return
+	if not _can_use_social_invitation_target(activity, building, player_avatar, citizen):
+		return
+	seen[key] = true
+	var midpoint := (player_avatar.global_position + citizen.global_position) * 0.5
+	candidates.append({
+		"building": building,
+		"score": midpoint.distance_to(building.global_position)
+	})
+
+func _sort_social_invitation_candidates(a: Variant, b: Variant) -> bool:
+	var candidate_a: Dictionary = a as Dictionary if a is Dictionary else {}
+	var candidate_b: Dictionary = b as Dictionary if b is Dictionary else {}
+	return float(candidate_a.get("score", INF)) < float(candidate_b.get("score", INF))
+
+func _building_matches_social_invitation_activity(building: Building, activity: String) -> bool:
+	match activity:
+		SOCIAL_INVITATION_RESTAURANT:
+			return building is Restaurant
+		SOCIAL_INVITATION_PARK:
+			return building is Park or building.is_in_group("parks")
+		SOCIAL_INVITATION_CINEMA:
+			return building is Cinema
+	return false
+
+func _can_use_social_invitation_target(
+	activity: String,
+	building: Building,
+	player_avatar: Citizen,
+	citizen: Citizen
+) -> bool:
+	if building == null or player_avatar == null or citizen == null:
+		return false
+	var hour := world.time.get_hour() if world != null and world.time != null else -1
+	if activity != SOCIAL_INVITATION_PARK and not building.is_open(hour):
+		return false
+	match activity:
+		SOCIAL_INVITATION_RESTAURANT:
+			var restaurant := building as Restaurant
+			if restaurant == null or not restaurant.can_sell_item("meal", 1):
+				return false
+			return player_avatar.can_afford_restaurant_at(restaurant, world) \
+				and citizen.can_afford_restaurant_at(restaurant, world)
+		SOCIAL_INVITATION_PARK:
+			return true
+		SOCIAL_INVITATION_CINEMA:
+			var cinema := building as Cinema
+			if cinema == null:
+				return false
+			return player_avatar.wallet != null \
+				and citizen.wallet != null \
+				and player_avatar.wallet.balance >= cinema.ticket_price \
+				and citizen.wallet.balance >= cinema.ticket_price
+	return false
+
+func _try_start_social_invitation(citizen: Citizen, invitation: Dictionary) -> bool:
+	var player_avatar := _resolve_player_dialog_avatar()
+	var target := invitation.get("target", null) as Building
+	var activity := str(invitation.get("activity", ""))
+	if player_avatar == null or citizen == null or target == null or activity.is_empty():
+		return false
+	if not _can_use_social_invitation_target(activity, target, player_avatar, citizen):
+		return false
+	if not player_avatar.start_social_visit(world, target, activity, true):
+		return false
+	if not citizen.start_social_visit(world, target, activity, false):
+		player_avatar.cancel_player_action(world)
+		return false
+	_upsert_commitment(citizen, "social_invitation", _get_int("player_npc.commitment_lock_minutes", 20))
+	_upsert_commitment(player_avatar, "social_invitation", _get_int("player_npc.commitment_lock_minutes", 20))
+	_log_player_dialog(citizen, "Social invitation accepted: %s at %s" % [
+		activity,
+		target.get_display_name()
+	])
+	return true
+
+func _build_social_invitation_acceptance(invitation: Dictionary) -> String:
+	var target := invitation.get("target", null) as Building
+	var target_name := target.get_display_name() if target != null else "dem Ort"
+	match str(invitation.get("activity", "")):
+		SOCIAL_INVITATION_RESTAURANT:
+			return "Klar, gehen wir zu %s essen." % target_name
+		SOCIAL_INVITATION_PARK:
+			return "Klar, gehen wir zusammen zu %s." % target_name
+		SOCIAL_INVITATION_CINEMA:
+			return "Klar, gehen wir zu %s." % target_name
+	return "Klar, gehen wir."
+
 func _build_player_location_context(citizen: Citizen, nearby_places: Array) -> Dictionary:
 	return {
 		"inside_building": citizen.is_inside_building(),
@@ -1685,6 +1879,10 @@ func _apply_player_dialog_reply_to_session(session: Dictionary, citizen: Citizen
 			reply_text
 		]
 	)
+	if str(reply_result.get("source", "")) != "social_invitation":
+		var social_invitation := _build_social_invitation_from_text(reply_text, citizen)
+		if not social_invitation.is_empty() and _try_start_social_invitation(citizen, social_invitation):
+			session["auto_close_due_at_sec"] = _runtime_sec + _get_float("player_npc.farewell_auto_close_sec", 2.0)
 
 func _build_player_fallback_reply(citizen: Citizen) -> String:
 	return "Klar. Was gibt's?"

@@ -87,6 +87,9 @@ static func _build_building_snapshots(world: World, root: Node, include_static: 
 			"condition": building.condition,
 			"state": building.get_financial_state_key() if building.has_method("get_financial_state_key") else "",
 			"forced_closed_reason": building.forced_closed_reason,
+			"owner_id": NetworkEntityRegistryScript.get_entity_id(building.citizen_owner),
+			"owner_name": building.get_owner_display_name() if building.has_method("get_owner_display_name") else "",
+			"owner_payout_today": building.owner_payout_today,
 			"workers": building.workers.size(),
 			"visitors": building.visitors.size(),
 			"capacity": building.capacity,
@@ -151,6 +154,9 @@ static func _build_citizen_snapshots(world: World, include_static: bool) -> Arra
 			data["home_id"] = NetworkEntityRegistryScript.get_entity_id(citizen.home)
 			data["current_location_id"] = NetworkEntityRegistryScript.get_entity_id(citizen.current_location)
 			data["workplace_id"] = NetworkEntityRegistryScript.get_entity_id(job_workplace)
+			data["home_tenant"] = citizen.home != null and citizen.home.tenants.has(citizen)
+			data["employed"] = job_workplace != null and job_workplace.workers.has(citizen)
+			data["visitor"] = citizen.current_location != null and citizen.current_location.visitors.has(citizen)
 			data["home_food_stock"] = citizen.home_food_stock
 			data["clothing_items"] = citizen.clothing_items
 			data["education_level"] = citizen.education_level
@@ -174,7 +180,7 @@ static func apply_snapshot_to_world(world: World, root: Node, snapshot: Dictiona
 		return
 	_apply_time_snapshot(world, snapshot.get("time", {}))
 	_apply_world_snapshot(world, snapshot.get("world", {}))
-	_apply_building_snapshots(root, snapshot.get("buildings", []), building_lookup)
+	_apply_building_snapshots(world, root, snapshot.get("buildings", []), building_lookup)
 
 static func build_building_lookup(root: Node, building_snapshots: Array) -> Dictionary:
 	var lookup: Dictionary = {}
@@ -229,9 +235,10 @@ static func _apply_world_snapshot(world: World, data: Variant) -> void:
 	if world.city_account != null:
 		world.city_account.balance = int(world_data.get("city_balance", world.city_account.balance))
 
-static func _apply_building_snapshots(root: Node, entries: Variant, building_lookup: Dictionary) -> void:
+static func _apply_building_snapshots(world: World, root: Node, entries: Variant, building_lookup: Dictionary) -> void:
 	if entries is not Array:
 		return
+	var citizen_lookup := _build_citizen_lookup(world)
 	for entry in entries:
 		if entry is not Dictionary:
 			continue
@@ -252,8 +259,24 @@ static func _apply_building_snapshots(root: Node, entries: Variant, building_loo
 			building.account.balance = int(data.get("balance", building.account.balance))
 		building.condition = float(data.get("condition", building.condition))
 		building.forced_closed_reason = str(data.get("forced_closed_reason", building.forced_closed_reason))
+		building.owner_display_name = str(data.get("owner_name", building.owner_display_name))
+		building.owner_payout_today = int(data.get("owner_payout_today", building.owner_payout_today))
+		var owner_id := str(data.get("owner_id", ""))
+		building.citizen_owner = citizen_lookup.get(owner_id, null) as Citizen if not owner_id.is_empty() else null
 		if building is CommercialBuilding:
 			_apply_commercial_snapshot(building as CommercialBuilding, data)
+
+static func _build_citizen_lookup(world: World) -> Dictionary:
+	var lookup: Dictionary = {}
+	if world == null:
+		return lookup
+	for citizen in world.citizens:
+		if citizen == null or not is_instance_valid(citizen):
+			continue
+		var entity_id := NetworkEntityRegistryScript.get_entity_id(citizen)
+		if not entity_id.is_empty():
+			lookup[entity_id] = citizen
+	return lookup
 
 static func _apply_commercial_snapshot(commercial: CommercialBuilding, data: Dictionary) -> void:
 	if commercial == null:

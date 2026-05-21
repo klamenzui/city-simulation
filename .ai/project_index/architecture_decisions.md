@@ -38,6 +38,17 @@ Purpose: compact decisions that should be checked before architectural edits.
 - Buildings store state, account, condition, jobs, and status.
 - Public buildings and commercial buildings have different funding/closure behavior.
 - World job offers must count assigned jobs as slot reservations, including trainee jobs that are not hired yet. Education completion promotes the reserved job into a real building worker.
+- Restaurants require at least one employed worker to operate. Supermarket and Cafe remain food-access fallbacks until supply chains and starvation balance are mature.
+- First commercial ownership slice: cafes, restaurants, shops, supermarkets, cinemas, farms, and factories can be citizen-owned. Unowned buildings are bought from the city account; positive daily net profit pays from the building account to the citizen owner wallet after obligations. Simple non-manual Citizens can buy at most one unowned property per Payday only if their business aptitude, health/hunger state, and post-purchase living reserve allow it; wealth alone must not trigger purchases.
+
+## Player Gameplay Roadmap
+
+- Keep the near-term career model two-stage: employee and owner. Do not add a manager rank until manager gameplay has distinct decisions.
+- Workplace gameplay should become 3D, state-driven activity inside the workplace, not abstract random button events. Activities should come from real building/customer state.
+- Commercial ownership should grow from the first buy/profit/personality-gated AI slice into resale, insolvency sale, richer AI purchase criteria, and owner controls for prices/wages/stock.
+- Social invitations must become commitments: when dialog agrees on restaurant, park, cinema, or similar, both participants should get a shared destination/action plan instead of just flavor text.
+- First social invitation slice: clear phrases such as "lass uns essen gehen" create a `SocialVisitAction` for player and NPC. The action sequences existing GoTo + restaurant/park/cinema activity actions and only chooses real usable targets.
+- Wardrobe/clothing is a good early home interaction because it does not require apartment interiors. Store owned clothes on the Citizen/player inventory and apply a selected outfit.
 
 ## Multiplayer Ownership Rules
 

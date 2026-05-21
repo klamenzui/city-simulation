@@ -153,6 +153,11 @@ $availableTests = @(
 		Script = "res://tools/codex_multiplayer_host_connect_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "save_roundtrip"
+		Label = "Savegame Roundtrip"
+		Script = "res://tools/codex_savegame_roundtrip_probe.gd"
+	}
+	[pscustomobject]@{
 		Key = "mp2process"
 		Label = "Multiplayer Two-Process"
 		Script = "res://tools/codex_multiplayer_two_process_test.gd"

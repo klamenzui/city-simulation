@@ -52,6 +52,9 @@ enum BuildingType {
 @export_range(0.1, 1.0, 0.01) var underfunded_service_multiplier: float = 0.76
 
 var account: Account = Account.new()
+var citizen_owner: Citizen = null
+var owner_display_name: String = ""
+var owner_payout_today: int = 0
 var workers: Array[Citizen] = []
 var visitors: Array[Citizen] = []
 
@@ -494,6 +497,10 @@ func _build_building_identity_section() -> Dictionary:
 	var category := get_economy_category_label()
 	if not category.is_empty() and category != "-":
 		rows.append({"label": "Kategorie", "value": category})
+	if is_citizen_ownable() or has_citizen_owner():
+		rows.append({"label": "Besitzer", "value": get_owner_display_name()})
+		if not has_citizen_owner():
+			rows.append({"label": "Kaufpreis", "value": "%d EUR" % get_purchase_price()})
 	return {"title": "Identitaet", "rows": rows}
 
 
@@ -513,13 +520,20 @@ func _build_building_occupancy_section(world = null) -> Dictionary:
 		})
 	else:
 		if job_capacity > 0:
+			var worker_capacity := get_worker_capacity()
+			var employed_workers := get_employed_worker_count()
+			var active_workers := get_active_worker_count()
 			var worker_severity := "normal"
-			if workers.size() == 0:
+			if employed_workers == 0:
 				worker_severity = "warning"
 			rows.append({
 				"label": "Mitarbeiter",
-				"value": "%d / %d" % [workers.size(), max(job_capacity, 0)],
+				"value": "%d / %d" % [employed_workers, worker_capacity],
 				"severity": worker_severity,
+			})
+			rows.append({
+				"label": "Gerade bei Arbeit",
+				"value": "%d / %d" % [active_workers, employed_workers],
 			})
 			var req_edu := get_required_education_level()
 			rows.append({
@@ -572,6 +586,8 @@ func _build_building_finance_section(_world = null) -> Dictionary:
 		rows.append({"label": "Wartung offen", "value": "%d EUR" % maintenance_unpaid_today, "severity": "warning"})
 	if operating_unpaid_today > 0:
 		rows.append({"label": "Betrieb offen", "value": "%d EUR" % operating_unpaid_today, "severity": "warning"})
+	if owner_payout_today > 0:
+		rows.append({"label": "Besitzer-Auszahlung", "value": "%d EUR" % owner_payout_today, "severity": "good"})
 
 	if requires_public_funding():
 		var funding_severity := "normal"
@@ -651,13 +667,17 @@ func get_info(world = null) -> Dictionary:
 		hour = world.time.get_hour()
 	var open_status_display := get_open_status_display_label(hour)
 	var effective_capacity := get_effective_visitor_capacity()
+	var worker_capacity := get_worker_capacity()
+	var employed_workers := get_employed_worker_count()
+	var active_workers := get_active_worker_count()
 
 	var info: Dictionary = {
 		"Building": building_name,
 		"Type": get_building_type_name(),
 		"Category": get_economy_category_label(),
 		"Service": get_service_type(),
-		"Workers": "%d / %d" % [workers.size(), max(job_capacity, 0)],
+		"Workers": "%d / %d" % [employed_workers, worker_capacity],
+		"Workers at work": "%d / %d" % [active_workers, employed_workers],
 		"Visitors": "%d / %d" % [visitors.size(), max(effective_capacity, 0)],
 		"Status": open_status_display,
 		"Financial state": get_financial_state_display_label(),
@@ -669,6 +689,9 @@ func get_info(world = null) -> Dictionary:
 		"Income today": "%d EUR" % income_today,
 		"Expenses today": "%d EUR" % expenses_today,
 		"Profit today": "%d EUR" % get_profit_today(),
+		"Owner": get_owner_display_name(),
+		"Purchase price": "%d EUR" % get_purchase_price() if is_citizen_ownable() else "-",
+		"Owner payout today": "%d EUR" % owner_payout_today,
 		"Balance": "%d EUR" % account.balance,
 		"Condition": "%.0f / 100 (%s)" % [condition, get_condition_state_label()],
 		"Base operating cost": "%d EUR" % get_base_operating_cost_per_day(),
@@ -849,6 +872,113 @@ func is_economic_building() -> bool:
 		_:
 			return false
 
+func is_citizen_ownable() -> bool:
+	match building_type:
+		BuildingType.CAFE, BuildingType.CINEMA, BuildingType.FACTORY, BuildingType.FARM, \
+		BuildingType.RESTAURANT, BuildingType.SHOP, BuildingType.SUPERMARKET:
+			return true
+		_:
+			return false
+
+func get_owner_citizen() -> Citizen:
+	if citizen_owner != null and is_instance_valid(citizen_owner):
+		return citizen_owner
+	return null
+
+func has_citizen_owner() -> bool:
+	return get_owner_citizen() != null
+
+func is_owned_by(citizen: Citizen) -> bool:
+	return citizen != null and get_owner_citizen() == citizen
+
+func get_owner_display_name() -> String:
+	var citizen_owner := get_owner_citizen()
+	if citizen_owner != null:
+		return citizen_owner.citizen_name
+	if not owner_display_name.strip_edges().is_empty():
+		return owner_display_name
+	return "Stadt"
+
+func get_purchase_price() -> int:
+	var base_price := 0
+	match building_type:
+		BuildingType.CAFE:
+			base_price = 2400
+		BuildingType.SHOP:
+			base_price = 3200
+		BuildingType.RESTAURANT:
+			base_price = 4600
+		BuildingType.SUPERMARKET:
+			base_price = 6500
+		BuildingType.CINEMA:
+			base_price = 7200
+		BuildingType.FARM:
+			base_price = 5200
+		BuildingType.FACTORY:
+			base_price = 9000
+		_:
+			base_price = 0
+	if base_price <= 0:
+		return 0
+	var operating_buffer := get_total_daily_obligation_estimate() * 5
+	return maxi(base_price + operating_buffer, account.balance)
+
+func can_be_bought_by(citizen: Citizen, world: World = null) -> bool:
+	if citizen == null or citizen.wallet == null:
+		return false
+	if not is_citizen_ownable():
+		return false
+	if is_financially_closed():
+		return false
+	if has_citizen_owner():
+		return is_owned_by(citizen)
+	var price := get_purchase_price()
+	if price <= 0:
+		return false
+	if world == null or world.economy == null or world.city_account == null:
+		return false
+	return citizen.wallet.balance >= price
+
+func buy_for_citizen(citizen: Citizen, world: World) -> bool:
+	if citizen == null or world == null:
+		return false
+	if is_owned_by(citizen):
+		return true
+	if not can_be_bought_by(citizen, world):
+		return false
+	var price := get_purchase_price()
+	if not world.economy.transfer(citizen.wallet, world.city_account, price):
+		return false
+	citizen_owner = citizen
+	owner_display_name = citizen.citizen_name
+	return true
+
+func can_pay_owner_profit() -> bool:
+	if not is_citizen_ownable() or is_financially_closed():
+		return false
+	if get_owner_citizen() == null:
+		return false
+	if wages_unpaid_today > 0 or taxes_unpaid_today > 0 \
+			or maintenance_unpaid_today > 0 or operating_unpaid_today > 0:
+		return false
+	return get_profit_today() > 0 and account.balance > 0
+
+func settle_owner_profit(world: World) -> int:
+	if world == null or world.economy == null:
+		return 0
+	if not can_pay_owner_profit():
+		return 0
+	var citizen_owner := get_owner_citizen()
+	if citizen_owner == null or citizen_owner.wallet == null:
+		return 0
+	var payout := mini(get_profit_today(), account.balance)
+	if payout <= 0:
+		return 0
+	if not world.economy.pay_to_wallet(account, citizen_owner, payout):
+		return 0
+	owner_payout_today += payout
+	return payout
+
 func pays_business_tax() -> bool:
 	return is_economic_building()
 
@@ -908,7 +1038,7 @@ func requires_staff_to_operate() -> bool:
 		return false
 	match building_type:
 		BuildingType.RESIDENTIAL, BuildingType.PARK, \
-		BuildingType.RESTAURANT, BuildingType.SUPERMARKET, BuildingType.CAFE:
+		BuildingType.SUPERMARKET, BuildingType.CAFE:
 			return false
 		_:
 			return true
@@ -916,7 +1046,31 @@ func requires_staff_to_operate() -> bool:
 func has_required_staff() -> bool:
 	if not requires_staff_to_operate():
 		return true
-	return workers.size() > 0
+	return get_employed_worker_count() > 0
+
+func get_worker_capacity() -> int:
+	return maxi(int(job_capacity), 0)
+
+func get_employed_worker_count() -> int:
+	var count := 0
+	for worker in workers:
+		if worker == null or not is_instance_valid(worker):
+			continue
+		count += 1
+	return count
+
+func get_active_worker_count() -> int:
+	var count := 0
+	for worker in workers:
+		if worker == null or not is_instance_valid(worker):
+			continue
+		if worker.job == null or worker.job.workplace != self:
+			continue
+		if worker.current_location != self:
+			continue
+		if worker.current_action is WorkAction:
+			count += 1
+	return count
 
 func get_open_status_label(hour: int = -1) -> String:
 	if is_financially_closed():
@@ -1120,6 +1274,7 @@ func begin_new_day() -> void:
 	maintenance_today = 0
 	production_costs_today = 0
 	operating_costs_today = 0
+	owner_payout_today = 0
 	wages_unpaid_today = 0
 	taxes_unpaid_today = 0
 	maintenance_unpaid_today = 0
@@ -1331,9 +1486,10 @@ func _get_closure_reason_for_current_shortfall() -> String:
 	return "financial collapse"
 
 func get_daily_finance_log_summary() -> String:
-	return "name=%s type=%s balance=%d income=%d wages=%d/%d taxes=%d/%d maintenance=%d/%d operating=%d/%d funding=%d/%d state=%s condition=%.1f" % [
+	return "name=%s type=%s owner=%s balance=%d income=%d wages=%d/%d taxes=%d/%d maintenance=%d/%d operating=%d/%d owner_payout=%d funding=%d/%d state=%s condition=%.1f" % [
 		get_display_name(),
 		get_building_type_name(),
+		get_owner_display_name(),
 		account.balance,
 		income_today,
 		wages_today,
@@ -1344,6 +1500,7 @@ func get_daily_finance_log_summary() -> String:
 		maintenance_unpaid_today,
 		operating_costs_today,
 		operating_unpaid_today,
+		owner_payout_today,
 		public_funding_requested_today,
 		public_funding_today,
 		get_financial_state_key(),

@@ -13,6 +13,7 @@ const WorldScript = preload("res://Simulation/World.gd")
 const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
 const ActionScript = preload("res://Actions/Action.gd")
 const WorkActionScript = preload("res://Actions/WorkAction.gd")
+const EatAtRestaurantActionScript = preload("res://Actions/EatAtRestaurantAction.gd")
 const StudyAtUniversityActionScript = preload("res://Actions/StudyAtUniversityAction.gd")
 const RelaxAtHomeActionScript = preload("res://Actions/RelaxAtHomeAction.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
@@ -106,6 +107,7 @@ func _run_all_tests() -> void:
 		"player_university_unlocks_job",
 		"player_work_payday_uses_worked_minutes",
 		"university_requires_worker_for_study",
+		"restaurant_requires_worker_for_meals",
 		"university_accepts_education_service_staff",
 		"university_unstaffed_label_is_teaching_specific",
 		"park_entry_keeps_citizen_visible",
@@ -138,6 +140,9 @@ func _run_all_tests() -> void:
 		"action_default_needs_modifier_is_isolated",
 		"relax_bench_uses_energy_bonus",
 		"worker_count_lifecycle",
+		"player_buys_commercial_building",
+		"simple_citizen_buys_affordable_commercial_building",
+		"owner_profit_pays_to_wallet_on_payday",
 	]:
 		var error := _run_test(test_name)
 		if error != "":
@@ -190,6 +195,8 @@ func _run_test(test_name: String) -> String:
 			return _test_player_work_payday_uses_worked_minutes()
 		"university_requires_worker_for_study":
 			return _test_university_requires_worker_for_study()
+		"restaurant_requires_worker_for_meals":
+			return _test_restaurant_requires_worker_for_meals()
 		"university_accepts_education_service_staff":
 			return _test_university_accepts_education_service_staff()
 		"university_unstaffed_label_is_teaching_specific":
@@ -254,6 +261,12 @@ func _run_test(test_name: String) -> String:
 			return _test_relax_bench_uses_energy_bonus()
 		"worker_count_lifecycle":
 			return _test_worker_count_lifecycle()
+		"player_buys_commercial_building":
+			return _test_player_buys_commercial_building()
+		"simple_citizen_buys_affordable_commercial_building":
+			return _test_simple_citizen_buys_affordable_commercial_building()
+		"owner_profit_pays_to_wallet_on_payday":
+			return _test_owner_profit_pays_to_wallet_on_payday()
 		_:
 			return "unknown test"
 
@@ -312,6 +325,37 @@ func _test_university_requires_worker_for_study() -> String:
 	_free_world(world)
 	return _current_error
 
+func _test_restaurant_requires_worker_for_meals() -> String:
+	var world: World = _new_world()
+	world.time.minutes_total = 12 * 60
+	var restaurant: Restaurant = _new_restaurant("Staff Required Restaurant", Vector3.ZERO)
+	restaurant.job_capacity = 2
+	restaurant.define_stock_item("meal", 4, restaurant.meal_price, 4, 4, "food")
+	world.register_building(restaurant)
+
+	var guest: Citizen = _new_citizen("Lunch Guest")
+	world.register_citizen(guest)
+	guest.wallet.balance = 200
+
+	_expect(restaurant.requires_staff_to_operate(), "restaurant should require staff once it has worker slots")
+	_expect_eq(restaurant.get_open_status_label(12), "UNSTAFFED", "restaurant without workers should be unstaffed")
+	_expect(not restaurant.is_open(12), "restaurant without workers should not be open")
+	_expect_eq(restaurant.sell_meal(world, guest), false, "unstaffed restaurant should not sell meals")
+
+	var failed_action: EatAtRestaurantAction = EatAtRestaurantActionScript.new(restaurant)
+	failed_action.start(world, guest)
+	_expect(failed_action.finished, "eat action should stop immediately when restaurant has no worker")
+
+	var worker: Citizen = _new_citizen("Lunch Worker")
+	worker.job = Job.new()
+	worker.job.workplace = restaurant
+	_expect(restaurant.try_hire(worker), "restaurant should accept its first worker")
+	_expect(restaurant.is_open(12), "restaurant should open after hiring a worker")
+	_expect(restaurant.sell_meal(world, guest), "staffed restaurant should sell meals")
+
+	_free_world(world)
+	return _current_error
+
 func _test_university_accepts_education_service_staff() -> String:
 	var university: University = _new_university("Service Uni")
 	var lecturer: Citizen = _new_citizen("Lecturer One")
@@ -330,6 +374,10 @@ func _test_worker_count_lifecycle() -> String:
 	var building: Building = _new_building("Workshop", 2)
 	var worker_a: Citizen = _new_citizen("Worker A")
 	var worker_b: Citizen = _new_citizen("Worker B")
+	worker_a.job = Job.new()
+	worker_a.job.workplace = building
+	worker_b.job = Job.new()
+	worker_b.job.workplace = building
 
 	_expect(building.try_hire(worker_a), "first worker should be hired")
 	_expect(building.try_hire(worker_a), "rehiring same worker should stay idempotent")
@@ -338,8 +386,101 @@ func _test_worker_count_lifecycle() -> String:
 	_expect_eq(building.workers.size(), 2, "worker array should reflect filled slots")
 	building.fire(worker_a)
 	_expect_eq(building.workers.size(), 1, "fire should reduce worker count")
+	worker_b.current_location = building
+	worker_b.current_action = WorkActionScript.new(worker_b.job)
 	var info := building.get_info(null)
 	_expect_eq(info.get("Workers", ""), "1 / 2", "building info should reflect live worker count")
+	_expect_eq(info.get("Workers at work", ""), "1 / 1", "building info should reflect workers currently at work")
+	return _current_error
+
+func _test_player_buys_commercial_building() -> String:
+	var world: World = _new_world()
+	var shop: Shop = _new_shop("Buyable Shop")
+	world.register_building(shop)
+
+	var player: Citizen = _new_citizen("Shop Buyer")
+	world.register_citizen(player)
+	player.wallet.balance = 10000
+	player.enter_building(shop, world, false)
+
+	var price := shop.get_purchase_price()
+	var city_before := world.city_account.balance
+	_expect(shop.is_citizen_ownable(), "shop should be citizen-ownable")
+	_expect(player.player_buy_current_building(world), "player should buy an affordable unowned shop")
+	_expect_eq(shop.citizen_owner, player, "shop owner should be the buying player")
+	_expect_eq(player.get_owned_building_count(world), 1, "player owned-building count should include the bought shop")
+	_expect_eq(player.wallet.balance, 10000 - price, "purchase should remove the price from the player wallet")
+	_expect_eq(world.city_account.balance, city_before + price, "city account should receive the purchase price")
+	var building_info := shop.get_info(world)
+	_expect_eq(building_info.get("Owner", ""), player.citizen_name, "building info should show the new owner")
+	var citizen_sections := player.get_info_sections(world)
+	_expect_eq(_info_row_value(citizen_sections, "Besitz"), "1 Gebaeude",
+		"citizen info should count owned buildings")
+
+	_free_world(world)
+	return _current_error
+
+func _test_simple_citizen_buys_affordable_commercial_building() -> String:
+	var world: World = _new_world()
+	var shop: Shop = _new_shop("Citizen Buyable Shop")
+	world.register_building(shop)
+	var price := shop.get_purchase_price()
+
+	var low_fit_citizen: Citizen = _new_citizen("Rich But Cautious Buyer")
+	world.register_citizen(low_fit_citizen)
+	low_fit_citizen.wallet.balance = 50000
+	low_fit_citizen.work_motivation = 0.75
+	low_fit_citizen.fun_interest = 0.75
+	low_fit_citizen.sociability = 0.25
+	low_fit_citizen.education_level = 0
+
+	var cash_strapped_citizen: Citizen = _new_citizen("No Reserve Buyer")
+	world.register_citizen(cash_strapped_citizen)
+	cash_strapped_citizen.wallet.balance = price + 100
+	cash_strapped_citizen.work_motivation = 1.4
+	cash_strapped_citizen.fun_interest = 0.1
+	cash_strapped_citizen.sociability = 0.8
+	cash_strapped_citizen.education_level = 2
+
+	var citizen: Citizen = _new_citizen("Citizen Buyer")
+	world.register_citizen(citizen)
+	citizen.wallet.balance = 10000
+	citizen.work_motivation = 1.4
+	citizen.fun_interest = 0.1
+	citizen.sociability = 0.8
+	citizen.education_level = 2
+	var purchases := world._run_citizen_property_purchase_cycle()
+
+	_expect_eq(purchases, 1, "AI purchase cycle should buy one affordable unowned building")
+	_expect_eq(shop.citizen_owner, citizen, "simple citizen should become the building owner")
+	_expect_eq(citizen.wallet.balance, 10000 - price, "citizen wallet should pay the purchase price")
+	_expect_eq(low_fit_citizen.wallet.balance, 50000, "rich citizen without business aptitude should not buy property")
+	_expect_eq(cash_strapped_citizen.wallet.balance, price + 100,
+		"business-capable citizen should not buy without a living reserve")
+
+	_free_world(world)
+	return _current_error
+
+func _test_owner_profit_pays_to_wallet_on_payday() -> String:
+	var world: World = _new_world()
+	var shop: Shop = _new_shop("Profit Shop")
+	world.register_building(shop)
+
+	var owner_citizen: Citizen = _new_citizen("Profit Owner")
+	world.register_citizen(owner_citizen)
+	owner_citizen.wallet.balance = 50
+	shop.citizen_owner = owner_citizen
+	shop.owner_display_name = owner_citizen.citizen_name
+	shop.account.balance = 300
+	shop.record_income(300)
+
+	world._on_payday()
+
+	_expect_eq(owner_citizen.wallet.balance, 350, "payday should move positive building profit to the owner wallet")
+	_expect_eq(shop.account.balance, 0, "owner payout should leave the paid profit out of the building account")
+	_expect_eq(shop.get_profit_today(), 0, "daily finance rollover should reset tracked profit after payday")
+
+	_free_world(world)
 	return _current_error
 
 func _test_university_unstaffed_label_is_teaching_specific() -> String:
@@ -984,6 +1125,8 @@ func _test_hungry_citizen_uses_nearest_food_target() -> String:
 	world.time.minutes_total = 12 * 60
 	var near_restaurant: Restaurant = _new_restaurant("Near Restaurant", Vector3(2.0, 0.0, 0.0))
 	var far_restaurant: Restaurant = _new_restaurant("Far Favorite Restaurant", Vector3(40.0, 0.0, 0.0))
+	_staff_restaurant(near_restaurant, "Near Worker")
+	_staff_restaurant(far_restaurant, "Far Worker")
 	world.register_building(far_restaurant)
 	world.register_building(near_restaurant)
 
@@ -1594,6 +1737,8 @@ func _test_network_snapshot_rebuilds_player_work_and_home_ui() -> String:
 	_expect(player.player_work(world), "snapshot player should start work")
 	player.work_minutes_today = 45
 	player.clothing_items = 2
+	workplace.citizen_owner = player
+	workplace.owner_display_name = player.citizen_name
 
 	var registry = NetworkEntityRegistryScript.new()
 	var snapshot := WorldSnapshotSerializerScript.build_snapshot(world, _harness_root, 1, registry)
@@ -1602,6 +1747,11 @@ func _test_network_snapshot_rebuilds_player_work_and_home_ui() -> String:
 	var building_lookup := WorldSnapshotSerializerScript.build_building_lookup(
 			_harness_root,
 			snapshot.get("buildings", []) as Array)
+	workplace.citizen_owner = null
+	workplace.owner_display_name = ""
+	WorldSnapshotSerializerScript.apply_snapshot_to_world(world, _harness_root, snapshot, building_lookup)
+	_expect_eq(workplace.citizen_owner, player,
+			"world snapshot should restore commercial building ownership")
 
 	var replica: Citizen = _new_citizen("Snapshot Replica")
 	replica.apply_network_snapshot(player_entry, building_lookup)
@@ -1796,6 +1946,16 @@ func _new_restaurant(building_name: String, position: Vector3) -> Restaurant:
 	restaurant.add_child(entrance)
 	_harness_root.add_child(restaurant)
 	return restaurant
+
+func _staff_restaurant(restaurant: Restaurant, worker_name: String) -> Citizen:
+	if restaurant == null:
+		return null
+	restaurant.job_capacity = maxi(restaurant.job_capacity, 1)
+	var worker: Citizen = _new_citizen(worker_name)
+	worker.job = Job.new()
+	worker.job.workplace = restaurant
+	restaurant.try_hire(worker)
+	return worker
 
 func _new_shop(building_name: String, position: Vector3 = Vector3.ZERO) -> Shop:
 	var shop: Shop = ShopScript.new()
