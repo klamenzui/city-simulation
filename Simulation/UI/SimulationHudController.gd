@@ -1,16 +1,28 @@
 extends RefCounted
 class_name SimulationHudController
 
-## Persistent in-game chrome: a full-width top resource bar and a left
-## vertical icon-navigation sidebar (city-builder style). Replaces the old
-## bottom action bar. Public API is unchanged — SceneRuntimeController and
-## SelectionStateController still drive it through the same methods.
+## Persistent in-game chrome: a full-width top resource/time bar and a
+## full-width bottom action bar with overview-panel toggles and the local
+## player's status widget. Detail and overview panels float between the two
+## bars. SceneRuntimeController and SelectionStateController drive it
+## through the public methods declared below.
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 const NetworkRoleScript = preload("res://Simulation/Multiplayer/shared/NetworkRole.gd")
 
 const _SPEED_STEPS: Array[float] = [1.0, 2.0, 3.0, 4.0]
 const _HUD_STATUS_REFRESH_INTERVAL_SEC := 0.12
+
+# Compact player status widget at the bottom bar. high_is_bad mirrors
+# Citizen._classify_need_severity (hunger = high-is-bad, everything else
+# low-is-bad). Severities: 0 = good, 1 = warn, 2 = crit, 3 = idle (no player).
+const _PLAYER_NEED_CARDS: Array[Dictionary] = [
+	{"key": "hunger", "caption": "HUN", "title": "Hunger", "high_is_bad": true},
+	{"key": "energy", "caption": "ENE", "title": "Energie", "high_is_bad": false},
+	{"key": "fun", "caption": "FUN", "title": "Fun", "high_is_bad": false},
+	{"key": "social", "caption": "SOZ", "title": "Sozial", "high_is_bad": false},
+	{"key": "health", "caption": "GES", "title": "Gesundheit", "high_is_bad": false},
+]
 
 var owner_node: Node = null
 var world: World = null
@@ -35,7 +47,6 @@ var _population_label: Label = null
 var _housing_jobs_label: Label = null
 var _satisfaction_label: Label = null
 var _network_status_label: Label = null
-var _network_interaction_label: Label = null
 var _control_mode_panel: PanelContainer = null
 var _control_mode_label: Label = null
 var _ai_runtime_label: Label = null
@@ -47,16 +58,16 @@ var _hud_status_refresh_left: float = 0.0
 # Balance at the start of the current in-game day — drives the "today" delta.
 var _treasury_day_start: int = 0
 
-# Persistent player hunger readout in the bottom bar. The resolver returns the
-# local player citizen (or null); fill styleboxes are built once and swapped.
+# Persistent player needs readout in the bottom bar. The resolver returns the
+# local player citizen (or null); fill styleboxes are built once and shared
+# across all five bars — only the per-bar stylebox override is swapped on
+# severity change (no per-tick allocs).
 var _player_resolver: Callable = Callable()
-var _player_hunger_bar: ProgressBar = null
-var _player_hunger_caption: Label = null
-var _hunger_fill_good: StyleBoxFlat = null
-var _hunger_fill_warn: StyleBoxFlat = null
-var _hunger_fill_crit: StyleBoxFlat = null
-var _hunger_fill_idle: StyleBoxFlat = null
-var _hunger_state: int = -1
+var _need_fill_good: StyleBoxFlat = null
+var _need_fill_warn: StyleBoxFlat = null
+var _need_fill_crit: StyleBoxFlat = null
+var _need_fill_idle: StyleBoxFlat = null
+var _player_need_bars: Array[Dictionary] = []
 
 func setup(
 	owner_ref: Node,
@@ -94,14 +105,13 @@ func setup(
 	_refresh_pause_button()
 	_refresh_speed_label()
 	_refresh_network_status()
-	_refresh_network_interaction_status()
 	_refresh_authority_controls()
 	refresh_control_mode(null)
 	set_player_control_visible(false)
 	refresh_player_control_button(false)
 	refresh_camera_mode_button()
 	refresh_ai_runtime_state({})
-	_refresh_player_hunger()
+	_refresh_player_status()
 
 func get_canvas() -> CanvasLayer:
 	return canvas
@@ -127,8 +137,7 @@ func update(delta: float) -> void:
 		return
 	_hud_status_refresh_left = _HUD_STATUS_REFRESH_INTERVAL_SEC
 	_refresh_network_status()
-	_refresh_network_interaction_status()
-	_refresh_player_hunger()
+	_refresh_player_status()
 
 func refresh_control_mode(controlled_citizen: Citizen, mode_prefix: String = "CONTROL MODE", mode_hint: String = "") -> void:
 	if _control_mode_panel == null or _control_mode_label == null:
@@ -195,7 +204,6 @@ func bind_multiplayer_session(multiplayer_session_ref) -> void:
 	multiplayer_session = multiplayer_session_ref
 	_bind_multiplayer_session()
 	_refresh_network_status()
-	_refresh_network_interaction_status()
 	_refresh_authority_controls()
 
 func refresh_ai_runtime_state(ui_state: Dictionary) -> void:
@@ -293,14 +301,16 @@ func _build_top_bar(pause_pressed: Callable, speed_pressed: Callable) -> void:
 		_speed_button.pressed.connect(_on_speed_cycle_pressed.bind(speed_pressed))
 	hbox.add_child(_speed_button)
 
-	_network_status_label = _make_stat_chip(hbox, "NETZ", UiThemeScript.TEXT_SECONDARY, 120)
-	_network_interaction_label = _make_stat_chip(hbox, "AKTION", UiThemeScript.TEXT_SECONDARY, 116)
+	# Single network chip — interaction state goes into the tooltip via
+	# _refresh_network_status; reduces top-bar chip pressure at small viewports.
+	_network_status_label = _make_stat_chip(hbox, "NETZ", UiThemeScript.TEXT_SECONDARY, 140)
 
 	hbox.add_child(_make_v_divider())
 
-	# City stat chips.
+	# City stat chips. Deaths count is folded into the EINWOHNER text instead
+	# of its own chip to keep the top bar within ~1080p width.
 	_treasury_label = _make_stat_chip(hbox, "STADTKASSE", UiThemeScript.TEXT_PRIMARY, 178)
-	_population_label = _make_stat_chip(hbox, "EINWOHNER", UiThemeScript.TEXT_PRIMARY, 122)
+	_population_label = _make_stat_chip(hbox, "EINWOHNER", UiThemeScript.TEXT_PRIMARY, 168)
 	_housing_jobs_label = _make_stat_chip(hbox, "WOHNEN / JOBS", UiThemeScript.TEXT_PRIMARY, 112)
 	_satisfaction_label = _make_stat_chip(hbox, "ZUFRIEDENHEIT", UiThemeScript.SUCCESS, 76)
 
@@ -334,7 +344,7 @@ func _build_bottom_action_bar(
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	panel.offset_left = 0
-	panel.offset_top = -72
+	panel.offset_top = -UiThemeScript.BOTTOMBAR_HEIGHT
 	panel.offset_right = 0
 	panel.offset_bottom = 0
 	panel.theme = _theme
@@ -359,7 +369,7 @@ func _build_bottom_action_bar(
 	debug_tools_button = _make_bar_button(hbox, "Tools", 90, debug_tools_pressed)
 
 	hbox.add_child(_make_v_divider())
-	_build_player_hunger_widget(hbox)
+	_build_player_status_widget(hbox)
 	hbox.add_child(_make_v_divider())
 
 	_player_control_button = _make_bar_button(hbox, "Control Player", 130, player_control_pressed)
@@ -463,41 +473,66 @@ func _make_v_divider() -> Control:
 	return divider_panel
 
 
-## Caption + ProgressBar for the local player's hunger. Fill styleboxes are
-## built once here and only swapped on severity change (no per-tick allocs).
-func _build_player_hunger_widget(parent: Node) -> void:
-	_hunger_fill_good = _make_hunger_fill_box(UiThemeScript.SUCCESS)
-	_hunger_fill_warn = _make_hunger_fill_box(UiThemeScript.WARNING)
-	_hunger_fill_crit = _make_hunger_fill_box(UiThemeScript.DANGER)
-	_hunger_fill_idle = _make_hunger_fill_box(UiThemeScript.TEXT_MUTED)
+## Caption + five compact ProgressBars for the local player's needs (hunger,
+## energy, fun, social, health). Fill styleboxes are built once here and only
+## the per-bar override is swapped on severity change (no per-tick allocs).
+func _build_player_status_widget(parent: Node) -> void:
+	_need_fill_good = _make_need_fill_box(UiThemeScript.SUCCESS)
+	_need_fill_warn = _make_need_fill_box(UiThemeScript.WARNING)
+	_need_fill_crit = _make_need_fill_box(UiThemeScript.DANGER)
+	_need_fill_idle = _make_need_fill_box(UiThemeScript.TEXT_MUTED)
 
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 2)
-	box.custom_minimum_size = Vector2(168, 44)
-	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	parent.add_child(box)
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 2)
+	outer.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	parent.add_child(outer)
 
-	_player_hunger_caption = Label.new()
-	_player_hunger_caption.text = "HUNGER (SPIELER)"
-	_player_hunger_caption.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
-	_player_hunger_caption.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
-	box.add_child(_player_hunger_caption)
+	var caption := Label.new()
+	caption.text = "SPIELER (BEDÜRFNISSE)"
+	caption.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+	caption.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+	outer.add_child(caption)
 
-	_player_hunger_bar = ProgressBar.new()
-	_player_hunger_bar.min_value = 0.0
-	_player_hunger_bar.max_value = 100.0
-	_player_hunger_bar.step = 1.0
-	_player_hunger_bar.value = 0.0
-	_player_hunger_bar.show_percentage = true
-	_player_hunger_bar.custom_minimum_size = Vector2(168, 18)
-	_player_hunger_bar.focus_mode = Control.FOCUS_NONE
-	_player_hunger_bar.add_theme_stylebox_override("background", _make_hunger_bg_box())
-	_player_hunger_bar.add_theme_stylebox_override("fill", _hunger_fill_idle)
-	_hunger_state = 3
-	box.add_child(_player_hunger_bar)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	outer.add_child(row)
+
+	_player_need_bars.clear()
+	for entry in _PLAYER_NEED_CARDS:
+		var card := VBoxContainer.new()
+		card.add_theme_constant_override("separation", 1)
+		card.custom_minimum_size = Vector2(34, 0)
+		row.add_child(card)
+
+		var letter := Label.new()
+		letter.text = str(entry.get("caption", ""))
+		letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		letter.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+		letter.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+		card.add_child(letter)
+
+		var bar := ProgressBar.new()
+		bar.min_value = 0.0
+		bar.max_value = 100.0
+		bar.step = 1.0
+		bar.value = 0.0
+		bar.show_percentage = false
+		bar.custom_minimum_size = Vector2(34, 16)
+		bar.focus_mode = Control.FOCUS_NONE
+		bar.add_theme_stylebox_override("background", _make_need_bg_box())
+		bar.add_theme_stylebox_override("fill", _need_fill_idle)
+		card.add_child(bar)
+
+		_player_need_bars.append({
+			"key": str(entry.get("key", "")),
+			"title": str(entry.get("title", "")),
+			"high_is_bad": bool(entry.get("high_is_bad", false)),
+			"bar": bar,
+			"state": 3,
+		})
 
 
-func _make_hunger_bg_box() -> StyleBoxFlat:
+func _make_need_bg_box() -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
 	box.bg_color = UiThemeScript.BG_800
 	box.border_color = UiThemeScript.BORDER
@@ -512,7 +547,7 @@ func _make_hunger_bg_box() -> StyleBoxFlat:
 	return box
 
 
-func _make_hunger_fill_box(color: Color) -> StyleBoxFlat:
+func _make_need_fill_box(color: Color) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
 	box.bg_color = color
 	box.corner_radius_top_left = UiThemeScript.RADIUS_INPUT
@@ -522,44 +557,64 @@ func _make_hunger_fill_box(color: Color) -> StyleBoxFlat:
 	return box
 
 
-## Hunger is high-is-bad (0 = sated, 100 = starving); thresholds mirror
-## Citizen._classify_need_severity so the bar matches the DETAILS panel.
-func _refresh_player_hunger() -> void:
-	if _player_hunger_bar == null:
+## Hunger is high-is-bad (0 = sated, 100 = starving); the other four needs are
+## low-is-bad. Thresholds mirror Citizen._classify_need_severity so the bars
+## match the DETAILS panel.
+func _refresh_player_status() -> void:
+	if _player_need_bars.is_empty():
 		return
 	var player: Citizen = null
 	if _player_resolver.is_valid():
 		var resolved = _player_resolver.call()
 		if resolved is Citizen and is_instance_valid(resolved):
 			player = resolved
-	if player == null or player.needs == null:
-		_player_hunger_bar.value = 0.0
-		_player_hunger_bar.tooltip_text = "Kein Spieler aktiv"
-		_apply_hunger_fill(3)
-		return
-	var hunger := clampf(player.needs.hunger, 0.0, 100.0)
-	_player_hunger_bar.value = hunger
-	_player_hunger_bar.tooltip_text = "Hunger: %d / 100 (100 = am Verhungern)" % int(round(hunger))
-	if hunger >= 85.0:
-		_apply_hunger_fill(2)
-	elif hunger >= 70.0:
-		_apply_hunger_fill(1)
-	else:
-		_apply_hunger_fill(0)
+	var has_needs := player != null and player.needs != null
+	for entry in _player_need_bars:
+		var bar: ProgressBar = entry.get("bar")
+		if bar == null:
+			continue
+		if not has_needs:
+			bar.value = 0.0
+			bar.tooltip_text = "Kein Spieler aktiv"
+			_apply_need_fill(entry, 3)
+			continue
+		var key: String = entry.get("key", "")
+		var raw_value = player.needs.get(key)
+		var value := clampf(float(raw_value) if raw_value != null else 0.0, 0.0, 100.0)
+		bar.value = value
+		bar.tooltip_text = "%s: %d / 100" % [entry.get("title", ""), int(round(value))]
+		_apply_need_fill(entry, _classify_player_need_severity(value, bool(entry.get("high_is_bad", false))))
 
 
-func _apply_hunger_fill(state: int) -> void:
-	if _player_hunger_bar == null or state == _hunger_state:
+func _classify_player_need_severity(value: float, high_is_bad: bool) -> int:
+	if high_is_bad:
+		if value >= 85.0:
+			return 2
+		if value >= 70.0:
+			return 1
+		return 0
+	if value <= 10.0:
+		return 2
+	if value <= 30.0:
+		return 1
+	return 0
+
+
+func _apply_need_fill(entry: Dictionary, state: int) -> void:
+	if int(entry.get("state", -1)) == state:
 		return
-	_hunger_state = state
-	var box: StyleBoxFlat = _hunger_fill_good
+	entry["state"] = state
+	var bar: ProgressBar = entry.get("bar")
+	if bar == null:
+		return
+	var box: StyleBoxFlat = _need_fill_good
 	if state == 1:
-		box = _hunger_fill_warn
+		box = _need_fill_warn
 	elif state == 2:
-		box = _hunger_fill_crit
+		box = _need_fill_crit
 	elif state == 3:
-		box = _hunger_fill_idle
-	_player_hunger_bar.add_theme_stylebox_override("fill", box)
+		box = _need_fill_idle
+	bar.add_theme_stylebox_override("fill", box)
 
 
 func _on_speed_cycle_pressed(speed_pressed: Callable) -> void:
@@ -580,7 +635,6 @@ func _on_ai_runtime_status_changed(_status: String, _detail: String) -> void:
 
 func _on_multiplayer_status_changed(_status: String, _detail: String) -> void:
 	_refresh_network_status()
-	_refresh_network_interaction_status()
 	_refresh_authority_controls()
 
 func _bind_world_signals() -> void:
@@ -661,12 +715,14 @@ func _refresh_network_status() -> void:
 		return
 	var text := "Offline"
 	var color := UiThemeScript.TEXT_MUTED
-	var tooltip := ""
+	var tooltip_parts: Array[String] = []
 	if multiplayer_session != null and multiplayer_session.has_method("get_status"):
 		var status: Dictionary = multiplayer_session.get_status()
 		var role := str(status.get("role", NetworkRoleScript.OFFLINE))
 		var session_status := str(status.get("status", "offline"))
-		tooltip = str(status.get("detail", ""))
+		var detail := str(status.get("detail", "")).strip_edges()
+		if not detail.is_empty():
+			tooltip_parts.append(detail)
 		match role:
 			NetworkRoleScript.HOST:
 				text = "Host:%d" % int(status.get("port", 0))
@@ -684,22 +740,19 @@ func _refresh_network_status() -> void:
 			_:
 				text = "Offline"
 				color = UiThemeScript.TEXT_MUTED
+	# Fold the former AKTION chip into this tooltip — last seen interaction
+	# state stays visible without consuming its own chip slot.
+	var interaction := _current_interaction_status_from_session()
+	if not interaction.is_empty():
+		var action_text := _interaction_status_text(interaction)
+		if action_text != "-":
+			tooltip_parts.append("Aktion: %s" % action_text)
+		var interaction_detail := _interaction_status_tooltip(interaction)
+		if not interaction_detail.is_empty():
+			tooltip_parts.append(interaction_detail)
 	_network_status_label.text = text
-	_network_status_label.tooltip_text = tooltip
+	_network_status_label.tooltip_text = "\n".join(tooltip_parts)
 	_network_status_label.add_theme_color_override("font_color", color)
-
-func _refresh_network_interaction_status() -> void:
-	if _network_interaction_label == null:
-		return
-	var status := _current_interaction_status_from_session()
-	if status.is_empty():
-		_network_interaction_label.text = "-"
-		_network_interaction_label.tooltip_text = ""
-		_network_interaction_label.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
-		return
-	_network_interaction_label.text = _interaction_status_text(status)
-	_network_interaction_label.tooltip_text = _interaction_status_tooltip(status)
-	_network_interaction_label.add_theme_color_override("font_color", _interaction_status_color(status))
 
 func _current_interaction_status_from_session() -> Dictionary:
 	if multiplayer_session == null or not multiplayer_session.has_method("get_status"):
@@ -750,18 +803,6 @@ func _interaction_status_text(status: Dictionary) -> String:
 			return "Bereit"
 	return "-"
 
-func _interaction_status_color(status: Dictionary) -> Color:
-	match str(status.get("state", "")):
-		"requested", "travelling":
-			return UiThemeScript.WARNING
-		"arrived", "effect", "entered_building", "citizen_interaction":
-			return UiThemeScript.SUCCESS
-		"rejected", "travel_failed", "cancelled":
-			return UiThemeScript.DANGER
-		"ready":
-			return UiThemeScript.TEXT_SECONDARY
-	return UiThemeScript.TEXT_MUTED
-
 func _interaction_status_tooltip(status: Dictionary) -> String:
 	var parts: Array[String] = []
 	var target_label := _compact_target_label(status)
@@ -804,10 +845,11 @@ func _refresh_stats() -> void:
 		return
 	_refresh_treasury_label()
 	if _population_label != null:
-		_population_label.text = "%d  .  %d ohne Job" % [
-			_count_registered_citizens(),
-			_count_unemployed_citizens()
-		]
+		var registered := _count_registered_citizens()
+		var unemployed := _count_unemployed_citizens()
+		var deaths := world.get_total_deaths()
+		_population_label.text = "%d  .  %d ohne Job  .  %d †" % [registered, unemployed, deaths]
+		_population_label.tooltip_text = "Einwohner: %d\nOhne Job: %d\nVerstorben (gesamt): %d" % [registered, unemployed, deaths]
 	if _housing_jobs_label != null:
 		_housing_jobs_label.text = "%d/%d  .  %d/%d" % [
 			_count_used_housing_slots(),

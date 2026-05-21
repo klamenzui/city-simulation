@@ -78,28 +78,43 @@ func update(delta: float) -> void:
 		economy_overview_controller.update(delta)
 
 func toggle_building_overview() -> void:
-	if building_overview_controller != null:
-		_hide_economy_overview_if_visible()
-		building_overview_controller.toggle_visibility()
+	_toggle_overview_exclusive(building_overview_controller)
 
 func toggle_citizen_overview() -> void:
-	if citizen_overview_controller != null:
-		_hide_economy_overview_if_visible()
-		citizen_overview_controller.toggle_visibility()
+	_toggle_overview_exclusive(citizen_overview_controller)
 
 func toggle_economy_overview() -> void:
-	if economy_overview_controller != null:
-		if not _is_controller_visible(economy_overview_controller):
-			_hide_compact_overviews_if_visible()
-		economy_overview_controller.toggle_visibility()
+	_toggle_overview_exclusive(economy_overview_controller)
 
+## Search joins the single-window mutex: opening it closes the bottom
+## overviews. DETAILS is closed by the interaction controller before this runs.
 func toggle_search_overlay() -> void:
 	if search_panel == null:
 		return
-	search_panel.visible = not search_panel.visible
+	var will_open := not search_panel.visible
+	if will_open:
+		_close_overview_controllers()
+	_set_search_visible(will_open)
+
+## Closes every bottom overview and the search panel. Public entry point for
+## the global single-window mutex — the interaction controller calls this when
+## a DETAILS selection (or any other window) opens.
+func close_all_overviews() -> void:
+	_close_overview_controllers()
+	_set_search_visible(false)
+
+func _close_overview_controllers() -> void:
+	for controller in [building_overview_controller, citizen_overview_controller, economy_overview_controller]:
+		if _is_controller_visible(controller):
+			controller.toggle_visibility()
+
+func _set_search_visible(value: bool) -> void:
+	if search_panel == null:
+		return
+	search_panel.visible = value
 	if search_overview_button != null:
-		UiThemeScript.apply_accent_state(search_overview_button, search_panel.visible)
-	if not search_panel.visible and search_results_list != null:
+		UiThemeScript.apply_accent_state(search_overview_button, value)
+	if not value and search_results_list != null:
 		search_results_list.visible = false
 
 func get_search_input() -> LineEdit:
@@ -118,9 +133,12 @@ func _build_building_overview_overlay(
 ) -> void:
 	var building_overview_panel := PanelContainer.new()
 	building_overview_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	# Sits above the bottom action bar; height grows from bottom.
-	building_overview_panel.position = Vector2(12, -380)
-	building_overview_panel.size = Vector2(380, 300)
+	# Anchored to bottom-left so viewport resizes never push the panel off
+	# screen. Height is 300px above an 8px gap above the bottom action bar.
+	building_overview_panel.offset_left = 12
+	building_overview_panel.offset_right = 12 + 380
+	building_overview_panel.offset_top = -(UiThemeScript.BOTTOMBAR_HEIGHT + 8 + 300)
+	building_overview_panel.offset_bottom = -(UiThemeScript.BOTTOMBAR_HEIGHT + 8)
 	building_overview_panel.visible = false
 	# CanvasLayer can't hold a Theme — assign it explicitly on each top-level
 	# Control we attach to it. Children inherit normally.
@@ -169,11 +187,15 @@ func _build_citizen_overview_overlay(
 	select_citizen: Callable,
 	refresh_interval_sec: float
 ) -> void:
-	# Positioned to the right of the building overview panel.
+	# Shares the bottom-left anchor footprint with the building overview —
+	# the overview mutex in _toggle_overview_exclusive guarantees only one of
+	# the two bottom panels is visible at a time, so the overlap is intentional.
 	var citizen_overview_panel := PanelContainer.new()
 	citizen_overview_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	citizen_overview_panel.position = Vector2(12 + 380 + 12, -380)
-	citizen_overview_panel.size = Vector2(380, 300)
+	citizen_overview_panel.offset_left = 12
+	citizen_overview_panel.offset_right = 12 + 380
+	citizen_overview_panel.offset_top = -(UiThemeScript.BOTTOMBAR_HEIGHT + 8 + 300)
+	citizen_overview_panel.offset_bottom = -(UiThemeScript.BOTTOMBAR_HEIGHT + 8)
 	citizen_overview_panel.visible = false
 	citizen_overview_panel.theme = UiThemeScript.get_or_build()
 	canvas.add_child(citizen_overview_panel)
@@ -228,8 +250,11 @@ func _build_economy_overview_overlay(
 	economy_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	economy_panel.offset_left = 12.0
 	economy_panel.offset_right = -12.0
-	economy_panel.offset_top = -panel_height - 80.0
-	economy_panel.offset_bottom = -80.0
+	# Bottom gap matches the compact overviews — driven by the shared
+	# BOTTOMBAR_HEIGHT constant instead of a hardcoded 80 px.
+	var bottom_gap := float(UiThemeScript.BOTTOMBAR_HEIGHT + 8)
+	economy_panel.offset_top = -panel_height - bottom_gap
+	economy_panel.offset_bottom = -bottom_gap
 	economy_panel.custom_minimum_size = Vector2(620, panel_height)
 	economy_panel.visible = false
 	economy_panel.theme = UiThemeScript.get_or_build()
@@ -364,15 +389,18 @@ func _build_search_overlay(
 		search_result_limit
 	)
 
-func _hide_economy_overview_if_visible() -> void:
-	if _is_controller_visible(economy_overview_controller):
-		economy_overview_controller.toggle_visibility()
-
-func _hide_compact_overviews_if_visible() -> void:
-	if _is_controller_visible(building_overview_controller):
-		building_overview_controller.toggle_visibility()
-	if _is_controller_visible(citizen_overview_controller):
-		citizen_overview_controller.toggle_visibility()
+## Single mutex for the bottom overviews + search. Opening any overview closes
+## the other two and the search panel; closing the active one needs no extra
+## work. DETAILS is closed by the interaction controller before this runs.
+func _toggle_overview_exclusive(target) -> void:
+	if target == null:
+		return
+	if not _is_controller_visible(target):
+		for other in [building_overview_controller, citizen_overview_controller, economy_overview_controller]:
+			if other != null and other != target and _is_controller_visible(other):
+				other.toggle_visibility()
+		_set_search_visible(false)
+	target.toggle_visibility()
 
 func _is_controller_visible(controller) -> bool:
 	return controller != null and controller.has_method("is_visible") and bool(controller.is_visible())

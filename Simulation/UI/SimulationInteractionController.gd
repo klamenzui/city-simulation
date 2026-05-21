@@ -92,6 +92,10 @@ func handle_citizen_clicked(citizen: Citizen) -> void:
 	_entity_clicked_this_frame = true
 	if selection_state_controller != null:
 		selection_state_controller.handle_citizen_clicked(citizen)
+		# Single-window mutex: a fresh DETAILS selection closes the overviews
+		# and search. A toggle-off click clears the selection, so guard on it.
+		if selection_state_controller.get_selected_citizen() != null:
+			_close_overview_windows()
 		_panel_refresh_left = 0.0
 
 func handle_building_clicked(building: Building) -> void:
@@ -105,11 +109,25 @@ func handle_building_clicked(building: Building) -> void:
 
 	selection_state_controller.handle_building_clicked(building)
 	if selection_state_controller.get_selected_building() != null:
+		_close_overview_windows()
 		_panel_refresh_left = 0.0
 
 func deselect() -> void:
 	if selection_state_controller != null:
 		selection_state_controller.deselect()
+
+## Single-window mutex helper: closes the DETAILS panel before a bottom
+## overview or the search panel opens. deselect() is idempotent when nothing
+## is selected, so calling it on a toggle-close is harmless.
+func _close_details_for_window() -> void:
+	if selection_state_controller != null:
+		selection_state_controller.deselect()
+
+## Single-window mutex helper: a fresh DETAILS selection closes every bottom
+## overview and the search panel.
+func _close_overview_windows() -> void:
+	if hud_overlay_controller != null and hud_overlay_controller.has_method("close_all_overviews"):
+		hud_overlay_controller.close_all_overviews()
 
 func handle_debug_panel_citizen_dialog_toggled() -> void:
 	_entity_clicked_this_frame = true
@@ -218,11 +236,13 @@ func _is_network_session_active() -> bool:
 
 func on_building_overview_pressed() -> void:
 	mark_ui_interacted()
+	_close_details_for_window()
 	if hud_overlay_controller != null:
 		hud_overlay_controller.toggle_building_overview()
 
 func on_citizen_overview_pressed() -> void:
 	mark_ui_interacted()
+	_close_details_for_window()
 	if hud_overlay_controller != null:
 		hud_overlay_controller.toggle_citizen_overview()
 
@@ -237,15 +257,18 @@ func on_player_overview_pressed() -> void:
 	if player == null:
 		return
 	selection_state_controller.handle_citizen_clicked(player)
+	_close_overview_windows()
 	_panel_refresh_left = 0.0
 
 func on_economy_overview_pressed() -> void:
 	mark_ui_interacted()
+	_close_details_for_window()
 	if hud_overlay_controller != null:
 		hud_overlay_controller.toggle_economy_overview()
 
 func on_search_overview_pressed() -> void:
 	mark_ui_interacted()
+	_close_details_for_window()
 	if hud_overlay_controller != null:
 		hud_overlay_controller.toggle_search_overlay()
 
