@@ -14,7 +14,7 @@ class_name PlayerInventoryCatalog
 
 const ITEMS: Dictionary = {
 	"food": {
-		"label": "Vorraete",
+		"label": "Vorräte",
 		"icon": "🍞",
 		"tab_label": "Essen",
 		"tab_order": 0,

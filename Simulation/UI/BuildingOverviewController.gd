@@ -96,7 +96,7 @@ func _refresh_building_overview() -> void:
 			active_count += 1
 
 	var lines: PackedStringArray = []
-	lines.append("[b]Gebaeude[/b] %d aktiv / %d gesamt" % [active_count, entries.size()])
+	lines.append("[b]Gebäude[/b] %d aktiv / %d gesamt" % [active_count, entries.size()])
 	lines.append("")
 	for entry in entries:
 		lines.append(str(entry.get("line", "")))

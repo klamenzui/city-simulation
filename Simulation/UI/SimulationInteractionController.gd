@@ -31,6 +31,7 @@ func setup(owner_ref: Node, world_ref: World, multiplayer_session_ref = null) ->
 	_ensure_pause_input_action()
 	_ensure_dialog_interact_input_action()
 	_ensure_player_building_input_actions()
+	_ensure_overview_input_actions()
 	_build_debug_panel()
 	_build_inventory_window()
 
@@ -185,6 +186,23 @@ func handle_input(event: InputEvent) -> bool:
 	if event.is_action_pressed("dialog_interact") and not text_input_focused:
 		if _try_toggle_player_dialog_interaction():
 			_entity_clicked_this_frame = true
+			return true
+
+	# Overview panel shortcuts (F1-F4). Suppressed while typing so they never
+	# steal keystrokes from the search field. Each routes through the same
+	# handler the bottom-bar button uses, so the single-window mutex applies.
+	if not text_input_focused:
+		if event.is_action_pressed("overview_buildings"):
+			on_building_overview_pressed()
+			return true
+		if event.is_action_pressed("overview_citizens"):
+			on_citizen_overview_pressed()
+			return true
+		if event.is_action_pressed("overview_economy"):
+			on_economy_overview_pressed()
+			return true
+		if event.is_action_pressed("overview_search"):
+			on_search_overview_pressed()
 			return true
 
 	if not text_input_focused and player_building_input_active:
@@ -515,11 +533,11 @@ func _network_status_toast_message(status: Dictionary) -> String:
 	match str(status.get("state", "")):
 		"effect", "entered_building", "citizen_interaction":
 			if not action_id.is_empty():
-				return "%s ausgefuehrt." % _player_action_label(action_id)
+				return "%s ausgeführt." % _player_action_label(action_id)
 			return _target_interaction_message("Interaktion gestartet", status)
 		"rejected":
 			if not action_id.is_empty():
-				return "%s nicht moeglich." % _player_action_label(action_id)
+				return "%s nicht möglich." % _player_action_label(action_id)
 			return _target_interaction_message("Interaktion abgelehnt", status)
 		"travel_failed":
 			return _target_interaction_message("Ziel nicht erreichbar", status)
@@ -547,7 +565,7 @@ func _offline_player_action_toast_message(action_id: String, accepted: bool, pla
 	if player != null and player.has_method("get_player_action_notice"):
 		notice = str(player.get_player_action_notice()).strip_edges()
 	if not accepted:
-		return notice if not notice.is_empty() else "%s nicht moeglich." % label
+		return notice if not notice.is_empty() else "%s nicht möglich." % label
 	if not notice.is_empty():
 		return notice
 	match action_id:
@@ -558,15 +576,15 @@ func _offline_player_action_toast_message(action_id: String, accepted: bool, pla
 		"stop":
 			return "Aktion gestoppt."
 		"exit_building":
-			return "Gebaeude verlassen."
-	return "%s ausgefuehrt." % label
+			return "Gebäude verlassen."
+	return "%s ausgeführt." % label
 
 func _player_action_label(action_id: String) -> String:
 	match action_id:
 		"rent_home":
 			return "Wohnung mieten"
 		"quit_home":
-			return "Wohnung kuendigen"
+			return "Wohnung kündigen"
 		"apply_work":
 			return "Bewerben"
 		"work":
@@ -588,19 +606,19 @@ func _player_action_label(action_id: String) -> String:
 		"shop":
 			return "Einkaufen"
 		"inventory_close":
-			return "Inventar schliessen"
+			return "Inventar schließen"
 		"buy_shop_item":
 			return "Kleidung kaufen"
 		"buy_groceries":
-			return "Vorraete kaufen"
+			return "Vorräte kaufen"
 		"quit_job":
-			return "Job kuendigen"
+			return "Job kündigen"
 		"training":
 			return "Zur Uni"
 		"stop":
 			return "Aktion stoppen"
 		"exit_building":
-			return "Gebaeude verlassen"
+			return "Gebäude verlassen"
 	return action_id
 
 func _compact_target_label(status: Dictionary) -> String:
@@ -805,6 +823,15 @@ func _ensure_player_building_input_actions() -> void:
 	_ensure_key_action("player_enter_building", KEY_R)
 	_ensure_key_action("player_exit_building", KEY_T)
 
+## Function-key shortcuts for the four overview panels. F1-F4 avoid collisions
+## with WASD movement and the existing P/R/T/F bindings. The bottom-bar button
+## labels surface these keys (see SimulationHudController).
+func _ensure_overview_input_actions() -> void:
+	_ensure_key_action("overview_buildings", KEY_F1)
+	_ensure_key_action("overview_citizens", KEY_F2)
+	_ensure_key_action("overview_economy", KEY_F3)
+	_ensure_key_action("overview_search", KEY_F4)
+
 func _ensure_key_action(action_name: String, keycode: int) -> void:
 	if InputMap.has_action(action_name):
 		for event in InputMap.action_get_events(action_name):
@@ -821,6 +848,19 @@ func _ensure_key_action(action_name: String, keycode: int) -> void:
 ## persistent hunger bar). Resolution order lives in _get_player_citizen.
 func get_player_citizen() -> Citizen:
 	return _get_player_citizen()
+
+## Context-aware bottom-bar hint, polled by the HUD through a bound resolver.
+## Player-control near a building wins, then an open DETAILS selection, else
+## the default click/shortcut hint.
+func get_action_hint() -> String:
+	if _is_player_building_input_active():
+		return "R: Gebäude betreten · T: verlassen · F: Reden"
+	if selection_state_controller != null:
+		if selection_state_controller.get_selected_building() != null:
+			return "Gebäude gewählt · F1–F4: Übersichten"
+		if selection_state_controller.get_selected_citizen() != null:
+			return "Bürger gewählt · F: Reden · F1–F4: Übersichten"
+	return "Klick: Infos · F1–F4: Übersichten"
 
 func _get_player_citizen() -> Citizen:
 	if selection_state_controller == null:
@@ -875,12 +915,12 @@ func _try_player_enter_building() -> bool:
 		var requested := bool(multiplayer_session.request_entity_interaction(nearest))
 		if requested:
 			_last_network_toast_signature = ""
-			_show_toast("Anfrage gesendet: Gebaeude betreten.", "info", 1.8)
+			_show_toast("Anfrage gesendet: Gebäude betreten.", "info", 1.8)
 		return requested
 	var entered := player.player_enter_building(nearest, world)
-	var enter_message := "Gebaeude betreten nicht moeglich."
+	var enter_message := "Gebäude betreten nicht möglich."
 	if entered:
-		enter_message = "Gebaeude betreten: %s." % nearest.get_display_name()
+		enter_message = "Gebäude betreten: %s." % nearest.get_display_name()
 	_show_toast(enter_message, "success" if entered else "warning")
 	return entered
 
@@ -892,10 +932,10 @@ func _try_player_exit_building() -> bool:
 		var requested := _request_network_player_action("exit_building")
 		if requested:
 			_last_network_toast_signature = ""
-			_show_toast("Anfrage gesendet: Gebaeude verlassen.", "info", 1.8)
+			_show_toast("Anfrage gesendet: Gebäude verlassen.", "info", 1.8)
 		return requested
 	var exited := player.player_exit_building(world)
-	_show_toast("Gebaeude verlassen." if exited else "Gebaeude verlassen nicht moeglich.", "success" if exited else "warning")
+	_show_toast("Gebäude verlassen." if exited else "Gebäude verlassen nicht möglich.", "success" if exited else "warning")
 	return exited
 
 func _refresh_player_home_marker() -> void:
