@@ -31,6 +31,15 @@ var favorite_park: Building = null
 var home_food_stock: int = 2
 var clothing_items: int = 0
 var education_level: int = 0
+# Consecutive days employed at the current workplace. Shown in the UI as
+# tenure; reset to 0 on hire/fire so it tracks the current job, not lifetime.
+var job_tenure_days: int = 0
+# Consecutive days with zero work minutes at the current workplace. Reaches the
+# configured limit -> automatic termination.
+var job_absence_days: int = 0
+# Accumulated experience wage bonus (fraction, e.g. 0.05 = +5%). Grows or shrinks
+# daily depending on the workplace profit tier; reset to 0 on hire/fire.
+var experience_wage_bonus: float = 0.0
 
 # Always present: economy + needs models.
 var wallet: Account = null

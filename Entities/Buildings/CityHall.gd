@@ -138,7 +138,7 @@ func fund_public_buildings(world: World) -> void:
 	)
 
 	for building in public_buildings:
-		var request: int = building.get_public_funding_request()
+		var request: int = building.get_public_funding_request(world)
 		building.record_public_funding_request(request)
 		public_funding_requested_total_today += request
 		if request <= 0:

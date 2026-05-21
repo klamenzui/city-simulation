@@ -60,6 +60,11 @@ var visitors: Array[Citizen] = []
 
 var income_today: int = 0
 var expenses_today: int = 0
+# Exponential moving average of daily profit (income - expenses). Classifies the
+# workplace into a wage-relevant profit tier. Persistence is not critical: it
+# re-seeds within a few days after load.
+var profit_average: float = 0.0
+var _profit_average_seeded: bool = false
 var wages_today: int = 0
 var taxes_today: int = 0
 var maintenance_today: int = 0
@@ -472,7 +477,7 @@ func get_info_sections(world = null) -> Array:
 		_build_building_identity_section(),
 		_build_building_occupancy_section(world),
 		_build_building_finance_section(world),
-		_build_building_maintenance_section(),
+		_build_building_maintenance_section(world),
 	]
 	for sec in _get_extra_info_sections(world):
 		sections.append(sec)
@@ -616,7 +621,7 @@ func _build_building_finance_section(_world = null) -> Dictionary:
 	return {"title": "Finanzen", "rows": rows}
 
 
-func _build_building_maintenance_section() -> Dictionary:
+func _build_building_maintenance_section(world = null) -> Dictionary:
 	var rows: Array = []
 	var cond_severity := "normal"
 	if condition < 30:
@@ -650,10 +655,10 @@ func _build_building_maintenance_section() -> Dictionary:
 			"severity": "warning",
 		})
 
-	var total_obl := get_total_daily_obligation_estimate()
+	var total_obl := get_total_daily_obligation_estimate(world)
 	if total_obl > 0:
 		var base_op := get_base_operating_cost_per_day()
-		var payroll := get_payroll_due_today()
+		var payroll := get_payroll_due_today(world)
 		rows.append({
 			"label": "Tageskosten",
 			"value": "%d EUR (Betrieb %d + Lohn %d)" % [total_obl, base_op, payroll],
@@ -695,8 +700,8 @@ func get_info(world = null) -> Dictionary:
 		"Balance": "%d EUR" % account.balance,
 		"Condition": "%.0f / 100 (%s)" % [condition, get_condition_state_label()],
 		"Base operating cost": "%d EUR" % get_base_operating_cost_per_day(),
-		"Payroll due": "%d EUR" % get_payroll_due_today(),
-		"Estimated daily obligations": "%d EUR" % get_total_daily_obligation_estimate(),
+		"Payroll due": "%d EUR" % get_payroll_due_today(world),
+		"Estimated daily obligations": "%d EUR" % get_total_daily_obligation_estimate(world),
 		"Wages paid / unpaid": "%d / %d EUR" % [wages_today, wages_unpaid_today],
 		"Taxes paid / unpaid": "%d / %d EUR" % [taxes_today, taxes_unpaid_today],
 		"Maintenance paid / unpaid": "%d / %d EUR" % [maintenance_today, maintenance_unpaid_today],
@@ -1138,7 +1143,7 @@ func has_free_job_slots() -> bool:
 		return false
 	return workers.size() < job_capacity
 
-func try_hire(c: Citizen) -> bool:
+func try_hire(c: Citizen, reset_progression: bool = true) -> bool:
 	if c == null:
 		return false
 	if workers.has(c):
@@ -1146,6 +1151,11 @@ func try_hire(c: Citizen) -> bool:
 	if not has_free_job_slots():
 		return false
 	workers.append(c)
+	if reset_progression:
+		# Fresh employment starts from zero. Save/load restore can opt out.
+		c.job_tenure_days = 0
+		c.job_absence_days = 0
+		c.experience_wage_bonus = 0.0
 	if is_financially_closed() and account.balance >= 0:
 		reopen_after_funding()
 	return true
@@ -1156,6 +1166,10 @@ func fire(c: Citizen) -> void:
 	workers.erase(c)
 	if c.job != null and c.job.workplace == self:
 		c.job.workplace = null
+	# Leaving the job ends tenure; experience does not carry to the next employer.
+	c.job_tenure_days = 0
+	c.job_absence_days = 0
+	c.experience_wage_bonus = 0.0
 
 func try_add_visitor(c: Citizen) -> bool:
 	if c == null:
@@ -1266,7 +1280,28 @@ func record_unpaid_operating(amount: int) -> void:
 func get_profit_today() -> int:
 	return income_today - expenses_today
 
+## Folds today's profit into the smoothed average. Called before the daily reset.
+func _update_profit_average() -> void:
+	var alpha: float = clampf(BalanceConfig.get_float("economy.jobs.wage_progression.profit_smoothing_alpha", 0.25), 0.0, 1.0)
+	var today: float = float(get_profit_today())
+	if _profit_average_seeded:
+		profit_average = profit_average * (1.0 - alpha) + today * alpha
+	else:
+		profit_average = today
+		_profit_average_seeded = true
+
+## Profit tier for wage progression: 0 = weak/loss, 1 = normal, 2 = strong.
+func get_profit_tier() -> int:
+	var weak_max: float = BalanceConfig.get_float("economy.jobs.wage_progression.profit_weak_max", 0.0)
+	var strong_min: float = BalanceConfig.get_float("economy.jobs.wage_progression.profit_strong_min", 250.0)
+	if profit_average <= weak_max:
+		return 0
+	if profit_average >= strong_min:
+		return 2
+	return 1
+
 func begin_new_day() -> void:
+	_update_profit_average()
 	income_today = 0
 	expenses_today = 0
 	wages_today = 0
@@ -1373,10 +1408,10 @@ func get_planned_maintenance_cost_per_day() -> int:
 		return 0
 	return maintenance_cost_per_day
 
-func get_total_daily_obligation_estimate() -> int:
-	return get_base_operating_cost_per_day() + get_payroll_due_today() + get_planned_maintenance_cost_per_day()
+func get_total_daily_obligation_estimate(world: World = null) -> int:
+	return get_base_operating_cost_per_day() + get_payroll_due_today(world) + get_planned_maintenance_cost_per_day()
 
-func get_payroll_due_today() -> int:
+func get_payroll_due_today(world: World = null) -> int:
 	var total := 0
 	for worker in workers:
 		if worker == null or worker.job == null:
@@ -1384,13 +1419,16 @@ func get_payroll_due_today() -> int:
 		if worker.job.workplace != self:
 			continue
 		var hours_worked := maxf(worker.work_minutes_today / 60.0, 0.0)
-		total += maxi(int(round(worker.job.wage_per_hour * hours_worked)), 0)
+		var multiplier := 1.0
+		if world != null and world.has_method("get_wage_progression"):
+			multiplier = float(world.get_wage_progression(worker).get("multiplier", 1.0))
+		total += maxi(int(worker.job.wage_per_hour * hours_worked * multiplier), 0)
 	return total
 
-func get_public_funding_request() -> int:
+func get_public_funding_request(world: World = null) -> int:
 	if not requires_public_funding():
 		return 0
-	var request: int = get_total_daily_obligation_estimate()
+	var request: int = get_total_daily_obligation_estimate(world)
 	if account.balance < 0:
 		request += -account.balance
 	return request

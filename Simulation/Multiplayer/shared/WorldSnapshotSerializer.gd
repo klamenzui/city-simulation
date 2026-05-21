@@ -90,6 +90,8 @@ static func _build_building_snapshots(world: World, root: Node, include_static: 
 			"owner_id": NetworkEntityRegistryScript.get_entity_id(building.citizen_owner),
 			"owner_name": building.get_owner_display_name() if building.has_method("get_owner_display_name") else "",
 			"owner_payout_today": building.owner_payout_today,
+			"profit_average": building.profit_average,
+			"profit_average_seeded": building._profit_average_seeded,
 			"workers": building.workers.size(),
 			"visitors": building.visitors.size(),
 			"capacity": building.capacity,
@@ -160,6 +162,9 @@ static func _build_citizen_snapshots(world: World, include_static: bool) -> Arra
 			data["home_food_stock"] = citizen.home_food_stock
 			data["clothing_items"] = citizen.clothing_items
 			data["education_level"] = citizen.education_level
+			data["job_tenure_days"] = citizen.job_tenure_days
+			data["job_absence_days"] = citizen.job_absence_days
+			data["experience_wage_bonus"] = citizen.experience_wage_bonus
 			data["job_title"] = citizen.job.title if citizen.job != null else ""
 			data["job_wage_per_hour"] = citizen.job.wage_per_hour if citizen.job != null else 0
 			data["job_shift_hours"] = citizen.job.shift_hours if citizen.job != null else 0
@@ -261,6 +266,8 @@ static func _apply_building_snapshots(world: World, root: Node, entries: Variant
 		building.forced_closed_reason = str(data.get("forced_closed_reason", building.forced_closed_reason))
 		building.owner_display_name = str(data.get("owner_name", building.owner_display_name))
 		building.owner_payout_today = int(data.get("owner_payout_today", building.owner_payout_today))
+		building.profit_average = float(data.get("profit_average", building.profit_average))
+		building._profit_average_seeded = bool(data.get("profit_average_seeded", building._profit_average_seeded))
 		var owner_id := str(data.get("owner_id", ""))
 		building.citizen_owner = citizen_lookup.get(owner_id, null) as Citizen if not owner_id.is_empty() else null
 		if building is CommercialBuilding:

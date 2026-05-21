@@ -61,6 +61,11 @@ func _run() -> void:
 		_finish()
 		return
 	citizen.work_minutes_today = 90
+	citizen.job_tenure_days = 8
+	citizen.job_absence_days = 2
+	citizen.experience_wage_bonus = 0.075
+	expected_workplace.profit_average = 325.0
+	expected_workplace._profit_average_seeded = true
 
 	var save_err := SaveGameServiceScript.save_to_slot(1, world, root, player)
 	if save_err != OK:
@@ -90,6 +95,11 @@ func _run() -> void:
 	citizen.job = null
 	citizen.current_location = null
 	citizen.work_minutes_today = 0
+	citizen.job_tenure_days = 0
+	citizen.job_absence_days = 0
+	citizen.experience_wage_bonus = 0.0
+	expected_workplace.profit_average = -999.0
+	expected_workplace._profit_average_seeded = false
 	if not _remove_non_player_citizen(world, citizen):
 		_fail("Could not remove a non-player citizen for population restore test.")
 		_finish()
@@ -121,6 +131,16 @@ func _run() -> void:
 		_fail("job title not restored: expected %s got %s" % [expected_job.title, citizen.job.title])
 	if citizen.work_minutes_today != 90:
 		_fail("work minutes not restored: expected 90 got %d" % citizen.work_minutes_today)
+	if citizen.job_tenure_days != 8:
+		_fail("job tenure not restored: expected 8 got %d" % citizen.job_tenure_days)
+	if citizen.job_absence_days != 2:
+		_fail("job absence days not restored: expected 2 got %d" % citizen.job_absence_days)
+	if not is_equal_approx(citizen.experience_wage_bonus, 0.075):
+		_fail("experience bonus not restored: expected 0.075 got %.4f" % citizen.experience_wage_bonus)
+	if not is_equal_approx(expected_workplace.profit_average, 325.0):
+		_fail("building profit average not restored: expected 325 got %.2f" % expected_workplace.profit_average)
+	if not expected_workplace._profit_average_seeded:
+		_fail("building profit average seeded flag not restored.")
 
 	# clean up the slot we just wrote so the test does not leave artefacts.
 	var path := SaveGameServiceScript.slot_path(1)

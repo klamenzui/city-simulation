@@ -164,12 +164,14 @@ func _on_payday() -> void:
 		employed_count,
 		citizens.size() - employed_count,
 		get_open_jobs().size()
-	])
+		])
 
 	var welfare_total := 0
 	var salaries_total := 0
+	var fired_absence_total := 0
 	var operating_total := 0
 	var maintenance_total := 0
+	var absence_limit := BalanceConfig.get_int("economy.jobs.absence_days_before_fire", 3)
 
 	for building in buildings:
 		if building == null or not building.requires_public_funding():
@@ -195,7 +197,20 @@ func _on_payday() -> void:
 			continue
 
 		var hours_worked: float = citizen.work_minutes_today / 60.0
-		var daily_wage: int = int(citizen.job.wage_per_hour * hours_worked)
+		if hours_worked <= 0.0:
+			if _record_work_absence_or_fire(citizen, absence_limit):
+				fired_absence_total += 1
+			else:
+				SimLogger.log("  [ABSENT] %s missed work day %d/%d" % [
+					citizen.citizen_name,
+					citizen.job_absence_days,
+					maxi(absence_limit, 0),
+				])
+			continue
+
+		citizen.job_absence_days = 0
+		var wage_multiplier: float = float(get_wage_progression(citizen).get("multiplier", 1.0))
+		var daily_wage: int = int(citizen.job.wage_per_hour * hours_worked * wage_multiplier)
 		if daily_wage <= 0:
 			var skip_reason := citizen.get_zero_pay_debug_reason() if citizen.has_method("get_zero_pay_debug_reason") else "no debug reason"
 			SimLogger.log("  [SKIP] %s worked %.1fh -> no pay (%s)" % [citizen.citizen_name, hours_worked, skip_reason])
@@ -204,6 +219,9 @@ func _on_payday() -> void:
 		var source := _pay_salary(citizen, daily_wage, city_hall)
 		if source != "":
 			salaries_total += daily_wage
+			# Today's pay uses start-of-day progression; paid work advances tomorrow.
+			citizen.job_tenure_days += 1
+			_advance_experience_bonus(citizen)
 			SimLogger.log("  [PAY:%s] %s +%d" % [source, citizen.citizen_name, daily_wage])
 		else:
 			if citizen.job != null and citizen.job.workplace != null:
@@ -257,12 +275,13 @@ func _on_payday() -> void:
 		var group_buildings: Array = building_groups[group_key]
 		SimLogger.log("  [BUILDING] %s" % _format_building_group_summary(group_buildings))
 
-	SimLogger.log("  [SUMMARY] salaries=%d welfare=%d operating=%d maintenance=%d owner_payouts=%d city_hall_balance=%d city_reserve_balance=%d reserve_transfers_today=%d public_funding_requested=%d public_funding_paid=%d struggling_buildings=%d closed_buildings=%d" % [
+	SimLogger.log("  [SUMMARY] salaries=%d welfare=%d operating=%d maintenance=%d owner_payouts=%d fired_absence=%d city_hall_balance=%d city_reserve_balance=%d reserve_transfers_today=%d public_funding_requested=%d public_funding_paid=%d struggling_buildings=%d closed_buildings=%d" % [
 		salaries_total,
 		welfare_total,
 		operating_total,
 		maintenance_total,
 		owner_payout_total,
+		fired_absence_total,
 		city_hall.account.balance if city_hall != null else 0,
 		city_account.balance,
 		city_hall.reserve_transfer_amount_today if city_hall != null else 0,
@@ -511,6 +530,107 @@ func _pay_salary(citizen: Citizen, amount: int, _city_hall) -> String:
 		return "work"
 
 	return ""
+
+## Wage progression breakdown for a citizen. Two profit-driven bonuses, additive
+## on the flat base: an education bonus (per level above the job minimum, with a
+## per-level rate that scales with the workplace profit tier) and an accumulated
+## experience bonus (grows/shrinks daily via _advance_experience_bonus). Defined
+## here (Economy owns wage rules) and reused by payday + the player UI so the
+## formula lives in one place. Multiplier is exactly 1.0 when education equals the
+## job minimum and no experience bonus has accrued.
+func get_wage_progression(citizen: Citizen) -> Dictionary:
+	var result := {
+		"multiplier": 1.0,
+		"education_bonus": 0.0,
+		"experience_bonus": 0.0,
+		"education_rate": 0.0,
+		"extra_education": 0,
+		"tenure_days": 0,
+		"absence_days": 0,
+		"absence_limit": BalanceConfig.get_int("economy.jobs.absence_days_before_fire", 3),
+		"profit_tier": 1,
+		"at_max_experience": false,
+	}
+	if citizen == null or citizen.job == null:
+		return result
+
+	var tier: int = _workplace_profit_tier(citizen)
+	var edu_rate: float = _education_bonus_rate_for_tier(tier)
+	var extra_education: int = maxi(citizen.education_level - citizen.job.required_education_level, 0)
+	var education_bonus: float = float(extra_education) * edu_rate
+	var experience_bonus: float = maxf(citizen.experience_wage_bonus, 0.0)
+	var exp_max: float = BalanceConfig.get_float("economy.jobs.wage_progression.experience_bonus_max", 0.10)
+
+	result["multiplier"] = 1.0 + education_bonus + experience_bonus
+	result["education_bonus"] = education_bonus
+	result["experience_bonus"] = experience_bonus
+	result["education_rate"] = edu_rate
+	result["extra_education"] = extra_education
+	result["tenure_days"] = maxi(citizen.job_tenure_days, 0)
+	result["absence_days"] = maxi(citizen.job_absence_days, 0)
+	result["profit_tier"] = tier
+	result["at_max_experience"] = experience_bonus >= exp_max - 0.00001
+	return result
+
+## Profit tier (0 weak, 1 normal, 2 strong) of a citizen's workplace; normal when
+## there is no workplace context.
+func _workplace_profit_tier(citizen: Citizen) -> int:
+	if citizen == null or citizen.job == null or citizen.job.workplace == null:
+		return 1
+	var workplace: Building = citizen.job.workplace
+	if workplace.has_method("get_profit_tier"):
+		return workplace.get_profit_tier()
+	return 1
+
+func _education_bonus_rate_for_tier(tier: int) -> float:
+	match tier:
+		0:
+			return BalanceConfig.get_float("economy.jobs.wage_progression.education_bonus_per_level_weak", 0.03)
+		2:
+			return BalanceConfig.get_float("economy.jobs.wage_progression.education_bonus_per_level_strong", 0.08)
+		_:
+			return BalanceConfig.get_float("economy.jobs.wage_progression.education_bonus_per_level_normal", 0.05)
+
+func _experience_daily_delta_for_tier(tier: int) -> float:
+	match tier:
+		0:
+			return BalanceConfig.get_float("economy.jobs.wage_progression.experience_daily_weak", -0.001)
+		2:
+			return BalanceConfig.get_float("economy.jobs.wage_progression.experience_daily_strong", 0.0025)
+		_:
+			return BalanceConfig.get_float("economy.jobs.wage_progression.experience_daily_normal", 0.00005)
+
+## Moves a citizen's accumulated experience bonus by the profit-tier daily delta
+## (positive when the firm does well, negative on losses), clamped to [0, max].
+func _advance_experience_bonus(citizen: Citizen) -> void:
+	if citizen == null or citizen.job == null or citizen.job.workplace == null:
+		return
+	var tier: int = _workplace_profit_tier(citizen)
+	var delta: float = _experience_daily_delta_for_tier(tier)
+	var exp_max: float = BalanceConfig.get_float("economy.jobs.wage_progression.experience_bonus_max", 0.10)
+	citizen.experience_wage_bonus = clampf(citizen.experience_wage_bonus + delta, 0.0, exp_max)
+
+func _record_work_absence_or_fire(citizen: Citizen, absence_limit: int) -> bool:
+	if citizen == null or citizen.job == null or citizen.job.workplace == null:
+		return false
+	if absence_limit <= 0:
+		return false
+	citizen.job_absence_days += 1
+	if citizen.job_absence_days < absence_limit:
+		return false
+	var job_to_remove := citizen.job
+	var workplace := citizen.job.workplace
+	var workplace_name := workplace.get_display_name() if workplace != null and workplace.has_method("get_display_name") else "workplace"
+	if workplace != null and workplace.has_method("fire"):
+		workplace.fire(citizen)
+	unregister_job(job_to_remove)
+	citizen.job = null
+	SimLogger.log("  [FIRED:ABSENCE] %s fired from %s after %d missed work days" % [
+		citizen.citizen_name,
+		workplace_name,
+		absence_limit,
+	])
+	return true
 
 func _rollover_building_finances() -> void:
 	for building in buildings:

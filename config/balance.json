@@ -46,6 +46,20 @@
       "wage_per_hour_max": 26,
       "training_offer_score_bonus": 420.0,
       "training_offer_gap_penalty": 120.0,
+      "absence_days_before_fire": 3,
+      "wage_progression": {
+        "education_max_level": 3,
+        "education_bonus_per_level_weak": 0.03,
+        "education_bonus_per_level_normal": 0.05,
+        "education_bonus_per_level_strong": 0.08,
+        "experience_daily_weak": -0.001,
+        "experience_daily_normal": 0.00005,
+        "experience_daily_strong": 0.0025,
+        "experience_bonus_max": 0.10,
+        "profit_smoothing_alpha": 0.25,
+        "profit_weak_max": 0.0,
+        "profit_strong_min": 250.0
+      },
       "wage_per_hour_by_title": {
         "Baecker": 12,
         "Kellner": 12,
