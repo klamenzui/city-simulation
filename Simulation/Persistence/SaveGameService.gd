@@ -339,7 +339,7 @@ static func _rebuild_runtime_relationships(world: World, matches: Array) -> Erro
 		if citizen.job != null and citizen.job.workplace != null:
 			if world != null:
 				world.register_job(citizen.job)
-			if bool(data.get("employed", false)) and not citizen.job.workplace.try_hire(citizen):
+			if bool(data.get("employed", false)) and not citizen.job.workplace.try_hire(citizen, false):
 				return ERR_INVALID_DATA
 		if citizen.current_location != null and bool(data.get("visitor", false)):
 			if not citizen.current_location.try_add_visitor(citizen):
@@ -367,6 +367,12 @@ static func _apply_citizen_state(citizen: Citizen, data: Dictionary, building_lo
 		citizen.clothing_items = int(data.get("clothing_items", citizen.clothing_items))
 	if data.has("education_level"):
 		citizen.education_level = int(data.get("education_level", citizen.education_level))
+	if data.has("job_tenure_days"):
+		citizen.job_tenure_days = int(data.get("job_tenure_days", citizen.job_tenure_days))
+	if data.has("job_absence_days"):
+		citizen.job_absence_days = int(data.get("job_absence_days", citizen.job_absence_days))
+	if data.has("experience_wage_bonus"):
+		citizen.experience_wage_bonus = float(data.get("experience_wage_bonus", citizen.experience_wage_bonus))
 	if data.has("home_id"):
 		var home_id := str(data.get("home_id", ""))
 		citizen.home = building_lookup.get(home_id, null) as ResidentialBuilding if not home_id.is_empty() else null

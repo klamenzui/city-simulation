@@ -322,7 +322,9 @@ func _test_maintenance_shortfall_is_soft_before_closure() -> String:
 	workshop.max_missed_payment_days_before_closure = 3
 
 	var worker = _assign_worker(workshop, "Maintainer", "MaintenanceWorker", 16, 8.0)
-	worker.work_minutes_today = 0
+	# One minute marks attendance without adding meaningful payroll cost; this test
+	# isolates maintenance shortfall from the absence-termination rule.
+	worker.work_minutes_today = 1
 	worker._world_ref = world
 
 	world.buildings.append(workshop)

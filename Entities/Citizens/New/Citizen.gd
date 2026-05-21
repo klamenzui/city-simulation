@@ -400,6 +400,9 @@ func apply_network_snapshot(data: Dictionary, building_lookup: Dictionary) -> vo
 	home_food_stock = int(data.get("home_food_stock", home_food_stock))
 	clothing_items = int(data.get("clothing_items", clothing_items))
 	education_level = int(data.get("education_level", education_level))
+	job_tenure_days = int(data.get("job_tenure_days", job_tenure_days))
+	job_absence_days = int(data.get("job_absence_days", job_absence_days))
+	experience_wage_bonus = float(data.get("experience_wage_bonus", experience_wage_bonus))
 	if needs != null:
 		needs.hunger = float(data.get("hunger", needs.hunger))
 		needs.energy = float(data.get("energy", needs.energy))
@@ -613,6 +616,33 @@ var education_level: int:
 	set(value):
 		if _sim != null and _sim.identity != null:
 			_sim.identity.education_level = value
+
+var job_tenure_days: int:
+	get:
+		if _sim != null and _sim.identity != null:
+			return _sim.identity.job_tenure_days
+		return 0
+	set(value):
+		if _sim != null and _sim.identity != null:
+			_sim.identity.job_tenure_days = maxi(value, 0)
+
+var job_absence_days: int:
+	get:
+		if _sim != null and _sim.identity != null:
+			return _sim.identity.job_absence_days
+		return 0
+	set(value):
+		if _sim != null and _sim.identity != null:
+			_sim.identity.job_absence_days = maxi(value, 0)
+
+var experience_wage_bonus: float:
+	get:
+		if _sim != null and _sim.identity != null:
+			return _sim.identity.experience_wage_bonus
+		return 0.0
+	set(value):
+		if _sim != null and _sim.identity != null:
+			_sim.identity.experience_wage_bonus = maxf(value, 0.0)
 
 
 # Favorites — accessed via getters/setters rather than property forwarding to
@@ -1300,6 +1330,25 @@ func get_player_action_ui_state(world: Node = null) -> Dictionary:
 			else:
 				status_lines.append("Stelle: %s - keine Bildung noetig" % prospective_title)
 			if employed_here:
+				if resolved_world != null and resolved_world.has_method("get_wage_progression"):
+					var prog: Dictionary = resolved_world.get_wage_progression(self)
+					var base_wage: int = job.wage_per_hour if job != null else 0
+					var eff_wage: int = int(round(float(base_wage) * float(prog.get("multiplier", 1.0))))
+					var edu_pct: int = int(round(float(prog.get("education_bonus", 0.0)) * 100.0))
+					var exp_pct: int = int(round(float(prog.get("experience_bonus", 0.0)) * 100.0))
+					status_lines.append("Lohn: %d EUR/h (Basis %d, +%d%% Bildung, +%d%% Erfahrung)" % [eff_wage, base_wage, edu_pct, exp_pct])
+					var max_note := " (max)" if bool(prog.get("at_max_experience", false)) else ""
+					status_lines.append("Firma: %s%s - seit %d Tagen hier" % [
+						_profit_tier_label(int(prog.get("profit_tier", 1))),
+						max_note,
+						int(prog.get("tenure_days", 0)),
+					])
+					var absence_days := int(prog.get("absence_days", 0))
+					if absence_days > 0:
+						status_lines.append("Abwesenheit: %d / %d Tage" % [
+							absence_days,
+							int(prog.get("absence_limit", 3)),
+						])
 				var can_work := not action_running or active_id == "work"
 				buttons.append(_make_player_action_button("work", "Arbeiten", can_work, "Aktion laeuft noch."))
 			else:
@@ -3059,8 +3108,36 @@ func _format_travel_target_label() -> String:
 	return target_building.building_name
 
 
+func _profit_tier_label(tier: int) -> String:
+	match tier:
+		0:
+			return "schwach"
+		2:
+			return "stark"
+		_:
+			return "normal"
+
+
 func _build_finance_section(world = null) -> Dictionary:
 	var rows: Array = [{"label": "Geld", "value": "%d EUR" % (wallet.balance if wallet != null else 0)}]
+	if job != null and job.workplace != null:
+		var base_wage: int = job.wage_per_hour
+		if world != null and world.has_method("get_wage_progression"):
+			var prog: Dictionary = world.get_wage_progression(self)
+			var eff_wage: int = int(round(float(base_wage) * float(prog.get("multiplier", 1.0))))
+			rows.append({"label": "Lohn/h", "value": "%d EUR (Basis %d)" % [eff_wage, base_wage]})
+			rows.append({"label": "Bildungsbonus", "value": "+%d%%" % int(round(float(prog.get("education_bonus", 0.0)) * 100.0))})
+			rows.append({"label": "Erfahrung", "value": "+%d%% (%d Tage)" % [
+				int(round(float(prog.get("experience_bonus", 0.0)) * 100.0)),
+				int(prog.get("tenure_days", 0)),
+			]})
+			rows.append({"label": "Fehltage", "value": "%d / %d" % [
+				int(prog.get("absence_days", 0)),
+				int(prog.get("absence_limit", 3)),
+			]})
+			rows.append({"label": "Firma", "value": _profit_tier_label(int(prog.get("profit_tier", 1)))})
+		else:
+			rows.append({"label": "Lohn/h", "value": "%d EUR" % base_wage})
 	var owned_count := get_owned_building_count(world)
 	if owned_count > 0:
 		rows.append({"label": "Besitz", "value": "%d Gebaeude" % owned_count})

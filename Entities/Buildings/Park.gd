@@ -145,11 +145,11 @@ func release_bench_for(citizen) -> void:
 	if not release_keys.is_empty():
 		_set_park_bench_reservations(reservations)
 
-func _get_extra_info(_world = null) -> Dictionary:
+func _get_extra_info(world = null) -> Dictionary:
 	var center_anchor := _get_park_center_anchor()
 	return {
 		"Base operating cost": "%d EUR" % get_base_operating_cost_per_day(),
-		"Estimated daily obligations": "%d EUR" % get_total_daily_obligation_estimate(),
+		"Estimated daily obligations": "%d EUR" % get_total_daily_obligation_estimate(world),
 		"Attractiveness": "%.0f%%" % (get_attractiveness_multiplier() * 100.0),
 		"Maintenance staff": "%d" % get_workers_by_titles(["Gardener", "MaintenanceWorker", "Janitor"]).size(),
 		"Entrances": "%d" % _get_park_entrance_nodes().size(),

@@ -106,6 +106,10 @@ func _run_all_tests() -> void:
 		"player_work_education_gate",
 		"player_university_unlocks_job",
 		"player_work_payday_uses_worked_minutes",
+		"wage_progression_bonus_breakdown",
+		"wage_progression_payroll_estimate",
+		"wage_progression_tenure_lifecycle",
+		"job_absence_fires_after_three_days",
 		"university_requires_worker_for_study",
 		"restaurant_requires_worker_for_meals",
 		"university_accepts_education_service_staff",
@@ -193,6 +197,14 @@ func _run_test(test_name: String) -> String:
 			return _test_player_university_unlocks_job()
 		"player_work_payday_uses_worked_minutes":
 			return _test_player_work_payday_uses_worked_minutes()
+		"wage_progression_bonus_breakdown":
+			return _test_wage_progression_bonus_breakdown()
+		"wage_progression_payroll_estimate":
+			return _test_wage_progression_payroll_estimate()
+		"wage_progression_tenure_lifecycle":
+			return _test_wage_progression_tenure_lifecycle()
+		"job_absence_fires_after_three_days":
+			return _test_job_absence_fires_after_three_days()
 		"university_requires_worker_for_study":
 			return _test_university_requires_worker_for_study()
 		"restaurant_requires_worker_for_meals":
@@ -1909,6 +1921,173 @@ func _test_player_work_payday_uses_worked_minutes() -> String:
 			"payday should pay exactly the wage for worked minutes")
 	_expect_eq(workplace.account.balance, workplace_before - expected_wage,
 			"workplace should pay only the earned wage")
+
+	_free_world(world)
+	return _current_error
+
+func _test_wage_progression_bonus_breakdown() -> String:
+	var world: World = _new_world()
+	var shop: Building = _new_building("Wage Shop", 1)
+	shop.building_type = BuildingScript.BuildingType.SHOP
+	world.register_building(shop)
+
+	var worker: Citizen = _new_citizen("Wage Worker")
+	world.register_citizen(worker)
+	var job := Job.new()
+	job.wage_per_hour = 20
+	job.required_education_level = 1
+	job.workplace = shop
+	worker.job = job
+
+	worker.education_level = 3   # two levels above the job minimum (required 1)
+
+	# Weak firm (loss) -> 3% per level -> 2 * 3% = +6%.
+	shop.profit_average = -50.0
+	_expect_eq(shop.get_profit_tier(), 0, "negative average profit should be the weak tier")
+	var weak: Dictionary = world.get_wage_progression(worker)
+	_expect(absf(float(weak.get("education_bonus")) - 0.06) < 0.0001,
+			"weak firm should give +6% education bonus (2 x 3%)")
+
+	# Normal firm -> 5% per level -> +10%.
+	shop.profit_average = 100.0
+	_expect_eq(shop.get_profit_tier(), 1, "mid profit should be the normal tier")
+	var normal: Dictionary = world.get_wage_progression(worker)
+	_expect(absf(float(normal.get("education_bonus")) - 0.10) < 0.0001,
+			"normal firm should give +10% education bonus (2 x 5%)")
+
+	# Strong firm -> 8% per level -> +16%.
+	shop.profit_average = 300.0
+	_expect_eq(shop.get_profit_tier(), 2, "high profit should be the strong tier")
+	var strong: Dictionary = world.get_wage_progression(worker)
+	_expect(absf(float(strong.get("education_bonus")) - 0.16) < 0.0001,
+			"strong firm should give +16% education bonus (2 x 8%)")
+	_expect_eq(strong.get("extra_education"), 2, "extra education = levels above the job minimum")
+
+	# Education at the job minimum -> no education bonus, neutral multiplier.
+	worker.education_level = 1
+	var none: Dictionary = world.get_wage_progression(worker)
+	_expect_eq(none.get("education_bonus"), 0.0, "education at the minimum gives no bonus")
+	_expect_eq(none.get("multiplier"), 1.0, "min education + zero experience is neutral")
+
+	_free_world(world)
+	return _current_error
+
+func _test_wage_progression_payroll_estimate() -> String:
+	var world: World = _new_world()
+	var shop: Building = _new_building("Payroll Shop", 1)
+	shop.building_type = BuildingScript.BuildingType.SHOP
+	world.register_building(shop)
+
+	var worker: Citizen = _new_citizen("Payroll Worker")
+	world.register_citizen(worker)
+	var job := Job.new()
+	job.wage_per_hour = 20
+	job.required_education_level = 1
+	job.workplace = shop
+	worker.job = job
+	worker.education_level = 3
+	worker.work_minutes_today = 60
+	shop.profit_average = 300.0
+	_expect(shop.try_hire(worker), "payroll test worker should be hired")
+	worker.experience_wage_bonus = 0.05
+
+	var progression: Dictionary = world.get_wage_progression(worker)
+	_expect(absf(float(progression.get("multiplier")) - 1.21) < 0.0001,
+			"progression multiplier should include education and experience")
+	_expect_eq(shop.get_payroll_due_today(world), 24,
+			"payroll estimate should use the same wage progression multiplier as payday")
+
+	_free_world(world)
+	return _current_error
+
+func _test_wage_progression_tenure_lifecycle() -> String:
+	var world: World = _new_world()
+	world.minutes_per_tick = 30
+	var shop: Building = _new_building("Tenure Shop", 1)
+	shop.building_type = BuildingScript.BuildingType.SHOP
+	shop.account.balance = 1000
+	world.register_building(shop)
+
+	var player: Citizen = _new_citizen("Tenure Player")
+	world.register_citizen(player)
+	player.set_world_ref(world)
+	player.autonomous_simulation_enabled = false
+	player.keyboard_control_enabled = true
+	player.wallet.balance = 100
+	player.needs.hunger = 20.0
+	player.needs.energy = 100.0
+	player.needs.fun = 80.0
+	player.needs.health = 100.0
+
+	_expect(player.player_enter_building(shop, world), "player should enter the workplace")
+	_expect(player.player_apply_for_work(world), "player should be accepted before working")
+	# Fresh hire resets both tenure and the accumulated experience bonus.
+	_expect_eq(player.job_tenure_days, 0, "hiring should reset tenure to zero")
+	_expect_eq(player.experience_wage_bonus, 0.0, "hiring should reset the experience bonus to zero")
+
+	_expect(player.player_work(world), "accepted player should start work")
+	player._agent.sim_tick(player, world)
+	player._agent.sim_tick(player, world)
+	_expect_eq(player.work_minutes_today, 60, "two 30-minute work ticks should record one hour")
+
+	# Strong-profit payday grows experience and counts one tenure day. profit_average
+	# is set right before payday because the daily rollover recomputes it afterwards.
+	shop.profit_average = 400.0
+	world._on_payday()
+	_expect_eq(player.job_tenure_days, 1, "payday should add one tenure day for an employed citizen")
+	_expect(player.experience_wage_bonus > 0.0, "strong-profit payday should grow the experience bonus")
+	var after_strong: float = player.experience_wage_bonus
+
+	# A loss-making payday shrinks the accumulated bonus again.
+	shop.profit_average = -300.0
+	world._on_payday()
+	_expect(player.experience_wage_bonus < after_strong, "a loss-making payday should shrink the experience bonus")
+
+	# Quitting the job resets tenure and experience: nothing carries to the next employer.
+	player.experience_wage_bonus = 0.05
+	player.job_tenure_days = 25
+	_expect(player.player_quit_job(world), "player should be able to quit the job")
+	_expect_eq(player.job_tenure_days, 0, "quitting should reset tenure to zero")
+	_expect_eq(player.experience_wage_bonus, 0.0, "quitting should reset the experience bonus")
+
+	_free_world(world)
+	return _current_error
+
+func _test_job_absence_fires_after_three_days() -> String:
+	var world: World = _new_world()
+	var shop: Building = _new_building("Absence Shop", 1)
+	shop.building_type = BuildingScript.BuildingType.SHOP
+	shop.account.balance = 1000
+	world.register_building(shop)
+
+	var worker: Citizen = _new_citizen("Absent Worker")
+	world.register_citizen(worker)
+	var job := Job.new()
+	job.title = "Tester"
+	job.wage_per_hour = 20
+	job.shift_hours = 8
+	job.workplace = shop
+	job.preferred_workplace = shop
+	worker.job = job
+	world.register_job(job)
+	_expect(shop.try_hire(worker), "worker should be hired before absence tracking")
+
+	world._on_payday()
+	_expect_eq(worker.job_absence_days, 1, "first zero-work payday should count one absence")
+	_expect(shop.workers.has(worker), "worker should keep the job before the absence limit")
+	_expect(world.jobs.has(job), "job should remain registered before the absence limit")
+
+	world._on_payday()
+	_expect_eq(worker.job_absence_days, 2, "second zero-work payday should count two absences")
+	_expect(shop.workers.has(worker), "worker should still keep the job after two missed days")
+
+	world._on_payday()
+	_expect(worker.job == null, "third zero-work payday should fire the worker")
+	_expect(not shop.workers.has(worker), "fired worker should release the worker slot")
+	_expect(not world.jobs.has(job), "fired worker job should be unregistered")
+	_expect_eq(worker.job_absence_days, 0, "firing should reset absence tracking")
+	_expect_eq(worker.job_tenure_days, 0, "absence firing should not add tenure")
+	_expect_eq(worker.experience_wage_bonus, 0.0, "absence firing should reset experience bonus")
 
 	_free_world(world)
 	return _current_error

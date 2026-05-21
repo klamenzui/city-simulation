@@ -48,6 +48,10 @@ func can_study(citizen: Citizen) -> bool:
 		return false
 	if not has_teaching_staff():
 		return false
+	# Education is capped: no point studying once the maximum level is reached.
+	var max_level: int = BalanceConfig.get_int("economy.jobs.wage_progression.education_max_level", 3)
+	if citizen.education_level >= max_level:
+		return false
 	return true
 
 func begin_study(citizen: Citizen) -> bool:
@@ -65,14 +69,15 @@ func study_session(_world: World, citizen: Citizen) -> bool:
 		return false
 	if not can_study(citizen):
 		return false
+	var max_level: int = BalanceConfig.get_int("economy.jobs.wage_progression.education_max_level", 3)
 	var effective_gain := maxi(int(round(float(education_gain) * get_operating_efficiency_multiplier())), 1)
-	citizen.education_level += effective_gain
+	citizen.education_level = mini(citizen.education_level + effective_gain, max_level)
 	return true
 
-func _get_extra_info(_world = null) -> Dictionary:
+func _get_extra_info(world = null) -> Dictionary:
 	return {
 		"Education gain": "+%d" % education_gain,
 		"Teaching staff": "%d" % get_teaching_staff().size(),
 		"Base operating cost": "%d EUR" % get_base_operating_cost_per_day(),
-		"Payroll due": "%d EUR" % get_payroll_due_today(),
+		"Payroll due": "%d EUR" % get_payroll_due_today(world),
 	}
