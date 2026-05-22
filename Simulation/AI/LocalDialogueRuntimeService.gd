@@ -256,6 +256,25 @@ func request_npc_conversation_block(conversation_id: String, payload: Dictionary
 		"lines": []
 	}
 
+func forget_player_session(session_id: String) -> void:
+	if session_id.is_empty():
+		return
+	var prefix := "%s_turn_" % session_id
+	for key in _player_cache.keys():
+		if str(key).begins_with(prefix):
+			_player_cache.erase(key)
+	for key in _pending_keys.keys():
+		if str(key).begins_with(prefix):
+			_pending_keys.erase(key)
+	for idx in range(_job_queue.size() - 1, -1, -1):
+		var queued_variant: Variant = _job_queue[idx]
+		if queued_variant is not Dictionary:
+			continue
+		var queued_job := queued_variant as Dictionary
+		if str(queued_job.get("kind", "")) == "player_npc" \
+				and str(queued_job.get("key", "")).begins_with(prefix):
+			_job_queue.remove_at(idx)
+
 func request_player_reply(session_id: String, payload: Dictionary) -> Dictionary:
 	if _player_cache.has(session_id):
 		return (_player_cache.get(session_id, {}) as Dictionary).duplicate(true)
@@ -591,6 +610,9 @@ func _handle_npc_job_success(job: Dictionary, parsed: Variant) -> void:
 
 func _handle_player_job_success(job: Dictionary, parsed: Variant) -> void:
 	var session_id := str(job.get("key", ""))
+	if not _pending_keys.has(session_id):
+		SimLogger.log_ai("[AI][PlayerDialog] Dropped stale reply key=%s" % session_id)
+		return
 	var payload := (job.get("payload", {}) as Dictionary).duplicate(true)
 	var raw_text := _extract_response_text(parsed)
 	SimLogger.log_ai("[AI][PlayerDialog] Raw response key=%s:\n%s" % [session_id, raw_text])
@@ -622,6 +644,9 @@ func _handle_job_failure(job: Dictionary, reason: String) -> void:
 		return
 	if kind == "player_npc":
 		var session_id := str(job.get("key", ""))
+		if not _pending_keys.has(session_id):
+			SimLogger.log_ai("[AI][PlayerDialog] Dropped stale failure key=%s reason=%s" % [session_id, reason])
+			return
 		var player_payload := (job.get("payload", {}) as Dictionary).duplicate(true)
 		_player_cache[session_id] = _build_player_template_reply(session_id, player_payload, reason)
 		_pending_keys.erase(session_id)
@@ -1175,30 +1200,28 @@ func _load_config(config_override: Dictionary) -> Dictionary:
 				"format": "",
 				"force_reply_language": "german",
 				"options": {
-					"temperature": 0.25,
-					"top_p": 0.8,
-					"top_k": 24,
+					"temperature": 0.6,
+					"top_p": 0.9,
+					"top_k": 40,
 					"min_p": 0.05,
 					"repeat_penalty": 1.15,
-					"repeat_last_n": 48,
+					"repeat_last_n": 256,
 					"num_ctx": 1024,
-					"num_predict": 40,
-					"seed": 42
+					"num_predict": 80
 				}
 			},
 			"npc_npc": {
 				"profile_model_name": "npc-overheard:latest",
 				"format": "json",
 				"options": {
-					"temperature": 0.25,
-					"top_p": 0.8,
-					"top_k": 20,
+					"temperature": 0.6,
+					"top_p": 0.9,
+					"top_k": 40,
 					"min_p": 0.08,
 					"repeat_penalty": 1.1,
-					"repeat_last_n": 48,
+					"repeat_last_n": 256,
 					"num_ctx": 1024,
-					"num_predict": 50,
-					"seed": 42
+					"num_predict": 80
 				}
 			}
 		},
@@ -1209,7 +1232,7 @@ func _load_config(config_override: Dictionary) -> Dictionary:
 			"auto_start_backend_if_missing": true,
 			"disabled_in_headless": true,
 			"retry_probe_interval_sec": 1.5,
-			"prewarm_on_boot": true,
+			"prewarm_on_boot": false,
 			"prewarm_keep_alive": "10m",
 			"warmup_prompt": "Hello.",
 			"serve_args": ["serve"],
@@ -1228,8 +1251,8 @@ func _load_config(config_override: Dictionary) -> Dictionary:
 			"prefer_project_local_runtime": true
 		},
 		"model_preferences": {
-			"player_npc": ["qwen2.5:3b"],
-			"npc_npc": ["llama3.2:3b"]
+			"player_npc": ["qwen2.5:3b", "llama3.2:3b", "gemma3:4b"],
+			"npc_npc": ["llama3.2:3b", "qwen2.5:3b"]
 		},
 		"prompt_templates": {
 			"player_npc": {
@@ -1242,6 +1265,9 @@ func _load_config(config_override: Dictionary) -> Dictionary:
 					"No JSON. No speaker prefix. No narration.",
 					"Use only provided world facts and ordinary local knowledge.",
 					"Do not invent additional landmarks, districts, shops, or routes.",
+					"Treat the latest Player message as the highest priority.",
+					"If the player invites you to a specific place or activity, answer that invitation directly and do not switch to another activity unless you refuse.",
+					"Do not let previous turns override the latest player request.",
 					"Respect needs literally: high hunger means hungry, low energy means tired.",
 					"All spoken dialogue must be in natural German.",
 					"If unsure, briefly say you are not sure."
@@ -1254,11 +1280,14 @@ func _load_config(config_override: Dictionary) -> Dictionary:
 					"location",
 					"district",
 					"current_goal",
+					"known_places",
 					"nearby_places",
+					"latest_player_message",
 					"reply_language",
 					"player_flagged_repetition",
 					"recent_summary",
-					"last_turns"
+					"last_turns",
+					"grounding_rules"
 				]
 			},
 			"npc_npc": {

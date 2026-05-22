@@ -6,6 +6,7 @@ const CitizenOverviewControllerScript = preload("res://Simulation/UI/CitizenOver
 const EconomyOverviewControllerScript = preload("res://Simulation/UI/EconomyOverviewController.gd")
 const EntitySearchControllerScript = preload("res://Simulation/UI/EntitySearchController.gd")
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 
 var world: World = null
 var city_camera: CityBuilderCamera = null
@@ -150,7 +151,7 @@ func _build_building_overview_overlay(
 	building_overview_panel.add_child(building_vbox)
 
 	var building_heading := Label.new()
-	building_heading.text = "GEBÄUDE"
+	building_heading.text = LocaleServiceScript.t("hud.overlay_buildings")
 	building_heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
 	building_heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
 	building_vbox.add_child(building_heading)
@@ -205,7 +206,7 @@ func _build_citizen_overview_overlay(
 	citizen_overview_panel.add_child(citizen_vbox)
 
 	var citizen_heading := Label.new()
-	citizen_heading.text = "BÜRGER"
+	citizen_heading.text = LocaleServiceScript.t("hud.overlay_citizens")
 	citizen_heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
 	citizen_heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
 	citizen_vbox.add_child(citizen_heading)
@@ -265,7 +266,7 @@ func _build_economy_overview_overlay(
 	economy_panel.add_child(outer_vbox)
 
 	var economy_heading := Label.new()
-	economy_heading.text = "FINANZEN"
+	economy_heading.text = LocaleServiceScript.t("hud.overlay_economy")
 	economy_heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
 	economy_heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
 	outer_vbox.add_child(economy_heading)
@@ -360,13 +361,13 @@ func _build_search_overlay(
 	search_panel.add_child(search_vbox)
 
 	var search_heading := Label.new()
-	search_heading.text = "SUCHE"
+	search_heading.text = LocaleServiceScript.t("hud.overlay_search")
 	search_heading.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
 	search_heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
 	search_vbox.add_child(search_heading)
 
 	search_input = LineEdit.new()
-	search_input.placeholder_text = "Citizen or building name…"
+	search_input.placeholder_text = LocaleServiceScript.t("hud.search_placeholder")
 	search_input.clear_button_enabled = true
 	search_input.custom_minimum_size = Vector2(266, 32)
 	search_vbox.add_child(search_input)

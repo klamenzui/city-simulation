@@ -16,6 +16,7 @@ class_name PlayerInventoryWindow
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 const PlayerInventoryCatalogScript = preload("res://Simulation/UI/PlayerInventoryCatalog.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 
 signal action_pressed(action_id: String)
 signal closed
@@ -34,6 +35,7 @@ var _current_mode: String = ""
 var _current_category: String = ""
 var _last_categories: Array = []
 var _tab_buttons: Dictionary = {}  # category id -> Button
+var _last_state_signature: String = ""
 
 
 func _ready() -> void:
@@ -58,22 +60,26 @@ func show_for_state(state: Dictionary) -> void:
 		hide_window()
 		return
 	var mode := str(state.get("mode", "player"))
+	var categories: Array = state.get("categories", [])
+	var player_slots: Array = state.get("player_slots", [])
+	var active_category := _resolve_active_category(categories) if mode == "shop" else ""
+	var signature := _inventory_state_signature(state, active_category)
+	if _window_panel.visible and signature == _last_state_signature:
+		return
+	_last_state_signature = signature
 	_current_mode = mode
 	_window_panel.visible = true
 	_dim_background.visible = true
 
-	_title_label.text = str(state.get("title", "Inventar"))
+	_title_label.text = str(state.get("title", LocaleServiceScript.t("inventory.fallback_title")))
 	_status_label.clear()
 	_status_label.append_text(str(state.get("status_text", "")))
 
-	var categories: Array = state.get("categories", [])
-	var player_slots: Array = state.get("player_slots", [])
 	_last_categories = categories
 	_tab_row.visible = mode == "shop" and categories.size() > 1
 	_rebuild_tabs(categories)
 
 	if mode == "shop":
-		var active_category := _resolve_active_category(categories)
 		_current_category = active_category
 		_apply_tab_active_state(active_category)
 		_render_category_items(categories, active_category)
@@ -85,6 +91,7 @@ func show_for_state(state: Dictionary) -> void:
 func hide_window() -> void:
 	_window_panel.visible = false
 	_dim_background.visible = false
+	_last_state_signature = ""
 
 
 func is_open() -> bool:
@@ -125,7 +132,7 @@ func _build_ui() -> void:
 	root_vbox.add_child(header)
 
 	_title_label = Label.new()
-	_title_label.text = "Inventar"
+	_title_label.text = LocaleServiceScript.t("inventory.fallback_title")
 	_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_title_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_HEADING)
 	_title_label.add_theme_color_override("font_color", UiThemeScript.TEXT_PRIMARY)
@@ -168,7 +175,7 @@ func _build_ui() -> void:
 	content_scroll.add_child(_item_grid)
 
 	_empty_label = Label.new()
-	_empty_label.text = "Keine Eintraege."
+	_empty_label.text = LocaleServiceScript.t("inventory.empty")
 	_empty_label.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
 	_empty_label.visible = false
 	root_vbox.add_child(_empty_label)
@@ -297,8 +304,8 @@ func _build_shop_item_card(item: Dictionary) -> Control:
 	var owned := int(item.get("owned", 0))
 	var info_parts: PackedStringArray = []
 	if stock >= 0:
-		info_parts.append("Lager %d" % stock)
-	info_parts.append("Du: %d" % owned)
+		info_parts.append(LocaleServiceScript.t("inventory.stock") % stock)
+	info_parts.append(LocaleServiceScript.t("inventory.owned") % owned)
 	info_label.text = "  ·  ".join(info_parts)
 	info_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info_label.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
@@ -308,14 +315,23 @@ func _build_shop_item_card(item: Dictionary) -> Control:
 	var action_id := str(item.get("action_id", ""))
 	if not action_id.is_empty():
 		var buy_btn := Button.new()
-		buy_btn.text = str(item.get("button_text", "Kaufen"))
+		buy_btn.text = str(item.get("button_text", LocaleServiceScript.t("inventory.buy")))
 		buy_btn.disabled = not bool(item.get("enabled", true))
-		buy_btn.tooltip_text = str(item.get("tooltip", ""))
+		var tooltip := str(item.get("tooltip", ""))
+		buy_btn.tooltip_text = tooltip
 		buy_btn.focus_mode = Control.FOCUS_NONE
 		buy_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		buy_btn.gui_input.connect(_on_inventory_gui_input)
 		buy_btn.pressed.connect(_on_action_button_pressed.bind(action_id))
 		vbox.add_child(buy_btn)
+		if buy_btn.disabled and not tooltip.is_empty():
+			var hint_label := Label.new()
+			hint_label.text = tooltip
+			hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			hint_label.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+			hint_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+			vbox.add_child(hint_label)
 	return card
 
 
@@ -394,3 +410,7 @@ func _on_inventory_gui_input(event: InputEvent) -> void:
 func _emit_close() -> void:
 	hide_window()
 	closed.emit()
+
+
+func _inventory_state_signature(state: Dictionary, active_category: String) -> String:
+	return "%s|cat=%s" % [JSON.stringify(state), active_category]

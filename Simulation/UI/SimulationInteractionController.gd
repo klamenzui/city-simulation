@@ -3,6 +3,7 @@ class_name SimulationInteractionController
 
 const NetworkRoleScript = preload("res://Simulation/Multiplayer/shared/NetworkRole.gd")
 const PlayerInventoryWindowScript = preload("res://Simulation/UI/PlayerInventoryWindow.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 
 var owner_node: Node = null
 var world: World = null
@@ -524,25 +525,25 @@ func _network_status_toast_message(status: Dictionary) -> String:
 	var action_id := str(status.get("action_id", "")).strip_edges()
 	if not detail.is_empty():
 		if detail.begins_with("Interacting with"):
-			return _target_interaction_message("Interaktion gestartet", status)
+			return _target_interaction_message(LocaleServiceScript.t("interaction.started"), status)
 		if detail == "Interaction rejected." or detail.begins_with("Player action rejected"):
-			return _target_interaction_message("Interaktion abgelehnt", status)
+			return _target_interaction_message(LocaleServiceScript.t("interaction.rejected"), status)
 		if detail == "Interaction cancelled.":
-			return "Interaktion abgebrochen."
+			return LocaleServiceScript.t("interaction.cancelled")
 		return detail
 	match str(status.get("state", "")):
 		"effect", "entered_building", "citizen_interaction":
 			if not action_id.is_empty():
-				return "%s ausgeführt." % _player_action_label(action_id)
-			return _target_interaction_message("Interaktion gestartet", status)
+				return LocaleServiceScript.t("interaction.action_done") % _player_action_label(action_id)
+			return _target_interaction_message(LocaleServiceScript.t("interaction.started"), status)
 		"rejected":
 			if not action_id.is_empty():
-				return "%s nicht möglich." % _player_action_label(action_id)
-			return _target_interaction_message("Interaktion abgelehnt", status)
+				return LocaleServiceScript.t("interaction.action_not_possible") % _player_action_label(action_id)
+			return _target_interaction_message(LocaleServiceScript.t("interaction.rejected"), status)
 		"travel_failed":
-			return _target_interaction_message("Ziel nicht erreichbar", status)
+			return _target_interaction_message(LocaleServiceScript.t("interaction.unreachable"), status)
 		"cancelled":
-			return "Interaktion abgebrochen."
+			return LocaleServiceScript.t("interaction.cancelled")
 	return ""
 
 func _target_interaction_message(prefix: String, status: Dictionary) -> String:
@@ -565,63 +566,22 @@ func _offline_player_action_toast_message(action_id: String, accepted: bool, pla
 	if player != null and player.has_method("get_player_action_notice"):
 		notice = str(player.get_player_action_notice()).strip_edges()
 	if not accepted:
-		return notice if not notice.is_empty() else "%s nicht möglich." % label
+		return notice if not notice.is_empty() else LocaleServiceScript.t("interaction.action_not_possible") % label
 	if not notice.is_empty():
 		return notice
 	match action_id:
 		"work", "eat", "sleep", "study", "relax", "socialize", "watch_cinema":
-			return "%s gestartet." % label
+			return LocaleServiceScript.t("interaction.action_started") % label
 		"buy_shop_item", "buy_groceries":
-			return "%s gekauft." % label
+			return LocaleServiceScript.t("interaction.action_bought") % label
 		"stop":
-			return "Aktion gestoppt."
+			return LocaleServiceScript.t("interaction.action_stopped")
 		"exit_building":
-			return "Gebäude verlassen."
-	return "%s ausgeführt." % label
+			return LocaleServiceScript.t("interaction.building_left")
+	return LocaleServiceScript.t("interaction.action_done") % label
 
 func _player_action_label(action_id: String) -> String:
-	match action_id:
-		"rent_home":
-			return "Wohnung mieten"
-		"quit_home":
-			return "Wohnung kündigen"
-		"apply_work":
-			return "Bewerben"
-		"work":
-			return "Arbeiten"
-		"eat":
-			return "Essen"
-		"sleep":
-			return "Schlafen"
-		"study":
-			return "Studieren"
-		"relax":
-			return "Entspannen"
-		"socialize":
-			return "Sozialisieren"
-		"watch_cinema":
-			return "Film schauen"
-		"inventory":
-			return "Inventar"
-		"shop":
-			return "Einkaufen"
-		"inventory_close":
-			return "Inventar schließen"
-		"buy_shop_item":
-			return "Kleidung kaufen"
-		"buy_groceries":
-			return "Vorräte kaufen"
-		"buy_building":
-			return "Gebaeude kaufen"
-		"quit_job":
-			return "Job kündigen"
-		"training":
-			return "Zur Uni"
-		"stop":
-			return "Aktion stoppen"
-		"exit_building":
-			return "Gebäude verlassen"
-	return action_id
+	return LocaleServiceScript.t("action.%s" % action_id, action_id)
 
 func _compact_target_label(status: Dictionary) -> String:
 	var target_name := str(status.get("target_name", "")).strip_edges()
@@ -672,7 +632,7 @@ func handle_debug_panel_player_action_pressed(action_id: String) -> void:
 			if action_id == "buy_shop_item" or action_id == "buy_groceries":
 				_player_inventory_mode = "shop"
 			_last_network_toast_signature = ""
-			_show_toast("Anfrage gesendet: %s." % _player_action_label(action_id), "info", 1.8)
+			_show_toast(LocaleServiceScript.t("interaction.request_sent") % _player_action_label(action_id), "info", 1.8)
 			_refresh_selected_player_details(player)
 			_refresh_player_action_ui()
 			_refresh_player_inventory_ui()
@@ -861,13 +821,13 @@ func get_player_citizen() -> Citizen:
 ## the default click/shortcut hint.
 func get_action_hint() -> String:
 	if _is_player_building_input_active():
-		return "R: Gebäude betreten · T: verlassen · F: Reden"
+		return LocaleServiceScript.t("interaction.hint_player_building")
 	if selection_state_controller != null:
 		if selection_state_controller.get_selected_building() != null:
-			return "Gebäude gewählt · F1–F4: Übersichten"
+			return LocaleServiceScript.t("interaction.hint_building_selected")
 		if selection_state_controller.get_selected_citizen() != null:
-			return "Bürger gewählt · F: Reden · F1–F4: Übersichten"
-	return "Klick: Infos · F1–F4: Übersichten"
+			return LocaleServiceScript.t("interaction.hint_citizen_selected")
+	return LocaleServiceScript.t("hud.action_hint_default")
 
 func _get_player_citizen() -> Citizen:
 	if selection_state_controller == null:
@@ -922,12 +882,12 @@ func _try_player_enter_building() -> bool:
 		var requested := bool(multiplayer_session.request_entity_interaction(nearest))
 		if requested:
 			_last_network_toast_signature = ""
-			_show_toast("Anfrage gesendet: Gebäude betreten.", "info", 1.8)
+			_show_toast(LocaleServiceScript.t("interaction.request_enter"), "info", 1.8)
 		return requested
 	var entered := player.player_enter_building(nearest, world)
-	var enter_message := "Gebäude betreten nicht möglich."
+	var enter_message := LocaleServiceScript.t("interaction.enter_failed")
 	if entered:
-		enter_message = "Gebäude betreten: %s." % nearest.get_display_name()
+		enter_message = LocaleServiceScript.t("interaction.enter_ok") % nearest.get_display_name()
 	_show_toast(enter_message, "success" if entered else "warning")
 	return entered
 
@@ -939,10 +899,10 @@ func _try_player_exit_building() -> bool:
 		var requested := _request_network_player_action("exit_building")
 		if requested:
 			_last_network_toast_signature = ""
-			_show_toast("Anfrage gesendet: Gebäude verlassen.", "info", 1.8)
+			_show_toast(LocaleServiceScript.t("interaction.request_exit"), "info", 1.8)
 		return requested
 	var exited := player.player_exit_building(world)
-	_show_toast("Gebäude verlassen." if exited else "Gebäude verlassen nicht möglich.", "success" if exited else "warning")
+	_show_toast(LocaleServiceScript.t("interaction.building_left") if exited else LocaleServiceScript.t("interaction.exit_failed"), "success" if exited else "warning")
 	return exited
 
 func _refresh_player_home_marker() -> void:
@@ -960,7 +920,7 @@ func _refresh_player_home_marker() -> void:
 	_player_home_marker_building = home
 	_player_home_marker = Label3D.new()
 	_player_home_marker.name = "PlayerHomeMarker"
-	_player_home_marker.text = "v\nZUHAUSE"
+	_player_home_marker.text = LocaleServiceScript.t("interaction.home_marker")
 	_player_home_marker.font_size = 34
 	_player_home_marker.pixel_size = 0.025
 	_player_home_marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED

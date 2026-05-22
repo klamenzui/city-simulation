@@ -11,6 +11,7 @@ class_name SaveSlotMenuController
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 const SaveGameServiceScript = preload("res://Simulation/Persistence/SaveGameService.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 
 enum Mode { SAVE, LOAD }
 
@@ -68,7 +69,7 @@ func _build_menu() -> void:
 	panel.add_child(vbox)
 
 	var title := Label.new()
-	title.text = "Spiel speichern" if mode == Mode.SAVE else "Spiel laden"
+	title.text = LocaleServiceScript.t("save.title_save") if mode == Mode.SAVE else LocaleServiceScript.t("save.title_load")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_HEADING)
 	title.add_theme_color_override("font_color", UiThemeScript.ACCENT)
@@ -90,7 +91,7 @@ func _build_menu() -> void:
 	vbox.add_child(_status_label)
 
 	var cancel_btn := Button.new()
-	cancel_btn.text = "Abbrechen"
+	cancel_btn.text = LocaleServiceScript.t("save.button_cancel")
 	cancel_btn.custom_minimum_size = Vector2(0, 36)
 	cancel_btn.pressed.connect(Callable(self, "_on_cancel_pressed"))
 	vbox.add_child(cancel_btn)
@@ -122,9 +123,9 @@ func _render_rows(vbox: VBoxContainer) -> void:
 		action.custom_minimum_size = Vector2(140, 34)
 		var enabled := true
 		if mode == Mode.SAVE:
-			action.text = "Speichern" if not exists else "Überschreiben"
+			action.text = LocaleServiceScript.t("save.button_save") if not exists else LocaleServiceScript.t("save.button_overwrite")
 		else:
-			action.text = "Laden"
+			action.text = LocaleServiceScript.t("save.button_load")
 			enabled = exists
 		action.disabled = not enabled
 		action.pressed.connect(Callable(self, "_on_slot_pressed").bind(slot))
@@ -135,20 +136,20 @@ func _render_rows(vbox: VBoxContainer) -> void:
 
 func _format_slot_label(slot: int, info: Dictionary) -> String:
 	if not bool(info.get("exists", false)):
-		return "Slot %d  —  (leer)" % slot
+		return LocaleServiceScript.t("save.slot_empty") % slot
 	var day := int(info.get("day", 1))
 	var hour := int(info.get("hour", 0))
 	var minute := int(info.get("minute", 0))
 	var label := str(info.get("label", ""))
 	var citizens := int(info.get("citizen_count", 0))
-	return "Slot %d  —  Tag %d, %02d:%02d  ·  %d Bürger  ·  %s" % [slot, day, hour, minute, citizens, label]
+	return LocaleServiceScript.t("save.slot_filled") % [slot, day, hour, minute, citizens, label]
 
 func _on_slot_pressed(slot: int) -> void:
 	if mode == Mode.SAVE:
 		var info := SaveGameServiceScript._describe_slot(slot)
 		if bool(info.get("exists", false)) and _pending_overwrite_slot != slot:
 			_pending_overwrite_slot = slot
-			_set_status("Slot %d enthält bereits einen Stand. Erneut klicken zum Überschreiben." % slot)
+			_set_status(LocaleServiceScript.t("save.status_overwrite") % slot)
 			return
 	_pending_overwrite_slot = -1
 	_set_buttons_disabled(true)

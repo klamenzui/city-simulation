@@ -17,6 +17,7 @@ const MultiplayerMenuControllerScript = preload("res://Simulation/UI/Multiplayer
 const MainMenuControllerScript = preload("res://Simulation/UI/MainMenuController.gd")
 const SaveSlotMenuControllerScript = preload("res://Simulation/UI/SaveSlotMenuController.gd")
 const SaveGameServiceScript = preload("res://Simulation/Persistence/SaveGameService.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 const PlayerThirdPersonCameraScript = preload("res://Simulation/Camera/PlayerThirdPersonCamera.gd")
 const CameraModeManagerScript = preload("res://Simulation/Camera/CameraModeManager.gd")
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
@@ -168,7 +169,7 @@ func _on_main_menu_load_chosen(slot: int) -> void:
 	var payload := SaveGameServiceScript.read_payload(slot)
 	if payload.is_empty():
 		if _save_slot_menu != null:
-			_save_slot_menu.set_status("Slot %d konnte nicht gelesen werden." % slot)
+			_save_slot_menu.set_status(LocaleServiceScript.t("save.status_read_failed") % slot)
 			_save_slot_menu.set_interaction_enabled(true)
 		return
 	_pending_load_payload = payload
@@ -310,7 +311,7 @@ func _on_ingame_load_chosen(slot: int) -> void:
 	var payload := SaveGameServiceScript.read_payload(slot)
 	if payload.is_empty():
 		if _save_slot_menu != null:
-			_save_slot_menu.set_status("Slot %d konnte nicht gelesen werden." % slot)
+			_save_slot_menu.set_status(LocaleServiceScript.t("save.status_read_failed") % slot)
 			_save_slot_menu.set_interaction_enabled(true)
 		return
 	_close_save_slot_menu()

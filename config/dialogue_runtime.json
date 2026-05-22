@@ -37,30 +37,28 @@
       "format": "",
       "force_reply_language": "german",
       "options": {
-        "temperature": 0.25,
-        "top_p": 0.8,
-        "top_k": 24,
+        "temperature": 0.6,
+        "top_p": 0.9,
+        "top_k": 40,
         "min_p": 0.05,
         "repeat_penalty": 1.15,
-        "repeat_last_n": 48,
+        "repeat_last_n": 256,
         "num_ctx": 1024,
-        "num_predict": 40,
-        "seed": 42
+        "num_predict": 80
       }
     },
     "npc_npc": {
       "profile_model_name": "npc-overheard:latest",
       "format": "json",
       "options": {
-        "temperature": 0.25,
-        "top_p": 0.8,
-        "top_k": 20,
+        "temperature": 0.6,
+        "top_p": 0.9,
+        "top_k": 40,
         "min_p": 0.08,
         "repeat_penalty": 1.1,
-        "repeat_last_n": 48,
+        "repeat_last_n": 256,
         "num_ctx": 1024,
-        "num_predict": 50,
-        "seed": 42
+        "num_predict": 80
       }
     }
   },
@@ -113,6 +111,9 @@
         "No JSON. No speaker prefix. No narration.",
         "Use only provided world facts and ordinary local knowledge.",
         "Do not invent additional landmarks, districts, shops, or routes.",
+        "Treat the latest Player message as the highest priority.",
+        "If the player invites you to a specific place or activity, answer that invitation directly and do not switch to another activity unless you refuse.",
+        "Do not let previous turns override the latest player request.",
         "Respect needs literally: high hunger means hungry, low energy means tired.",
         "All spoken dialogue must be in natural German.",
         "If unsure, briefly say you are not sure."
@@ -125,11 +126,14 @@
         "location",
         "district",
         "current_goal",
+        "known_places",
         "nearby_places",
+        "latest_player_message",
         "reply_language",
         "player_flagged_repetition",
         "recent_summary",
-        "last_turns"
+        "last_turns",
+        "grounding_rules"
       ]
     },
     "npc_npc": {

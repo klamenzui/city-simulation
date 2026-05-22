@@ -8,6 +8,8 @@ class_name SelectionStateController
 ## ControlledCitizen) can be controlled. Clicking citizens/buildings only drives
 ## selection + the debug panel. The camera is owned by CameraModeManager.
 
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
+
 var world: World = null
 var camera_mode_manager = null
 var debug_panel: DebugPanel = null
@@ -240,9 +242,9 @@ func _refresh_hud_control_mode() -> void:
 		return
 	if controlled_citizen == get_player_avatar():
 		if is_player_dialog_input_locked():
-			hud_controller.refresh_control_mode(controlled_citizen, "PLAYER MODE", "Dialog active | Controls locked")
+			hud_controller.refresh_control_mode(controlled_citizen, LocaleServiceScript.t("interaction.player_mode"), LocaleServiceScript.t("interaction.control_hint_dialog"))
 			return
-		hud_controller.refresh_control_mode(controlled_citizen, "PLAYER MODE", "WASD Move | Space Jump | F Talk | Esc Exit")
+		hud_controller.refresh_control_mode(controlled_citizen, LocaleServiceScript.t("interaction.player_mode"), LocaleServiceScript.t("interaction.control_hint_player"))
 		return
 	hud_controller.refresh_control_mode(controlled_citizen)
 

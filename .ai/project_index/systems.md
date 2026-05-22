@@ -183,6 +183,7 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_live_economy_food_test.gd | - | SceneTree |
 | tools/codex_live_sim_probe.gd | - | SceneTree |
 | tools/codex_local_grid_topology_test.gd | - | SceneTree |
+| tools/codex_locale_test.gd | - | SceneTree |
 | tools/codex_multiplayer_host_connect_test.gd | - | SceneTree |
 | tools/codex_multiplayer_process_probe.gd | - | SceneTree |
 | tools/codex_multiplayer_two_process_test.gd | - | SceneTree |
