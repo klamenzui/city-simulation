@@ -10,7 +10,7 @@ extends SceneTree
 ## lasting effect on user://settings.cfg.
 
 const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
-const LANGS := ["de", "en", "ru"]
+const LANGS := ["de", "en", "ru", "uk", "az"]
 
 func _initialize() -> void:
 	var failures: Array[String] = []

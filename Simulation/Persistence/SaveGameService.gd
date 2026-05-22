@@ -19,6 +19,7 @@ const SAVE_VERSION := 2
 const MAX_SLOTS := 3
 const QUICKSAVE_SLOT := 0
 const _TEMP_SUFFIX := ".tmp"
+const _BACKUP_SUFFIX := ".bak"
 
 # --- Slot path helpers ------------------------------------------------------
 static func slot_path(slot: int) -> String:
@@ -165,6 +166,7 @@ static func apply_payload(payload: Dictionary, world: World, root: Node, player:
 	var apply_err := _apply_citizens_from_plan(world, citizen_plan.get("matches", []), building_lookup)
 	if apply_err != OK:
 		return apply_err
+	_restore_building_ownership(world, snapshot.get("buildings", []), building_lookup)
 
 	var player_entity_id := str(payload.get("player_entity_id", ""))
 	if player is not Citizen:
@@ -175,18 +177,32 @@ static func apply_payload(payload: Dictionary, world: World, root: Node, player:
 
 static func _write_payload_atomic(path: String, text: String) -> Error:
 	var temp_path := path + _TEMP_SUFFIX
+	var backup_path := path + _BACKUP_SUFFIX
 	var file := FileAccess.open(temp_path, FileAccess.WRITE)
 	if file == null:
 		return FileAccess.get_open_error()
 	file.store_string(text)
 	file.flush()
 	file.close()
-	if FileAccess.file_exists(path):
-		var remove_err := DirAccess.remove_absolute(path)
-		if remove_err != OK:
+	if FileAccess.file_exists(backup_path):
+		var backup_remove_err := DirAccess.remove_absolute(backup_path)
+		if backup_remove_err != OK:
 			DirAccess.remove_absolute(temp_path)
-			return remove_err
-	return DirAccess.rename_absolute(temp_path, path)
+			return backup_remove_err
+	if FileAccess.file_exists(path):
+		var backup_err := DirAccess.rename_absolute(path, backup_path)
+		if backup_err != OK:
+			DirAccess.remove_absolute(temp_path)
+			return backup_err
+	var rename_err := DirAccess.rename_absolute(temp_path, path)
+	if rename_err != OK:
+		DirAccess.remove_absolute(temp_path)
+		if FileAccess.file_exists(backup_path) and not FileAccess.file_exists(path):
+			DirAccess.rename_absolute(backup_path, path)
+		return rename_err
+	if FileAccess.file_exists(backup_path):
+		DirAccess.remove_absolute(backup_path)
+	return OK
 
 static func _is_payload_compatible(payload: Dictionary) -> bool:
 	var version := int(payload.get("version", -1))
@@ -241,10 +257,11 @@ static func _build_citizen_apply_plan(world: World, entries: Variant, building_l
 			by_id[id] = citizen
 
 	var matches: Array = []
-	var entry_index := 0
+	var unmatched_indices: Array[int] = []
 	var used_citizens: Dictionary = {}
 	var used_entity_ids: Dictionary = {}
-	for entry in entry_array:
+	for index in range(entry_array.size()):
+		var entry = entry_array[index]
 		if entry is not Dictionary:
 			return {"error": ERR_INVALID_DATA, "matches": []}
 		var data := entry as Dictionary
@@ -255,14 +272,37 @@ static func _build_citizen_apply_plan(world: World, entries: Variant, building_l
 		if not _validate_citizen_building_refs(data, building_lookup):
 			return {"error": ERR_INVALID_DATA, "matches": []}
 		var citizen: Citizen = by_id.get(entity_id, null) as Citizen
-		if citizen == null and entry_index < ordered_citizens.size():
-			citizen = ordered_citizens[entry_index] as Citizen
-		entry_index += 1
-		if citizen == null or not is_instance_valid(citizen) or used_citizens.has(citizen.get_instance_id()):
+		matches.append({"citizen": citizen, "data": data})
+		if citizen == null:
+			unmatched_indices.append(index)
+			continue
+		if not is_instance_valid(citizen) or used_citizens.has(citizen.get_instance_id()):
 			return {"error": ERR_INVALID_DATA, "matches": []}
 		used_citizens[citizen.get_instance_id()] = true
-		matches.append({"citizen": citizen, "data": data})
+	var fallback_cursor := 0
+	for index in unmatched_indices:
+		var fallback := _next_unused_citizen(ordered_citizens, used_citizens, fallback_cursor)
+		fallback_cursor = int(fallback.get("next_index", fallback_cursor))
+		var citizen := fallback.get("citizen", null) as Citizen
+		if citizen == null:
+			return {"error": ERR_INVALID_DATA, "matches": []}
+		used_citizens[citizen.get_instance_id()] = true
+		var match_data := matches[index] as Dictionary
+		match_data["citizen"] = citizen
+		matches[index] = match_data
 	return {"error": OK, "matches": matches}
+
+static func _next_unused_citizen(ordered_citizens: Array, used_citizens: Dictionary, start_index: int) -> Dictionary:
+	var index := start_index
+	while index < ordered_citizens.size():
+		var candidate := ordered_citizens[index] as Citizen
+		index += 1
+		if candidate == null or not is_instance_valid(candidate):
+			continue
+		if used_citizens.has(candidate.get_instance_id()):
+			continue
+		return {"citizen": candidate, "next_index": index}
+	return {"citizen": null, "next_index": index}
 
 static func _ordered_live_citizens(world: World) -> Array:
 	var ordered_citizens: Array = []
@@ -421,3 +461,32 @@ static func _apply_player_state(player: Node3D, player_entity_id: String, citize
 				data.get("position", []), player.global_position)
 			player.rotation.y = float(data.get("rotation_y", player.rotation.y))
 		return
+
+static func _restore_building_ownership(world: World, entries: Variant, building_lookup: Dictionary) -> void:
+	if world == null or entries is not Array:
+		return
+	var citizen_lookup := _build_citizen_lookup_by_entity_id(world)
+	for entry in entries as Array:
+		if entry is not Dictionary:
+			continue
+		var data := entry as Dictionary
+		var entity_id := str(data.get("id", ""))
+		var building := building_lookup.get(entity_id, null) as Building
+		if building == null:
+			continue
+		var owner_id := str(data.get("owner_id", ""))
+		building.citizen_owner = citizen_lookup.get(owner_id, null) as Citizen if not owner_id.is_empty() else null
+		if data.has("owner_name"):
+			building.owner_display_name = str(data.get("owner_name", building.owner_display_name))
+
+static func _build_citizen_lookup_by_entity_id(world: World) -> Dictionary:
+	var lookup: Dictionary = {}
+	if world == null:
+		return lookup
+	for citizen in world.citizens:
+		if citizen == null or not is_instance_valid(citizen):
+			continue
+		var entity_id := NetworkEntityRegistryScript.get_entity_id(citizen)
+		if not entity_id.is_empty():
+			lookup[entity_id] = citizen
+	return lookup

@@ -3,6 +3,7 @@ class_name Building
 
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 
 signal clicked(building: Building)
 
@@ -467,11 +468,10 @@ func refresh_info_panel(world = null) -> void:
 		debug_panel.update_debug(get_info(world))
 
 
-# Strukturierter Info-Output fuers DebugPanel.
-# Reihenfolge: Identitaet -> Belegung -> Finanzen -> Wartung.
-# Leere/null Felder werden vom DebugPanel ausgeblendet, weshalb die Builder
-# konditionalisierte Felder per leerem String skippen koennen (z.B. "Besucher"
-# wird bei einem Park ohne Visitor-Kapazitaet uebersprungen).
+# Structured info output for DebugPanel.
+# Order: identity -> occupancy -> finance -> maintenance.
+# Empty/null fields are hidden by DebugPanel, so builders can skip conditional
+# fields with an empty value.
 func get_info_sections(world = null) -> Array:
 	var sections: Array = [
 		_build_building_identity_section(),
@@ -484,29 +484,28 @@ func get_info_sections(world = null) -> Array:
 	return sections
 
 
-# Subclass-Hook fuer zusaetzliche Sektionen (z.B. ResidentialBuilding koennte
-# "Vermietung" mit rent_per_day hier andocken). Default: leer.
+# Subclass hook for extra sections. Default: empty.
 func _get_extra_info_sections(_world = null) -> Array:
 	return []
 
 
 func _build_building_identity_section() -> Dictionary:
 	var rows: Array = [
-		{"label": "Name", "value": get_display_name()},
-		{"label": "Typ", "value": get_building_type_name()},
+		{"label": LocaleServiceScript.t("details.label.name"), "value": get_display_name()},
+		{"label": LocaleServiceScript.t("details.label.type"), "value": get_building_type_display_label()},
 	]
 	var service := get_service_type()
-	# "housing" ist redundant zu Typ "Residential".
+	# "housing" is redundant with the Residential building type.
 	if not service.is_empty() and service != "housing":
-		rows.append({"label": "Service", "value": service})
+		rows.append({"label": LocaleServiceScript.t("details.label.service"), "value": get_service_type_display_label()})
 	var category := get_economy_category_label()
 	if not category.is_empty() and category != "-":
-		rows.append({"label": "Kategorie", "value": category})
+		rows.append({"label": LocaleServiceScript.t("details.label.category"), "value": category})
 	if is_citizen_ownable() or has_citizen_owner():
-		rows.append({"label": "Besitzer", "value": get_owner_display_name()})
+		rows.append({"label": LocaleServiceScript.t("details.label.owner"), "value": get_owner_display_name()})
 		if not has_citizen_owner():
-			rows.append({"label": "Kaufpreis", "value": "%d EUR" % get_purchase_price()})
-	return {"title": "Identitaet", "rows": rows}
+			rows.append({"label": LocaleServiceScript.t("details.label.purchase_price"), "value": "%d EUR" % get_purchase_price()})
+	return {"title": LocaleServiceScript.t("details.section.identity"), "rows": rows}
 
 
 func _build_building_occupancy_section(world = null) -> Dictionary:
@@ -519,7 +518,7 @@ func _build_building_occupancy_section(world = null) -> Dictionary:
 		if tenant_cap > 0 and tenant_count == tenant_cap:
 			severity = "good"
 		rows.append({
-			"label": "Bewohner",
+			"label": LocaleServiceScript.t("details.label.residents"),
 			"value": "%d / %d" % [tenant_count, tenant_cap],
 			"severity": severity,
 		})
@@ -532,40 +531,40 @@ func _build_building_occupancy_section(world = null) -> Dictionary:
 			if employed_workers == 0:
 				worker_severity = "warning"
 			rows.append({
-				"label": "Mitarbeiter",
+				"label": LocaleServiceScript.t("details.label.staff"),
 				"value": "%d / %d" % [employed_workers, worker_capacity],
 				"severity": worker_severity,
 			})
 			rows.append({
-				"label": "Gerade bei Arbeit",
+				"label": LocaleServiceScript.t("details.label.working_now"),
 				"value": "%d / %d" % [active_workers, employed_workers],
 			})
 			var req_edu := get_required_education_level()
+			var default_job_title := get_job_title_display_label(get_default_job_title())
 			rows.append({
-				"label": "Bildung erforderl.",
-				"value": ("Stufe %d (%s)" % [req_edu, get_default_job_title()]) if req_edu > 0 \
-					else "keine (%s)" % get_default_job_title(),
+				"label": LocaleServiceScript.t("details.label.education_required"),
+				"value": (LocaleServiceScript.t("details.value.education_stage") % [req_edu, default_job_title]) if req_edu > 0 \
+					else LocaleServiceScript.t("details.value.education_none_for_job") % default_job_title,
 			})
 		var effective_cap := get_effective_visitor_capacity()
 		if effective_cap > 0:
-			rows.append({"label": "Besucher", "value": "%d / %d" % [visitors.size(), max(effective_cap, 0)]})
+			rows.append({"label": LocaleServiceScript.t("details.label.visitors"), "value": "%d / %d" % [visitors.size(), max(effective_cap, 0)]})
 		var hour := -1
 		if world != null and world.time != null:
 			hour = world.time.get_hour()
 		var open_status := get_open_status_display_label(hour)
-		# Open/Close-Zeiten nur wenn ueberhaupt eine Spanne gepflegt ist
-		# (z.B. Wohngebaeude ohne sinnvolle Hours skippen das).
+		# Only show hours when a real interval is configured.
 		if open_hour != close_hour:
 			rows.append({
-				"label": "Oeffnungszeiten",
+				"label": LocaleServiceScript.t("details.label.opening_hours"),
 				"value": "%02d:00 - %02d:00 (%s)" % [open_hour, close_hour, open_status],
 			})
-	return {"title": "Belegung", "rows": rows}
+	return {"title": LocaleServiceScript.t("details.section.occupancy"), "rows": rows}
 
 
 func _build_building_finance_section(_world = null) -> Dictionary:
 	var rows: Array = []
-	rows.append({"label": "Bilanz", "value": "%d EUR" % account.balance})
+	rows.append({"label": LocaleServiceScript.t("details.label.balance"), "value": "%d EUR" % account.balance})
 
 	if income_today > 0 or expenses_today > 0:
 		var profit := get_profit_today()
@@ -573,26 +572,26 @@ func _build_building_finance_section(_world = null) -> Dictionary:
 		if profit < 0:
 			profit_severity = "warning"
 		rows.append({
-			"label": "Heute",
-			"value": "+%d EUR Einnahmen, -%d EUR Ausgaben, Gewinn %d EUR" % [income_today, expenses_today, profit],
+			"label": LocaleServiceScript.t("details.label.today"),
+			"value": LocaleServiceScript.t("details.value.finance_today") % [income_today, expenses_today, profit],
 			"severity": profit_severity,
 		})
 
 	if self is ResidentialBuilding or building_type == BuildingType.RESIDENTIAL:
 		var res := self as ResidentialBuilding
 		if res != null:
-			rows.append({"label": "Miete/Tag", "value": "%d EUR" % res.rent_per_day})
+			rows.append({"label": LocaleServiceScript.t("details.label.rent_per_day"), "value": "%d EUR" % res.rent_per_day})
 
 	if wages_unpaid_today > 0:
-		rows.append({"label": "Loehne offen", "value": "%d EUR" % wages_unpaid_today, "severity": "warning"})
+		rows.append({"label": LocaleServiceScript.t("details.label.wages_open"), "value": "%d EUR" % wages_unpaid_today, "severity": "warning"})
 	if taxes_unpaid_today > 0:
-		rows.append({"label": "Steuern offen", "value": "%d EUR" % taxes_unpaid_today, "severity": "warning"})
+		rows.append({"label": LocaleServiceScript.t("details.label.taxes_open"), "value": "%d EUR" % taxes_unpaid_today, "severity": "warning"})
 	if maintenance_unpaid_today > 0:
-		rows.append({"label": "Wartung offen", "value": "%d EUR" % maintenance_unpaid_today, "severity": "warning"})
+		rows.append({"label": LocaleServiceScript.t("details.label.maintenance_open"), "value": "%d EUR" % maintenance_unpaid_today, "severity": "warning"})
 	if operating_unpaid_today > 0:
-		rows.append({"label": "Betrieb offen", "value": "%d EUR" % operating_unpaid_today, "severity": "warning"})
+		rows.append({"label": LocaleServiceScript.t("details.label.operating_open"), "value": "%d EUR" % operating_unpaid_today, "severity": "warning"})
 	if owner_payout_today > 0:
-		rows.append({"label": "Besitzer-Auszahlung", "value": "%d EUR" % owner_payout_today, "severity": "good"})
+		rows.append({"label": LocaleServiceScript.t("details.label.owner_payout"), "value": "%d EUR" % owner_payout_today, "severity": "good"})
 
 	if requires_public_funding():
 		var funding_severity := "normal"
@@ -601,8 +600,8 @@ func _build_building_finance_section(_world = null) -> Dictionary:
 		elif public_funding_today > 0:
 			funding_severity = "good"
 		rows.append({
-			"label": "Foerderung",
-			"value": "%d / %d EUR (offen: %d)" % [public_funding_today, public_funding_requested_today, public_funding_shortfall_today],
+			"label": LocaleServiceScript.t("details.label.funding"),
+			"value": LocaleServiceScript.t("details.value.funding") % [public_funding_today, public_funding_requested_today, public_funding_shortfall_today],
 			"severity": funding_severity,
 		})
 
@@ -613,12 +612,12 @@ func _build_building_finance_section(_world = null) -> Dictionary:
 		"UNDERFUNDED", "STRUGGLING":
 			financial_severity = "warning"
 	rows.append({
-		"label": "Status",
+		"label": LocaleServiceScript.t("details.label.status"),
 		"value": get_financial_state_display_label(),
 		"severity": financial_severity,
 	})
 
-	return {"title": "Finanzen", "rows": rows}
+	return {"title": LocaleServiceScript.t("details.section.finance"), "rows": rows}
 
 
 func _build_building_maintenance_section(world = null) -> Dictionary:
@@ -631,26 +630,26 @@ func _build_building_maintenance_section(world = null) -> Dictionary:
 	elif condition >= 90:
 		cond_severity = "good"
 	rows.append({
-		"label": "Zustand",
+		"label": LocaleServiceScript.t("details.label.condition"),
 		"value": "%.0f / 100 (%s)" % [condition, get_condition_state_label()],
 		"severity": cond_severity,
 	})
 
-	# "Missed days" als lesbarer Satz statt "w=%d t=%d m=%d ..." Kuerzel.
+	# Render missed days as readable text instead of compact counters.
 	var missed_parts: Array[String] = []
 	if missed_wage_days > 0:
-		missed_parts.append("%d Gehalt" % missed_wage_days)
+		missed_parts.append(LocaleServiceScript.t("details.value.missed_wages") % missed_wage_days)
 	if missed_tax_days > 0:
-		missed_parts.append("%d Steuern" % missed_tax_days)
+		missed_parts.append(LocaleServiceScript.t("details.value.missed_taxes") % missed_tax_days)
 	if missed_maintenance_days > 0:
-		missed_parts.append("%d Wartung" % missed_maintenance_days)
+		missed_parts.append(LocaleServiceScript.t("details.value.missed_maintenance") % missed_maintenance_days)
 	if negative_balance_days > 0:
-		missed_parts.append("%d Tag(e) negativ" % negative_balance_days)
+		missed_parts.append(LocaleServiceScript.t("details.value.missed_negative") % negative_balance_days)
 	if underfunded_days > 0:
-		missed_parts.append("%d Tag(e) unterfinanziert" % underfunded_days)
+		missed_parts.append(LocaleServiceScript.t("details.value.missed_underfunded") % underfunded_days)
 	if not missed_parts.is_empty():
 		rows.append({
-			"label": "Verpasst",
+			"label": LocaleServiceScript.t("details.label.missed"),
 			"value": ", ".join(missed_parts),
 			"severity": "warning",
 		})
@@ -660,11 +659,11 @@ func _build_building_maintenance_section(world = null) -> Dictionary:
 		var base_op := get_base_operating_cost_per_day()
 		var payroll := get_payroll_due_today(world)
 		rows.append({
-			"label": "Tageskosten",
-			"value": "%d EUR (Betrieb %d + Lohn %d)" % [total_obl, base_op, payroll],
+			"label": LocaleServiceScript.t("details.label.daily_costs"),
+			"value": LocaleServiceScript.t("details.value.daily_costs") % [total_obl, base_op, payroll],
 		})
 
-	return {"title": "Wartung & Kosten", "rows": rows}
+	return {"title": LocaleServiceScript.t("details.section.maintenance"), "rows": rows}
 
 func get_info(world = null) -> Dictionary:
 	var hour := -1
@@ -756,6 +755,80 @@ func get_building_type_name() -> String:
 			return "Gas Station"
 		_:
 			return "Generic"
+
+func get_building_type_display_label() -> String:
+	match building_type:
+		BuildingType.RESIDENTIAL:
+			return LocaleServiceScript.t("details.building_type.residential")
+		BuildingType.RESTAURANT:
+			return LocaleServiceScript.t("details.building_type.restaurant")
+		BuildingType.SHOP:
+			return LocaleServiceScript.t("details.building_type.shop")
+		BuildingType.SUPERMARKET:
+			return LocaleServiceScript.t("details.building_type.supermarket")
+		BuildingType.CAFE:
+			return LocaleServiceScript.t("details.building_type.cafe")
+		BuildingType.CITY_HALL:
+			return LocaleServiceScript.t("details.building_type.city_hall")
+		BuildingType.UNIVERSITY:
+			return LocaleServiceScript.t("details.building_type.university")
+		BuildingType.CINEMA:
+			return LocaleServiceScript.t("details.building_type.cinema")
+		BuildingType.PARK:
+			return LocaleServiceScript.t("details.building_type.park")
+		BuildingType.FARM:
+			return LocaleServiceScript.t("details.building_type.farm")
+		BuildingType.FACTORY:
+			return LocaleServiceScript.t("details.building_type.factory")
+		BuildingType.GAS_STATION:
+			return LocaleServiceScript.t("details.building_type.gas_station")
+		_:
+			return LocaleServiceScript.t("details.building_type.generic")
+
+static func get_job_title_display_label(job_title: String) -> String:
+	var locale_key := _job_title_locale_key(job_title)
+	if locale_key.is_empty():
+		return job_title
+	return LocaleServiceScript.t("details.job_title.%s" % locale_key, job_title)
+
+static func _job_title_locale_key(job_title: String) -> String:
+	match job_title:
+		"Baecker":
+			return "baker"
+		"Kellner":
+			return "waiter"
+		"Programmierer":
+			return "programmer"
+		"Fahrer":
+			return "driver"
+		"Mechaniker":
+			return "mechanic"
+		"Tankwart":
+			return "gas_station_attendant"
+		"Verkaeufer":
+			return "salesperson"
+		"Designer":
+			return "designer"
+		"Doctor":
+			return "doctor"
+		"Teacher":
+			return "teacher"
+		"Engineer":
+			return "engineer"
+		"Professor":
+			return "professor"
+		"Janitor":
+			return "janitor"
+		"Gardener":
+			return "gardener"
+		"MaintenanceWorker":
+			return "maintenance_worker"
+		"Technician":
+			return "technician"
+		"Worker":
+			return "worker"
+		_:
+			return ""
 
 ## Default job title offered by this building type. Single source of truth —
 ## the player work flow (Citizen.player_work) and the info panel both read it.
@@ -856,10 +929,10 @@ func _maybe_apply_start_balance() -> void:
 
 func get_economy_category_label() -> String:
 	if is_public_building():
-		return "Public"
+		return LocaleServiceScript.t("details.economy_category.public")
 	if is_economic_building():
-		return "Economic"
-	return "Neutral"
+		return LocaleServiceScript.t("details.economy_category.economic")
+	return LocaleServiceScript.t("details.economy_category.neutral")
 
 func is_public_building() -> bool:
 	match building_type:
@@ -1016,13 +1089,13 @@ func get_financial_state_key() -> String:
 func get_financial_state_display_label() -> String:
 	match get_financial_state_key():
 		"CLOSED":
-			return "Geschlossen"
+			return LocaleServiceScript.t("details.financial_state.closed")
 		"UNDERFUNDED":
-			return "Unterfinanziert"
+			return LocaleServiceScript.t("details.financial_state.underfunded")
 		"STRUGGLING":
-			return "Angeschlagen"
+			return LocaleServiceScript.t("details.financial_state.struggling")
 		_:
-			return "Stabil"
+			return LocaleServiceScript.t("details.financial_state.stable")
 
 func can_accept_workers() -> bool:
 	return not is_financially_closed()
@@ -1105,17 +1178,17 @@ func _is_within_open_hours(hour: int) -> bool:
 func get_open_status_display_label(hour: int = -1) -> String:
 	match get_open_status_label(hour):
 		"NO_FUNDS":
-			return "Geschlossen: kein Budget"
+			return LocaleServiceScript.t("details.open_status.no_funds")
 		"UNDERFUNDED":
-			return "Offen: unterfinanziert"
+			return LocaleServiceScript.t("details.open_status.underfunded")
 		"STRUGGLING":
-			return "Offen: angeschlagen"
+			return LocaleServiceScript.t("details.open_status.struggling")
 		"UNSTAFFED":
-			return "Geschlossen: %s" % get_staff_requirement_label()
+			return LocaleServiceScript.t("details.open_status.unstaffed") % get_staff_requirement_label()
 		"CLOSED":
-			return "Geschlossen"
+			return LocaleServiceScript.t("details.open_status.closed")
 		"OPEN":
-			return "Offen"
+			return LocaleServiceScript.t("details.open_status.open")
 		_:
 			return get_open_status_label(hour)
 
@@ -1126,12 +1199,42 @@ func is_open(hour: int = -1) -> bool:
 func get_service_type() -> String:
 	return "generic"
 
+func get_service_type_display_label() -> String:
+	var service := get_service_type()
+	match service:
+		"commerce":
+			return LocaleServiceScript.t("details.service_type.commerce")
+		"education":
+			return LocaleServiceScript.t("details.service_type.education")
+		"food":
+			return LocaleServiceScript.t("details.service_type.food")
+		"food_market":
+			return LocaleServiceScript.t("details.service_type.food_market")
+		"fuel":
+			return LocaleServiceScript.t("details.service_type.fuel")
+		"fun":
+			return LocaleServiceScript.t("details.service_type.fun")
+		"generic":
+			return LocaleServiceScript.t("details.service_type.generic")
+		"governance":
+			return LocaleServiceScript.t("details.service_type.governance")
+		"housing":
+			return LocaleServiceScript.t("details.service_type.housing")
+		"production_food":
+			return LocaleServiceScript.t("details.service_type.production_food")
+		"production_goods":
+			return LocaleServiceScript.t("details.service_type.production_goods")
+		"shopping":
+			return LocaleServiceScript.t("details.service_type.shopping")
+		_:
+			return service
+
 func get_staff_requirement_label() -> String:
 	match building_type:
 		BuildingType.GAS_STATION:
-			return "Tankstellenpersonal fehlt"
+			return LocaleServiceScript.t("details.staff_requirement.gas_station")
 		_:
-			return "kein Personal"
+			return LocaleServiceScript.t("details.staff_requirement.generic")
 
 func is_outdoor_destination() -> bool:
 	return false
@@ -1322,12 +1425,12 @@ func begin_new_day() -> void:
 
 func get_condition_state_label() -> String:
 	if condition >= repair_threshold:
-		return "Good"
+		return LocaleServiceScript.t("details.condition.good")
 	if condition >= repair_threshold * 0.7:
-		return "Needs repair"
+		return LocaleServiceScript.t("details.condition.needs_repair")
 	if condition >= repair_threshold * 0.4:
-		return "Poor"
-	return "Critical"
+		return LocaleServiceScript.t("details.condition.poor")
+	return LocaleServiceScript.t("details.condition.critical")
 
 func get_condition_efficiency_multiplier() -> float:
 	if condition >= repair_threshold:

@@ -28,10 +28,10 @@ func resolve_nearest(root: Node, from_pos: Vector3) -> void:
 			return
 	workplace = _auto_find_workplace(root, from_pos)
 
-func try_get_employed(person: Citizen) -> bool:
+func try_get_employed(person: Citizen, ignore_education: bool = false) -> bool:
 	if workplace == null:
 		return false
-	if not meets_requirements(person):
+	if not ignore_education and not meets_requirements(person):
 		return false
 	if not allows_building(workplace):
 		return false

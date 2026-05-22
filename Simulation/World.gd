@@ -1827,7 +1827,7 @@ func _find_best_job_offer_for_citizen(
 			if offer.is_empty():
 				continue
 			var education_gap := int(offer.get("education_gap", 0))
-			if education_gap > 0 and not allow_training:
+			if education_gap > 0 and not allow_training and not bool(offer.get("trainee_staffing", false)):
 				continue
 			var offer_score := float(offer.get("score", -INF))
 			if offer_score > best_score:
@@ -1862,6 +1862,15 @@ func _get_committed_job_slots(building: Building) -> int:
 			committed["worker_%d" % worker.get_instance_id()] = true
 	return committed.size()
 
+func _building_needs_emergency_staffing(building: Building) -> bool:
+	# A staffed-to-operate building that currently has no qualifying staff would
+	# stay non-operational forever if every candidate is blocked by an education
+	# gap (e.g. a University whose only teaching roles now require a degree). In
+	# that case it may take on an under-qualified worker as trainee staff.
+	return building != null \
+		and building.requires_staff_to_operate() \
+		and not building.has_required_staff()
+
 func _build_job_offer_for_citizen(citizen: Citizen, building: Building, job_title: String, from_pos: Vector3) -> Dictionary:
 	if citizen == null or building == null or job_title.is_empty():
 		return {}
@@ -1879,6 +1888,7 @@ func _build_job_offer_for_citizen(citizen: Citizen, building: Building, job_titl
 		"building": building,
 		"required_education_level": required_education,
 		"education_gap": education_gap,
+		"trainee_staffing": education_gap > 0 and _building_needs_emergency_staffing(building),
 		"wage_per_hour": CitizenFactoryScript.get_wage_for_job_title(job_title),
 		"allowed_building_types": allowed_types.duplicate(),
 		"score": offer_score,

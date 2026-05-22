@@ -112,6 +112,7 @@ World orchestration, economy, time, bootstrap, navigation, GOAP, UI, debug, logg
 | Path | class_name | extends |
 | --- | --- | --- |
 | Simulation/AI/LocalDialogueRuntimeService.gd | LocalDialogueRuntimeService | Node |
+| Simulation/Audio/MusicDirector.gd | MusicDirector | Node |
 | Simulation/Bootstrap/CitySceneRefactor.gd | - | SceneTree |
 | Simulation/Bootstrap/ImportedCitySetup.gd | ImportedCitySetup | - |
 | Simulation/Bootstrap/NavigationSetup.gd | NavigationSetup | RefCounted |
@@ -145,7 +146,6 @@ World orchestration, economy, time, bootstrap, navigation, GOAP, UI, debug, logg
 | Simulation/GOAP/CitizenSocialGoap.gd | CitizenSocialGoap | RefCounted |
 | Simulation/GOAP/CitizenWorkGoap.gd | CitizenWorkGoap | RefCounted |
 | Simulation/GOAP/GoapAction.gd | GoapAction | RefCounted |
-| Simulation/GOAP/GoapPlanner.gd | GoapPlanner | RefCounted |
 
 ## config
 

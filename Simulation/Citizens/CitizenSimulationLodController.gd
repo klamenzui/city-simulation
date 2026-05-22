@@ -135,13 +135,16 @@ func _apply_lod_tiers() -> void:
 		desired_active[citizen_id] = true
 		active_count += 1
 
+	var budget_forced_hide: Dictionary = {}
 	_reserve_antipop_visible_budget(
 		desired_focus,
 		desired_active,
 		forced_focus,
 		forced_active,
 		scored,
-		focus_budget + active_budget
+		focus_budget + active_budget,
+		enforce_background_budget,
+		budget_forced_hide
 	)
 
 	for citizen in world.citizens:
@@ -160,7 +163,7 @@ func _apply_lod_tiers() -> void:
 				and not _can_demote_to_coarse(citizen, selected_citizen, player_avatar):
 			desired_tier = "active"
 
-		_apply_tier(citizen, desired_tier)
+		_apply_tier(citizen, desired_tier, budget_forced_hide.has(citizen_id))
 	_initial_lod_application_done = true
 
 func _score_citizen(citizen: Citizen, relevance_context: Dictionary, selected_citizen: Citizen, player_avatar: Citizen) -> float:
@@ -304,14 +307,14 @@ func _get_current_lod_tier(citizen: Citizen) -> String:
 		return ""
 	return citizen.get_simulation_lod_tier()
 
-func _apply_tier(citizen: Citizen, tier: String) -> void:
+func _apply_tier(citizen: Citizen, tier: String, force_hide_for_budget: bool = false) -> void:
 	if citizen == null or not citizen.has_method("set_simulation_lod_state"):
 		return
 	var current_tier := citizen.get_simulation_lod_tier() if citizen.has_method("get_simulation_lod_tier") else ""
 	var tier_profile_variant: Variant = _get_value("tiers.%s" % tier, {})
 	var tier_profile: Dictionary = tier_profile_variant as Dictionary if tier_profile_variant is Dictionary else {}
 	var desired_rendered := _get_bool("tiers.%s.rendered" % tier, true)
-	var rendered := _resolve_rendered_for_transition(citizen, desired_rendered)
+	var rendered := false if force_hide_for_budget and not desired_rendered else _resolve_rendered_for_transition(citizen, desired_rendered)
 	var physics_enabled := _get_bool("tiers.%s.physics" % tier, true)
 	if rendered and not desired_rendered:
 		physics_enabled = _get_bool("visibility.anti_pop_hold_physics", true)
@@ -364,7 +367,9 @@ func _reserve_antipop_visible_budget(
 		forced_focus: Dictionary,
 		forced_active: Dictionary,
 		scored: Array,
-		visual_budget: int) -> void:
+		visual_budget: int,
+		enforce_background_budget: bool,
+		budget_forced_hide: Dictionary) -> void:
 	if visual_budget <= 0:
 		return
 	if not _get_bool("visibility.anti_pop_enabled", true):
@@ -396,6 +401,8 @@ func _reserve_antipop_visible_budget(
 			continue
 		if desired_active.has(citizen_id):
 			desired_active.erase(citizen_id)
+			if enforce_background_budget:
+				budget_forced_hide[citizen_id] = true
 			overflow -= 1
 	for index in range(scored.size() - 1, -1, -1):
 		if overflow <= 0:
@@ -408,6 +415,24 @@ func _reserve_antipop_visible_budget(
 			continue
 		if desired_focus.has(citizen_id):
 			desired_focus.erase(citizen_id)
+			if enforce_background_budget:
+				budget_forced_hide[citizen_id] = true
+			overflow -= 1
+	if not enforce_background_budget:
+		return
+	for index in range(scored.size() - 1, -1, -1):
+		if overflow <= 0:
+			return
+		var citizen: Citizen = scored[index].get("citizen", null) as Citizen
+		if citizen == null:
+			continue
+		var citizen_id := citizen.get_instance_id()
+		if forced_focus.has(citizen_id) or forced_active.has(citizen_id):
+			continue
+		if desired_focus.has(citizen_id) or desired_active.has(citizen_id):
+			continue
+		if _should_hold_visible_for_antipop(citizen):
+			budget_forced_hide[citizen_id] = true
 			overflow -= 1
 
 func _should_hold_visible_for_antipop(citizen: Citizen) -> bool:

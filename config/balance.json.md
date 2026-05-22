@@ -89,8 +89,11 @@ entertainment `2000 / 2500 / 2`, fuel `680 / 900 / 5`.
   Verkaeufer 13, Designer 19, Doctor 30, Teacher 18, Engineer 26, Professor 28,
   Janitor 13, Gardener 14, MaintenanceWorker 16, Technician 22.
 - **`required_education`** — Mindest-`education_level` je Titel (fehlt ein Titel ⇒ 0).
-  Doctor 1, Engineer 1, Professor 2, Technician 1; Tankwart/Teacher/Janitor/Gardener/
-  MaintenanceWorker 0.
+  Doctor 3, Professor 3, Teacher 2, Engineer 2, Programmierer 2,
+  Mechaniker/Designer/MaintenanceWorker/Technician 1; übrige 0. Lehrjobs verlangen
+  einen Abschluss — eine unbesetzte Pflicht-Uni stellt jedoch eine Trainee-Lehrkraft
+  trotz Bildungslücke ein (`World._building_needs_emergency_staffing`), damit das
+  Bildungssystem nie verklemmt.
 - **`allowed_building_types`** — auf welche Gebäudetypen ein Titel beschränkt ist
   (z. B. Teacher/Professor nur `UNIVERSITY`, Gardener nur `PARK`, Technician
   `FACTORY`/`CITY_HALL`; MaintenanceWorker fast überall). Fehlt ein Titel ⇒ keine

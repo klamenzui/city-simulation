@@ -39,7 +39,7 @@ func has_required_staff() -> bool:
 	return has_teaching_staff()
 
 func get_staff_requirement_label() -> String:
-	return "keine Lehrkraft"
+	return LocaleServiceScript.t("details.staff_requirement.teacher")
 
 func can_study(citizen: Citizen) -> bool:
 	if citizen == null:
