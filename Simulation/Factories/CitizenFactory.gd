@@ -29,6 +29,16 @@ const JOB_TITLES := [
 	"Professor", "Janitor", "Gardener", "MaintenanceWorker", "Technician"
 ]
 
+# Pre-educated starting staff. Without it the University has no teaching staff
+# at spawn, so University.can_study() blocks everyone and no citizen can ever
+# reach the levels those very jobs require (a hard education deadlock). Applied
+# only on the initial population spawn, never on save-load top-up.
+const STAFF_SEED := [
+	{"title": "Professor", "education": 3},
+	{"title": "Teacher", "education": 2},
+	{"title": "Doctor", "education": 3},
+]
+
 const JOB_SERVICE_TYPES := {
 	"Baecker": "food",
 	"Kellner": "food",
@@ -60,7 +70,7 @@ const BUILDING_TYPE_NAMES := {
 	"GAS_STATION": BuildingScript.BuildingType.GAS_STATION,
 }
 
-static func spawn_citizens(parent: Node, world: World, count: int) -> Array[Citizen]:
+static func spawn_citizens(parent: Node, world: World, count: int, seed_staff: bool = false) -> Array[Citizen]:
 	var spawned: Array[Citizen] = []
 	if parent == null or world == null or count <= 0:
 		return spawned
@@ -72,12 +82,14 @@ static func spawn_citizens(parent: Node, world: World, count: int) -> Array[Citi
 
 	var spawn_count_by_home: Dictionary = {}
 	for i in count:
+		var staff_seed: Dictionary = STAFF_SEED[i] if seed_staff and i < STAFF_SEED.size() else {}
 		var citizen := _spawn_citizen_from_scene(
 			parent,
 			world,
 			citizen_scene,
 			i,
-			spawn_count_by_home
+			spawn_count_by_home,
+			staff_seed
 		)
 		if citizen != null:
 			spawned.append(citizen)
@@ -99,7 +111,8 @@ static func _spawn_citizen_from_scene(
 	world: World,
 	citizen_scene: PackedScene,
 	spawn_index: int,
-	spawn_count_by_home: Dictionary
+	spawn_count_by_home: Dictionary,
+	staff_seed: Dictionary = {}
 ) -> Citizen:
 	var candidate := citizen_scene.instantiate()
 	if candidate is not Citizen:
@@ -113,7 +126,10 @@ static func _spawn_citizen_from_scene(
 
 	var home := _assign_home(citizen, world)
 	var origin := home.global_position if home != null else _get_fallback_spawn_pos(world, spawn_index)
-	citizen.job = _create_spawn_job(citizen, world, origin)
+	var seed_job: Job = null
+	if not staff_seed.is_empty():
+		seed_job = _create_staff_seed_job(world, staff_seed)
+	citizen.job = seed_job if seed_job != null else _create_spawn_job(citizen, world, origin)
 	if citizen.job != null:
 		world.register_job(citizen.job)
 
@@ -122,6 +138,13 @@ static func _spawn_citizen_from_scene(
 	if home != null:
 		citizen.enter_building(home, world, false)
 	world.register_citizen(citizen)
+
+	# _ready (triggered by add_child) resets education_level to the configured
+	# start value, so a seeded staff member must be educated and hired here.
+	if seed_job != null:
+		citizen.education_level = int(staff_seed.get("education", 0))
+		seed_job.try_get_employed(citizen)
+
 	return citizen
 
 static func place_citizen_at_home_exit(
@@ -252,6 +275,41 @@ static func build_job_from_offer(offer: Dictionary) -> Job:
 	job.workplace = target_building
 	job.preferred_workplace = target_building
 	return job
+
+static func _create_staff_seed_job(world: World, seed: Dictionary) -> Job:
+	if world == null or seed.is_empty():
+		return null
+	var title := str(seed.get("title", ""))
+	if title == "":
+		return null
+	var service := get_service_type_for_job_title(title)
+	var building := _find_seed_workplace(world, service)
+	if building == null:
+		return null
+	var job := Job.new()
+	job.title = title
+	job.wage_per_hour = get_wage_for_job_title(title)
+	job.start_hour = randi_range(7, 9)
+	job.shift_hours = 8
+	job.required_education_level = get_required_education_for_job_title(title)
+	job.workplace_service_type = service
+	job.allowed_building_types = get_allowed_building_types_for_job_title(title)
+	job.workplace = building
+	job.preferred_workplace = building
+	return job
+
+static func _find_seed_workplace(world: World, service_type: String) -> Building:
+	if world == null or service_type == "":
+		return null
+	for building in world.buildings:
+		if building == null or not is_instance_valid(building):
+			continue
+		if building.get_service_type() != service_type:
+			continue
+		if not building.has_free_job_slots():
+			continue
+		return building
+	return null
 
 static func _claim_citizen_serial(world: World) -> int:
 	if world == null:

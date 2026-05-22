@@ -12,7 +12,7 @@ class_name LocaleService
 
 const LANG_DIR := "res://language/"
 const DEFAULT_LANG := "de"
-const SUPPORTED: Array[String] = ["de", "en", "ru"]
+const SUPPORTED: Array[String] = ["de", "en", "ru", "uk", "az"]
 
 const SETTINGS_PATH := "user://settings.cfg"
 const SETTINGS_SECTION := "locale"

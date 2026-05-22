@@ -300,7 +300,48 @@ alle flach auf `origin.y`. Das reicht solange:
 
 ---
 
-## 7. TL;DR
+## 7. Debug-Visualisierung ein-/ausschalten
+
+Beim Anklicken eines Citizens kann die komplette Navigations-Visualisierung
+eingeblendet werden: der **cyanfarbene Scan-Radius-Kreis**
+([`NavigationDebugDraw._draw_scan_radius()`](../Debug/NavigationDebugDraw.gd:177)),
+das lokale A*-Gitter (farbcodierte Zellen), Avoidance-Pfeile und das globale
+Pfad-Band.
+
+**Standard: AUS.** Ein ausgewählter Citizen wird nur per Highlight-Material
+markiert (`set_selected`), ohne Nav-Overlay — sonst stört der Kreis bei
+normaler Beobachtung.
+
+### Wieder einschalten (für Navigations-Analyse)
+
+Den Schalter in [`Citizen.gd`](../Citizen.gd) auf `true` setzen:
+
+```gdscript
+const SELECT_SHOWS_NAV_DEBUG := true
+```
+
+Danach blendet jeder per Klick ausgewählte Citizen das volle Nav-Overlay ein;
+Abwählen (`select(null)`) räumt es wieder weg.
+
+### Wie die Kette läuft
+
+```
+Citizen.select(panel)
+  └─ set_debug_visualization_enabled(panel != null and SELECT_SHOWS_NAV_DEBUG)
+       └─ setzt config.debug_draw_avoidance / _surface_cells / _physics_hits
+          / _cell_heights / show_global_path = true
+            └─ NavigationDebugDraw zeichnet Kreis, Gitter, Pfad
+```
+
+Die einzelnen Layer lassen sich auch granular in
+[`CitizenConfig.gd`](CitizenConfig.gd:98) steuern
+(`debug_draw_avoidance`, `debug_draw_surface_cells`, `debug_draw_physics_hits`,
+`debug_draw_cell_heights`, `show_global_path`) — der Kreis selbst hängt an
+`debug_draw_avoidance`.
+
+---
+
+## 8. TL;DR
 
 * **Eingabe**: Wunschrichtung + globaler Pfad
 * **Aufbau**: doubled-Coord 8-connect-Gitter (kein echtes Hex, siehe §3) um den Citizen, A*-fähig

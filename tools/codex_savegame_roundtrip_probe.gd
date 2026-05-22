@@ -66,6 +66,18 @@ func _run() -> void:
 	citizen.experience_wage_bonus = 0.075
 	expected_workplace.profit_average = 325.0
 	expected_workplace._profit_average_seeded = true
+	var owner_citizen := _find_non_player_citizen(world, citizen)
+	if owner_citizen == null:
+		_fail("No non-player citizen available for ownership restore test.")
+		_finish()
+		return
+	var owned_building := _find_ownable_building(world)
+	if owned_building == null:
+		_fail("No ownable building available for ownership restore test.")
+		_finish()
+		return
+	owned_building.citizen_owner = owner_citizen
+	owned_building.owner_display_name = owner_citizen.citizen_name
 
 	var save_err := SaveGameServiceScript.save_to_slot(1, world, root, player)
 	if save_err != OK:
@@ -79,6 +91,12 @@ func _run() -> void:
 		_finish()
 		return
 	var saved_citizen_count := int(payload.get("citizen_count", world.citizens.size()))
+	var owner_entity_id := NetworkEntityRegistryScript.get_entity_id(owner_citizen)
+	var owner_name := owner_citizen.citizen_name
+	if owner_entity_id.is_empty():
+		_fail("test owner did not receive a network entity id.")
+		_finish()
+		return
 
 	var original_hunger: float = citizen.needs.hunger if citizen.needs != null else 0.0
 	var original_balance: int = citizen.wallet.balance if citizen.wallet != null else 0
@@ -100,8 +118,10 @@ func _run() -> void:
 	citizen.experience_wage_bonus = 0.0
 	expected_workplace.profit_average = -999.0
 	expected_workplace._profit_average_seeded = false
-	if not _remove_non_player_citizen(world, citizen):
-		_fail("Could not remove a non-player citizen for population restore test.")
+	owned_building.citizen_owner = null
+	owned_building.owner_display_name = ""
+	if not _remove_citizen_for_restore_test(world, owner_citizen):
+		_fail("Could not remove the owner citizen for ownership restore test.")
 		_finish()
 		return
 
@@ -141,6 +161,19 @@ func _run() -> void:
 		_fail("building profit average not restored: expected 325 got %.2f" % expected_workplace.profit_average)
 	if not expected_workplace._profit_average_seeded:
 		_fail("building profit average seeded flag not restored.")
+	var restored_owner := owned_building.get_owner_citizen()
+	if restored_owner == null:
+		_fail("building citizen owner not restored.")
+	elif NetworkEntityRegistryScript.get_entity_id(restored_owner) != owner_entity_id:
+		_fail("building owner restored to wrong citizen: expected %s got %s" % [
+			owner_entity_id,
+			NetworkEntityRegistryScript.get_entity_id(restored_owner)
+		])
+	elif owned_building.owner_display_name != owner_name:
+		_fail("building owner display name not restored: expected %s got %s" % [
+			owner_name,
+			owned_building.owner_display_name
+		])
 
 	# clean up the slot we just wrote so the test does not leave artefacts.
 	var path := SaveGameServiceScript.slot_path(1)
@@ -203,15 +236,27 @@ func _install_test_job(world: World, citizen: Citizen, workplace: Building) -> J
 		return null
 	return job
 
-func _remove_non_player_citizen(world: World, player: Citizen) -> bool:
-	for i in range(world.citizens.size() - 1, -1, -1):
-		var citizen := world.citizens[i]
-		if citizen == null or citizen == player:
+func _find_non_player_citizen(world: World, player: Citizen) -> Citizen:
+	for candidate in world.citizens:
+		if candidate == null or candidate == player or not is_instance_valid(candidate):
 			continue
-		world.unregister_citizen(citizen)
-		citizen.queue_free()
-		return true
-	return false
+		return candidate
+	return null
+
+func _find_ownable_building(world: World) -> Building:
+	for building in world.buildings:
+		if building == null or not is_instance_valid(building):
+			continue
+		if building.is_citizen_ownable():
+			return building
+	return null
+
+func _remove_citizen_for_restore_test(world: World, citizen: Citizen) -> bool:
+	if citizen == null or world == null or not world.citizens.has(citizen):
+		return false
+	world.unregister_citizen(citizen)
+	citizen.queue_free()
+	return true
 
 func _finish() -> void:
 	if _failed:

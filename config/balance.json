@@ -79,14 +79,14 @@
         "Technician": 22
       },
       "required_education": {
-        "Tankwart": 0,
-        "Doctor": 1,
-        "Teacher": 0,
-        "Engineer": 1,
-        "Professor": 2,
-        "Janitor": 0,
-        "Gardener": 0,
-        "MaintenanceWorker": 0,
+        "Professor": 3,
+        "Doctor": 3,
+        "Teacher": 2,
+        "Engineer": 2,
+        "Programmierer": 2,
+        "MaintenanceWorker": 1,
+        "Mechaniker": 1,
+        "Designer": 1,
         "Technician": 1
       },
       "allowed_building_types": {

@@ -29,7 +29,7 @@ func _initialize() -> void:
 		"unemployed_citizens_seek_new_jobs",
 		"critical_public_staffing_retargets_unemployed",
 		"economic_buildings_struggle_before_closure",
-		"teacher_jobs_need_no_degree",
+		"teaching_jobs_require_degree",
 		"tax_and_welfare",
 		"citizen_pay_rent",
 	]:
@@ -74,8 +74,8 @@ func _run_test(test_name: String) -> String:
 			return _test_critical_public_staffing_retargets_unemployed()
 		"economic_buildings_struggle_before_closure":
 			return _test_economic_buildings_struggle_before_closure()
-		"teacher_jobs_need_no_degree":
-			return _test_teacher_jobs_need_no_degree()
+		"teaching_jobs_require_degree":
+			return _test_teaching_jobs_require_degree()
 		"tax_and_welfare":
 			return _test_tax_and_welfare()
 		"citizen_pay_rent":
@@ -416,16 +416,16 @@ func _test_economic_buildings_struggle_before_closure() -> String:
 	_free_nodes([shop])
 	return _current_error
 
-func _test_teacher_jobs_need_no_degree() -> String:
+func _test_teaching_jobs_require_degree() -> String:
 	_expect_eq(
 		CitizenFactoryScript.get_required_education_for_job_title("Teacher"),
-		0,
-		"teacher jobs should not require prior university education"
+		2,
+		"teacher jobs should require university education"
 	)
 	_expect_eq(
 		CitizenFactoryScript.get_required_education_for_job_title("Professor"),
-		2,
-		"professor jobs should require higher education"
+		3,
+		"professor jobs should require the highest education"
 	)
 	_expect(
 		CitizenFactoryScript.get_allowed_building_types_for_job_title("Gardener").has(BuildingScript.BuildingType.PARK),
@@ -440,8 +440,10 @@ func _test_teacher_jobs_need_no_degree() -> String:
 	teacher_job.title = "Teacher"
 	teacher_job.required_education_level = CitizenFactoryScript.get_required_education_for_job_title("Teacher")
 
+	# Teaching now requires a degree, but an unstaffed University may still take
+	# an unqualified citizen as trainee staff (see critical_public_staffing).
 	var applicant = _new_citizen("Student Worker")
-	_expect(teacher_job.meets_requirements(applicant), "citizen without education should qualify for teacher jobs in this project")
+	_expect(not teacher_job.meets_requirements(applicant), "citizen without education should not directly qualify for teaching jobs")
 	_free_nodes([applicant])
 	return _current_error
 

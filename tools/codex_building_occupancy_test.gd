@@ -8,6 +8,7 @@ const ResidentialBuildingScript = preload("res://Entities/Buildings/ResidentialB
 const ShopScript = preload("res://Entities/Buildings/Shop.gd")
 const SupermarketScript = preload("res://Entities/Buildings/Supermarket.gd")
 const UniversityScript = preload("res://Entities/Buildings/University.gd")
+const CityHallScript = preload("res://Entities/Buildings/CityHall.gd")
 const CitizenScript = preload("res://Entities/Citizens/New/Citizen.gd")
 const WorldScript = preload("res://Simulation/World.gd")
 const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
@@ -138,6 +139,7 @@ func _run_all_tests() -> void:
 		"world_unregisters_removed_park_from_queries",
 		"world_registers_scene_park_cluster_once",
 		"citizen_factory_spawns_at_home_entrance",
+		"citizen_factory_seeds_university_and_city_hall_staff",
 		"citizen_factory_display_names_stay_unique",
 		"job_offer_prefers_training_and_reserves_slot",
 		"study_finish_hires_reserved_trainee",
@@ -260,6 +262,8 @@ func _run_test(test_name: String) -> String:
 			return _test_world_registers_scene_park_cluster_once()
 		"citizen_factory_spawns_at_home_entrance":
 			return _test_citizen_factory_spawns_at_home_entrance()
+		"citizen_factory_seeds_university_and_city_hall_staff":
+			return _test_citizen_factory_seeds_university_and_city_hall_staff()
 		"citizen_factory_display_names_stay_unique":
 			return _test_citizen_factory_display_names_stay_unique()
 		"job_offer_prefers_training_and_reserves_slot":
@@ -435,7 +439,9 @@ func _test_player_buys_commercial_building() -> String:
 	var building_info := shop.get_info(world)
 	_expect_eq(building_info.get("Owner", ""), player.citizen_name, "building info should show the new owner")
 	var citizen_sections := player.get_info_sections(world)
-	_expect_eq(_info_row_value(citizen_sections, "Besitz"), "1 Gebaeude",
+	_expect_eq(
+		_info_row_value(citizen_sections, LocaleServiceScript.t("details.label.owned")),
+		LocaleServiceScript.t("details.value.owned_buildings") % 1,
 		"citizen info should count owned buildings")
 
 	_free_world(world)
@@ -514,7 +520,10 @@ func _test_university_unstaffed_label_is_teaching_specific() -> String:
 	_expect(university.try_hire(janitor), "university should be able to hire non-teaching staff")
 	_expect_eq(university.workers.size(), 1, "worker count should include non-teaching staff")
 	_expect_eq(university.get_open_status_label(10), "UNSTAFFED", "university should remain unstaffed for teaching without teachers")
-	_expect_eq(university.get_open_status_display_label(10), "Geschlossen: keine Lehrkraft", "status label should explain the missing teaching role")
+	_expect_eq(
+		university.get_open_status_display_label(10),
+		LocaleServiceScript.t("details.open_status.unstaffed") % LocaleServiceScript.t("details.staff_requirement.teacher"),
+		"status label should explain the missing teaching role")
 	return _current_error
 
 func _test_park_entry_keeps_citizen_visible() -> String:
@@ -947,6 +956,47 @@ func _test_citizen_factory_spawns_at_home_entrance() -> String:
 		if index == 0:
 			var center_spawn: Vector3 = home.get_navigation_points(world, 0.0).get("spawn", home.get_entrance_pos())
 			_expect(citizen.global_position.distance_to(center_spawn) < 0.15, "first same-home spawn should stay centered at the exit")
+
+	_free_world(world)
+	return _current_error
+
+func _test_citizen_factory_seeds_university_and_city_hall_staff() -> String:
+	var world: World = _new_world()
+	var home: ResidentialBuilding = _new_residential("Seed Home", Vector3(0.0, 0.0, 1.4), 6)
+	world.register_building(home)
+	var uni: University = _new_university("Seed University")
+	uni.job_capacity = 8
+	world.register_building(uni)
+	var city_hall: CityHall = _new_city_hall("Seed City Hall")
+	city_hall.job_capacity = 5
+	world.register_building(city_hall)
+
+	# Seeding fills the deadlock-critical roles up front: a University needs
+	# teaching staff before anyone can study, but teaching now requires a degree.
+	var spawned: Array[Citizen] = CitizenFactoryScript.spawn_citizens(_harness_root, world, 3, true)
+	_expect_eq(spawned.size(), 3, "factory should spawn the seeded staff")
+	if spawned.size() < 3:
+		_free_world(world)
+		return _current_error
+
+	var professor := spawned[0]
+	_expect(professor.job != null and professor.job.title == "Professor", "first seed should be a Professor")
+	_expect_eq(professor.education_level, 3, "seeded professor should start educated to level 3")
+	_expect(professor.job != null and professor.job.workplace == uni, "seeded professor should be employed at the university")
+	_expect(uni.workers.has(professor), "university should employ the seeded professor")
+
+	var teacher := spawned[1]
+	_expect(teacher.job != null and teacher.job.title == "Teacher", "second seed should be a Teacher")
+	_expect_eq(teacher.education_level, 2, "seeded teacher should start educated to level 2")
+	_expect(uni.workers.has(teacher), "university should employ the seeded teacher")
+
+	_expect(uni.has_teaching_staff(), "seeded university must report teaching staff so studying can begin")
+
+	var doctor := spawned[2]
+	_expect(doctor.job != null and doctor.job.title == "Doctor", "third seed should be a Doctor")
+	_expect_eq(doctor.education_level, 3, "seeded doctor should start educated to level 3")
+	_expect(doctor.job != null and doctor.job.workplace == city_hall, "seeded doctor should be employed at the city hall")
+	_expect(city_hall.workers.has(doctor), "city hall should employ the seeded doctor")
 
 	_free_world(world)
 	return _current_error
@@ -1664,7 +1714,7 @@ func _test_player_home_move_quit_and_info() -> String:
 
 	_expect(player.player_enter_building(first_home, world), "player should inspect first home")
 	_expect(player.player_rent_home(world), "player should rent first home")
-	_expect_eq(_info_row_value(player.get_info_sections(world), "Wohnung"), "First Player Home",
+	_expect_eq(_info_row_value(player.get_info_sections(world), LocaleServiceScript.t("details.label.home")), "First Player Home",
 			"player info should show rented home")
 	_expect(player.player_exit_building(world), "player should leave first home without ending lease")
 
@@ -1676,13 +1726,13 @@ func _test_player_home_move_quit_and_info() -> String:
 	_expect_eq(player.home, second_home, "move should replace the player home")
 	_expect(not first_home.tenants.has(player), "move should release the old tenant slot")
 	_expect(second_home.tenants.has(player), "move should take the new tenant slot")
-	_expect_eq(_info_row_value(player.get_info_sections(world), "Wohnung"), "Second Player Home",
+	_expect_eq(_info_row_value(player.get_info_sections(world), LocaleServiceScript.t("details.label.home")), "Second Player Home",
 			"player info should show moved home")
 
 	_expect(player.player_quit_home(world, true), "player should be able to cancel the home lease")
 	_expect(player.home == null, "home cancellation should clear player home")
 	_expect(not second_home.tenants.has(player), "home cancellation should release tenant slot")
-	_expect_eq(_info_row_value(player.get_info_sections(world), "Wohnung"), "keine",
+	_expect_eq(_info_row_value(player.get_info_sections(world), LocaleServiceScript.t("details.label.home")), LocaleServiceScript.t("player.none"),
 			"player info should show no home after cancellation")
 
 	_free_world(world)
@@ -1851,7 +1901,7 @@ func _test_network_snapshot_rebuilds_player_work_and_home_ui() -> String:
 			"replica UI must not show Bewerben after accepted job snapshot")
 	_expect(_player_ui_button_enabled(ui_state, "stop"),
 			"replica UI should expose stop while work action is active")
-	_expect_eq(_info_row_value(replica.get_info_sections(world), "Wohnung"), "SnapshotHome",
+	_expect_eq(_info_row_value(replica.get_info_sections(world), LocaleServiceScript.t("details.label.home")), "SnapshotHome",
 			"replica info should show the snapshot home")
 
 	_free_world(world)
@@ -1880,7 +1930,12 @@ func _test_player_work_education_gate() -> String:
 		_expect(not uni.workers.has(player), "rejected player must not take a worker slot")
 		_expect(player.job == null, "rejected player must not keep a job")
 		var rejected_state := player.get_player_action_ui_state(world)
-		_expect(str(rejected_state.get("status_text", "")).find("Abgelehnt") != -1,
+		var expected_rejection := LocaleServiceScript.t("player_notice.education_rejected") % [
+			BuildingScript.get_job_title_display_label(uni.get_default_job_title()),
+			player.education_level,
+			required,
+		]
+		_expect(str(rejected_state.get("status_text", "")).find(expected_rejection) != -1,
 				"rejection must be shown in the player-action status text")
 
 	player.education_level = required
@@ -2184,6 +2239,17 @@ func _new_university(building_name: String) -> University:
 	university.add_child(entrance)
 	_harness_root.add_child(university)
 	return university
+
+func _new_city_hall(building_name: String) -> CityHall:
+	var hall: CityHall = CityHallScript.new()
+	hall.name = building_name
+	hall.building_name = building_name
+	var entrance := Node3D.new()
+	entrance.name = "Entrance"
+	entrance.position = Vector3(0.0, 0.0, 1.4)
+	hall.add_child(entrance)
+	_harness_root.add_child(hall)
+	return hall
 
 func _new_restaurant(building_name: String, position: Vector3) -> Restaurant:
 	var restaurant: Restaurant = RestaurantScript.new()

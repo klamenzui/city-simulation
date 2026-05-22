@@ -20,6 +20,7 @@ const SaveGameServiceScript = preload("res://Simulation/Persistence/SaveGameServ
 const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 const PlayerThirdPersonCameraScript = preload("res://Simulation/Camera/PlayerThirdPersonCamera.gd")
 const CameraModeManagerScript = preload("res://Simulation/Camera/CameraModeManager.gd")
+const MusicDirectorScript = preload("res://Simulation/Audio/MusicDirector.gd")
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
 const BUILDING_OVERVIEW_REFRESH_INTERVAL_SEC := 0.5
@@ -32,6 +33,7 @@ var _save_slot_menu = null
 var _pending_load_payload: Dictionary = {}
 var _player_camera: PlayerThirdPersonCamera = null
 var _camera_mode_manager: CameraModeManager = null
+var _music_director = null
 var _enable_all_citizen_trace: bool = false
 var _enable_map_snapshot_log: bool = false
 
@@ -77,6 +79,7 @@ func _start_runtime() -> void:
 		_multiplayer_session.ensure_local_host_player()
 	elif not _is_network_client():
 		_setup_offline_player()
+	_setup_music_director()
 	call_deferred("_log_initial_debug_snapshot")
 
 func _load_debug_runtime_flags() -> void:
@@ -125,6 +128,16 @@ func _setup_multiplayer_session() -> void:
 	_multiplayer_session.name = "MultiplayerSession"
 	add_child(_multiplayer_session)
 	_multiplayer_session.bind(self, world)
+
+func _setup_music_director() -> void:
+	if _is_headless_runtime():
+		return
+	if _music_director == null or not is_instance_valid(_music_director):
+		_music_director = MusicDirectorScript.new()
+		_music_director.name = "MusicDirector"
+		add_child(_music_director)
+	_music_director.bind_world(world)
+	_music_director.start()
 
 # Interactive launches without an explicit --mp-host / --mp-client flag get the
 # pre-game main menu. Headless and CLI-role launches keep the original

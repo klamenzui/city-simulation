@@ -2,6 +2,7 @@ extends CanvasLayer
 class_name DebugPanel
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 
 signal citizen_dialog_toggled
 signal citizen_dialog_message_submitted(message: String)
@@ -200,7 +201,7 @@ func update_player_actions(ui_state: Dictionary) -> void:
 			_clear_player_action_buttons()
 		return
 	if player_action_title_label != null:
-		player_action_title_label.text = str(ui_state.get("title", "Aktionen"))
+		player_action_title_label.text = str(ui_state.get("title", LocaleServiceScript.t("player.actions_title")))
 	if player_action_status_label != null:
 		player_action_status_label.text = str(ui_state.get("status_text", ""))
 	# Buttons are only rebuilt when their set/labels/state actually change.
@@ -305,7 +306,7 @@ func _ensure_player_action_ui() -> void:
 		vbox.move_child(player_action_container, label.get_index() + 1)
 
 	player_action_title_label = Label.new()
-	player_action_title_label.text = "Aktionen"
+	player_action_title_label.text = LocaleServiceScript.t("player.actions_title")
 	player_action_title_label.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
 	player_action_title_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
 	player_action_container.add_child(player_action_title_label)

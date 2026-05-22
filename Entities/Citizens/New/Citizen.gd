@@ -11,7 +11,7 @@ signal clicked
 
 @export_group("Identity")
 ## Display name. Mirrored into `_sim.identity.citizen_name` on `_ready`.
-@export var citizen_name: String = "Alex"
+@export var citizen_name: String = "John"
 @export var debug_panel: DebugPanel
 
 ## True when this citizen takes part in autonomous GOAP simulation.
@@ -35,10 +35,17 @@ const RelaxAtParkActionScript = preload("res://Actions/RelaxAtParkAction.gd")
 const SocializeActionScript = preload("res://Actions/SocializeAction.gd")
 const WatchCinemaActionScript = preload("res://Actions/WatchCinemaAction.gd")
 const SocialVisitActionScript = preload("res://Actions/SocialVisitAction.gd")
-const PlayerInventoryCatalogScript = preload("res://Simulation/UI/PlayerInventoryCatalog.gd")
+const PlayerActionUiStateBuilderScript = preload("res://Simulation/UI/PlayerActionUiStateBuilder.gd")
+const PlayerInventoryUiStateBuilderScript = preload("res://Simulation/UI/PlayerInventoryUiStateBuilder.gd")
 const FALL_RESPAWN_DEPTH_METERS := 8.0
 const FALL_RESPAWN_COOLDOWN_SEC := 1.0
 const FALL_RESPAWN_GROUND_OFFSET := 0.12
+
+# Flip to true to show the navigation debug overlay (cyan scan-radius circle,
+# local A* grid, global path ribbon) whenever a citizen is selected. Off by
+# default so selecting a citizen only highlights it. See
+# Entities/Citizens/New/Navigation/LocalGridPlanner.md §8.
+const SELECT_SHOWS_NAV_DEBUG := false
 
 var _sim: CitizenSimulation = null
 var _world_ref: World = null
@@ -62,7 +69,7 @@ var _debug_last_travel_failed: bool = false
 # Accumulator for health-delta logging — emits one line per ~5 HP of drift
 # instead of one per tick. Persisted across ticks so micro-changes add up.
 var _log_health_accum: float = 0.0
-# Idempotency-Flag fuer die() — verhindert doppelten Cleanup im selben Tick.
+# Idempotency guard for die(); prevents duplicate cleanup in the same tick.
 var _is_dying: bool = false
 var _debug_travel_target_building: Building = null
 var _travel_target: Vector3 = Vector3.ZERO
@@ -532,7 +539,7 @@ func _setup_selection_visual() -> void:
 
 func select(panel) -> void:
 	debug_panel = panel
-	set_debug_visualization_enabled(panel != null)
+	set_debug_visualization_enabled(panel != null and SELECT_SHOWS_NAV_DEBUG)
 	set_selected(panel != null)
 
 
@@ -994,7 +1001,7 @@ func player_apply_for_work(world: Node = null) -> bool:
 		return false
 	if not candidate_job.meets_requirements(self):
 		_player_action_notice = LocaleServiceScript.t("player_notice.education_rejected") % [
-			candidate_job.title,
+			Building.get_job_title_display_label(candidate_job.title),
 			education_level,
 			candidate_job.required_education_level,
 		]
@@ -1009,7 +1016,10 @@ func player_apply_for_work(world: Node = null) -> bool:
 		job = null
 		_player_action_notice = LocaleServiceScript.t("player_notice.hiring_full") % _building_label(workplace)
 		return false
-	_player_action_notice = LocaleServiceScript.t("player_notice.accepted_job") % [job.title, _building_label(workplace)]
+	_player_action_notice = LocaleServiceScript.t("player_notice.accepted_job") % [
+		Building.get_job_title_display_label(job.title),
+		_building_label(workplace),
+	]
 	return true
 
 
@@ -1272,159 +1282,11 @@ func player_leave_for_training(world: Node = null) -> bool:
 
 
 func get_player_action_ui_state(world: Node = null) -> Dictionary:
-	var resolved_world := _resolve_world_arg(world)
-	var location := _get_player_current_building()
-	var buttons: Array = []
-	var status_lines: PackedStringArray = []
-	var location_label := _building_label(location) if location != null else LocaleServiceScript.t("player.location_travelling")
-	var active_id := _active_player_action_id()
-	var action_running := not active_id.is_empty()
-	status_lines.append(LocaleServiceScript.t("player.status_location") % location_label)
-	status_lines.append(LocaleServiceScript.t("player.status_home") % (_building_label(home) if home != null else LocaleServiceScript.t("player.none")))
-	var owned_count := get_owned_building_count(resolved_world)
-	if owned_count > 0:
-		status_lines.append(LocaleServiceScript.t("player.status_owned_buildings") % owned_count)
-	buttons.append(_make_player_action_button("inventory", LocaleServiceScript.t("action.inventory"), true))
-	if action_running:
-		status_lines.append(LocaleServiceScript.t("player.status_active") % _active_player_action_label())
-		buttons.append(_make_player_action_button("stop", LocaleServiceScript.t("action.stop"), true))
-
-	if location != null:
-		if location.is_citizen_ownable():
-			status_lines.append(LocaleServiceScript.t("player.status_owner") % location.get_owner_display_name())
-			if not location.has_citizen_owner():
-				var purchase_price := location.get_purchase_price()
-				status_lines.append(LocaleServiceScript.t("player.status_purchase_price") % purchase_price)
-				var can_buy := not action_running \
-					and resolved_world != null \
-					and location.can_be_bought_by(self, resolved_world)
-				buttons.append(_make_player_action_button(
-					"buy_building",
-					LocaleServiceScript.t("action.buy_building"),
-					can_buy,
-					_buy_building_disabled_reason(location, resolved_world, action_running)
-				))
-		if _is_player_home_location(location):
-			buttons.append(_make_player_action_button("eat", LocaleServiceScript.t("action.eat"), home_food_stock > 0, LocaleServiceScript.t("player_disabled.no_home_food")))
-			buttons.append(_make_player_action_button("sleep", LocaleServiceScript.t("action.sleep"), true))
-			buttons.append(_make_player_action_button("relax", LocaleServiceScript.t("action.relax"), true))
-			buttons.append(_make_player_action_button("quit_home", LocaleServiceScript.t("action.quit_home"), not action_running, LocaleServiceScript.t("player_disabled.action_running")))
-		elif location is ResidentialBuilding:
-			var residential := location as ResidentialBuilding
-			var can_rent := not action_running and (residential.tenants.has(self) or residential.has_free_slot())
-			var rent_label := LocaleServiceScript.t("action.move_home") if home != null else LocaleServiceScript.t("action.rent_home_short")
-			buttons.append(_make_player_action_button("rent_home", rent_label, can_rent, LocaleServiceScript.t("player_disabled.no_free_home")))
-		elif location is Restaurant:
-			var restaurant := location as Restaurant
-			var can_eat := resolved_world != null \
-				and restaurant.is_open(resolved_world.time.get_hour()) \
-				and can_afford_restaurant_at(restaurant, resolved_world)
-			buttons.append(_make_player_action_button("eat", LocaleServiceScript.t("action.eat"), can_eat, LocaleServiceScript.t("player_disabled.restaurant_closed_or_poor")))
-		elif location is University:
-			var university := location as University
-			var can_study := resolved_world != null and university.can_study(self)
-			buttons.append(_make_player_action_button("study", LocaleServiceScript.t("action.study"), can_study, LocaleServiceScript.t("player_disabled.university_unavailable")))
-		elif location is Park:
-			var can_socialize := needs == null or (needs.hunger < 70.0 and needs.health > 35.0)
-			buttons.append(_make_player_action_button("relax", LocaleServiceScript.t("action.relax"), true))
-			buttons.append(_make_player_action_button("socialize", LocaleServiceScript.t("action.socialize"), can_socialize, LocaleServiceScript.t("player_disabled.social_blocked")))
-		elif location is Cinema:
-			var cinema := location as Cinema
-			var can_watch := resolved_world != null \
-				and cinema.is_open(resolved_world.time.get_hour()) \
-				and wallet != null \
-				and wallet.balance >= cinema.ticket_price
-			buttons.append(_make_player_action_button("watch_cinema", LocaleServiceScript.t("action.watch_cinema"), can_watch, LocaleServiceScript.t("player_disabled.cinema_closed_or_poor")))
-
-		if location is Shop:
-			buttons.append(_make_player_action_button("shop", LocaleServiceScript.t("action.shop"), true))
-
-		if int(location.job_capacity) > 0:
-			var prospective_title := location.get_default_job_title()
-			var required_edu := location.get_required_education_level()
-			var qualifies := education_level >= required_edu
-			var employed_here := _player_has_accepted_job_at(location)
-			if required_edu > 0:
-				status_lines.append(LocaleServiceScript.t("player.status_job_requirement") % [prospective_title, education_level, required_edu])
-			else:
-				status_lines.append(LocaleServiceScript.t("player.status_job_no_education") % prospective_title)
-			if employed_here:
-				if resolved_world != null and resolved_world.has_method("get_wage_progression"):
-					var prog: Dictionary = resolved_world.get_wage_progression(self)
-					var base_wage: int = job.wage_per_hour if job != null else 0
-					var eff_wage: int = int(round(float(base_wage) * float(prog.get("multiplier", 1.0))))
-					var edu_pct: int = int(round(float(prog.get("education_bonus", 0.0)) * 100.0))
-					var exp_pct: int = int(round(float(prog.get("experience_bonus", 0.0)) * 100.0))
-					status_lines.append(LocaleServiceScript.t("player.status_wage_progression") % [eff_wage, base_wage, edu_pct, exp_pct])
-					var max_note := " (max)" if bool(prog.get("at_max_experience", false)) else ""
-					status_lines.append(LocaleServiceScript.t("player.status_company_tenure") % [
-						_profit_tier_label(int(prog.get("profit_tier", 1))),
-						max_note,
-						int(prog.get("tenure_days", 0)),
-					])
-					var absence_days := int(prog.get("absence_days", 0))
-					if absence_days > 0:
-						status_lines.append(LocaleServiceScript.t("player.status_absence") % [
-							absence_days,
-							int(prog.get("absence_limit", 3)),
-						])
-				var can_work := not action_running or active_id == "work"
-				buttons.append(_make_player_action_button("work", LocaleServiceScript.t("action.work"), can_work, LocaleServiceScript.t("player_disabled.action_running")))
-			else:
-				buttons.append(_make_player_action_button("apply_work", LocaleServiceScript.t("action.apply_work"), not action_running, LocaleServiceScript.t("player_disabled.action_running")))
-			if not qualifies:
-				buttons.append(_make_player_action_button("training", LocaleServiceScript.t("action.training"), true))
-			if employed_here:
-				buttons.append(_make_player_action_button("quit_job", LocaleServiceScript.t("action.quit_job"), true))
-
-	if not _player_action_notice.is_empty():
-		status_lines.append(_player_action_notice)
-
-	if buttons.is_empty():
-		return {}
-	for spec_var in buttons:
-		var spec := spec_var as Dictionary
-		spec["active"] = not active_id.is_empty() and str(spec.get("id", "")) == active_id
-	return {
-		"visible": true,
-		"title": LocaleServiceScript.t("player.actions_title"),
-		"status_text": "\n".join(status_lines),
-		"buttons": buttons,
-	}
+	return PlayerActionUiStateBuilderScript.build(self, world)
 
 
 func get_player_inventory_ui_state(world: Node = null, mode: String = "player") -> Dictionary:
-	var clean_mode := mode.strip_edges()
-	if clean_mode.is_empty():
-		return {}
-	var resolved_world := _resolve_world_arg(world)
-	var location := _get_player_current_building()
-	var show_shop := clean_mode == "shop" and location is Shop
-	var resolved_mode := "shop" if show_shop else "player"
-	var status_lines: PackedStringArray = []
-	status_lines.append(LocaleServiceScript.t("player.money") % (wallet.balance if wallet != null else 0))
-	if show_shop:
-		var shop_for_status := location as Shop
-		status_lines.append(LocaleServiceScript.t("player.shop") % _building_label(shop_for_status))
-		if resolved_world != null:
-			status_lines.append(LocaleServiceScript.t("player.status") % shop_for_status.get_open_status_display_label(resolved_world.time.get_hour()))
-	else:
-		status_lines.append(LocaleServiceScript.t("player.status_location") % (_building_label(location) if location != null else LocaleServiceScript.t("player.location_travelling")))
-	if not _player_action_notice.is_empty():
-		status_lines.append(_player_action_notice)
-
-	var title := LocaleServiceScript.t("player.shop_title") if show_shop else LocaleServiceScript.t("player.inventory_title")
-	if show_shop:
-		title = LocaleServiceScript.t("player.shop_title_named") % _building_label(location)
-
-	return {
-		"visible": true,
-		"mode": resolved_mode,
-		"title": title,
-		"status_text": "\n".join(status_lines),
-		"player_slots": _build_player_inventory_slots(),
-		"categories": _build_shop_inventory_categories(location, resolved_world) if show_shop else [],
-	}
+	return PlayerInventoryUiStateBuilderScript.build(self, world, mode)
 
 
 func get_inventory_count(item_id: String) -> int:
@@ -1436,81 +1298,6 @@ func get_inventory_count(item_id: String) -> int:
 		"clothing":
 			return clothing_items
 	return 0
-
-
-func _build_player_inventory_slots() -> Array:
-	var slots: Array = []
-	for id_var in PlayerInventoryCatalogScript.item_ids():
-		var id := str(id_var)
-		slots.append({
-			"id": id,
-			"label": PlayerInventoryCatalogScript.get_label(id),
-			"icon": PlayerInventoryCatalogScript.get_icon(id),
-			"count": get_inventory_count(id),
-		})
-	return slots
-
-
-func _build_shop_inventory_categories(location: Building, resolved_world: Node) -> Array:
-	if location == null or location is not Shop:
-		return []
-	var shop := location as Shop
-	var categories: Array = []
-	var active := not _active_player_action_id().is_empty()
-	if shop is Supermarket:
-		categories.append(_build_shop_food_category(shop as Supermarket, resolved_world, active))
-	categories.append(_build_shop_clothing_category(shop, resolved_world, active))
-	return categories
-
-
-func _build_shop_food_category(market: Supermarket, resolved_world: Node, action_running: bool) -> Dictionary:
-	var price := market.get_grocery_price(resolved_world) if resolved_world != null else 0
-	var enabled := not action_running and resolved_world != null and can_buy_groceries_at(market, resolved_world as World)
-	var tooltip := _shop_buy_disabled_reason(market, resolved_world as World, "grocery_bundle", price) if not enabled else ""
-	return {
-		"id": "food",
-		"label": PlayerInventoryCatalogScript.get_tab_label("food"),
-		"icon": PlayerInventoryCatalogScript.get_icon("food"),
-		"items": [
-			{
-				"id": "food",
-				"label": PlayerInventoryCatalogScript.get_label("food"),
-				"icon": PlayerInventoryCatalogScript.get_icon("food"),
-				"price": price,
-				"stock": market.get_stock("grocery_bundle"),
-				"owned": get_inventory_count("food"),
-				"enabled": enabled,
-				"tooltip": tooltip,
-				"button_text": LocaleServiceScript.t("inventory.buy"),
-				"action_id": "buy_groceries",
-			},
-		],
-	}
-
-
-func _build_shop_clothing_category(shop: Shop, resolved_world: Node, action_running: bool) -> Dictionary:
-	var price := _get_shop_item_price(shop)
-	var enabled := not action_running and resolved_world != null and can_buy_shop_item_at(shop, resolved_world as World)
-	var tooltip := _shop_buy_disabled_reason(shop, resolved_world as World, "clothing", price) if not enabled else ""
-	return {
-		"id": "clothing",
-		"label": PlayerInventoryCatalogScript.get_tab_label("clothing"),
-		"icon": PlayerInventoryCatalogScript.get_icon("clothing"),
-		"items": [
-			{
-				"id": "clothing",
-				"label": PlayerInventoryCatalogScript.get_label("clothing"),
-				"icon": PlayerInventoryCatalogScript.get_icon("clothing"),
-				"price": price,
-				"stock": shop.get_stock("clothing"),
-				"owned": get_inventory_count("clothing"),
-				"enabled": enabled,
-				"tooltip": tooltip,
-				"button_text": LocaleServiceScript.t("inventory.buy"),
-				"action_id": "buy_shop_item",
-			},
-		],
-	}
 
 
 ## Maps the running action back to its UI button id so the panel can show
@@ -1545,15 +1332,6 @@ func _active_player_action_label() -> String:
 			return _network_action_label
 		return _network_player_action_id
 	return current_action.label if current_action != null else ""
-
-
-func _make_player_action_button(action_id: String, text: String, enabled: bool, disabled_reason: String = "") -> Dictionary:
-	return {
-		"id": action_id,
-		"text": text,
-		"enabled": enabled,
-		"tooltip": "" if enabled else disabled_reason,
-	}
 
 
 func _start_player_action(action: Action, world: World) -> bool:
@@ -1593,25 +1371,6 @@ func get_owned_buildings(world: Node = null) -> Array[Building]:
 
 func get_owned_building_count(world: Node = null) -> int:
 	return get_owned_buildings(world).size()
-
-func _buy_building_disabled_reason(building: Building, world: Node, action_running: bool) -> String:
-	if action_running:
-		return LocaleServiceScript.t("player_disabled.action_running")
-	if building == null or not building.is_citizen_ownable():
-		return LocaleServiceScript.t("player_disabled.building_not_buyable")
-	if building.is_owned_by(self):
-		return LocaleServiceScript.t("player_disabled.already_owned")
-	if building.has_citizen_owner():
-		return LocaleServiceScript.t("player_disabled.already_sold")
-	if building.is_financially_closed():
-		return LocaleServiceScript.t("player_disabled.closed_not_for_sale")
-	if world == null:
-		return LocaleServiceScript.t("player_disabled.world_not_ready")
-	var price := building.get_purchase_price()
-	if wallet == null or wallet.balance < price:
-		return LocaleServiceScript.t("player_disabled.not_enough_money_price") % price
-	return LocaleServiceScript.t("player_disabled.purchase_not_possible")
-
 
 func _is_player_home_location(building: Building) -> bool:
 	if building == null:
@@ -2482,17 +2241,17 @@ func _try_assign_best_job_offer(world: World, origin: Vector3) -> bool:
 	if new_job == null:
 		return false
 	job = new_job
-	return _try_hire_current_job(world)
+	return _try_hire_current_job(world, bool(offer.get("trainee_staffing", false)))
 
 
 func _build_job_from_offer(offer: Dictionary) -> Job:
 	return CitizenFactory.build_job_from_offer(offer)
 
 
-func _try_hire_current_job(world: World) -> bool:
+func _try_hire_current_job(world: World, ignore_education: bool = false) -> bool:
 	if job == null:
 		return false
-	if not job.try_get_employed(self):
+	if not job.try_get_employed(self, ignore_education):
 		return false
 	if world != null and world.has_method("register_job"):
 		world.register_job(job)
@@ -2923,8 +2682,8 @@ func _trace_fmt_vec3(v: Vector3) -> String:
 
 
 func log_needs_changes(h_delta: float) -> void:
-	# Health-Logging muss IMMER laufen — nicht nur fuer den selektierten Citizen.
-	# Wird vom CitizenAgent jeden Sim-Tick aufgerufen.
+	# Health logging must always run, not just for the selected citizen.
+	# CitizenAgent calls this every simulation tick.
 	if needs == null or h_delta == 0.0:
 		return
 	_log_health_accum += h_delta
@@ -2985,16 +2744,16 @@ func die(world: Node = null) -> void:
 	stop_travel()
 	velocity = Vector3.ZERO
 
-	# Tenant slot frei.
+	# Release tenant slot.
 	if home != null and home.has_method("remove_tenant"):
 		home.remove_tenant(self)
 		home = null
 
-	# Worker slot frei (Building.fire setzt auch job.workplace = null).
+	# Release worker slot; Building.fire also clears job.workplace.
 	if job != null and job.workplace != null and job.workplace.has_method("fire"):
 		job.workplace.fire(self)
 
-	# Aus aktuellem Building/Visit austreten.
+	# Leave current building or visit.
 	if is_inside_building():
 		exit_current_building(cleanup_world)
 	elif current_location != null and current_location.has_method("on_citizen_exited"):
@@ -3016,10 +2775,9 @@ func _update_debug(world: World, _h_delta: float) -> void:
 		debug_panel.update_debug(_get_flat_info_fallback())
 
 
-# Strukturierter Info-Output fuers DebugPanel — Sektionen statt flachem Dict.
-# Reihenfolge: Identitaet (wer) -> Beduerfnisse (Zustand) -> Aktivitaet (was
-# gerade) -> Finanzen (kompakt). Leere Felder werden vom DebugPanel uebersprungen,
-# damit z.B. "Bildung" nur erscheint, wenn der Citizen wirklich studiert.
+# Structured info output for DebugPanel: sections instead of a flat dictionary.
+# Order: identity -> needs -> activity -> compact finance. Empty fields are
+# skipped by DebugPanel, so education only appears when it carries useful data.
 func get_info_sections(_world = null) -> Array:
 	return [
 		_build_identity_section(),
@@ -3030,24 +2788,25 @@ func get_info_sections(_world = null) -> Array:
 
 
 func _build_identity_section() -> Dictionary:
-	var rows: Array = [{"label": "Name", "value": citizen_name}]
-	rows.append({"label": "Wohnung", "value": _building_label(home) if home != null else "keine"})
+	var rows: Array = [{"label": LocaleServiceScript.t("details.label.name"), "value": citizen_name}]
+	rows.append({"label": LocaleServiceScript.t("details.label.home"), "value": _building_label(home) if home != null else LocaleServiceScript.t("player.none")})
 	var job_str := _format_job_status_text()
 	if not job_str.is_empty():
-		rows.append({"label": "Beruf", "value": job_str})
+		rows.append({"label": LocaleServiceScript.t("details.label.job"), "value": job_str})
 	var edu_str := _format_education_status_text()
 	if not edu_str.is_empty():
-		rows.append({"label": "Bildung", "value": edu_str})
-	return {"title": "Identitaet", "rows": rows}
+		rows.append({"label": LocaleServiceScript.t("details.label.education"), "value": edu_str})
+	return {"title": LocaleServiceScript.t("details.section.identity"), "rows": rows}
 
 
 func _format_job_status_text() -> String:
 	if job == null:
-		return "arbeitslos"
+		return LocaleServiceScript.t("details.value.job_unemployed")
+	var job_title_display := Building.get_job_title_display_label(job.title)
 	if job.workplace == null:
-		return "arbeitslos (%s)" % job.title
-	return "%s @ %s (%d EUR/h)" % [
-		job.title,
+		return LocaleServiceScript.t("details.value.job_unemployed_with_title") % job_title_display
+	return LocaleServiceScript.t("details.value.job_with_workplace") % [
+		job_title_display,
 		_building_label(job.workplace),
 		job.wage_per_hour
 	]
@@ -3055,29 +2814,33 @@ func _format_job_status_text() -> String:
 
 func _format_education_status_text() -> String:
 	if job != null and job.required_education_level > education_level:
-		return "%d / %d (fuer %s)" % [education_level, job.required_education_level, job.title]
+		return LocaleServiceScript.t("details.value.education_for_job") % [
+			education_level,
+			job.required_education_level,
+			Building.get_job_title_display_label(job.title),
+		]
 	if education_level > 0:
-		return "Level %d" % education_level
+		return LocaleServiceScript.t("details.value.education_level") % education_level
 	return ""
 
 
 func _build_needs_section() -> Dictionary:
 	if needs == null:
-		return {"title": "Beduerfnisse", "rows": []}
+		return {"title": LocaleServiceScript.t("details.section.needs"), "rows": []}
 	return {
-		"title": "Beduerfnisse",
+		"title": LocaleServiceScript.t("details.section.needs"),
 		"rows": [
-			_build_need_row("Hunger", needs.hunger, true),
-			_build_need_row("Energie", needs.energy, false),
-			_build_need_row("Spass", needs.fun, false),
-			_build_need_row("Sozial", needs.social, false),
-			_build_need_row("Gesundheit", needs.health, false),
+			_build_need_row(LocaleServiceScript.t("needs.hunger.title"), needs.hunger, true),
+			_build_need_row(LocaleServiceScript.t("needs.energy.title"), needs.energy, false),
+			_build_need_row(LocaleServiceScript.t("needs.fun.title"), needs.fun, false),
+			_build_need_row(LocaleServiceScript.t("needs.social.title"), needs.social, false),
+			_build_need_row(LocaleServiceScript.t("needs.health.title"), needs.health, false),
 		]
 	}
 
 
-# `high_is_bad` true fuer hunger (steigt -> Problem); false fuer energy/fun/health
-# (fallen -> Problem). Severity steuert die Farbe im DebugPanel.
+# `high_is_bad` is true for hunger and false for energy/fun/health.
+# Severity controls the DebugPanel color.
 func _build_need_row(label_text: String, value: float, high_is_bad: bool) -> Dictionary:
 	return {
 		"label": label_text,
@@ -3108,26 +2871,26 @@ func _format_need_bar(value: float, width: int = 10) -> String:
 
 func _build_activity_section() -> Dictionary:
 	var rows: Array = []
-	var action_label := current_action.label if current_action != null else "Idle"
+	var action_label := current_action.label if current_action != null else LocaleServiceScript.t("overview.action_idle")
 	if current_action == null and not _server_interaction_label.is_empty():
 		action_label = _server_interaction_label
 	if network_replica_mode and not _network_action_label.is_empty():
 		action_label = _network_action_label
-	rows.append({"label": "Aktion", "value": action_label})
+	rows.append({"label": LocaleServiceScript.t("details.label.action"), "value": action_label})
 	var location_text := _format_location_text()
 	if not location_text.is_empty():
-		rows.append({"label": "Ort", "value": location_text})
+		rows.append({"label": LocaleServiceScript.t("details.label.location"), "value": location_text})
 	if is_travelling():
 		var target_label := _format_travel_target_label()
 		if not target_label.is_empty():
-			rows.append({"label": "Ziel", "value": "-> %s" % target_label})
+			rows.append({"label": LocaleServiceScript.t("details.label.target"), "value": LocaleServiceScript.t("details.value.travel_target") % target_label})
 	rows.append({"label": "LOD", "value": get_simulation_lod_tier()})
-	return {"title": "Aktivitaet", "rows": rows}
+	return {"title": LocaleServiceScript.t("details.section.activity"), "rows": rows}
 
 
 func _format_location_text() -> String:
 	if current_location == null:
-		return "unterwegs"
+		return LocaleServiceScript.t("player.location_travelling")
 	if current_location.has_method("get_display_name"):
 		return current_location.get_display_name()
 	return current_location.building_name
@@ -3157,39 +2920,38 @@ func _profit_tier_label(tier: int) -> String:
 
 
 func _build_finance_section(world = null) -> Dictionary:
-	var rows: Array = [{"label": "Geld", "value": "%d EUR" % (wallet.balance if wallet != null else 0)}]
+	var rows: Array = [{"label": LocaleServiceScript.t("details.label.money"), "value": "%d EUR" % (wallet.balance if wallet != null else 0)}]
 	if job != null and job.workplace != null:
 		var base_wage: int = job.wage_per_hour
 		if world != null and world.has_method("get_wage_progression"):
 			var prog: Dictionary = world.get_wage_progression(self)
 			var eff_wage: int = int(round(float(base_wage) * float(prog.get("multiplier", 1.0))))
-			rows.append({"label": "Lohn/h", "value": "%d EUR (Basis %d)" % [eff_wage, base_wage]})
-			rows.append({"label": "Bildungsbonus", "value": "+%d%%" % int(round(float(prog.get("education_bonus", 0.0)) * 100.0))})
-			rows.append({"label": "Erfahrung", "value": "+%d%% (%d Tage)" % [
+			rows.append({"label": LocaleServiceScript.t("details.label.wage_per_hour"), "value": LocaleServiceScript.t("details.value.wage_with_base") % [eff_wage, base_wage]})
+			rows.append({"label": LocaleServiceScript.t("details.label.education_bonus"), "value": "+%d%%" % int(round(float(prog.get("education_bonus", 0.0)) * 100.0))})
+			rows.append({"label": LocaleServiceScript.t("details.label.experience"), "value": LocaleServiceScript.t("details.value.percent_with_days") % [
 				int(round(float(prog.get("experience_bonus", 0.0)) * 100.0)),
 				int(prog.get("tenure_days", 0)),
 			]})
-			rows.append({"label": "Fehltage", "value": "%d / %d" % [
+			rows.append({"label": LocaleServiceScript.t("details.label.absence_days"), "value": "%d / %d" % [
 				int(prog.get("absence_days", 0)),
 				int(prog.get("absence_limit", 3)),
 			]})
-			rows.append({"label": "Firma", "value": _profit_tier_label(int(prog.get("profit_tier", 1)))})
+			rows.append({"label": LocaleServiceScript.t("details.label.company"), "value": _profit_tier_label(int(prog.get("profit_tier", 1)))})
 		else:
-			rows.append({"label": "Lohn/h", "value": "%d EUR" % base_wage})
+			rows.append({"label": LocaleServiceScript.t("details.label.wage_per_hour"), "value": "%d EUR" % base_wage})
 	var owned_count := get_owned_building_count(world)
 	if owned_count > 0:
-		rows.append({"label": "Besitz", "value": "%d Gebaeude" % owned_count})
+		rows.append({"label": LocaleServiceScript.t("details.label.owned"), "value": LocaleServiceScript.t("details.value.owned_buildings") % owned_count})
 	if home != null:
-		rows.append({"label": "Miete/Tag", "value": "%d EUR" % home.rent_per_day})
+		rows.append({"label": LocaleServiceScript.t("details.label.rent_per_day"), "value": "%d EUR" % home.rent_per_day})
 	if home_food_stock > 0:
-		rows.append({"label": "Vorraete", "value": str(home_food_stock)})
+		rows.append({"label": LocaleServiceScript.t("details.label.food_stock"), "value": str(home_food_stock)})
 	if clothing_items > 0:
-		rows.append({"label": "Kleidung", "value": str(clothing_items)})
-	return {"title": "Finanzen", "rows": rows}
+		rows.append({"label": LocaleServiceScript.t("details.label.clothing"), "value": str(clothing_items)})
+	return {"title": LocaleServiceScript.t("details.section.finance"), "rows": rows}
 
 
-# Fallback wenn das DebugPanel die neue update_sections-API noch nicht hat
-# (z.B. waehrend Tests, in denen ein gemocktes Panel verwendet wird).
+# Fallback for panels that do not implement the newer update_sections API.
 func _get_flat_info_fallback() -> Dictionary:
 	return {
 		"Citizen": citizen_name,

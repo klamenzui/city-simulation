@@ -484,6 +484,13 @@ func _test_lod_controller_avoids_in_view_visibility_pops() -> String:
 	lod_controller.update(1.0)
 	_expect_eq(candidate.get_simulation_lod_tier(), "coarse", "low relevance visible citizen should still demote to coarse")
 	_expect(candidate.visible, "visible citizen should not disappear inside the current camera view")
+	var visible_budget := maxi(int(lod_controller._get_int("budgets.focus_citizens", 15)), 0) \
+			+ maxi(int(lod_controller._get_int("budgets.active_citizens", 0)), 0)
+	var visible_count := 0
+	for citizen in world.citizens:
+		if citizen != null and citizen.visible:
+			visible_count += 1
+	_expect(visible_count <= visible_budget, "in-view anti-pop hold should not exceed the visible budget")
 
 	camera.look_at(Vector3(0.0, 0.0, 100.0), Vector3.UP)
 	lod_controller.update(1.0)

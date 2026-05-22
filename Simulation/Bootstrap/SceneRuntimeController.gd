@@ -401,7 +401,7 @@ func _on_world_citizen_registered(citizen: Citizen) -> void:
 	_bind_citizen_click(citizen)
 
 func _spawn_citizens(initial_citizen_count: int) -> void:
-	var spawned := CitizenFactory.spawn_citizens(owner_node, world, initial_citizen_count)
+	var spawned := CitizenFactory.spawn_citizens(owner_node, world, initial_citizen_count, true)
 	if interaction_controller == null:
 		return
 	for citizen in spawned:
