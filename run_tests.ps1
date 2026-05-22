@@ -123,6 +123,11 @@ $availableTests = @(
 		Script = "res://tools/codex_parse_check.gd"
 	}
 	[pscustomobject]@{
+		Key = "locale"
+		Label = "Locale Test"
+		Script = "res://tools/codex_locale_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "economy"
 		Label = "Economy Test"
 		Script = "res://tools/codex_economy_test.gd"

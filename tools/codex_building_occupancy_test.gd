@@ -23,10 +23,12 @@ const RelaxAtBenchActionScript = preload("res://Actions/RelaxAtBenchAction.gd")
 const SocializeActionScript = preload("res://Actions/SocializeAction.gd")
 const WatchCinemaActionScript = preload("res://Actions/WatchCinemaAction.gd")
 const SimulationInteractionControllerScript = preload("res://Simulation/UI/SimulationInteractionController.gd")
+const PlayerInventoryWindowScript = preload("res://Simulation/UI/PlayerInventoryWindow.gd")
 const ToastControllerScript = preload("res://Simulation/UI/ToastController.gd")
 const MultiplayerHostAuthorityScript = preload("res://Simulation/Multiplayer/server/MultiplayerHostAuthority.gd")
 const NetworkEntityRegistryScript = preload("res://Simulation/Multiplayer/shared/NetworkEntityRegistry.gd")
 const WorldSnapshotSerializerScript = preload("res://Simulation/Multiplayer/shared/WorldSnapshotSerializer.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 
 class MockSelectionStateController:
 	extends RefCounted
@@ -90,6 +92,8 @@ func _initialize() -> void:
 	call_deferred("_run_all_tests")
 
 func _run_all_tests() -> void:
+	var original_language := LocaleServiceScript.get_language()
+	LocaleServiceScript.set_language("en")
 	var failed: Array[String] = []
 	for test_name in [
 		"building_entry_updates_visitors",
@@ -98,6 +102,7 @@ func _run_all_tests() -> void:
 		"offline_keyboard_player_building_input_uses_camera_target",
 		"keyboard_player_needs_tick_without_goap",
 		"toast_controller_lifecycle",
+		"inventory_window_keeps_shop_buttons_clickable",
 		"player_action_buttons_and_manual_actions",
 		"player_home_move_quit_and_info",
 		"multiplayer_controller_routes_player_actions_as_commands",
@@ -152,6 +157,8 @@ func _run_all_tests() -> void:
 		if error != "":
 			failed.append("%s: %s" % [test_name, error])
 
+	LocaleServiceScript.set_language(original_language)
+
 	if is_instance_valid(_harness_root):
 		_harness_root.free()
 
@@ -181,6 +188,8 @@ func _run_test(test_name: String) -> String:
 			return _test_keyboard_player_needs_tick_without_goap()
 		"toast_controller_lifecycle":
 			return _test_toast_controller_lifecycle()
+		"inventory_window_keeps_shop_buttons_clickable":
+			return _test_inventory_window_keeps_shop_buttons_clickable()
 		"player_action_buttons_and_manual_actions":
 			return _test_player_action_buttons_and_manual_actions()
 		"player_home_move_quit_and_info":
@@ -1246,7 +1255,8 @@ func _test_player_enter_takes_capacity_slot() -> String:
 	_expect(p1.is_inside_building(), "player should be marked inside (hidden) after entering")
 	var rent_state := p1.get_player_action_ui_state(world)
 	_expect(_player_ui_button_enabled(rent_state, "rent_home"), "residential UI should expose an enabled rent button")
-	_expect_eq(_player_ui_button_text(rent_state, "rent_home"), "Mieten", "first residential action should be Mieten")
+	_expect_eq(_player_ui_button_text(rent_state, "rent_home"), LocaleServiceScript.t("action.rent_home_short"),
+			"first residential action should use the localized short rent label")
 	_expect(p1.player_rent_home(world), "rent button should assign the player home")
 	_expect_eq(home.tenants.size(), 1, "renting should take the tenant slot")
 	_expect(home.tenants.has(p1), "player should be listed as tenant after renting")
@@ -1265,7 +1275,7 @@ func _test_player_enter_takes_capacity_slot() -> String:
 	_expect(not p1.is_inside_building(), "player should no longer be inside after exit")
 
 	# Workplace entry is a plain visit: NO job and NO worker slot. Employment
-	# is opt-in via player_apply_for_work() ("Bewerben") only.
+	# is opt-in via player_apply_for_work() only.
 	var uni: University = _new_university("Player Work")
 	uni.job_capacity = 2
 	var p3: Citizen = _new_citizen("Player Three")
@@ -1406,6 +1416,63 @@ func _test_toast_controller_lifecycle() -> String:
 	_expect_eq(toasts.get_active_toast_count(), 0, "toast should expire after its duration")
 	return _current_error
 
+func _test_inventory_window_keeps_shop_buttons_clickable() -> String:
+	var window: PlayerInventoryWindow = PlayerInventoryWindowScript.new()
+	_harness_root.add_child(window)
+	var emitted_actions: Array[String] = []
+	window.action_pressed.connect(func(action_id: String) -> void:
+		emitted_actions.append(action_id)
+	)
+
+	var state := {
+		"visible": true,
+		"mode": "shop",
+		"title": LocaleServiceScript.t("player.shop_title"),
+		"status_text": LocaleServiceScript.t("player.money") % 100,
+		"player_slots": [],
+		"categories": [
+			{
+				"id": "clothing",
+				"label": LocaleServiceScript.t("inventory.tab_clothing"),
+				"icon": "",
+				"items": [
+					{
+						"id": "clothing",
+						"label": LocaleServiceScript.t("inventory.item_clothing"),
+						"icon": "",
+						"price": 18,
+						"stock": 3,
+						"owned": 0,
+						"enabled": true,
+						"tooltip": "",
+						"button_text": LocaleServiceScript.t("inventory.buy"),
+						"action_id": "buy_shop_item",
+					},
+				],
+			},
+		],
+	}
+
+	window.show_for_state(state)
+	var buy_button := _find_button_by_text(window, LocaleServiceScript.t("inventory.buy"))
+	_expect(buy_button != null, "inventory window should render a shop buy button")
+	window.show_for_state(state)
+	if buy_button != null:
+		_expect(not buy_button.is_queued_for_deletion(), "unchanged inventory refresh should keep the active buy button alive")
+		buy_button.pressed.emit()
+	_expect_eq(emitted_actions.size(), 1, "shop buy button should emit one action when pressed")
+	if emitted_actions.size() > 0:
+		_expect_eq(emitted_actions[0], "buy_shop_item", "shop buy button should emit the buy action")
+
+	var disabled_state := state.duplicate(true)
+	disabled_state["categories"][0]["items"][0]["enabled"] = false
+	disabled_state["categories"][0]["items"][0]["tooltip"] = LocaleServiceScript.t("player_disabled.not_enough_money_price") % 18
+	window.show_for_state(disabled_state)
+	_expect(_find_label_by_text(window, LocaleServiceScript.t("player_disabled.not_enough_money_price") % 18) != null,
+			"disabled shop items should show the unavailable reason in the window")
+
+	return _current_error
+
 func _test_player_action_buttons_and_manual_actions() -> String:
 	var world: World = _new_world()
 	world.minutes_per_tick = 10
@@ -1437,10 +1504,11 @@ func _test_player_action_buttons_and_manual_actions() -> String:
 	interaction.selection_state_controller = selection
 	interaction._refresh_player_home_marker()
 	var home_marker := home.get_node_or_null("PlayerHomeMarker") as Label3D
-	_expect(home_marker != null and home_marker.text.find("ZUHAUSE") != -1,
+	_expect(home_marker != null and home_marker.text == LocaleServiceScript.t("interaction.home_marker"),
 			"rented player home should get a visible home marker")
 	var home_state := player.get_player_action_ui_state(world)
-	_expect_eq(_player_ui_button_text(home_state, "quit_home"), "Wohnung kuendigen", "home UI should expose explicit lease cancellation")
+	_expect_eq(_player_ui_button_text(home_state, "quit_home"), LocaleServiceScript.t("action.quit_home"),
+			"home UI should expose explicit lease cancellation")
 	_expect(_player_ui_button_enabled(home_state, "eat"), "home UI should expose an enabled eat button")
 	_expect(_player_ui_button_enabled(home_state, "sleep"), "home UI should expose an enabled sleep button")
 	_expect(_player_ui_button_enabled(home_state, "relax"), "home UI should expose an enabled relax button")
@@ -1471,7 +1539,8 @@ func _test_player_action_buttons_and_manual_actions() -> String:
 	_expect(player.job == null, "entering a workplace must not assign any job")
 	var work_state := player.get_player_action_ui_state(world)
 	_expect(_player_ui_button_enabled(work_state, "apply_work"), "workplace UI should expose an enabled apply button")
-	_expect_eq(_player_ui_button_text(work_state, "apply_work"), "Bewerben", "first workplace action should be Bewerben")
+	_expect_eq(_player_ui_button_text(work_state, "apply_work"), LocaleServiceScript.t("action.apply_work"),
+			"first workplace action should use the localized apply label")
 	_expect(not _player_ui_button_present(work_state, "work"), "work must not appear before the player is accepted")
 	_expect(not _player_ui_button_present(work_state, "quit_job"), "quit must not appear before the player is employed")
 	_expect(player.player_apply_for_work(world), "apply button action should accept and hire the player")
@@ -1479,7 +1548,8 @@ func _test_player_action_buttons_and_manual_actions() -> String:
 	_expect(player.job != null and player.job.workplace == workplace, "accepted application should assign the workplace job")
 	var accepted_state := player.get_player_action_ui_state(world)
 	_expect(_player_ui_button_enabled(accepted_state, "work"), "accepted workplace UI should expose an enabled work button")
-	_expect_eq(_player_ui_button_text(accepted_state, "work"), "Arbeiten", "accepted workplace action should be Arbeiten")
+	_expect_eq(_player_ui_button_text(accepted_state, "work"), LocaleServiceScript.t("action.work"),
+			"accepted workplace action should use the localized work label")
 	_expect(not _player_ui_button_present(accepted_state, "apply_work"), "apply must disappear after acceptance")
 	_expect(_player_ui_button_enabled(accepted_state, "quit_job"), "quit should appear once the player is employed")
 	var worked_before := player.work_minutes_today
@@ -1600,7 +1670,7 @@ func _test_player_home_move_quit_and_info() -> String:
 
 	_expect(player.player_enter_building(second_home, world), "player should inspect second home")
 	var move_state := player.get_player_action_ui_state(world)
-	_expect_eq(_player_ui_button_text(move_state, "rent_home"), "Umziehen",
+	_expect_eq(_player_ui_button_text(move_state, "rent_home"), LocaleServiceScript.t("action.move_home"),
 			"second residential should offer moving instead of first rental")
 	_expect(player.player_rent_home(world), "player should move to second home")
 	_expect_eq(player.home, second_home, "move should replace the player home")
@@ -2249,6 +2319,24 @@ func _expect_eq(actual, expected, message: String) -> void:
 	if actual == expected or _current_error != "":
 		return
 	_current_error = "%s | expected=%s actual=%s" % [message, str(expected), str(actual)]
+
+func _find_button_by_text(root: Node, text: String) -> Button:
+	if root is Button and (root as Button).text == text:
+		return root as Button
+	for child in root.get_children():
+		var found := _find_button_by_text(child, text)
+		if found != null:
+			return found
+	return null
+
+func _find_label_by_text(root: Node, text: String) -> Label:
+	if root is Label and (root as Label).text == text:
+		return root as Label
+	for child in root.get_children():
+		var found := _find_label_by_text(child, text)
+		if found != null:
+			return found
+	return null
 
 func _player_ui_button_enabled(ui_state: Dictionary, action_id: String) -> bool:
 	var buttons: Array = ui_state.get("buttons", [])

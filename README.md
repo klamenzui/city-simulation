@@ -258,6 +258,7 @@ Lokale KI-Runtime:
 
 - `Simulation/AI/LocalDialogueRuntimeService.gd`: lokale Ollama-Anbindung mit optionalem Backend-Start, Readiness-Probe, Warmup, Queue und Template-Fallback
 - `Simulation/Conversation/CitizenConversationManager.gd`: haengt materialisierte NPC-Gespraeche an die Runtime und legt generierte Zeilen im aktiven Conversation-State ab
+- `AI_DIALOGUE.md`: kompakte Doku zum Player-NPC-Dialog mit Ollama, Fallbacks, Prompt-Grounding und Headless-Intent-Tests
 - `AI/llama`: bevorzugter projektlokaler Runtime-Ordner fuer `ollama.exe`
 - `AI/models`: projektlokaler Modellordner ueber `OLLAMA_MODELS`
 - `AI/runtime`: Runtime- und Setup-Artefakte

@@ -6,6 +6,7 @@ class_name EconomyOverviewController
 ## global 3D selection and debug panel stay in sync.
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 
 var world: World = null
 var panel: PanelContainer = null
@@ -107,31 +108,31 @@ func _refresh_city_label() -> void:
 	var profit := income_today - expenses_today
 
 	var lines: PackedStringArray = []
-	lines.append("[b]STADT[/b]")
+	lines.append(LocaleServiceScript.t("overview.eco_city"))
 	lines.append("")
-	lines.append("[color=#76c68f]EINNAHMEN heute[/color]")
-	lines.append("  Aller Gebäude: %d EUR" % income_today)
-	lines.append("  davon Steuern: %d EUR%s" % [
+	lines.append(LocaleServiceScript.t("overview.eco_income_today"))
+	lines.append(LocaleServiceScript.t("overview.eco_all_buildings") % income_today)
+	lines.append(LocaleServiceScript.t("overview.eco_taxes") % [
 		taxes_today,
-		" (offen: %d)" % taxes_unpaid if taxes_unpaid > 0 else ""
+		LocaleServiceScript.t("overview.eco_open_suffix") % taxes_unpaid if taxes_unpaid > 0 else ""
 	])
 	lines.append("")
-	lines.append("[color=#d88c57]AUSGABEN heute[/color]")
-	lines.append("  Löhne: %d EUR%s" % [
+	lines.append(LocaleServiceScript.t("overview.eco_expenses_today"))
+	lines.append(LocaleServiceScript.t("overview.eco_wages") % [
 		wages_today,
-		" (offen: %d)" % wages_unpaid if wages_unpaid > 0 else ""
+		LocaleServiceScript.t("overview.eco_open_suffix") % wages_unpaid if wages_unpaid > 0 else ""
 	])
-	lines.append("  Wartung: %d EUR" % maintenance_today)
-	lines.append("  Betrieb: %d EUR" % operating_today)
-	lines.append("  Förderung gezahlt: %d / %d EUR" % [funding_today, funding_requested])
-	lines.append("  Summe Ausgaben: %d EUR" % expenses_today)
+	lines.append(LocaleServiceScript.t("overview.eco_maintenance") % maintenance_today)
+	lines.append(LocaleServiceScript.t("overview.eco_operating") % operating_today)
+	lines.append(LocaleServiceScript.t("overview.eco_funding_paid") % [funding_today, funding_requested])
+	lines.append(LocaleServiceScript.t("overview.eco_expenses_sum") % expenses_today)
 	lines.append("")
 	var profit_color := "#76c68f" if profit > 0 else ("#d95c5c" if profit < 0 else "#909090")
-	lines.append("[b]Tagesbilanz: [color=%s]%+d EUR[/color][/b]" % [profit_color, profit])
+	lines.append(LocaleServiceScript.t("overview.eco_day_balance") % [profit_color, profit])
 	lines.append("")
-	lines.append("[b]Kassen[/b]")
-	lines.append("  City Hall Cash: %d EUR" % city_cash)
-	lines.append("  Reserve: %d EUR" % city_reserve)
+	lines.append(LocaleServiceScript.t("overview.eco_treasuries"))
+	lines.append(LocaleServiceScript.t("overview.eco_cityhall_cash") % city_cash)
+	lines.append(LocaleServiceScript.t("overview.eco_reserve") % city_reserve)
 
 	city_label.clear()
 	city_label.append_text("\n".join(lines))
@@ -148,7 +149,7 @@ func _refresh_building_list() -> void:
 	)
 
 	var lines: PackedStringArray = []
-	lines.append("[b]GEBÄUDE-GRUPPEN[/b] (Klick für Details)")
+	lines.append(LocaleServiceScript.t("overview.eco_groups_header"))
 	lines.append("")
 	for entry in entries:
 		lines.append(_format_building_list_line(entry))
@@ -180,12 +181,12 @@ func _refresh_building_detail() -> void:
 		return
 	if _selected_detail_group_key.is_empty():
 		building_detail_label.clear()
-		building_detail_label.append_text("[color=#909090]Wähle ein Gebäude aus der Liste...[/color]")
+		building_detail_label.append_text(LocaleServiceScript.t("overview.eco_pick_building"))
 		return
 	var group := _get_building_group_by_key(_selected_detail_group_key)
 	if group.is_empty():
 		building_detail_label.clear()
-		building_detail_label.append_text("[color=#909090](Gebäude nicht mehr verfügbar)[/color]")
+		building_detail_label.append_text(LocaleServiceScript.t("overview.eco_building_gone"))
 		return
 
 	var profit := int(group.get("profit", 0))
@@ -197,20 +198,20 @@ func _refresh_building_detail() -> void:
 	lines.append("[b]%s%s[/b]" % [_escape(str(group.get("name", ""))), count_text])
 	lines.append("[color=#909090]%s[/color]" % _escape(str(group.get("type", ""))))
 	lines.append("")
-	lines.append("[color=#76c68f]Einnahmen heute[/color]: %d EUR" % int(group.get("income", 0)))
-	lines.append("[color=#d88c57]Ausgaben heute[/color]: %d EUR" % int(group.get("expenses", 0)))
-	lines.append("[b]Gewinn: [color=%s]%+d EUR[/color][/b]" % [profit_color, profit])
+	lines.append(LocaleServiceScript.t("overview.eco_income_detail") % int(group.get("income", 0)))
+	lines.append(LocaleServiceScript.t("overview.eco_expenses_detail") % int(group.get("expenses", 0)))
+	lines.append(LocaleServiceScript.t("overview.eco_profit") % [profit_color, profit])
 	lines.append("")
-	lines.append("[b]Aufschluesselung[/b]")
-	lines.append("  Löhne: %d / %d offen" % [int(group.get("wages", 0)), int(group.get("wages_unpaid", 0))])
-	lines.append("  Steuern: %d / %d offen" % [int(group.get("taxes", 0)), int(group.get("taxes_unpaid", 0))])
-	lines.append("  Wartung: %d / %d offen" % [int(group.get("maintenance", 0)), int(group.get("maintenance_unpaid", 0))])
-	lines.append("  Betrieb: %d / %d offen" % [int(group.get("operating", 0)), int(group.get("operating_unpaid", 0))])
+	lines.append(LocaleServiceScript.t("overview.eco_breakdown"))
+	lines.append(LocaleServiceScript.t("overview.eco_wages_open") % [int(group.get("wages", 0)), int(group.get("wages_unpaid", 0))])
+	lines.append(LocaleServiceScript.t("overview.eco_taxes_open") % [int(group.get("taxes", 0)), int(group.get("taxes_unpaid", 0))])
+	lines.append(LocaleServiceScript.t("overview.eco_maintenance_open") % [int(group.get("maintenance", 0)), int(group.get("maintenance_unpaid", 0))])
+	lines.append(LocaleServiceScript.t("overview.eco_operating_open") % [int(group.get("operating", 0)), int(group.get("operating_unpaid", 0))])
 	if int(group.get("funding_requested", 0)) > 0:
-		lines.append("  Förderung: %d / %d EUR" % [int(group.get("funding", 0)), int(group.get("funding_requested", 0))])
+		lines.append(LocaleServiceScript.t("overview.eco_funding_detail") % [int(group.get("funding", 0)), int(group.get("funding_requested", 0))])
 	lines.append("")
-	lines.append("[b]Bilanz gesamt[/b]: %d EUR" % int(group.get("balance", 0)))
-	lines.append("[b]Status[/b]: %s" % _escape(_format_state_counts(group.get("state_counts", {}))))
+	lines.append(LocaleServiceScript.t("overview.eco_balance_total") % int(group.get("balance", 0)))
+	lines.append(LocaleServiceScript.t("overview.eco_status") % _escape(_format_state_counts(group.get("state_counts", {}))))
 
 	building_detail_label.clear()
 	building_detail_label.append_text("\n".join(lines))

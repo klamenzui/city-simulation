@@ -2,6 +2,7 @@ extends RefCounted
 class_name BuildingOverviewController
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 
 var world: World = null
 var panel: PanelContainer = null
@@ -96,7 +97,7 @@ func _refresh_building_overview() -> void:
 			active_count += 1
 
 	var lines: PackedStringArray = []
-	lines.append("[b]Gebäude[/b] %d aktiv / %d gesamt" % [active_count, entries.size()])
+	lines.append(LocaleServiceScript.t("overview.buildings_header") % [active_count, entries.size()])
 	lines.append("")
 	for entry in entries:
 		lines.append(str(entry.get("line", "")))
@@ -116,10 +117,10 @@ func _format_building_overview_line(building: Building, status_key: String, acti
 	# education it expects. Required-education comes from get_required_education_level().
 	var detail_parts: Array[String] = ["%s | %s" % [building.get_display_name(), status_text]]
 	if int(building.job_capacity) > 0:
-		var staff_text := "Mitarb. %d/%d" % [building.workers.size(), maxi(int(building.job_capacity), 0)]
+		var staff_text := LocaleServiceScript.t("overview.staff") % [building.workers.size(), maxi(int(building.job_capacity), 0)]
 		var req_edu := building.get_required_education_level()
 		if req_edu > 0:
-			staff_text += " . Edu %d" % req_edu
+			staff_text += LocaleServiceScript.t("overview.edu_suffix") % req_edu
 		detail_parts.append(staff_text)
 	var inner := "[color=%s]%s[/color]  %s  (%d EUR)" % [
 		color,

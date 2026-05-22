@@ -9,6 +9,8 @@ const RESOURCES := [
 	"res://Actions/GoToBuildingAction.gd",
 	"res://Simulation/World.gd",
 	"res://Simulation/Config/BalanceConfig.gd",
+	"res://Simulation/Localization/LocaleService.gd",
+	"res://Simulation/UI/MainMenuController.gd",
 	"res://Simulation/Bootstrap/NavigationSetup.gd",
 	"res://Simulation/Bootstrap/SceneRuntimeController.gd",
 	"res://Simulation/Camera/CityBuilderCamera.gd",
@@ -36,6 +38,7 @@ const RESOURCES := [
 	"res://tools/codex_multiplayer_two_process_test.gd",
 	"res://tools/codex_runtime_lod_conversation_test.gd",
 	"res://tools/codex_dialogue_probe.gd",
+	"res://tools/codex_locale_test.gd",
 ]
 
 const JSON_CONFIGS := [

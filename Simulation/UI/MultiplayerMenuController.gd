@@ -11,6 +11,7 @@ class_name MultiplayerMenuController
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 const LaunchOptionsScript = preload("res://Simulation/Multiplayer/shared/MultiplayerLaunchOptions.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 const MAX_UI_CLIENTS := LaunchOptionsScript.MAX_CLIENTS
 
 var owner_node: Node = null
@@ -90,14 +91,14 @@ func _build_menu() -> void:
 	panel.add_child(vbox)
 
 	var title := Label.new()
-	title.text = "Multiplayer"
+	title.text = LocaleServiceScript.t("mp.title")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_HEADING)
 	title.add_theme_color_override("font_color", UiThemeScript.ACCENT)
 	vbox.add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "Modus wählen — Host besitzt Welt, Zeit, Wirtschaft und Citizens."
+	subtitle.text = LocaleServiceScript.t("mp.subtitle")
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	subtitle.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
@@ -108,7 +109,7 @@ func _build_menu() -> void:
 
 	# --- Singleplayer / offline ------------------------------------------
 	var single_btn := Button.new()
-	single_btn.text = "Singleplayer (Offline)"
+	single_btn.text = LocaleServiceScript.t("mp.singleplayer")
 	single_btn.custom_minimum_size = Vector2(0, 38)
 	single_btn.pressed.connect(Callable(self, "_on_singleplayer_pressed"))
 	vbox.add_child(single_btn)
@@ -117,19 +118,19 @@ func _build_menu() -> void:
 	vbox.add_child(_make_separator())
 
 	# --- Host ------------------------------------------------------------
-	vbox.add_child(_make_section_label("Hosten"))
+	vbox.add_child(_make_section_label(LocaleServiceScript.t("mp.section_host")))
 	var host_row := HBoxContainer.new()
 	host_row.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
 	vbox.add_child(host_row)
-	host_row.add_child(_make_field_label("Port"))
+	host_row.add_child(_make_field_label(LocaleServiceScript.t("mp.field_port")))
 	_host_port_edit = _make_line_edit(str(LaunchOptionsScript.DEFAULT_PORT), 90)
 	host_row.add_child(_host_port_edit)
-	host_row.add_child(_make_field_label("Max. Clients"))
+	host_row.add_child(_make_field_label(LocaleServiceScript.t("mp.field_max_clients")))
 	_host_max_edit = _make_line_edit(str(LaunchOptionsScript.DEFAULT_MAX_CLIENTS), 60)
 	host_row.add_child(_host_max_edit)
 
 	var host_btn := Button.new()
-	host_btn.text = "Spiel hosten"
+	host_btn.text = LocaleServiceScript.t("mp.button_host")
 	host_btn.custom_minimum_size = Vector2(0, 38)
 	host_btn.pressed.connect(Callable(self, "_on_host_pressed"))
 	vbox.add_child(host_btn)
@@ -139,19 +140,19 @@ func _build_menu() -> void:
 	vbox.add_child(_make_separator())
 
 	# --- Join ------------------------------------------------------------
-	vbox.add_child(_make_section_label("Beitreten"))
+	vbox.add_child(_make_section_label(LocaleServiceScript.t("mp.section_join")))
 	var join_row := HBoxContainer.new()
 	join_row.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
 	vbox.add_child(join_row)
-	join_row.add_child(_make_field_label("Adresse"))
+	join_row.add_child(_make_field_label(LocaleServiceScript.t("mp.field_address")))
 	_join_address_edit = _make_line_edit(LaunchOptionsScript.DEFAULT_ADDRESS, 150)
 	join_row.add_child(_join_address_edit)
-	join_row.add_child(_make_field_label("Port"))
+	join_row.add_child(_make_field_label(LocaleServiceScript.t("mp.field_port")))
 	_join_port_edit = _make_line_edit(str(LaunchOptionsScript.DEFAULT_PORT), 90)
 	join_row.add_child(_join_port_edit)
 
 	var join_btn := Button.new()
-	join_btn.text = "Spiel beitreten"
+	join_btn.text = LocaleServiceScript.t("mp.button_join")
 	join_btn.custom_minimum_size = Vector2(0, 38)
 	join_btn.pressed.connect(Callable(self, "_on_join_pressed"))
 	vbox.add_child(join_btn)
@@ -159,7 +160,7 @@ func _build_menu() -> void:
 	UiThemeScript.apply_accent_state(join_btn, true)
 
 	_cancel_join_button = Button.new()
-	_cancel_join_button.text = "Verbindung abbrechen"
+	_cancel_join_button.text = LocaleServiceScript.t("mp.button_cancel_join")
 	_cancel_join_button.custom_minimum_size = Vector2(0, 34)
 	_cancel_join_button.visible = false
 	_cancel_join_button.pressed.connect(Callable(self, "_on_cancel_join_pressed"))
@@ -170,14 +171,14 @@ func _build_menu() -> void:
 	# "Back" only makes sense when the parent provided a return hook.
 	if _on_back.is_valid():
 		var back_btn := Button.new()
-		back_btn.text = "Zurück zum Hauptmenü"
+		back_btn.text = LocaleServiceScript.t("mp.button_back")
 		back_btn.custom_minimum_size = Vector2(0, 34)
 		back_btn.pressed.connect(Callable(self, "_on_back_pressed"))
 		vbox.add_child(back_btn)
 		_buttons.append(back_btn)
 
 	_status_label = Label.new()
-	_status_label.text = "Bereit."
+	_status_label.text = LocaleServiceScript.t("mp.status_ready")
 	_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status_label.add_theme_color_override("font_color", UiThemeScript.TEXT_SECONDARY)
@@ -194,18 +195,18 @@ func _on_singleplayer_pressed() -> void:
 func _on_host_pressed() -> void:
 	if _started or session == null:
 		return
-	var host_port := _read_port(_host_port_edit.text if _host_port_edit != null else "", "Host-Port")
+	var host_port := _read_port(_host_port_edit.text if _host_port_edit != null else "", LocaleServiceScript.t("mp.label_host_port"))
 	if host_port < 0:
 		return
 	var host_max := _read_max_clients(_host_max_edit.text if _host_max_edit != null else "")
 	if host_max < 0:
 		return
 	_set_buttons_disabled(true)
-	_set_status("Starte Host auf Port %d …" % host_port)
+	_set_status(LocaleServiceScript.t("mp.status_hosting") % host_port)
 	var err: int = session.host_game(host_port, host_max)
 	if err != OK:
 		_set_buttons_disabled(false)
-		_set_status(_status_detail("Host fehlgeschlagen."))
+		_set_status(_status_detail(LocaleServiceScript.t("mp.status_host_failed")))
 		return
 	_finish()
 
@@ -213,15 +214,15 @@ func _on_join_pressed() -> void:
 	if _started or session == null:
 		return
 	var join_address := _parse_address(_join_address_edit.text if _join_address_edit != null else "")
-	var join_port := _read_port(_join_port_edit.text if _join_port_edit != null else "", "Join-Port")
+	var join_port := _read_port(_join_port_edit.text if _join_port_edit != null else "", LocaleServiceScript.t("mp.label_join_port"))
 	if join_port < 0:
 		return
 	_set_join_pending(true)
-	_set_status("Verbinde zu %s:%d …" % [join_address, join_port])
+	_set_status(LocaleServiceScript.t("mp.status_connecting") % [join_address, join_port])
 	var err: int = session.join_game(join_address, join_port)
 	if err != OK:
 		_set_join_pending(false)
-		_set_status(_status_detail("Verbindung fehlgeschlagen."))
+		_set_status(_status_detail(LocaleServiceScript.t("mp.status_join_failed")))
 		return
 
 func _on_cancel_join_pressed() -> void:
@@ -229,7 +230,7 @@ func _on_cancel_join_pressed() -> void:
 		return
 	session.start_offline()
 	_set_join_pending(false)
-	_set_status("Verbindung abgebrochen.")
+	_set_status(LocaleServiceScript.t("mp.status_join_cancelled"))
 
 # Hands control back to the parent menu. We do NOT mutate session state here:
 # the menu was only browsed, no host/join was committed, so leaving the
@@ -293,22 +294,22 @@ func _set_join_pending(is_pending: bool) -> void:
 func _read_port(raw: String, label: String) -> int:
 	var trimmed := raw.strip_edges()
 	if not trimmed.is_valid_int():
-		_set_status("%s muss eine Zahl zwischen 1024 und 65535 sein." % label)
+		_set_status(LocaleServiceScript.t("mp.error_port_number") % label)
 		return -1
 	var value := int(trimmed)
 	if value < 1024 or value > 65535:
-		_set_status("%s muss zwischen 1024 und 65535 liegen." % label)
+		_set_status(LocaleServiceScript.t("mp.error_port_range") % label)
 		return -1
 	return value
 
 func _read_max_clients(raw: String) -> int:
 	var trimmed := raw.strip_edges()
 	if not trimmed.is_valid_int():
-		_set_status("Max. Clients muss eine Zahl zwischen 1 und %d sein." % MAX_UI_CLIENTS)
+		_set_status(LocaleServiceScript.t("mp.error_max_clients_number") % MAX_UI_CLIENTS)
 		return -1
 	var value := int(trimmed)
 	if value < 1 or value > MAX_UI_CLIENTS:
-		_set_status("Max. Clients muss zwischen 1 und %d liegen." % MAX_UI_CLIENTS)
+		_set_status(LocaleServiceScript.t("mp.error_max_clients_range") % MAX_UI_CLIENTS)
 		return -1
 	return value
 

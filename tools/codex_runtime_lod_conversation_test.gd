@@ -3,6 +3,7 @@ extends SceneTree
 const CitizenScript = preload("res://Entities/Citizens/New/Citizen.gd")
 const ResidentialBuildingScript = preload("res://Entities/Buildings/ResidentialBuilding.gd")
 const RestaurantScript = preload("res://Entities/Buildings/Restaurant.gd")
+const ParkScript = preload("res://Entities/Buildings/Park.gd")
 const WorldScript = preload("res://Simulation/World.gd")
 const ActionScript = preload("res://Actions/Action.gd")
 const CitizenSimulationLodControllerScript = preload("res://Simulation/Citizens/CitizenSimulationLodController.gd")
@@ -99,12 +100,16 @@ func _run_all_tests() -> void:
 		"world_district_index_supports_lod_same_district_relevance",
 		"materialized_conversation_gets_template_lines_from_dialogue_runtime",
 		"player_dialog_session_gets_template_reply",
+		"player_dialog_sessions_get_unique_ids_across_restarts",
+		"player_dialog_invitation_sentence_parser_cases",
 		"player_dialog_invitation_starts_shared_restaurant_visit",
+		"player_dialog_invitation_starts_shared_park_visit_from_player_wording",
 		"player_dialog_ui_state_switches_to_active_session",
 		"dialog_interact_starts_nearest_player_dialog_and_faces_citizen",
 		"dialog_button_uses_offline_keyboard_camera_target",
 		"player_dialog_queue_full_uses_template_reply",
 		"player_dialog_prioritizes_over_warmup_queue",
+		"player_dialog_forget_session_removes_stale_jobs",
 		"player_dialog_locks_player_input",
 		"player_dialog_pauses_citizen_action_while_active",
 		"player_dialog_farewell_auto_closes",
@@ -169,8 +174,14 @@ func _run_test(test_name: String) -> String:
 			return _test_materialized_conversation_gets_template_lines_from_dialogue_runtime()
 		"player_dialog_session_gets_template_reply":
 			return _test_player_dialog_session_gets_template_reply()
+		"player_dialog_sessions_get_unique_ids_across_restarts":
+			return _test_player_dialog_sessions_get_unique_ids_across_restarts()
+		"player_dialog_invitation_sentence_parser_cases":
+			return _test_player_dialog_invitation_sentence_parser_cases()
 		"player_dialog_invitation_starts_shared_restaurant_visit":
 			return _test_player_dialog_invitation_starts_shared_restaurant_visit()
+		"player_dialog_invitation_starts_shared_park_visit_from_player_wording":
+			return _test_player_dialog_invitation_starts_shared_park_visit_from_player_wording()
 		"player_dialog_ui_state_switches_to_active_session":
 			return _test_player_dialog_ui_state_switches_to_active_session()
 		"dialog_interact_starts_nearest_player_dialog_and_faces_citizen":
@@ -181,6 +192,8 @@ func _run_test(test_name: String) -> String:
 			return _test_player_dialog_queue_full_uses_template_reply()
 		"player_dialog_prioritizes_over_warmup_queue":
 			return _test_player_dialog_prioritizes_over_warmup_queue()
+		"player_dialog_forget_session_removes_stale_jobs":
+			return _test_player_dialog_forget_session_removes_stale_jobs()
 		"player_dialog_locks_player_input":
 			return _test_player_dialog_locks_player_input()
 		"player_dialog_pauses_citizen_action_while_active":
@@ -709,6 +722,105 @@ func _test_player_dialog_session_gets_template_reply() -> String:
 	_free_world(world)
 	return _current_error
 
+func _test_player_dialog_sessions_get_unique_ids_across_restarts() -> String:
+	var world := _new_world()
+	var camera := _new_camera(Vector3(0.0, 10.0, 14.0), Vector3.ZERO)
+	var selection := MockSelectionStateController.new()
+	var player_avatar := _new_citizen("Player", Vector3(0.0, 0.0, 0.0))
+	var citizen := _new_citizen("Kevin", Vector3(1.5, 0.0, 0.0))
+	world.register_citizen(player_avatar)
+	world.register_citizen(citizen)
+	selection.player_avatar = player_avatar
+	selection.player_control_active = true
+	selection.controlled_citizen = player_avatar
+	selection.selected_citizen = citizen
+
+	var dialogue_runtime = LocalDialogueRuntimeServiceScript.new()
+	_harness_root.add_child(dialogue_runtime)
+	dialogue_runtime.setup({
+		"runtime": {
+			"force_template_mode": true
+		},
+		"startup": {
+			"auto_start_on_game_boot": false,
+			"disabled_in_headless": false
+		}
+	}, false)
+
+	var manager = CitizenConversationManagerScript.new()
+	manager.setup(world, camera, selection)
+	manager.bind_dialogue_runtime(dialogue_runtime)
+	manager.update(1.0)
+
+	var first_started := manager.begin_player_dialog(citizen)
+	var first_session_id := str(first_started.get("session_id", ""))
+	var first_session := manager.submit_player_dialog_message(citizen, "Hallo")
+	var first_messages: Array = first_session.get("messages", [])
+	manager.close_player_dialog(citizen, "test_closed")
+	manager.update(1.0)
+
+	var second_started := manager.begin_player_dialog(citizen)
+	var second_session_id := str(second_started.get("session_id", ""))
+	var second_session := manager.submit_player_dialog_message(citizen, "Hallo")
+	var second_messages: Array = second_session.get("messages", [])
+
+	_expect(not first_session_id.is_empty(), "first player dialog session must carry a non-empty session_id")
+	_expect(not second_session_id.is_empty(), "restarted player dialog session must carry a non-empty session_id")
+	_expect(first_session_id != second_session_id, "restarting a dialog with the same citizen must yield a fresh session_id so cached turn replies cannot collide across sessions")
+	_expect_eq(first_messages.size(), 2, "first session should append its own citizen reply")
+	_expect_eq(second_messages.size(), 2, "restarted session should produce a fresh reply, not a cached carryover")
+
+	_free_world(world)
+	return _current_error
+
+func _test_player_dialog_invitation_sentence_parser_cases() -> String:
+	var manager = CitizenConversationManagerScript.new()
+	var cases := [
+		{
+			"text": "ne wenns im Park gehen willst du mir mir gehen?",
+			"activity": "park",
+		},
+		{
+			"text": "Willst du mit mir in den Park gehen?",
+			"activity": "park",
+		},
+		{
+			"text": "Kommst du mit in den Park?",
+			"activity": "park",
+		},
+		{
+			"text": "Lass uns essen gehen.",
+			"activity": "restaurant",
+		},
+		{
+			"text": "Komm mit ins Restaurant.",
+			"activity": "restaurant",
+		},
+		{
+			"text": "Wollen wir ins Kino gehen?",
+			"activity": "cinema",
+		},
+	]
+	for case_var in cases:
+		var test_case := case_var as Dictionary
+		var text := str(test_case.get("text", ""))
+		var lower_text := text.to_lower()
+		_expect(manager._is_social_invitation_phrase(lower_text),
+			"dialog parser should recognize invitation sentence: %s" % text)
+		_expect_eq(manager._infer_social_invitation_activity(lower_text), str(test_case.get("activity", "")),
+			"dialog parser should infer the requested activity from: %s" % text)
+	var negative_cases := [
+		"Willst du mir sagen, wo der Park ist?",
+		"Ich war heute im Park.",
+		"Willst du mit mir ueber den Park reden?",
+		"Willst du im Kino arbeiten?",
+		"Wo ist das Restaurant?"
+	]
+	for text in negative_cases:
+		_expect(not manager._is_social_invitation_phrase(str(text).to_lower()),
+			"dialog parser should not turn non-invitation wording into a shared action: %s" % text)
+	return _current_error
+
 func _test_player_dialog_invitation_starts_shared_restaurant_visit() -> String:
 	var world := _new_world()
 	var camera := _new_camera(Vector3(0.0, 10.0, 14.0), Vector3.ZERO)
@@ -757,6 +869,61 @@ func _test_player_dialog_invitation_starts_shared_restaurant_visit() -> String:
 		"player social visit should tick as an explicit player action")
 	_expect(float(session.get("auto_close_due_at_sec", -1.0)) > 0.0,
 		"accepted invitation should close the dialog after the acknowledgement")
+
+	_free_world(world)
+	return _current_error
+
+func _test_player_dialog_invitation_starts_shared_park_visit_from_player_wording() -> String:
+	var world := _new_world()
+	var camera := _new_camera(Vector3(0.0, 10.0, 14.0), Vector3.ZERO)
+	var restaurant := _new_restaurant("Coffee Place", Vector3(3.0, 0.0, 0.0))
+	restaurant.job_capacity = maxi(restaurant.job_capacity, 1)
+	restaurant.define_stock_item("meal", 6, restaurant.meal_price, 6, 2, "food")
+	world.register_building(restaurant)
+	var worker := _new_citizen("Coffee Place Worker", Vector3(3.0, 0.0, 0.0))
+	worker.job = Job.new()
+	worker.job.workplace = restaurant
+	_expect(restaurant.try_hire(worker), "restaurant distractor should be usable before park invitation test")
+	var park := _new_park("Shared Park", Vector3(5.0, 0.0, 0.0))
+	world.register_building(park)
+
+	var selection := MockSelectionStateController.new()
+	var player_avatar := _new_citizen("Player", Vector3(0.0, 0.0, 0.0))
+	var citizen := _new_citizen("Lea Schmidt", Vector3(1.5, 0.0, 0.0))
+	player_avatar.wallet.balance = 100
+	citizen.wallet.balance = 100
+	citizen.favorite_restaurant = restaurant
+	world.register_citizen(player_avatar)
+	world.register_citizen(citizen)
+	selection.player_avatar = player_avatar
+	selection.player_control_active = true
+	selection.controlled_citizen = player_avatar
+	selection.selected_citizen = citizen
+
+	var manager = CitizenConversationManagerScript.new()
+	manager.setup(world, camera, selection)
+	manager.begin_player_dialog(citizen)
+	var session := manager.submit_player_dialog_message(citizen, "ne wenns im Park gehen willst du mir mir gehen?")
+	_expect(player_avatar.current_action is SocialVisitActionScript,
+		"park wording should start a social visit action for the player")
+	_expect(citizen.current_action is SocialVisitActionScript,
+		"park wording should start a social visit action for the NPC")
+	if player_avatar.current_action is SocialVisitActionScript:
+		var player_visit: Variant = player_avatar.current_action
+		_expect_eq(player_visit.call("get_target_building"), park,
+			"player social visit should target the requested park, not the previous food context")
+		_expect_eq(player_visit.call("get_activity"), "park",
+			"player social visit should be a park activity")
+	if citizen.current_action is SocialVisitActionScript:
+		var citizen_visit: Variant = citizen.current_action
+		_expect_eq(citizen_visit.call("get_target_building"), park,
+			"NPC social visit should target the same requested park")
+	var messages: Array = session.get("messages", [])
+	if not messages.is_empty() and messages[messages.size() - 1] is Dictionary:
+		var reply_text := str((messages[messages.size() - 1] as Dictionary).get("text", ""))
+		_expect(reply_text.find("Park") != -1, "park invitation acknowledgement should mention the requested park")
+		_expect(reply_text.find("Restaurant") == -1 and reply_text.find("Kaffee") == -1,
+			"park invitation acknowledgement should not drift back to restaurant or coffee")
 
 	_free_world(world)
 	return _current_error
@@ -979,6 +1146,68 @@ func _test_player_dialog_prioritizes_over_warmup_queue() -> String:
 	runtime_service.queue_free()
 	return _current_error
 
+func _test_player_dialog_forget_session_removes_stale_jobs() -> String:
+	var runtime_service = LocalDialogueRuntimeServiceScript.new()
+	_harness_root.add_child(runtime_service)
+	runtime_service.setup({
+		"runtime": {
+			"force_template_mode": false,
+			"max_queue_size": 4
+		},
+		"startup": {
+			"auto_start_on_game_boot": false,
+			"disabled_in_headless": false
+		}
+	}, false)
+	runtime_service._player_cache["player_test_s1_turn_1"] = {
+		"state": "ready",
+		"text": "stale"
+	}
+	runtime_service._pending_keys["player_test_s1_turn_1"] = true
+	runtime_service._pending_keys["player_test_s2_turn_1"] = true
+	runtime_service._job_queue = [
+		{"kind": "player_npc", "key": "player_test_s1_turn_1"},
+		{"kind": "player_npc", "key": "player_test_s2_turn_1"},
+		{"kind": "npc_npc", "key": "conv_a"}
+	]
+
+	runtime_service.forget_player_session("player_test_s1")
+	_expect(not runtime_service._player_cache.has("player_test_s1_turn_1"),
+		"forgetting a player session should remove cached replies for that session")
+	_expect(not runtime_service._pending_keys.has("player_test_s1_turn_1"),
+		"forgetting a player session should remove pending markers for that session")
+	_expect(runtime_service._pending_keys.has("player_test_s2_turn_1"),
+		"forgetting one player session should not clear another session's pending marker")
+	var has_stale_queued_job := false
+	var has_other_player_job := false
+	for job_variant in runtime_service._job_queue:
+		if job_variant is not Dictionary:
+			continue
+		var job := job_variant as Dictionary
+		var key := str(job.get("key", ""))
+		if key == "player_test_s1_turn_1":
+			has_stale_queued_job = true
+		if key == "player_test_s2_turn_1":
+			has_other_player_job = true
+	_expect(not has_stale_queued_job,
+		"forgetting a player session should remove queued jobs for that session")
+	_expect(has_other_player_job,
+		"forgetting a player session should preserve queued jobs for other sessions")
+
+	runtime_service._handle_player_job_success({
+		"kind": "player_npc",
+		"key": "player_test_s1_turn_2",
+		"model": "qwen2.5:3b",
+		"payload": {}
+	}, {
+		"response": "Hallo"
+	})
+	_expect(not runtime_service._player_cache.has("player_test_s1_turn_2"),
+		"late in-flight replies for forgotten sessions should not be cached")
+
+	runtime_service.queue_free()
+	return _current_error
+
 func _test_player_dialog_locks_player_input() -> String:
 	var world := _new_world()
 	var camera := _new_camera(Vector3(0.0, 10.0, 14.0), Vector3.ZERO)
@@ -1020,12 +1249,26 @@ func _test_player_dialog_pauses_citizen_action_while_active() -> String:
 	selection.selected_citizen = citizen
 
 	citizen.current_action = ActionScript.new(999)
+	citizen._is_travelling = true
+	citizen._global_path = PackedVector3Array([citizen.global_position, Vector3(4.0, 0.0, 0.0)])
+	citizen._path_index = 1
+	citizen.velocity = Vector3(1.0, 0.0, 0.0)
 
 	var manager = CitizenConversationManagerScript.new()
 	manager.setup(world, camera, selection)
 	manager.begin_player_dialog(citizen)
-	manager.update(1.0)
-	_expect(citizen.is_active_player_dialog_session(), "citizen should enter the active player dialog runtime state")
+	_expect(citizen.is_active_player_dialog_session(), "citizen should enter the active player dialog runtime state immediately")
+	_expect(citizen.has_active_lod_commitment(world, ["player_dialog"]), "dialog start should pin the citizen in the player dialog LOD state immediately")
+	_expect_eq(Vector2(citizen.velocity.x, citizen.velocity.z), Vector2.ZERO, "dialog start should clear horizontal movement immediately")
+	var facing_dir := player_avatar.global_position - citizen.global_position
+	facing_dir.y = 0.0
+	var expected_yaw := atan2(-facing_dir.normalized().x, -facing_dir.normalized().z)
+	_expect(abs(wrapf(citizen.rotation.y - expected_yaw, -PI, PI)) < 0.01, "citizen should face the player immediately when dialog starts")
+	var position_before_physics := citizen.global_position
+	citizen._physics_process(0.25)
+	var physics_delta := citizen.global_position - position_before_physics
+	physics_delta.y = 0.0
+	_expect(physics_delta.length() <= 0.001, "active player dialog should hold citizen position during physics")
 
 	citizen._agent.sim_tick(citizen, world)
 	_expect_eq(citizen.current_action.elapsed_minutes, 0, "active player dialog should pause autonomous action ticking for the NPC")
@@ -1178,10 +1421,10 @@ func _test_player_dialog_request_uses_json_profile_options() -> String:
 		_expect(options is Dictionary, "player dialog request should include generation options")
 		if options is Dictionary:
 			var typed_options := options as Dictionary
-			_expect_eq(int(typed_options.get("top_k", 0)), 24, "player dialog request should use the lower-latency top_k")
+			_expect_eq(int(typed_options.get("top_k", 0)), 40, "player dialog request should use the configured top_k")
 			_expect_eq(int(typed_options.get("num_ctx", 0)), 1024, "player dialog request should use the reduced context window")
-			_expect_eq(int(typed_options.get("num_predict", 0)), 40, "player dialog request should use the reduced output length")
-			_expect(abs(float(typed_options.get("temperature", 0.0)) - 0.25) < 0.001, "player dialog request should use the more stable lower temperature")
+			_expect_eq(int(typed_options.get("num_predict", 0)), 80, "player dialog request should use the configured output length")
+			_expect(abs(float(typed_options.get("temperature", 0.0)) - 0.6) < 0.001, "player dialog request should use the configured conversational temperature")
 
 	runtime_service.queue_free()
 	return _current_error
@@ -1527,6 +1770,18 @@ func _new_residential(building_name: String, spawn_position: Vector3 = Vector3.Z
 
 func _new_restaurant(building_name: String, spawn_position: Vector3 = Vector3.ZERO) -> Restaurant:
 	var building: Restaurant = RestaurantScript.new()
+	building.name = building_name
+	building.building_name = building_name
+	var entrance := Node3D.new()
+	entrance.name = "Entrance"
+	entrance.position = Vector3(0.0, 0.0, 1.1)
+	building.add_child(entrance)
+	_harness_root.add_child(building)
+	building.global_position = spawn_position
+	return building
+
+func _new_park(building_name: String, spawn_position: Vector3 = Vector3.ZERO) -> Park:
+	var building: Park = ParkScript.new()
 	building.name = building_name
 	building.building_name = building_name
 	var entrance := Node3D.new()

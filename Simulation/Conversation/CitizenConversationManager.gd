@@ -19,6 +19,7 @@ var _runtime_sec: float = 0.0
 var _active_conversations: Dictionary = {}
 var _player_dialog_sessions: Dictionary = {}
 var _player_dialog_request_to_citizen: Dictionary = {}
+var _player_dialog_session_seq: int = 0
 
 func setup(world_ref: World, camera_ref: Camera3D, selection_state_controller_ref) -> void:
 	world = world_ref
@@ -152,7 +153,7 @@ func begin_player_dialog(citizen: Citizen) -> Dictionary:
 	session["active"] = true
 	session["started_at_sec"] = float(session.get("started_at_sec", _runtime_sec))
 	_player_dialog_sessions[citizen.get_instance_id()] = session
-	_face_player_dialog_participants(citizen)
+	_apply_player_dialog_hold(citizen)
 	_refresh_player_dialog_control_lock()
 	_log_player_dialog(citizen, "Session started")
 	return session.duplicate(true)
@@ -167,6 +168,9 @@ func close_player_dialog(citizen: Citizen, reason: String = "closed") -> void:
 		var pending_request_key := str(session.get("pending_request_key", ""))
 		if not pending_request_key.is_empty():
 			_player_dialog_request_to_citizen.erase(pending_request_key)
+		var session_id := str(session.get("session_id", ""))
+		if dialogue_runtime != null and not session_id.is_empty() and dialogue_runtime.has_method("forget_player_session"):
+			dialogue_runtime.forget_player_session(session_id)
 		_log_player_dialog(citizen, "Session closed: %s" % reason)
 	_player_dialog_sessions.erase(citizen_id)
 	citizen.clear_runtime_conversation_state()
@@ -421,8 +425,7 @@ func _apply_active_player_dialog_sessions(
 			if not player_control_active or player_avatar == null or not bool(availability.get("available", false)):
 				close_player_dialog(citizen, str(availability.get("reason", "unavailable")))
 				continue
-		citizen.set_runtime_conversation_state("interactive", "Player", "player_dialog")
-		_upsert_commitment(citizen, "player_dialog", _get_int("player_npc.commitment_lock_minutes", 20))
+		_apply_player_dialog_hold(citizen)
 
 func _apply_player_dialog_social_tick(delta: float) -> void:
 	if delta <= 0.0 or world == null:
@@ -1148,9 +1151,12 @@ func _ensure_player_dialog_session(citizen: Citizen) -> Dictionary:
 	var citizen_id := citizen.get_instance_id()
 	var session_variant: Variant = _player_dialog_sessions.get(citizen_id, {})
 	if session_variant is Dictionary:
-		return (session_variant as Dictionary).duplicate(true)
+		var existing_session := session_variant as Dictionary
+		if not existing_session.is_empty():
+			return existing_session.duplicate(true)
+	_player_dialog_session_seq += 1
 	return {
-		"session_id": "player_%d" % citizen_id,
+		"session_id": "player_%d_s%d" % [citizen_id, _player_dialog_session_seq],
 		"citizen_id": citizen_id,
 		"citizen_name": citizen.citizen_name,
 		"messages": [],
@@ -1182,6 +1188,7 @@ func _build_player_dialogue_payload(citizen: Citizen, session: Dictionary) -> Di
 	var current_goal_context := _build_player_goal_context(citizen)
 	var nearby_places := _build_player_nearby_places(citizen, 2)
 	var known_places := _build_player_known_places(citizen, 4)
+	var latest_player_message := _get_latest_player_dialog_message(session)
 	return {
 		"name": citizen.citizen_name,
 		"personality": _describe_player_dialog_personality(citizen),
@@ -1210,6 +1217,7 @@ func _build_player_dialogue_payload(citizen: Citizen, session: Dictionary) -> Di
 		"known_places": known_places,
 		"nearby_places": nearby_places,
 		"job_context": _build_player_job_context(citizen),
+		"latest_player_message": latest_player_message,
 		"reply_language": _infer_player_dialog_reply_language(session),
 		"player_flagged_repetition": bool(session.get("player_flagged_repetition", false)),
 		"relationship_to_player": "direct conversation",
@@ -1217,11 +1225,25 @@ func _build_player_dialogue_payload(citizen: Citizen, session: Dictionary) -> Di
 		"last_npc_reply": str(session.get("last_npc_reply", "")),
 		"last_turns": recent_turns,
 		"grounding_rules": [
+			"Treat latest_player_message as the current request and highest priority.",
+			"If latest_player_message invites you to a specific place or activity, answer that invitation directly.",
+			"Do not substitute another activity from older turns unless you clearly refuse the current request.",
 			"You may mention the provided location, district, nearby places, and known places.",
 			"Do not invent additional landmarks, rivers, shops, buildings, or routes.",
 			"If unsure, say you are not sure instead of making something up."
 		]
 	}
+
+func _get_latest_player_dialog_message(session: Dictionary) -> String:
+	var latest := ""
+	var messages: Array = session.get("messages", []) as Array
+	for message in messages:
+		if message is not Dictionary:
+			continue
+		var entry := message as Dictionary
+		if str(entry.get("speaker", "")).to_lower() == "player":
+			latest = str(entry.get("text", "")).strip_edges()
+	return latest
 
 func _infer_player_dialog_reply_language(session: Dictionary) -> String:
 	return "german"
@@ -1259,7 +1281,13 @@ func _is_social_invitation_phrase(lower_text: String) -> bool:
 		"gehen wir",
 		"komm wir",
 		"komm, wir",
+		"komm mit",
+		"kommst du mit",
+		"gehst du mit",
+		"mit mir",
+		"mir mir",
 		"wollen wir",
+		"willst du",
 		"zusammen",
 		"let's",
 		"lets",
@@ -1267,6 +1295,33 @@ func _is_social_invitation_phrase(lower_text: String) -> bool:
 		"come with me"
 	]):
 		return false
+	if not _contains_social_invitation_activity_token(lower_text) \
+			or not _has_social_invitation_action_or_destination(lower_text):
+		return false
+	if _contains_any_dialogue_token(lower_text, [
+		"lass uns",
+		"laÃŸ uns",
+		"gehen wir",
+		"komm wir",
+		"komm, wir",
+		"komm mit",
+		"kommst du mit",
+		"gehst du mit",
+		"wollen wir",
+		"let's",
+		"lets",
+		"shall we",
+		"come with me"
+	]):
+		return true
+	return _contains_any_dialogue_token(lower_text, [
+		"willst du",
+		"mit mir",
+		"mir mir",
+		"zusammen"
+	]) and _has_social_invitation_motion_verb(lower_text)
+
+func _contains_social_invitation_activity_token(lower_text: String) -> bool:
 	return _contains_any_dialogue_token(lower_text, [
 		"gehen",
 		"essen",
@@ -1276,6 +1331,36 @@ func _is_social_invitation_phrase(lower_text: String) -> bool:
 		"film",
 		"cinema",
 		"eat"
+	])
+
+func _has_social_invitation_action_or_destination(lower_text: String) -> bool:
+	return _contains_any_dialogue_token(lower_text, [
+		"gehen",
+		"essen gehen",
+		"mitkommen",
+		"komm mit",
+		"rausgehen",
+		"spazier",
+		"in den park",
+		"im park gehen",
+		"zum park",
+		"zu dem park",
+		"ins restaurant",
+		"in das restaurant",
+		"zum restaurant",
+		"ins kino",
+		"in das kino",
+		"zum kino"
+	])
+
+func _has_social_invitation_motion_verb(lower_text: String) -> bool:
+	return _contains_any_dialogue_token(lower_text, [
+		"gehen",
+		"essen",
+		"mitkommen",
+		"komm",
+		"rausgehen",
+		"spazier"
 	])
 
 func _infer_social_invitation_activity(lower_text: String) -> String:
@@ -1905,6 +1990,19 @@ func _face_player_dialog_participants(citizen: Citizen) -> void:
 		return
 	if citizen.has_method("face_position_horizontal"):
 		citizen.face_position_horizontal(player_avatar.global_position)
+
+func _apply_player_dialog_hold(citizen: Citizen) -> void:
+	if citizen == null:
+		return
+	var player_avatar := _resolve_player_dialog_avatar()
+	if player_avatar == null or not is_instance_valid(player_avatar):
+		return
+	citizen.set_runtime_conversation_state("interactive", "Player", "player_dialog")
+	_upsert_commitment(citizen, "player_dialog", _get_int("player_npc.commitment_lock_minutes", 20))
+	if citizen.has_method("hold_for_player_dialog"):
+		citizen.hold_for_player_dialog(player_avatar.global_position)
+	else:
+		_face_player_dialog_participants(citizen)
 
 func _has_active_player_dialog_session() -> bool:
 	for session_variant in _player_dialog_sessions.values():

@@ -9,6 +9,7 @@ class_name SimulationHudController
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 const NetworkRoleScript = preload("res://Simulation/Multiplayer/shared/NetworkRole.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 
 const _SPEED_STEPS: Array[float] = [1.0, 2.0, 3.0, 4.0]
 const _HUD_STATUS_REFRESH_INTERVAL_SEC := 0.12
@@ -16,12 +17,13 @@ const _HUD_STATUS_REFRESH_INTERVAL_SEC := 0.12
 # Compact player status widget at the bottom bar. high_is_bad mirrors
 # Citizen._classify_need_severity (hunger = high-is-bad, everything else
 # low-is-bad). Severities: 0 = good, 1 = warn, 2 = crit, 3 = idle (no player).
+# Caption + title are resolved from LocaleService via the key (needs.<key>.*).
 const _PLAYER_NEED_CARDS: Array[Dictionary] = [
-	{"key": "hunger", "caption": "HUN", "title": "Hunger", "high_is_bad": true},
-	{"key": "energy", "caption": "ENE", "title": "Energie", "high_is_bad": false},
-	{"key": "fun", "caption": "FUN", "title": "Fun", "high_is_bad": false},
-	{"key": "social", "caption": "SOZ", "title": "Sozial", "high_is_bad": false},
-	{"key": "health", "caption": "GES", "title": "Gesundheit", "high_is_bad": false},
+	{"key": "hunger", "high_is_bad": true},
+	{"key": "energy", "high_is_bad": false},
+	{"key": "fun", "high_is_bad": false},
+	{"key": "social", "high_is_bad": false},
+	{"key": "health", "high_is_bad": false},
 ]
 
 var owner_node: Node = null
@@ -165,17 +167,18 @@ func _refresh_action_hint() -> void:
 		_action_hint_label.text = text
 
 func _default_action_hint() -> String:
-	return "Klick: Infos · F1–F4: Übersichten"
+	return LocaleServiceScript.t("hud.action_hint_default")
 
-func refresh_control_mode(controlled_citizen: Citizen, mode_prefix: String = "CONTROL MODE", mode_hint: String = "") -> void:
+func refresh_control_mode(controlled_citizen: Citizen, mode_prefix: String = "", mode_hint: String = "") -> void:
 	if _control_mode_panel == null or _control_mode_label == null:
 		return
 	if controlled_citizen == null or not is_instance_valid(controlled_citizen):
 		_control_mode_panel.visible = false
 		return
 	_control_mode_panel.visible = true
-	var control_hint := mode_hint if not mode_hint.is_empty() else "WASD Move | Space Jump | Esc Exit"
-	_control_mode_label.text = "%s: %s | %s" % [mode_prefix, controlled_citizen.citizen_name, control_hint]
+	var prefix := mode_prefix if not mode_prefix.is_empty() else LocaleServiceScript.t("hud.control_mode_prefix")
+	var control_hint := mode_hint if not mode_hint.is_empty() else LocaleServiceScript.t("hud.control_mode_hint")
+	_control_mode_label.text = "%s: %s | %s" % [prefix, controlled_citizen.citizen_name, control_hint]
 
 func set_player_control_visible(is_visible: bool) -> void:
 	if _player_control_button == null:
@@ -187,11 +190,11 @@ func refresh_player_control_button(is_active: bool) -> void:
 		return
 	if _is_network_client():
 		_player_control_button.disabled = true
-		_player_control_button.tooltip_text = "Clients steuern Citizens erst in Phase 2."
+		_player_control_button.tooltip_text = LocaleServiceScript.t("hud.player_control_client_disabled")
 		return
 	_player_control_button.disabled = false
 	_player_control_button.tooltip_text = ""
-	_player_control_button.text = "Exit Player" if is_active else "Control Player"
+	_player_control_button.text = LocaleServiceScript.t("hud.exit_player") if is_active else LocaleServiceScript.t("hud.control_player")
 	UiThemeScript.apply_accent_state(_player_control_button, is_active)
 
 ## Camera-mode toggle. Server/host/offline only — hidden for clients, who are
@@ -207,8 +210,8 @@ func refresh_camera_mode_button() -> void:
 	var builder := false
 	if camera_mode_manager.has_method("is_player_mode"):
 		builder = not bool(camera_mode_manager.is_player_mode())
-	_camera_mode_button.text = "Kamera: Builder" if builder else "Kamera: 3rd"
-	_camera_mode_button.tooltip_text = "Umschalten Player-3rd-Person <-> Builder-Kamera"
+	_camera_mode_button.text = LocaleServiceScript.t("hud.camera_builder") if builder else LocaleServiceScript.t("hud.camera_third")
+	_camera_mode_button.tooltip_text = LocaleServiceScript.t("hud.camera_toggle_tooltip")
 	UiThemeScript.apply_accent_state(_camera_mode_button, builder)
 
 func _on_camera_mode_button_pressed(external: Callable) -> void:
@@ -237,10 +240,10 @@ func bind_multiplayer_session(multiplayer_session_ref) -> void:
 func refresh_ai_runtime_state(ui_state: Dictionary) -> void:
 	if _ai_runtime_label == null or _ai_runtime_button == null:
 		return
-	var summary_text := "AI: Offline"
+	var summary_text := LocaleServiceScript.t("hud.ai_offline")
 	var button_visible := false
 	var button_enabled := false
-	var button_text := "Setup AI"
+	var button_text := LocaleServiceScript.t("hud.ai_setup")
 	if not ui_state.is_empty():
 		summary_text = str(ui_state.get("summary_text", summary_text))
 		button_visible = bool(ui_state.get("button_visible", false))
@@ -307,7 +310,7 @@ func _build_top_bar(pause_pressed: Callable, speed_pressed: Callable) -> void:
 
 	# Left: pause toggle.
 	_pause_button = Button.new()
-	_pause_button.text = "Pause"
+	_pause_button.text = LocaleServiceScript.t("hud.pause")
 	_pause_button.custom_minimum_size = Vector2(84, 40)
 	_pause_button.focus_mode = Control.FOCUS_NONE
 	if pause_pressed.is_valid():
@@ -317,12 +320,12 @@ func _build_top_bar(pause_pressed: Callable, speed_pressed: Callable) -> void:
 	hbox.add_child(_make_v_divider())
 
 	# Time cluster: date + clock chips, then one cycling speed button.
-	_date_label = _make_stat_chip(hbox, "DATUM", UiThemeScript.TEXT_PRIMARY, 112)
-	_clock_label = _make_stat_chip(hbox, "ZEIT", UiThemeScript.ACCENT, 62)
+	_date_label = _make_stat_chip(hbox, LocaleServiceScript.t("hud.chip_date"), UiThemeScript.TEXT_PRIMARY, 112)
+	_clock_label = _make_stat_chip(hbox, LocaleServiceScript.t("hud.chip_time"), UiThemeScript.ACCENT, 62)
 
 	_speed_button = Button.new()
-	_speed_button.text = "Tempo x1"
-	_speed_button.tooltip_text = "Simulationstempo umschalten (1x -> 4x)"
+	_speed_button.text = LocaleServiceScript.t("hud.speed") % 1
+	_speed_button.tooltip_text = LocaleServiceScript.t("hud.speed_tooltip")
 	_speed_button.custom_minimum_size = Vector2(90, 40)
 	_speed_button.focus_mode = Control.FOCUS_NONE
 	if speed_pressed.is_valid():
@@ -331,16 +334,16 @@ func _build_top_bar(pause_pressed: Callable, speed_pressed: Callable) -> void:
 
 	# Single network chip — interaction state goes into the tooltip via
 	# _refresh_network_status; reduces top-bar chip pressure at small viewports.
-	_network_status_label = _make_stat_chip(hbox, "NETZ", UiThemeScript.TEXT_SECONDARY, 140)
+	_network_status_label = _make_stat_chip(hbox, LocaleServiceScript.t("hud.chip_net"), UiThemeScript.TEXT_SECONDARY, 140)
 
 	hbox.add_child(_make_v_divider())
 
 	# City stat chips. Deaths count is folded into the EINWOHNER text instead
 	# of its own chip to keep the top bar within ~1080p width.
-	_treasury_label = _make_stat_chip(hbox, "STADTKASSE", UiThemeScript.TEXT_PRIMARY, 178)
-	_population_label = _make_stat_chip(hbox, "EINWOHNER", UiThemeScript.TEXT_PRIMARY, 168)
-	_housing_jobs_label = _make_stat_chip(hbox, "WOHNEN / JOBS", UiThemeScript.TEXT_PRIMARY, 112)
-	_satisfaction_label = _make_stat_chip(hbox, "ZUFRIEDENHEIT", UiThemeScript.SUCCESS, 76)
+	_treasury_label = _make_stat_chip(hbox, LocaleServiceScript.t("hud.chip_treasury"), UiThemeScript.TEXT_PRIMARY, 178)
+	_population_label = _make_stat_chip(hbox, LocaleServiceScript.t("hud.chip_population"), UiThemeScript.TEXT_PRIMARY, 168)
+	_housing_jobs_label = _make_stat_chip(hbox, LocaleServiceScript.t("hud.chip_housing_jobs"), UiThemeScript.TEXT_PRIMARY, 112)
+	_satisfaction_label = _make_stat_chip(hbox, LocaleServiceScript.t("hud.chip_satisfaction"), UiThemeScript.SUCCESS, 76)
 
 	# Spacer so the AI status sits flush right.
 	var spacer := Control.new()
@@ -389,26 +392,26 @@ func _build_bottom_action_bar(
 	hbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_NORMAL)
 	panel.add_child(hbox)
 
-	building_overview_button = _make_bar_button(hbox, "Gebäude (F1)", 132, building_overview_pressed)
-	citizen_overview_button = _make_bar_button(hbox, "Bürger (F2)", 124, citizen_overview_pressed)
-	player_overview_button = _make_bar_button(hbox, "Spieler", 100, player_overview_pressed)
-	economy_overview_button = _make_bar_button(hbox, "Finanzen (F3)", 132, economy_overview_pressed)
-	search_overview_button = _make_bar_button(hbox, "Suche (F4)", 112, search_pressed)
-	debug_tools_button = _make_bar_button(hbox, "Tools", 90, debug_tools_pressed)
+	building_overview_button = _make_bar_button(hbox, LocaleServiceScript.t("hud.btn_buildings"), 132, building_overview_pressed)
+	citizen_overview_button = _make_bar_button(hbox, LocaleServiceScript.t("hud.btn_citizens"), 124, citizen_overview_pressed)
+	player_overview_button = _make_bar_button(hbox, LocaleServiceScript.t("hud.btn_player"), 100, player_overview_pressed)
+	economy_overview_button = _make_bar_button(hbox, LocaleServiceScript.t("hud.btn_economy"), 132, economy_overview_pressed)
+	search_overview_button = _make_bar_button(hbox, LocaleServiceScript.t("hud.btn_search"), 112, search_pressed)
+	debug_tools_button = _make_bar_button(hbox, LocaleServiceScript.t("hud.btn_tools"), 90, debug_tools_pressed)
 
 	hbox.add_child(_make_v_divider())
 	_build_player_status_widget(hbox)
 	hbox.add_child(_make_v_divider())
 
-	_player_control_button = _make_bar_button(hbox, "Control Player", 130, player_control_pressed)
+	_player_control_button = _make_bar_button(hbox, LocaleServiceScript.t("hud.control_player"), 130, player_control_pressed)
 	_player_control_button.visible = false
 
-	_camera_mode_button = _make_bar_button(hbox, "Kamera: 3rd", 150, Callable())
+	_camera_mode_button = _make_bar_button(hbox, LocaleServiceScript.t("hud.camera_third"), 150, Callable())
 	if camera_mode_pressed.is_valid():
 		_camera_mode_button.pressed.connect(_on_camera_mode_button_pressed.bind(camera_mode_pressed))
 	_camera_mode_button.visible = false
 
-	_ai_runtime_button = _make_bar_button(hbox, "Setup AI", 110, ai_runtime_pressed)
+	_ai_runtime_button = _make_bar_button(hbox, LocaleServiceScript.t("hud.ai_setup"), 110, ai_runtime_pressed)
 	_ai_runtime_button.visible = false
 
 	hbox.add_child(_make_v_divider())
@@ -516,7 +519,7 @@ func _build_player_status_widget(parent: Node) -> void:
 	parent.add_child(outer)
 
 	var caption := Label.new()
-	caption.text = "SPIELER (BEDÜRFNISSE)"
+	caption.text = LocaleServiceScript.t("hud.player_needs_caption")
 	caption.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
 	caption.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
 	outer.add_child(caption)
@@ -533,7 +536,7 @@ func _build_player_status_widget(parent: Node) -> void:
 		row.add_child(card)
 
 		var letter := Label.new()
-		letter.text = str(entry.get("caption", ""))
+		letter.text = LocaleServiceScript.t("needs.%s.short" % str(entry.get("key", "")))
 		letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		letter.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
 		letter.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
@@ -553,7 +556,6 @@ func _build_player_status_widget(parent: Node) -> void:
 
 		_player_need_bars.append({
 			"key": str(entry.get("key", "")),
-			"title": str(entry.get("title", "")),
 			"high_is_bad": bool(entry.get("high_is_bad", false)),
 			"bar": bar,
 			"state": 3,
@@ -603,14 +605,14 @@ func _refresh_player_status() -> void:
 			continue
 		if not has_needs:
 			bar.value = 0.0
-			bar.tooltip_text = "Kein Spieler aktiv"
+			bar.tooltip_text = LocaleServiceScript.t("hud.no_player")
 			_apply_need_fill(entry, 3)
 			continue
 		var key: String = entry.get("key", "")
 		var raw_value = player.needs.get(key)
 		var value := clampf(float(raw_value) if raw_value != null else 0.0, 0.0, 100.0)
 		bar.value = value
-		bar.tooltip_text = "%s: %d / 100" % [entry.get("title", ""), int(round(value))]
+		bar.tooltip_text = LocaleServiceScript.t("hud.need_tooltip") % [LocaleServiceScript.t("needs.%s.title" % key), int(round(value))]
 		_apply_need_fill(entry, _classify_player_need_severity(value, bool(entry.get("high_is_bad", false))))
 
 
@@ -712,7 +714,7 @@ func _on_day_changed(_day: int) -> void:
 func _refresh_pause_button() -> void:
 	if _pause_button == null or world == null:
 		return
-	_pause_button.text = "Resume" if world.is_paused else "Pause"
+	_pause_button.text = LocaleServiceScript.t("hud.resume") if world.is_paused else LocaleServiceScript.t("hud.pause")
 	# Paused = accent-on, so the player always sees the current state.
 	UiThemeScript.apply_accent_state(_pause_button, world.is_paused)
 	_refresh_authority_controls()
@@ -720,7 +722,7 @@ func _refresh_pause_button() -> void:
 func _refresh_speed_label() -> void:
 	if _speed_button == null or world == null:
 		return
-	_speed_button.text = "Tempo x%d" % int(round(world.speed_multiplier))
+	_speed_button.text = LocaleServiceScript.t("hud.speed") % int(round(world.speed_multiplier))
 	# Accent-on whenever the sim runs faster than real time.
 	UiThemeScript.apply_accent_state(_speed_button, world.speed_multiplier > 1.01)
 	_refresh_authority_controls()
@@ -729,10 +731,10 @@ func _refresh_authority_controls() -> void:
 	var client := _is_network_client()
 	if _pause_button != null:
 		_pause_button.disabled = client
-		_pause_button.tooltip_text = "Clients folgen Pause/Zeit des Hosts." if client else ""
+		_pause_button.tooltip_text = LocaleServiceScript.t("hud.client_follows_pause") if client else ""
 	if _speed_button != null:
 		_speed_button.disabled = client
-		_speed_button.tooltip_text = "Clients folgen dem Simulationstempo des Hosts." if client else "Simulationstempo umschalten (1x -> 4x)"
+		_speed_button.tooltip_text = LocaleServiceScript.t("hud.client_follows_speed") if client else LocaleServiceScript.t("hud.speed_tooltip")
 	if _player_control_button != null and client:
 		_player_control_button.disabled = true
 		_player_control_button.visible = false
@@ -741,7 +743,7 @@ func _refresh_authority_controls() -> void:
 func _refresh_network_status() -> void:
 	if _network_status_label == null:
 		return
-	var text := "Offline"
+	var text := LocaleServiceScript.t("hud.net_offline")
 	var color := UiThemeScript.TEXT_MUTED
 	var tooltip_parts: Array[String] = []
 	if multiplayer_session != null and multiplayer_session.has_method("get_status"):
@@ -753,20 +755,20 @@ func _refresh_network_status() -> void:
 			tooltip_parts.append(detail)
 		match role:
 			NetworkRoleScript.HOST:
-				text = "Host:%d" % int(status.get("port", 0))
+				text = LocaleServiceScript.t("hud.net_host") % int(status.get("port", 0))
 				color = UiThemeScript.SUCCESS
 			NetworkRoleScript.CLIENT:
 				if session_status == "connected":
-					text = "Client OK"
+					text = LocaleServiceScript.t("hud.net_client_ok")
 					color = UiThemeScript.SUCCESS
 				elif session_status == "connection_failed" or session_status == "server_disconnected" or session_status == "join_error":
-					text = "Client Fehler"
+					text = LocaleServiceScript.t("hud.net_client_error")
 					color = UiThemeScript.DANGER
 				else:
-					text = "Client ..."
+					text = LocaleServiceScript.t("hud.net_client_connecting")
 					color = UiThemeScript.WARNING
 			_:
-				text = "Offline"
+				text = LocaleServiceScript.t("hud.net_offline")
 				color = UiThemeScript.TEXT_MUTED
 	# Fold the former AKTION chip into this tooltip — last seen interaction
 	# state stays visible without consuming its own chip slot.
@@ -774,7 +776,7 @@ func _refresh_network_status() -> void:
 	if not interaction.is_empty():
 		var action_text := _interaction_status_text(interaction)
 		if action_text != "-":
-			tooltip_parts.append("Aktion: %s" % action_text)
+			tooltip_parts.append(LocaleServiceScript.t("hud.action_label") % action_text)
 		var interaction_detail := _interaction_status_tooltip(interaction)
 		if not interaction_detail.is_empty():
 			tooltip_parts.append(interaction_detail)
@@ -816,19 +818,19 @@ func _dictionary_from_variant(value: Variant) -> Dictionary:
 func _interaction_status_text(status: Dictionary) -> String:
 	match str(status.get("state", "")):
 		"requested":
-			return "Anfrage"
+			return LocaleServiceScript.t("interaction.status_requested")
 		"travelling":
-			return "Unterwegs"
+			return LocaleServiceScript.t("interaction.status_travelling")
 		"arrived":
-			return "Am Ziel"
+			return LocaleServiceScript.t("interaction.status_arrived")
 		"effect", "entered_building", "citizen_interaction":
-			return "Aktiv"
+			return LocaleServiceScript.t("interaction.status_active")
 		"rejected", "travel_failed":
-			return "Abgelehnt"
+			return LocaleServiceScript.t("interaction.status_rejected")
 		"cancelled":
-			return "Abbruch"
+			return LocaleServiceScript.t("interaction.status_cancelled")
 		"ready":
-			return "Bereit"
+			return LocaleServiceScript.t("interaction.status_ready")
 	return "-"
 
 func _interaction_status_tooltip(status: Dictionary) -> String:
@@ -857,12 +859,19 @@ func _is_network_client() -> bool:
 		and multiplayer_session.has_method("is_client") \
 		and multiplayer_session.is_client()
 
+func _localized_weekday_short() -> String:
+	if world == null or world.time == null:
+		return ""
+	var weekday_keys: Array[String] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+	var index := clampi(world.time.get_weekday_index(), 0, weekday_keys.size() - 1)
+	return LocaleServiceScript.t("weekday.short.%s" % weekday_keys[index])
+
 func _refresh_time_hud() -> void:
 	if _date_label == null or _clock_label == null or world == null or world.time == null:
 		return
-	var weekend_tag := "  WE" if world.time.is_weekend() else ""
-	_date_label.text = "%s . Tag %d%s" % [
-		world.time.get_weekday_name_short_de(),
+	var weekend_tag := LocaleServiceScript.t("hud.weekend_tag") if world.time.is_weekend() else ""
+	_date_label.text = LocaleServiceScript.t("hud.date_format") % [
+		_localized_weekday_short(),
 		world.time.day,
 		weekend_tag
 	]
@@ -876,8 +885,8 @@ func _refresh_stats() -> void:
 		var registered := _count_registered_citizens()
 		var unemployed := _count_unemployed_citizens()
 		var deaths := world.get_total_deaths()
-		_population_label.text = "%d  .  %d ohne Job  .  %d †" % [registered, unemployed, deaths]
-		_population_label.tooltip_text = "Einwohner: %d\nOhne Job: %d\nVerstorben (gesamt): %d" % [registered, unemployed, deaths]
+		_population_label.text = LocaleServiceScript.t("hud.population_format") % [registered, unemployed, deaths]
+		_population_label.tooltip_text = LocaleServiceScript.t("hud.population_tooltip") % [registered, unemployed, deaths]
 	if _housing_jobs_label != null:
 		_housing_jobs_label.text = "%d/%d  .  %d/%d" % [
 			_count_used_housing_slots(),
@@ -901,7 +910,7 @@ func _refresh_treasury_label() -> void:
 	var balance := world.city_account.balance
 	var delta := balance - _treasury_day_start
 	var delta_text := "+%s" % _format_int_grouped(delta) if delta >= 0 else _format_int_grouped(delta)
-	_treasury_label.text = "%s EUR  (%s heute)" % [_format_int_grouped(balance), delta_text]
+	_treasury_label.text = LocaleServiceScript.t("hud.treasury_format") % [_format_int_grouped(balance), delta_text]
 	var color := UiThemeScript.TEXT_PRIMARY
 	if balance < 0:
 		color = UiThemeScript.DANGER

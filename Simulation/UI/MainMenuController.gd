@@ -12,6 +12,7 @@ class_name MainMenuController
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 const SaveGameServiceScript = preload("res://Simulation/Persistence/SaveGameService.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 
 var owner_node: Node = null
 
@@ -21,6 +22,7 @@ var _on_multiplayer: Callable = Callable()
 var _theme: Theme = null
 var _canvas: CanvasLayer = null
 var _buttons: Array[Button] = []
+var _language_button: OptionButton = null
 var _consumed: bool = false
 
 func setup(
@@ -80,7 +82,7 @@ func _build_menu() -> void:
 	vbox.add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "Hauptmenü"
+	subtitle.text = LocaleServiceScript.t("menu.subtitle")
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	subtitle.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
@@ -90,7 +92,7 @@ func _build_menu() -> void:
 	vbox.add_child(_make_separator())
 
 	var play_btn := Button.new()
-	play_btn.text = "Spiel starten"
+	play_btn.text = LocaleServiceScript.t("menu.play")
 	play_btn.custom_minimum_size = Vector2(0, 44)
 	play_btn.pressed.connect(Callable(self, "_on_play_pressed"))
 	vbox.add_child(play_btn)
@@ -98,7 +100,7 @@ func _build_menu() -> void:
 	UiThemeScript.apply_accent_state(play_btn, true)
 
 	var load_btn := Button.new()
-	load_btn.text = "Spiel laden"
+	load_btn.text = LocaleServiceScript.t("menu.load")
 	load_btn.custom_minimum_size = Vector2(0, 40)
 	load_btn.pressed.connect(Callable(self, "_on_load_pressed"))
 	load_btn.disabled = not _any_save_exists()
@@ -106,7 +108,7 @@ func _build_menu() -> void:
 	_buttons.append(load_btn)
 
 	var mp_btn := Button.new()
-	mp_btn.text = "Multiplayer"
+	mp_btn.text = LocaleServiceScript.t("menu.multiplayer")
 	mp_btn.custom_minimum_size = Vector2(0, 40)
 	mp_btn.pressed.connect(Callable(self, "_on_multiplayer_pressed"))
 	vbox.add_child(mp_btn)
@@ -114,8 +116,10 @@ func _build_menu() -> void:
 
 	vbox.add_child(_make_separator())
 
+	vbox.add_child(_build_language_row())
+
 	var quit_btn := Button.new()
-	quit_btn.text = "Beenden"
+	quit_btn.text = LocaleServiceScript.t("menu.quit")
 	quit_btn.custom_minimum_size = Vector2(0, 36)
 	quit_btn.pressed.connect(Callable(self, "_on_quit_pressed"))
 	vbox.add_child(quit_btn)
@@ -123,6 +127,54 @@ func _build_menu() -> void:
 
 	# Keyboard focus so Enter triggers "Spiel starten" by default.
 	play_btn.grab_focus.call_deferred()
+
+# Label + dropdown row. Selecting a language persists it and rebuilds the menu
+# in place so every string re-resolves through the new locale immediately.
+func _build_language_row() -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
+
+	var label := Label.new()
+	label.text = LocaleServiceScript.t("menu.language")
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_color", UiThemeScript.TEXT_SECONDARY)
+	row.add_child(label)
+
+	_language_button = OptionButton.new()
+	_language_button.custom_minimum_size = Vector2(160, 34)
+	var active := LocaleServiceScript.get_language()
+	for entry in LocaleServiceScript.available():
+		var idx := _language_button.item_count
+		_language_button.add_item(str((entry as Dictionary).get("name", "")))
+		_language_button.set_item_metadata(idx, str((entry as Dictionary).get("code", "")))
+		if str((entry as Dictionary).get("code", "")) == active:
+			_language_button.select(idx)
+	_language_button.item_selected.connect(Callable(self, "_on_language_selected"))
+	row.add_child(_language_button)
+	return row
+
+func _on_language_selected(index: int) -> void:
+	if _language_button == null:
+		return
+	var code := str(_language_button.get_item_metadata(index))
+	if code.is_empty() or code == LocaleServiceScript.get_language():
+		return
+	LocaleServiceScript.set_language(code)
+	_rebuild()
+
+# Tears down the current canvas and rebuilds from scratch. The old canvas is
+# queue_free'd (not freed inline) because we are still inside the OptionButton's
+# item_selected callback — freeing its ancestor synchronously would be unsafe.
+func _rebuild() -> void:
+	if _consumed:
+		return
+	if _canvas != null and is_instance_valid(_canvas):
+		_canvas.queue_free()
+	_canvas = null
+	_buttons.clear()
+	_language_button = null
+	_build_menu()
 
 func _on_play_pressed() -> void:
 	if _consumed:

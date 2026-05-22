@@ -7,6 +7,7 @@ class_name CitizenOverviewController
 ## citizens stay at the top.
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 
 var world: World = null
 var panel: PanelContainer = null
@@ -97,7 +98,7 @@ func _refresh_citizen_overview() -> void:
 	)
 
 	var lines: PackedStringArray = []
-	lines.append("[b]Citizens[/b] %d kritisch / %d gesamt" % [critical_count, entries.size()])
+	lines.append(LocaleServiceScript.t("overview.citizens_header") % [critical_count, entries.size()])
 	lines.append("")
 	for entry in entries:
 		lines.append(str(entry.get("line", "")))
@@ -114,7 +115,7 @@ func _format_citizen_overview_line(citizen: Citizen, severity: String, display_n
 	var icon := _severity_icon(severity)
 	var name_text := _overview_escape(display_name)
 	var job_label := _format_job_label(citizen)
-	var action_label := citizen.current_action.label if citizen.current_action != null else "Idle"
+	var action_label := citizen.current_action.label if citizen.current_action != null else LocaleServiceScript.t("overview.action_idle")
 	var needs_label := _format_needs_label(citizen)
 	var money := citizen.wallet.balance if citizen.wallet != null else 0
 	var body := "%s | %s | %s | %d EUR" % [job_label, action_label, needs_label, money]
@@ -153,7 +154,7 @@ func _on_meta_clicked(meta: Variant) -> void:
 
 func _format_job_label(citizen: Citizen) -> String:
 	if citizen.job == null or citizen.job.workplace == null:
-		return "arbeitslos"
+		return LocaleServiceScript.t("overview.jobless")
 	var workplace := citizen.job.workplace
 	var workplace_name := workplace.get_display_name() if workplace.has_method("get_display_name") else workplace.building_name
 	return "%s @ %s" % [citizen.job.title, workplace_name]
@@ -161,7 +162,7 @@ func _format_job_label(citizen: Citizen) -> String:
 func _format_needs_label(citizen: Citizen) -> String:
 	if citizen.needs == null:
 		return "?"
-	return "H%d E%d F%d S%d HP%d" % [
+	return LocaleServiceScript.t("overview.needs_compact") % [
 		int(round(citizen.needs.hunger)),
 		int(round(citizen.needs.energy)),
 		int(round(citizen.needs.fun)),

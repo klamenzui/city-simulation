@@ -1,6 +1,8 @@
 extends RefCounted
 class_name PlayerInventoryCatalog
 
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
+
 ## Static catalog of player-visible inventory items.
 ##
 ## Adding a new item requires three edits:
@@ -14,12 +16,16 @@ class_name PlayerInventoryCatalog
 
 const ITEMS: Dictionary = {
 	"food": {
+		"label_key": "inventory.item_food",
+		"tab_label_key": "inventory.tab_food",
 		"label": "Vorräte",
 		"icon": "🍞",
 		"tab_label": "Essen",
 		"tab_order": 0,
 	},
 	"clothing": {
+		"label_key": "inventory.item_clothing",
+		"tab_label_key": "inventory.tab_clothing",
 		"label": "Kleidung",
 		"icon": "👕",
 		"tab_label": "Kleidung",
@@ -42,7 +48,8 @@ static func item_ids() -> Array:
 
 
 static func get_label(id: String) -> String:
-	return str(ITEMS.get(id, {}).get("label", id))
+	var item: Dictionary = ITEMS.get(id, {})
+	return LocaleServiceScript.t(str(item.get("label_key", "")), str(item.get("label", id)))
 
 
 static func get_icon(id: String) -> String:
@@ -50,7 +57,8 @@ static func get_icon(id: String) -> String:
 
 
 static func get_tab_label(id: String) -> String:
-	return str(ITEMS.get(id, {}).get("tab_label", get_label(id)))
+	var item: Dictionary = ITEMS.get(id, {})
+	return LocaleServiceScript.t(str(item.get("tab_label_key", "")), str(item.get("tab_label", get_label(id))))
 
 
 static func get_shop_item_id_for_stock(stock_key: String) -> String:

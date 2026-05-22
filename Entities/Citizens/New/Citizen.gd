@@ -24,6 +24,7 @@ const SimLoggerScript = preload("res://Simulation/Logging/SimLogger.gd")
 const CitizenAgentScript = preload("res://Simulation/Citizens/CitizenAgent.gd")
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const WorldSnapshotSerializerScript = preload("res://Simulation/Multiplayer/shared/WorldSnapshotSerializer.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 const WorkActionScript = preload("res://Actions/WorkAction.gd")
 const EatAtHomeActionScript = preload("res://Actions/EatAtHomeAction.gd")
 const EatAtRestaurantActionScript = preload("res://Actions/EatAtRestaurantAction.gd")
@@ -155,6 +156,10 @@ func _physics_process(delta: float) -> void:
 		return
 	if _is_body_presence_hidden():
 		velocity = Vector3.ZERO
+		return
+	if is_active_player_dialog_session():
+		_physics_process_player_dialog_hold(delta)
+		_post_physics_fall_safety(resolved_world)
 		return
 	super._physics_process(delta)
 	_post_physics_fall_safety(resolved_world)
@@ -924,22 +929,22 @@ func player_rent_home(world: Node = null) -> bool:
 		return false
 	var residential := location as ResidentialBuilding
 	if home == residential and residential.tenants.has(self):
-		_player_action_notice = "Du wohnst bereits hier."
+		_player_action_notice = LocaleServiceScript.t("player_notice.home_already_here")
 		return true
 	if not residential.has_free_slot():
-		_player_action_notice = "%s hat keine freie Wohnung." % _building_label(residential)
+		_player_action_notice = LocaleServiceScript.t("player_notice.home_no_free_slot_named") % _building_label(residential)
 		return false
 	cancel_player_action(resolved_world)
 	var old_home := home
 	if not residential.add_tenant(self):
-		_player_action_notice = "%s hat keine freie Wohnung." % _building_label(residential)
+		_player_action_notice = LocaleServiceScript.t("player_notice.home_no_free_slot_named") % _building_label(residential)
 		return false
 	if old_home != null and old_home != residential:
 		old_home.remove_tenant(self)
 	home = residential
 	_player_slot_building = residential
 	_player_slot_kind = "tenant"
-	_player_action_notice = "Wohnung gemietet: %s." % _building_label(residential)
+	_player_action_notice = LocaleServiceScript.t("player_notice.home_rented") % _building_label(residential)
 	return true
 
 
@@ -956,7 +961,7 @@ func player_quit_home(world: Node = null, exit_after: bool = true) -> bool:
 		exit_current_building(resolved_world)
 		_player_slot_building = null
 		_player_slot_kind = ""
-	_player_action_notice = "Wohnung gekuendigt."
+	_player_action_notice = LocaleServiceScript.t("player_notice.home_quit")
 	return true
 
 
@@ -969,26 +974,26 @@ func player_apply_for_work(world: Node = null) -> bool:
 	if resolved_world == null or workplace == null:
 		return false
 	if current_action != null:
-		_player_action_notice = "Aktion laeuft noch."
+		_player_action_notice = LocaleServiceScript.t("player_notice.action_running")
 		return false
 	if int(workplace.job_capacity) <= 0:
-		_player_action_notice = "%s bietet keine Stelle." % _building_label(workplace)
+		_player_action_notice = LocaleServiceScript.t("player_notice.no_job_offer") % _building_label(workplace)
 		return false
 	if _player_has_accepted_job_at(workplace):
-		_player_action_notice = "Angenommen bei %s." % _building_label(workplace)
+		_player_action_notice = LocaleServiceScript.t("player_notice.accepted_at") % _building_label(workplace)
 		return true
 	if job != null and job.workplace != null and job.workplace != workplace:
-		_player_action_notice = "Du hast schon einen Job bei %s." % _building_label(job.workplace)
+		_player_action_notice = LocaleServiceScript.t("player_notice.already_has_job") % _building_label(job.workplace)
 		return false
 	if not _workplace_has_open_application_slot(workplace, resolved_world):
-		_player_action_notice = "Bewerbung bei %s nicht moeglich (voll)." % _building_label(workplace)
+		_player_action_notice = LocaleServiceScript.t("player_notice.application_full") % _building_label(workplace)
 		return false
 
 	var candidate_job := _build_player_job_for_workplace(workplace)
 	if candidate_job == null:
 		return false
 	if not candidate_job.meets_requirements(self):
-		_player_action_notice = "Abgelehnt: %s braucht Bildung %d/%d - erst an der Uni weiterbilden." % [
+		_player_action_notice = LocaleServiceScript.t("player_notice.education_rejected") % [
 			candidate_job.title,
 			education_level,
 			candidate_job.required_education_level,
@@ -1002,9 +1007,9 @@ func player_apply_for_work(world: Node = null) -> bool:
 	job = candidate_job
 	if not _ensure_player_hired_for_current_job(resolved_world):
 		job = null
-		_player_action_notice = "Einstellung bei %s nicht moeglich (voll)." % _building_label(workplace)
+		_player_action_notice = LocaleServiceScript.t("player_notice.hiring_full") % _building_label(workplace)
 		return false
-	_player_action_notice = "Angenommen: %s bei %s." % [job.title, _building_label(workplace)]
+	_player_action_notice = LocaleServiceScript.t("player_notice.accepted_job") % [job.title, _building_label(workplace)]
 	return true
 
 
@@ -1016,12 +1021,12 @@ func player_work(world: Node = null) -> bool:
 	if resolved_world == null or workplace == null:
 		return false
 	if not _player_has_accepted_job_at(workplace):
-		_player_action_notice = "Erst bei %s bewerben." % _building_label(workplace)
+		_player_action_notice = LocaleServiceScript.t("player_notice.apply_first") % _building_label(workplace)
 		return false
 	if current_action is WorkActionScript:
 		return true
 	if current_action != null:
-		_player_action_notice = "Aktion laeuft noch."
+		_player_action_notice = LocaleServiceScript.t("player_notice.action_running")
 		return false
 	_player_action_notice = ""
 	return _start_player_action(WorkActionScript.new(job), resolved_world)
@@ -1073,7 +1078,7 @@ func player_relax(world: Node = null) -> bool:
 	if _is_player_home_location(location):
 		_player_action_notice = ""
 		return _start_player_action(RelaxAtHomeActionScript.new(), resolved_world)
-	_player_action_notice = "Entspannen geht zuhause oder im Park."
+	_player_action_notice = LocaleServiceScript.t("player_notice.relax_home_or_park")
 	return false
 
 
@@ -1081,13 +1086,13 @@ func player_socialize(world: Node = null) -> bool:
 	var resolved_world := _resolve_world_arg(world)
 	var location := _get_player_current_building()
 	if resolved_world == null or location == null or location is not Park:
-		_player_action_notice = "Sozialisieren geht im Park."
+		_player_action_notice = LocaleServiceScript.t("player_notice.socialize_park")
 		return false
 	if needs != null and needs.hunger >= 70.0:
-		_player_action_notice = "Erst essen, dann sozialisieren."
+		_player_action_notice = LocaleServiceScript.t("player_notice.eat_before_socialize")
 		return false
 	if needs != null and needs.health <= 35.0:
-		_player_action_notice = "Gesundheit zu niedrig."
+		_player_action_notice = LocaleServiceScript.t("player_notice.health_low")
 		return false
 	_player_action_notice = ""
 	return _start_player_action(SocializeActionScript.new(), resolved_world)
@@ -1097,14 +1102,14 @@ func player_watch_cinema(world: Node = null) -> bool:
 	var resolved_world := _resolve_world_arg(world)
 	var location := _get_player_current_building()
 	if resolved_world == null or location == null or location is not Cinema:
-		_player_action_notice = "Du bist in keinem Kino."
+		_player_action_notice = LocaleServiceScript.t("player_notice.no_cinema")
 		return false
 	var cinema := location as Cinema
 	if not cinema.is_open(resolved_world.time.get_hour()):
-		_player_action_notice = "%s ist geschlossen." % _building_label(cinema)
+		_player_action_notice = LocaleServiceScript.t("player_notice.closed_named") % _building_label(cinema)
 		return false
 	if wallet == null or wallet.balance < cinema.ticket_price:
-		_player_action_notice = "Zu wenig Geld: %d EUR noetig." % cinema.ticket_price
+		_player_action_notice = LocaleServiceScript.t("player_notice.not_enough_money_price") % cinema.ticket_price
 		return false
 	_player_action_notice = ""
 	return _start_player_action(WatchCinemaActionScript.new(cinema), resolved_world)
@@ -1126,7 +1131,7 @@ func start_social_visit(world: Node, target: Building, activity: String, as_play
 			current_action = null
 		_player_action_active = false
 	if as_player_action and current_action != null:
-		_player_action_notice = "Verabredung: %s." % _building_label(target)
+		_player_action_notice = LocaleServiceScript.t("player_notice.social_visit") % _building_label(target)
 	decision_cooldown_left = 0
 	return current_action != null
 
@@ -1134,55 +1139,69 @@ func start_social_visit(world: Node, target: Building, activity: String, as_play
 func player_buy_shop_item(world: Node = null) -> bool:
 	var resolved_world := _resolve_world_arg(world)
 	var location := _get_player_current_building()
-	if resolved_world == null or location == null or location is not Shop:
+	if resolved_world == null:
+		_player_action_notice = LocaleServiceScript.t("player_notice.purchase_world_missing")
+		return false
+	if location == null:
+		_player_action_notice = LocaleServiceScript.t("player_notice.purchase_no_shop")
+		return false
+	if location is not Shop:
+		_player_action_notice = LocaleServiceScript.t("player_notice.purchase_not_selling") % _building_label(location)
 		return false
 	if current_action != null:
-		_player_action_notice = "Aktion laeuft noch."
+		_player_action_notice = LocaleServiceScript.t("player_notice.action_running")
 		return false
 	var shop := location as Shop
 	if not shop.is_open(resolved_world.time.get_hour()):
-		_player_action_notice = "%s ist geschlossen." % _building_label(shop)
+		_player_action_notice = LocaleServiceScript.t("player_notice.closed_named") % _building_label(shop)
 		return false
 	if not shop.can_sell_item("clothing", 1):
-		_player_action_notice = "Kleidung ist ausverkauft."
+		_player_action_notice = LocaleServiceScript.t("player_notice.clothing_sold_out")
 		return false
 	var price := _get_shop_item_price(shop)
 	if wallet == null or wallet.balance < price:
-		_player_action_notice = "Zu wenig Geld: %d EUR noetig." % price
+		_player_action_notice = LocaleServiceScript.t("player_notice.not_enough_money_price") % price
 		return false
 	if not shop.buy_item(resolved_world, self, 1.0):
-		_player_action_notice = "Kauf bei %s nicht moeglich." % _building_label(shop)
+		_player_action_notice = LocaleServiceScript.t("player_notice.purchase_failed_at") % _building_label(shop)
 		return false
 	clothing_items += 1
-	_player_action_notice = "Gekauft: Kleidung (%d EUR)." % price
+	_player_action_notice = LocaleServiceScript.t("player_notice.bought_clothing") % price
 	return true
 
 
 func player_buy_groceries(world: Node = null) -> bool:
 	var resolved_world := _resolve_world_arg(world)
 	var location := _get_player_current_building()
-	if resolved_world == null or location == null or location is not Supermarket:
+	if resolved_world == null:
+		_player_action_notice = LocaleServiceScript.t("player_notice.purchase_world_missing")
+		return false
+	if location == null:
+		_player_action_notice = LocaleServiceScript.t("player_notice.groceries_no_supermarket")
+		return false
+	if location is not Supermarket:
+		_player_action_notice = LocaleServiceScript.t("player_notice.groceries_not_supermarket") % _building_label(location)
 		return false
 	if current_action != null:
-		_player_action_notice = "Aktion laeuft noch."
+		_player_action_notice = LocaleServiceScript.t("player_notice.action_running")
 		return false
 	var market := location as Supermarket
 	if not market.is_open(resolved_world.time.get_hour()):
-		_player_action_notice = "%s ist geschlossen." % _building_label(market)
+		_player_action_notice = LocaleServiceScript.t("player_notice.closed_named") % _building_label(market)
 		return false
 	if not market.can_sell_item("grocery_bundle", 1):
-		_player_action_notice = "Lebensmittel sind ausverkauft."
+		_player_action_notice = LocaleServiceScript.t("player_notice.groceries_sold_out")
 		return false
 	var price := market.get_grocery_price(resolved_world)
 	if wallet == null or wallet.balance < price:
-		_player_action_notice = "Zu wenig Geld: %d EUR noetig." % price
+		_player_action_notice = LocaleServiceScript.t("player_notice.not_enough_money_price") % price
 		return false
 	var purchased_units := market.buy_groceries(resolved_world, self)
 	if purchased_units <= 0:
-		_player_action_notice = "Lebensmittelkauf bei %s nicht moeglich." % _building_label(market)
+		_player_action_notice = LocaleServiceScript.t("player_notice.groceries_failed_at") % _building_label(market)
 		return false
 	home_food_stock += purchased_units
-	_player_action_notice = "Gekauft: %d Vorraete (%d EUR)." % [purchased_units, price]
+	_player_action_notice = LocaleServiceScript.t("player_notice.bought_groceries") % [purchased_units, price]
 	return true
 
 
@@ -1192,31 +1211,31 @@ func player_buy_current_building(world: Node = null) -> bool:
 	if resolved_world == null or location == null:
 		return false
 	if current_action != null:
-		_player_action_notice = "Aktion laeuft noch."
+		_player_action_notice = LocaleServiceScript.t("player_notice.action_running")
 		return false
 	if not location.is_citizen_ownable():
-		_player_action_notice = "%s kann nicht gekauft werden." % _building_label(location)
+		_player_action_notice = LocaleServiceScript.t("player_notice.building_not_buyable") % _building_label(location)
 		return false
 	if location.is_owned_by(self):
-		_player_action_notice = "%s gehoert dir bereits." % _building_label(location)
+		_player_action_notice = LocaleServiceScript.t("player_notice.building_owned_already") % _building_label(location)
 		return true
 	if location.has_citizen_owner():
-		_player_action_notice = "%s gehoert bereits %s." % [
+		_player_action_notice = LocaleServiceScript.t("player_notice.building_owned_by") % [
 			_building_label(location),
 			location.get_owner_display_name(),
 		]
 		return false
 	if location.is_financially_closed():
-		_player_action_notice = "%s ist geschlossen und wird noch nicht verkauft." % _building_label(location)
+		_player_action_notice = LocaleServiceScript.t("player_notice.building_closed_not_for_sale") % _building_label(location)
 		return false
 	var price := location.get_purchase_price()
 	if wallet == null or wallet.balance < price:
-		_player_action_notice = "Zu wenig Geld: %d EUR noetig." % price
+		_player_action_notice = LocaleServiceScript.t("player_notice.not_enough_money_price") % price
 		return false
 	if not location.buy_for_citizen(self, resolved_world):
-		_player_action_notice = "Kauf von %s nicht moeglich." % _building_label(location)
+		_player_action_notice = LocaleServiceScript.t("player_notice.building_buy_failed") % _building_label(location)
 		return false
-	_player_action_notice = "Gekauft: %s fuer %d EUR." % [_building_label(location), price]
+	_player_action_notice = LocaleServiceScript.t("player_notice.bought_building") % [_building_label(location), price]
 	return true
 
 
@@ -1257,68 +1276,68 @@ func get_player_action_ui_state(world: Node = null) -> Dictionary:
 	var location := _get_player_current_building()
 	var buttons: Array = []
 	var status_lines: PackedStringArray = []
-	var location_label := _building_label(location) if location != null else "unterwegs"
+	var location_label := _building_label(location) if location != null else LocaleServiceScript.t("player.location_travelling")
 	var active_id := _active_player_action_id()
 	var action_running := not active_id.is_empty()
-	status_lines.append("Ort: %s" % location_label)
-	status_lines.append("Wohnung: %s" % (_building_label(home) if home != null else "keine"))
+	status_lines.append(LocaleServiceScript.t("player.status_location") % location_label)
+	status_lines.append(LocaleServiceScript.t("player.status_home") % (_building_label(home) if home != null else LocaleServiceScript.t("player.none")))
 	var owned_count := get_owned_building_count(resolved_world)
 	if owned_count > 0:
-		status_lines.append("Besitz: %d Gebaeude" % owned_count)
-	buttons.append(_make_player_action_button("inventory", "Inventar", true))
+		status_lines.append(LocaleServiceScript.t("player.status_owned_buildings") % owned_count)
+	buttons.append(_make_player_action_button("inventory", LocaleServiceScript.t("action.inventory"), true))
 	if action_running:
-		status_lines.append("Aktiv: %s" % _active_player_action_label())
-		buttons.append(_make_player_action_button("stop", "Aktion stoppen", true))
+		status_lines.append(LocaleServiceScript.t("player.status_active") % _active_player_action_label())
+		buttons.append(_make_player_action_button("stop", LocaleServiceScript.t("action.stop"), true))
 
 	if location != null:
 		if location.is_citizen_ownable():
-			status_lines.append("Besitzer: %s" % location.get_owner_display_name())
+			status_lines.append(LocaleServiceScript.t("player.status_owner") % location.get_owner_display_name())
 			if not location.has_citizen_owner():
 				var purchase_price := location.get_purchase_price()
-				status_lines.append("Kaufpreis: %d EUR" % purchase_price)
+				status_lines.append(LocaleServiceScript.t("player.status_purchase_price") % purchase_price)
 				var can_buy := not action_running \
 					and resolved_world != null \
 					and location.can_be_bought_by(self, resolved_world)
 				buttons.append(_make_player_action_button(
 					"buy_building",
-					"Gebaeude kaufen",
+					LocaleServiceScript.t("action.buy_building"),
 					can_buy,
 					_buy_building_disabled_reason(location, resolved_world, action_running)
 				))
 		if _is_player_home_location(location):
-			buttons.append(_make_player_action_button("eat", "Essen", home_food_stock > 0, "Keine Vorraete zuhause."))
-			buttons.append(_make_player_action_button("sleep", "Schlafen", true))
-			buttons.append(_make_player_action_button("relax", "Entspannen", true))
-			buttons.append(_make_player_action_button("quit_home", "Wohnung kuendigen", not action_running, "Aktion laeuft noch."))
+			buttons.append(_make_player_action_button("eat", LocaleServiceScript.t("action.eat"), home_food_stock > 0, LocaleServiceScript.t("player_disabled.no_home_food")))
+			buttons.append(_make_player_action_button("sleep", LocaleServiceScript.t("action.sleep"), true))
+			buttons.append(_make_player_action_button("relax", LocaleServiceScript.t("action.relax"), true))
+			buttons.append(_make_player_action_button("quit_home", LocaleServiceScript.t("action.quit_home"), not action_running, LocaleServiceScript.t("player_disabled.action_running")))
 		elif location is ResidentialBuilding:
 			var residential := location as ResidentialBuilding
 			var can_rent := not action_running and (residential.tenants.has(self) or residential.has_free_slot())
-			var rent_label := "Umziehen" if home != null else "Mieten"
-			buttons.append(_make_player_action_button("rent_home", rent_label, can_rent, "Keine freie Wohnung."))
+			var rent_label := LocaleServiceScript.t("action.move_home") if home != null else LocaleServiceScript.t("action.rent_home_short")
+			buttons.append(_make_player_action_button("rent_home", rent_label, can_rent, LocaleServiceScript.t("player_disabled.no_free_home")))
 		elif location is Restaurant:
 			var restaurant := location as Restaurant
 			var can_eat := resolved_world != null \
 				and restaurant.is_open(resolved_world.time.get_hour()) \
 				and can_afford_restaurant_at(restaurant, resolved_world)
-			buttons.append(_make_player_action_button("eat", "Essen", can_eat, "Restaurant geschlossen oder zu wenig Geld."))
+			buttons.append(_make_player_action_button("eat", LocaleServiceScript.t("action.eat"), can_eat, LocaleServiceScript.t("player_disabled.restaurant_closed_or_poor")))
 		elif location is University:
 			var university := location as University
 			var can_study := resolved_world != null and university.can_study(self)
-			buttons.append(_make_player_action_button("study", "Studieren", can_study, "Uni ist geschlossen oder hat keine Lehrkraft."))
+			buttons.append(_make_player_action_button("study", LocaleServiceScript.t("action.study"), can_study, LocaleServiceScript.t("player_disabled.university_unavailable")))
 		elif location is Park:
 			var can_socialize := needs == null or (needs.hunger < 70.0 and needs.health > 35.0)
-			buttons.append(_make_player_action_button("relax", "Entspannen", true))
-			buttons.append(_make_player_action_button("socialize", "Sozialisieren", can_socialize, "Erst essen oder erholen."))
+			buttons.append(_make_player_action_button("relax", LocaleServiceScript.t("action.relax"), true))
+			buttons.append(_make_player_action_button("socialize", LocaleServiceScript.t("action.socialize"), can_socialize, LocaleServiceScript.t("player_disabled.social_blocked")))
 		elif location is Cinema:
 			var cinema := location as Cinema
 			var can_watch := resolved_world != null \
 				and cinema.is_open(resolved_world.time.get_hour()) \
 				and wallet != null \
 				and wallet.balance >= cinema.ticket_price
-			buttons.append(_make_player_action_button("watch_cinema", "Film schauen", can_watch, "Kino geschlossen oder zu wenig Geld."))
+			buttons.append(_make_player_action_button("watch_cinema", LocaleServiceScript.t("action.watch_cinema"), can_watch, LocaleServiceScript.t("player_disabled.cinema_closed_or_poor")))
 
 		if location is Shop:
-			buttons.append(_make_player_action_button("shop", "Einkaufen", true))
+			buttons.append(_make_player_action_button("shop", LocaleServiceScript.t("action.shop"), true))
 
 		if int(location.job_capacity) > 0:
 			var prospective_title := location.get_default_job_title()
@@ -1326,9 +1345,9 @@ func get_player_action_ui_state(world: Node = null) -> Dictionary:
 			var qualifies := education_level >= required_edu
 			var employed_here := _player_has_accepted_job_at(location)
 			if required_edu > 0:
-				status_lines.append("Stelle: %s - Bildung %d/%d" % [prospective_title, education_level, required_edu])
+				status_lines.append(LocaleServiceScript.t("player.status_job_requirement") % [prospective_title, education_level, required_edu])
 			else:
-				status_lines.append("Stelle: %s - keine Bildung noetig" % prospective_title)
+				status_lines.append(LocaleServiceScript.t("player.status_job_no_education") % prospective_title)
 			if employed_here:
 				if resolved_world != null and resolved_world.has_method("get_wage_progression"):
 					var prog: Dictionary = resolved_world.get_wage_progression(self)
@@ -1336,27 +1355,27 @@ func get_player_action_ui_state(world: Node = null) -> Dictionary:
 					var eff_wage: int = int(round(float(base_wage) * float(prog.get("multiplier", 1.0))))
 					var edu_pct: int = int(round(float(prog.get("education_bonus", 0.0)) * 100.0))
 					var exp_pct: int = int(round(float(prog.get("experience_bonus", 0.0)) * 100.0))
-					status_lines.append("Lohn: %d EUR/h (Basis %d, +%d%% Bildung, +%d%% Erfahrung)" % [eff_wage, base_wage, edu_pct, exp_pct])
+					status_lines.append(LocaleServiceScript.t("player.status_wage_progression") % [eff_wage, base_wage, edu_pct, exp_pct])
 					var max_note := " (max)" if bool(prog.get("at_max_experience", false)) else ""
-					status_lines.append("Firma: %s%s - seit %d Tagen hier" % [
+					status_lines.append(LocaleServiceScript.t("player.status_company_tenure") % [
 						_profit_tier_label(int(prog.get("profit_tier", 1))),
 						max_note,
 						int(prog.get("tenure_days", 0)),
 					])
 					var absence_days := int(prog.get("absence_days", 0))
 					if absence_days > 0:
-						status_lines.append("Abwesenheit: %d / %d Tage" % [
+						status_lines.append(LocaleServiceScript.t("player.status_absence") % [
 							absence_days,
 							int(prog.get("absence_limit", 3)),
 						])
 				var can_work := not action_running or active_id == "work"
-				buttons.append(_make_player_action_button("work", "Arbeiten", can_work, "Aktion laeuft noch."))
+				buttons.append(_make_player_action_button("work", LocaleServiceScript.t("action.work"), can_work, LocaleServiceScript.t("player_disabled.action_running")))
 			else:
-				buttons.append(_make_player_action_button("apply_work", "Bewerben", not action_running, "Aktion laeuft noch."))
+				buttons.append(_make_player_action_button("apply_work", LocaleServiceScript.t("action.apply_work"), not action_running, LocaleServiceScript.t("player_disabled.action_running")))
 			if not qualifies:
-				buttons.append(_make_player_action_button("training", "Zur Uni", true))
+				buttons.append(_make_player_action_button("training", LocaleServiceScript.t("action.training"), true))
 			if employed_here:
-				buttons.append(_make_player_action_button("quit_job", "Kuendigen", true))
+				buttons.append(_make_player_action_button("quit_job", LocaleServiceScript.t("action.quit_job"), true))
 
 	if not _player_action_notice.is_empty():
 		status_lines.append(_player_action_notice)
@@ -1368,7 +1387,7 @@ func get_player_action_ui_state(world: Node = null) -> Dictionary:
 		spec["active"] = not active_id.is_empty() and str(spec.get("id", "")) == active_id
 	return {
 		"visible": true,
-		"title": "Spieler-Aktionen",
+		"title": LocaleServiceScript.t("player.actions_title"),
 		"status_text": "\n".join(status_lines),
 		"buttons": buttons,
 	}
@@ -1383,20 +1402,20 @@ func get_player_inventory_ui_state(world: Node = null, mode: String = "player") 
 	var show_shop := clean_mode == "shop" and location is Shop
 	var resolved_mode := "shop" if show_shop else "player"
 	var status_lines: PackedStringArray = []
-	status_lines.append("Geld: %d EUR" % (wallet.balance if wallet != null else 0))
+	status_lines.append(LocaleServiceScript.t("player.money") % (wallet.balance if wallet != null else 0))
 	if show_shop:
 		var shop_for_status := location as Shop
-		status_lines.append("Shop: %s" % _building_label(shop_for_status))
+		status_lines.append(LocaleServiceScript.t("player.shop") % _building_label(shop_for_status))
 		if resolved_world != null:
-			status_lines.append("Status: %s" % shop_for_status.get_open_status_display_label(resolved_world.time.get_hour()))
+			status_lines.append(LocaleServiceScript.t("player.status") % shop_for_status.get_open_status_display_label(resolved_world.time.get_hour()))
 	else:
-		status_lines.append("Ort: %s" % (_building_label(location) if location != null else "unterwegs"))
+		status_lines.append(LocaleServiceScript.t("player.status_location") % (_building_label(location) if location != null else LocaleServiceScript.t("player.location_travelling")))
 	if not _player_action_notice.is_empty():
 		status_lines.append(_player_action_notice)
 
-	var title := "Einkaufen" if show_shop else "Inventar"
+	var title := LocaleServiceScript.t("player.shop_title") if show_shop else LocaleServiceScript.t("player.inventory_title")
 	if show_shop:
-		title = "Einkaufen: %s" % _building_label(location)
+		title = LocaleServiceScript.t("player.shop_title_named") % _building_label(location)
 
 	return {
 		"visible": true,
@@ -1462,7 +1481,7 @@ func _build_shop_food_category(market: Supermarket, resolved_world: Node, action
 				"owned": get_inventory_count("food"),
 				"enabled": enabled,
 				"tooltip": tooltip,
-				"button_text": "Kaufen",
+				"button_text": LocaleServiceScript.t("inventory.buy"),
 				"action_id": "buy_groceries",
 			},
 		],
@@ -1487,7 +1506,7 @@ func _build_shop_clothing_category(shop: Shop, resolved_world: Node, action_runn
 				"owned": get_inventory_count("clothing"),
 				"enabled": enabled,
 				"tooltip": tooltip,
-				"button_text": "Kaufen",
+				"button_text": LocaleServiceScript.t("inventory.buy"),
 				"action_id": "buy_shop_item",
 			},
 		],
@@ -1577,21 +1596,21 @@ func get_owned_building_count(world: Node = null) -> int:
 
 func _buy_building_disabled_reason(building: Building, world: Node, action_running: bool) -> String:
 	if action_running:
-		return "Aktion laeuft noch."
+		return LocaleServiceScript.t("player_disabled.action_running")
 	if building == null or not building.is_citizen_ownable():
-		return "Gebaeude ist nicht kaufbar."
+		return LocaleServiceScript.t("player_disabled.building_not_buyable")
 	if building.is_owned_by(self):
-		return "Gehoert dir bereits."
+		return LocaleServiceScript.t("player_disabled.already_owned")
 	if building.has_citizen_owner():
-		return "Bereits verkauft."
+		return LocaleServiceScript.t("player_disabled.already_sold")
 	if building.is_financially_closed():
-		return "Geschlossene Gebaeude werden noch nicht verkauft."
+		return LocaleServiceScript.t("player_disabled.closed_not_for_sale")
 	if world == null:
-		return "Welt nicht bereit."
+		return LocaleServiceScript.t("player_disabled.world_not_ready")
 	var price := building.get_purchase_price()
 	if wallet == null or wallet.balance < price:
-		return "Zu wenig Geld: %d EUR noetig." % price
-	return "Kauf nicht moeglich."
+		return LocaleServiceScript.t("player_disabled.not_enough_money_price") % price
+	return LocaleServiceScript.t("player_disabled.purchase_not_possible")
 
 
 func _is_player_home_location(building: Building) -> bool:
@@ -1892,6 +1911,25 @@ func face_position_horizontal(target_position: Vector3) -> void:
 	if facing_dir.length_squared() <= 0.0001:
 		return
 	rotation.y = atan2(-facing_dir.x, -facing_dir.z)
+
+
+func hold_for_player_dialog(player_position: Vector3) -> void:
+	velocity.x = 0.0
+	velocity.z = 0.0
+	face_position_horizontal(player_position)
+	set_trace_state("dialog_pause", Vector3.ZERO, Vector3.ZERO)
+
+
+func _physics_process_player_dialog_hold(delta: float) -> void:
+	velocity.x = 0.0
+	velocity.z = 0.0
+	if is_on_floor():
+		if velocity.y < 0.0:
+			velocity.y = 0.0
+	else:
+		velocity.y -= _gravity * delta
+	move_and_slide()
+	set_trace_state("dialog_pause", Vector3.ZERO, Vector3.ZERO)
 
 
 func get_home_rotation_candidate_day() -> int:
@@ -2717,15 +2755,15 @@ func _get_shop_item_price(shop: Shop) -> int:
 
 func _shop_buy_disabled_reason(shop: Shop, world: World, item: String, price: int) -> String:
 	if current_action != null:
-		return "Aktion laeuft noch."
+		return LocaleServiceScript.t("player_disabled.action_running")
 	if shop == null or world == null:
-		return "Kein Shop aktiv."
+		return LocaleServiceScript.t("player_disabled.no_shop_active")
 	if not shop.is_open(world.time.get_hour()):
-		return "Shop geschlossen."
+		return LocaleServiceScript.t("player_disabled.shop_closed")
 	if not shop.can_sell_item(item, 1):
-		return "Ausverkauft."
+		return LocaleServiceScript.t("player_disabled.sold_out")
 	if wallet == null or wallet.balance < price:
-		return "Zu wenig Geld."
+		return LocaleServiceScript.t("player_disabled.not_enough_money_price") % price
 	return ""
 
 
@@ -3111,11 +3149,11 @@ func _format_travel_target_label() -> String:
 func _profit_tier_label(tier: int) -> String:
 	match tier:
 		0:
-			return "schwach"
+			return LocaleServiceScript.t("player.profit_weak")
 		2:
-			return "stark"
+			return LocaleServiceScript.t("player.profit_strong")
 		_:
-			return "normal"
+			return LocaleServiceScript.t("player.profit_normal")
 
 
 func _build_finance_section(world = null) -> Dictionary:
