@@ -1,7 +1,7 @@
 extends RefCounted
 class_name CitizenNeedsComponent
 
-func tick_needs(world, citizen) -> float:
+func tick_needs(world, citizen, tick_minutes: int = -1) -> float:
 	if world == null or citizen == null:
 		return 0.0
 
@@ -10,7 +10,7 @@ func tick_needs(world, citizen) -> float:
 		mod = citizen.current_action.get_needs_modifier(world, citizen)
 
 	citizen.needs.advance(
-		world.minutes_per_tick,
+		maxi(tick_minutes, world.minutes_per_tick),
 		mod.hunger_mul,
 		mod.energy_mul,
 		mod.fun_mul,

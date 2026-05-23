@@ -15,6 +15,7 @@ const MultiplayerLaunchOptionsScript = preload("res://Simulation/Multiplayer/sha
 const NetworkRoleScript = preload("res://Simulation/Multiplayer/shared/NetworkRole.gd")
 const MultiplayerMenuControllerScript = preload("res://Simulation/UI/MultiplayerMenuController.gd")
 const MainMenuControllerScript = preload("res://Simulation/UI/MainMenuController.gd")
+const PauseMenuControllerScript = preload("res://Simulation/UI/PauseMenuController.gd")
 const SaveSlotMenuControllerScript = preload("res://Simulation/UI/SaveSlotMenuController.gd")
 const SaveGameServiceScript = preload("res://Simulation/Persistence/SaveGameService.gd")
 const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
@@ -30,6 +31,8 @@ var _multiplayer_session = null
 var _multiplayer_menu = null
 var _main_menu = null
 var _save_slot_menu = null
+var _pause_menu = null
+var _sim_was_paused_before_pause_menu: bool = false
 var _pending_load_payload: Dictionary = {}
 var _player_camera: PlayerThirdPersonCamera = null
 var _camera_mode_manager: CameraModeManager = null
@@ -214,6 +217,88 @@ func _on_save_slot_menu_cancelled() -> void:
 	if _main_menu != null:
 		_main_menu.reactivate()
 
+# --- Pause menu (ESC during a running session) ---------------------------
+
+func _show_pause_menu() -> void:
+	if _pause_menu != null or _runtime_controller == null:
+		return
+	# Pause the sim while the modal is up and remember whether it was already
+	# paused, so resuming restores the prior run/pause state instead of always
+	# un-pausing. toggle_pause is a no-op without simulation authority (network
+	# clients); the modal still opens so they can leave to the menu.
+	_sim_was_paused_before_pause_menu = world.is_paused if world != null else true
+	if world != null and not world.is_paused:
+		world.toggle_pause()
+	_pause_menu = PauseMenuControllerScript.new()
+	_pause_menu.setup(
+		self,
+		Callable(self, "_on_pause_menu_resume"),
+		Callable(self, "_on_pause_menu_save"),
+		Callable(self, "_on_pause_menu_main_menu"),
+		Callable(self, "_on_pause_menu_quit"),
+		_can_use_local_savegames()
+	)
+
+func _close_pause_menu() -> void:
+	if _pause_menu != null:
+		_pause_menu.close()
+		_pause_menu = null
+
+func _resume_from_pause_menu() -> void:
+	_close_pause_menu()
+	if world != null and world.is_paused and not _sim_was_paused_before_pause_menu:
+		world.toggle_pause()
+
+# While the modal is open the dim layer blocks world picking; ESC is added as a
+# resume shortcut. If the save-slot picker was stacked on top, ESC is left to
+# its own cancel button so one keypress does not dismiss both modals.
+func _handle_pause_menu_input(event: InputEvent) -> void:
+	if _save_slot_menu != null:
+		return
+	if event.is_action_pressed("ui_cancel"):
+		_resume_from_pause_menu()
+		var viewport := get_viewport()
+		if viewport != null:
+			viewport.set_input_as_handled()
+
+func _on_pause_menu_resume() -> void:
+	_resume_from_pause_menu()
+
+func _on_pause_menu_save() -> void:
+	if not _can_use_local_savegames():
+		return
+	# Reuses the shared slot picker; it stacks above the pause modal and its
+	# cancel path (_on_save_slot_menu_cancelled) just closes itself, leaving the
+	# pause menu in place underneath.
+	_show_save_slot_menu(SaveSlotMenuControllerScript.Mode.SAVE, Callable(self, "_on_pause_menu_save_chosen"))
+
+func _on_pause_menu_save_chosen(slot: int) -> void:
+	if not _can_use_local_savegames():
+		_close_save_slot_menu()
+		return
+	_perform_save(slot)
+	_close_save_slot_menu()
+
+func _on_pause_menu_main_menu() -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+	# The MultiplayerPeer lives on the SceneTree, not under the scene, so a bare
+	# reload would leak an open connection. Drop it for live network sessions;
+	# offline play has none and is left untouched.
+	if _multiplayer_session != null and (_multiplayer_session.is_host() or _multiplayer_session.is_client()):
+		var mp := tree.get_multiplayer()
+		if mp != null:
+			mp.multiplayer_peer = null
+	# reload_current_scene rebuilds main.tscn; _ready() then shows the main menu
+	# again for offline launches (no --mp-* flag).
+	tree.reload_current_scene()
+
+func _on_pause_menu_quit() -> void:
+	var tree := get_tree()
+	if tree != null:
+		tree.quit()
+
 func _show_multiplayer_menu() -> void:
 	_multiplayer_menu = MultiplayerMenuControllerScript.new()
 	_multiplayer_menu.setup(
@@ -275,10 +360,23 @@ func _is_client_replica_node(node: Node) -> bool:
 	return false
 
 func _input(event: InputEvent) -> void:
+	if _pause_menu != null:
+		_handle_pause_menu_input(event)
+		return
 	if _handle_save_load_hotkeys(event):
 		return
-	if _runtime_controller != null:
-		_runtime_controller.handle_input(event)
+	if _runtime_controller == null:
+		return
+	if _runtime_controller.handle_input(event):
+		return
+	# ESC opens the pause menu only once the runtime declined the event — the
+	# interaction controller consumes ui_cancel first to leave player control or
+	# close the search list, so those one-step exits keep working.
+	if event.is_action_pressed("ui_cancel"):
+		_show_pause_menu()
+		var viewport := get_viewport()
+		if viewport != null:
+			viewport.set_input_as_handled()
 
 # In-game shortcuts: F5 quicksave, F9 quickload, F6 save-slot picker, F7
 # load-slot picker. They only fire once the runtime is up and no menu modal
@@ -286,7 +384,7 @@ func _input(event: InputEvent) -> void:
 func _handle_save_load_hotkeys(event: InputEvent) -> bool:
 	if _runtime_controller == null:
 		return false
-	if _main_menu != null or _multiplayer_menu != null or _save_slot_menu != null:
+	if _main_menu != null or _multiplayer_menu != null or _save_slot_menu != null or _pause_menu != null:
 		return false
 	if not _can_use_local_savegames():
 		return false

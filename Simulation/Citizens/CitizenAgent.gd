@@ -37,9 +37,10 @@ func physics_step(citizen, delta: float, world) -> void:
 		return
 	locomotion.physics_step(citizen, delta, world)
 
-func sim_tick(citizen, world) -> void:
+func sim_tick(citizen, world, tick_minutes: int = -1) -> void:
 	if citizen == null or world == null:
 		return
+	var elapsed_minutes := maxi(tick_minutes, world.minutes_per_tick)
 	if citizen._world_ref == null:
 		citizen.set_world_ref(world)
 	if citizen.has_method("is_autonomous_simulation_enabled") \
@@ -49,10 +50,10 @@ func sim_tick(citizen, world) -> void:
 		and not (citizen.has_method("is_keyboard_control_enabled") and citizen.is_keyboard_control_enabled()):
 		return
 	if citizen.has_method("get_simulation_lod_tier") and citizen.get_simulation_lod_tier() == "coarse":
-		_sim_tick_coarse(citizen, world)
+		_sim_tick_coarse(citizen, world, elapsed_minutes)
 		return
 
-	var h_delta := needs_component.tick_needs(world, citizen)
+	var h_delta := needs_component.tick_needs(world, citizen, elapsed_minutes)
 	citizen._update_work_day(world)
 	if citizen.has_method("log_needs_changes"):
 		citizen.log_needs_changes(h_delta)
@@ -60,7 +61,7 @@ func sim_tick(citizen, world) -> void:
 		citizen.die(world)
 		return
 	citizen._update_debug(world, h_delta)
-	if _tick_explicit_player_action(citizen, world):
+	if _tick_explicit_player_action(citizen, world, elapsed_minutes):
 		return
 	if citizen.has_method("is_manual_control_enabled") and citizen.is_manual_control_enabled():
 		return
@@ -75,22 +76,22 @@ func sim_tick(citizen, world) -> void:
 		return
 
 	if citizen.current_action != null:
-		_tick_current_action(citizen, world)
+		_tick_current_action(citizen, world, elapsed_minutes)
 		return
 
 	if citizen.decision_cooldown_left > 0:
-		citizen.decision_cooldown_left -= world.minutes_per_tick
+		citizen.decision_cooldown_left -= elapsed_minutes
 		if citizen.decision_cooldown_left > 0:
 			return
 
 	planner.plan_next_action(world, citizen)
 	citizen.decision_cooldown_left = _roll_decision_cooldown_minutes(citizen, world)
 
-func _tick_current_action(citizen, world) -> void:
+func _tick_current_action(citizen, world, tick_minutes: int = -1) -> void:
 	var action = citizen.current_action
 	if action == null:
 		return
-	action.tick(world, citizen, world.minutes_per_tick)
+	action.tick(world, citizen, maxi(tick_minutes, world.minutes_per_tick))
 	if citizen.current_action != action:
 		return
 	if not action.is_done():
@@ -109,8 +110,9 @@ func _clear_stale_rest_pose(citizen, world) -> void:
 	if citizen.has_method("release_reserved_benches"):
 		citizen.release_reserved_benches(world)
 
-func _sim_tick_coarse(citizen, world) -> void:
-	var h_delta := needs_component.tick_needs(world, citizen)
+func _sim_tick_coarse(citizen, world, tick_minutes: int) -> void:
+	var elapsed_minutes := maxi(tick_minutes, world.minutes_per_tick)
+	var h_delta := needs_component.tick_needs(world, citizen, elapsed_minutes)
 	citizen._update_work_day(world)
 	if citizen.has_method("log_needs_changes"):
 		citizen.log_needs_changes(h_delta)
@@ -118,7 +120,7 @@ func _sim_tick_coarse(citizen, world) -> void:
 		citizen.die(world)
 		return
 	citizen._update_debug(world, h_delta)
-	if _tick_explicit_player_action(citizen, world):
+	if _tick_explicit_player_action(citizen, world, elapsed_minutes):
 		return
 	if citizen.has_method("is_manual_control_enabled") and citizen.is_manual_control_enabled():
 		return
@@ -133,30 +135,30 @@ func _sim_tick_coarse(citizen, world) -> void:
 	if citizen.current_action != null:
 		if citizen.current_action is GoToBuildingActionScript \
 			or (citizen.has_method("is_travelling") and citizen.is_travelling()):
-			_tick_coarse_travel_action(citizen, world)
+			_tick_coarse_travel_action(citizen, world, elapsed_minutes)
 		else:
-			_tick_current_action(citizen, world)
+			_tick_current_action(citizen, world, elapsed_minutes)
 		return
 
 	if citizen.has_method("is_travelling") and citizen.is_travelling():
-		_advance_coarse_travel(citizen, world)
+		_advance_coarse_travel(citizen, world, elapsed_minutes)
 		return
 
 	if citizen.decision_cooldown_left > 0:
-		citizen.decision_cooldown_left -= world.minutes_per_tick
+		citizen.decision_cooldown_left -= elapsed_minutes
 		if citizen.decision_cooldown_left > 0:
 			return
 
 	planner.plan_next_action(world, citizen)
 	citizen.decision_cooldown_left = _roll_decision_cooldown_minutes(citizen, world)
 
-func _tick_explicit_player_action(citizen, world) -> bool:
+func _tick_explicit_player_action(citizen, world, tick_minutes: int = -1) -> bool:
 	if citizen == null or not citizen.has_method("is_player_action_active"):
 		return false
 	if not citizen.is_player_action_active():
 		return false
 	if citizen.current_action != null:
-		_tick_current_action(citizen, world)
+		_tick_current_action(citizen, world, tick_minutes)
 	if citizen.has_method("clear_player_action_state"):
 		citizen.clear_player_action_state()
 	return true
@@ -174,12 +176,12 @@ func _roll_decision_cooldown_minutes(citizen, world) -> int:
 		max_minutes = min_minutes
 	return randi_range(min_minutes, max_minutes)
 
-func _tick_coarse_travel_action(citizen, world) -> void:
+func _tick_coarse_travel_action(citizen, world, tick_minutes: int) -> void:
 	var action = citizen.current_action
 	if action == null:
 		return
-	_advance_coarse_travel(citizen, world)
-	action.tick(world, citizen, world.minutes_per_tick)
+	_advance_coarse_travel(citizen, world, tick_minutes)
+	action.tick(world, citizen, tick_minutes)
 	if citizen.current_action != action:
 		return
 	if not action.is_done():
@@ -189,12 +191,12 @@ func _tick_coarse_travel_action(citizen, world) -> void:
 		citizen.current_action = null
 	_clear_stale_rest_pose(citizen, world)
 
-func _advance_coarse_travel(citizen, world) -> void:
+func _advance_coarse_travel(citizen, world, tick_minutes: int = -1) -> void:
 	if citizen == null or world == null:
 		return
 	if not citizen.has_method("advance_coarse_travel_by_distance"):
 		return
-	var travel_distance := _get_coarse_travel_distance_for_tick(citizen, world)
+	var travel_distance := _get_coarse_travel_distance_for_tick(citizen, world, tick_minutes)
 	if travel_distance <= 0.0:
 		return
 	citizen.advance_coarse_travel_by_distance(travel_distance)
@@ -217,7 +219,7 @@ func estimate_coarse_travel_minutes(citizen, world, remaining_distance: float = 
 	var minimum_eta := int(_get_coarse_travel_config().get("minimum_eta_minutes", 2))
 	return maxi(eta_minutes, minimum_eta)
 
-func _get_coarse_travel_distance_for_tick(citizen, world) -> float:
+func _get_coarse_travel_distance_for_tick(citizen, world, tick_minutes: int = -1) -> float:
 	var config := _get_coarse_travel_config()
 	var base_speeds: Dictionary = config.get("base_speeds_m_per_min", {})
 	var modifiers: Dictionary = config.get("modifiers", {})
@@ -232,7 +234,7 @@ func _get_coarse_travel_distance_for_tick(citizen, world) -> float:
 	if hour >= 22 or hour < 6:
 		travel_time_multiplier *= float(modifiers.get("night_multiplier", 1.05))
 
-	return effective_speed * float(world.minutes_per_tick) / maxf(travel_time_multiplier, 0.01)
+	return effective_speed * float(maxi(tick_minutes, world.minutes_per_tick)) / maxf(travel_time_multiplier, 0.01)
 
 func _get_coarse_travel_config() -> Dictionary:
 	if _coarse_travel_config_loaded:

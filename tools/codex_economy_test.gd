@@ -276,6 +276,9 @@ func _test_public_funding_covers_public_payroll() -> String:
 	_expect_eq(janitor.wallet.balance, janitor_before + janitor_wage + university.maintenance_cost_per_day, "janitor should receive wage plus maintenance payment")
 	_expect_eq(university.operating_costs_today, 120, "daily public operating cost should be tracked")
 	_expect(not university.is_financially_closed(), "public building should stay open when its funding request was met")
+	university.finalize_daily_financial_state(world)
+	_expect_eq(university.public_funding_shortfall_today, 0, "fully paid public funding must not record a shortfall")
+	_expect(not university.is_underfunded(), "fully funded public building should not remain underfunded")
 
 	_free_nodes([janitor, professor, university, city_hall])
 	_free_world(world)

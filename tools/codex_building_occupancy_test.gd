@@ -147,6 +147,8 @@ func _run_all_tests() -> void:
 		"citizen_factory_display_names_stay_unique",
 		"job_offer_prefers_training_and_reserves_slot",
 		"study_finish_hires_reserved_trainee",
+		"world_clock_waits_for_runtime_start",
+		"building_travel_accepts_near_access",
 		"citizen_death_cleanup_unregisters_and_queues_refill",
 		"population_refill_spawns_after_delay",
 		"citizen_crowd_push_separates_close_neighbors",
@@ -276,6 +278,10 @@ func _run_test(test_name: String) -> String:
 			return _test_job_offer_prefers_training_and_reserves_slot()
 		"study_finish_hires_reserved_trainee":
 			return _test_study_finish_hires_reserved_trainee()
+		"world_clock_waits_for_runtime_start":
+			return _test_world_clock_waits_for_runtime_start()
+		"building_travel_accepts_near_access":
+			return _test_building_travel_accepts_near_access()
 		"citizen_death_cleanup_unregisters_and_queues_refill":
 			return _test_citizen_death_cleanup_unregisters_and_queues_refill()
 		"population_refill_spawns_after_delay":
@@ -1117,6 +1123,36 @@ func _test_study_finish_hires_reserved_trainee() -> String:
 	_expect(factory.workers.has(trainee), "study finish should hire the qualified trainee into the reserved workplace")
 	_expect(world.jobs.has(trainee.job), "reserved trainee job should remain registered after hiring")
 	_expect_eq(university.visitors.size(), 0, "study finish should remove the trainee from university visitors")
+
+	_free_world(world)
+	return _current_error
+
+func _test_world_clock_waits_for_runtime_start() -> String:
+	var world: World = _new_world()
+	_expect(not world.is_simulation_clock_started(), "world timer should not run before runtime setup")
+	_expect_eq(world.get_population_refill_pending_count(), 0,
+			"target refill should not queue while the world waits for runtime setup")
+
+	world.start_simulation_clock()
+	_expect(world.is_simulation_clock_started(), "runtime should be able to start the world timer")
+
+	_free_world(world)
+	return _current_error
+
+func _test_building_travel_accepts_near_access() -> String:
+	var world: World = _new_world()
+	var home: ResidentialBuilding = _new_residential("Near Access Home", Vector3(0.0, 0.0, 1.4), 2)
+	world.register_building(home)
+	var citizen: Citizen = _new_citizen("Near Access Citizen")
+	citizen.set_world_ref(world)
+	var access_pos: Vector3 = home.get_navigation_points(world, 0.0).get("access", home.get_entrance_pos())
+	citizen.global_position = access_pos + Vector3(0.2, 1.4, 0.0)
+
+	_expect(citizen.begin_travel_to(access_pos, home),
+			"near building access should count as a successful arrival, not a route failure")
+	_expect(not citizen.is_travelling(), "near access arrival should not start movement")
+	_expect(citizen.has_reached_travel_target(), "near access arrival should be complete")
+	_expect(not citizen.did_debug_last_travel_fail(), "near access arrival should not be marked as failed")
 
 	_free_world(world)
 	return _current_error

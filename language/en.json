@@ -6,6 +6,10 @@
 		"play": "Start Game",
 		"load": "Load Game",
 		"multiplayer": "Multiplayer",
+		"pause_title": "Paused",
+		"resume": "Resume",
+		"save": "Save",
+		"return_to_menu": "Main Menu",
 		"quit": "Quit",
 		"language": "Language"
 	},

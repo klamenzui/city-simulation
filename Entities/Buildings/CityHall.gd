@@ -149,28 +149,28 @@ func fund_public_buildings(world: World) -> void:
 		ensure_operating_liquidity(world, "public_funding")
 		var welfare_reserve := _get_reserved_welfare_budget(world)
 		var available_budget := maxi(account.balance - welfare_reserve, 0)
-		var granted: int = mini(request, available_budget)
-		if granted > 0 and world.economy.fund_public_building(account, building.account, granted):
-			record_expense(granted)
-			public_funding_total_today += granted
-			building.record_public_funding(granted)
+		var grant_candidate: int = mini(request, available_budget)
+		var paid: int = 0
+		if grant_candidate > 0 and world.economy.fund_public_building(account, building.account, grant_candidate):
+			paid = grant_candidate
+			record_expense(paid)
+			public_funding_total_today += paid
+			building.record_public_funding(paid)
 			if building.building_type == BuildingType.UNIVERSITY:
-				university_funding_today += granted
+				university_funding_today += paid
 			elif building.building_type == BuildingType.PARK:
-				park_funding_today += granted
-			if granted >= request and building.is_financially_closed():
+				park_funding_today += paid
+			if paid >= request and building.is_financially_closed():
 				building.reopen_after_funding()
-			else:
-				granted = 0
 
-		if granted < request:
-			building.record_public_funding_shortfall(request - granted)
+		if paid < request:
+			building.record_public_funding_shortfall(request - paid)
 			public_funding_failures_today += 1
 			SimLogger.log("[CityHall] Public funding shortfall for %s | requested=%d paid=%d shortfall=%d" % [
 				building.get_display_name(),
 				request,
-				granted,
-				request - granted
+				paid,
+				request - paid
 			])
 
 func pay_welfare(world: World, citizen: Citizen, amount: int = -1) -> bool:

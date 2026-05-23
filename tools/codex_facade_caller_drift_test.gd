@@ -30,7 +30,6 @@ const SCAN_DIRS: Array[String] = [
 ## missing. Each entry has a reason, added when migrating away from the legacy API.
 const INTENTIONALLY_MISSING: Dictionary = {
 	# Coarse-travel + cheap-path were tied to legacy Locomotion helper.
-	"advance_coarse_travel_by_distance": "coarse-travel migration pending",
 	"_is_using_cheap_path_follow": "cheap-LOD migration pending",
 	# Debug position helpers — Building-Discovery refactor will move these
 	# to a CitizenStatusReporter service.

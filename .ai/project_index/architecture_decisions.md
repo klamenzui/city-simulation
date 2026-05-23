@@ -23,6 +23,7 @@ Purpose: compact decisions that should be checked before architectural edits.
 - Citizen LOD is a configurable hard render budget: `focus_citizens` defaults to 15 visible/full-sim Citizens, `active_citizens` defaults to 0 additional visible cheaper Citizens, and the remaining Citizens are coarse hidden/background-sim unless protected by explicit commitments such as player/dialog/meeting.
 - With `rotation.enforce_background_budget=true`, LOD hold/hysteresis must not exceed `focus_citizens + active_citizens`; local player and selected/dialog Citizens count inside the visible budget where possible.
 - Runtime must auto-start `CitizenSimulationLodController` once World, selection state, and a camera are available. A missing LOD controller must not silently leave every Citizen rendered.
+- `World` creates the simulation timer but `SceneRuntimeController` starts it only after initial Citizens are spawned and the population floor is captured. The world must not tick target-refill logic while the main menu/runtime setup is still pending.
 - Citizen visibility has independent interior and LOD reasons. Building exit/entry must apply the combined visibility state so interior logic cannot reveal coarse hidden LOD Citizens.
 - Citizen LOD anti-pop transitions must count against the visible budget. Do not materialize hidden outdoor Citizens or dematerialize visible Citizens inside the active camera view; keep temporary visible coarse holds moving until they leave view.
 
@@ -31,6 +32,7 @@ Purpose: compact decisions that should be checked before architectural edits.
 - `RoadGraph` and `PedestrianGraph` should not duplicate graph search logic blindly.
 - Citizens should use pedestrian routing and crosswalk-aware transitions, not general road-surface routing.
 - Surface classification and local perception should be allocation-conscious because they run frequently.
+- Building travel treats Citizens already inside direct planar arrival tolerance of a building access point as arrived. Do not emit route failures for sub-meter entrance hops; keep this limited to building destinations.
 
 ## Economy Ownership Rules
 

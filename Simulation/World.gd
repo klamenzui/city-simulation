@@ -55,9 +55,11 @@ var _focus_citizens: Array[Citizen] = []
 var _active_citizens: Array[Citizen] = []
 var _coarse_citizens: Array[Citizen] = []
 var _coarse_schedule: Dictionary = {}
+var _citizen_last_sim_tick_minute: Dictionary = {}
 var _cached_city_bench_nodes: Array[Node3D] = []
 var _city_bench_cache_dirty: bool = true
 var _citizen_spawn_parent: Node = null
+var _simulation_clock_started: bool = false
 var _spawn_refill_queue: Array[Dictionary] = []
 var _population_refill_enabled: bool = true
 var _population_target_count: int = 0
@@ -93,7 +95,7 @@ func _ready() -> void:
 
 	_timer = Timer.new()
 	speed_multiplier = maxf(speed_multiplier, 0.1)
-	_timer.autostart = true
+	_timer.autostart = false
 	_timer.timeout.connect(_on_tick)
 	add_child(_timer)
 	_refresh_timer_wait_time()
@@ -158,7 +160,7 @@ func _on_payday() -> void:
 
 	var employed_count := 0
 	for citizen in citizens:
-		if citizen != null and citizen.job != null and citizen.job.workplace != null:
+		if has_active_work_assignment(citizen):
 			employed_count += 1
 	SimLogger.log("  [WORKFORCE] citizens=%d employed=%d unemployed=%d open_jobs=%d" % [
 		citizens.size(),
@@ -187,7 +189,7 @@ func _on_payday() -> void:
 		if citizen == null:
 			continue
 
-		if citizen.job == null or citizen.job.workplace == null:
+		if not has_active_work_assignment(citizen):
 			var welfare: int = city_hall.unemployment_support if city_hall != null else 0
 			if _pay_welfare(citizen, welfare, city_hall):
 				welfare_total += welfare
@@ -298,6 +300,13 @@ func _on_payday() -> void:
 	_run_daily_market_cycle()
 
 
+func has_active_work_assignment(citizen: Citizen) -> bool:
+	if citizen == null or citizen.job == null or citizen.job.workplace == null:
+		return false
+	var workplace := citizen.job.workplace
+	return workplace.workers.has(citizen)
+
+
 func _format_building_group_summary(group: Array) -> String:
 	if group.is_empty():
 		return ""
@@ -403,7 +412,7 @@ func _tick_citizen_bucket(bucket: Array[Citizen]) -> void:
 			if citizen != null:
 				invalid.append(citizen)
 			continue
-		citizen.sim_tick(self)
+		_tick_citizen(citizen)
 	for citizen in invalid:
 		bucket.erase(citizen)
 
@@ -431,7 +440,7 @@ func _tick_due_coarse_citizens(tick_index: int) -> void:
 				if citizen != null:
 					invalid.append(citizen)
 				continue
-			citizen.sim_tick(self)
+			_tick_citizen(citizen)
 		if not invalid.is_empty():
 			for citizen in invalid:
 				bucket.erase(citizen)
@@ -444,6 +453,23 @@ func _tick_due_coarse_citizens(tick_index: int) -> void:
 				_coarse_schedule.erase(interval_key)
 			else:
 				_coarse_schedule[interval_key] = cleaned_slots
+
+func _tick_citizen(citizen: Citizen) -> void:
+	if citizen == null or not is_instance_valid(citizen):
+		return
+	var elapsed_minutes := _consume_citizen_elapsed_sim_minutes(citizen)
+	citizen.sim_tick(self, elapsed_minutes, true)
+
+func _consume_citizen_elapsed_sim_minutes(citizen: Citizen) -> int:
+	var fallback_minutes := maxi(minutes_per_tick, 1)
+	if citizen == null:
+		return fallback_minutes
+	var key := citizen.get_instance_id()
+	var now := _get_absolute_sim_minute()
+	var previous := int(_citizen_last_sim_tick_minute.get(key, now - fallback_minutes))
+	var elapsed := maxi(now - previous, fallback_minutes)
+	_citizen_last_sim_tick_minute[key] = now
+	return elapsed
 
 func _register_citizen_lod_state(citizen: Citizen) -> void:
 	if citizen == null:
@@ -768,6 +794,17 @@ func toggle_pause() -> void:
 	is_paused = not is_paused
 	paused_changed.emit(is_paused)
 
+func start_simulation_clock() -> void:
+	_simulation_clock_started = true
+	if _timer == null:
+		return
+	_timer.paused = not simulation_authority_enabled
+	if _timer.is_stopped():
+		_timer.start()
+
+func is_simulation_clock_started() -> bool:
+	return _simulation_clock_started
+
 func set_simulation_authority_enabled(enabled: bool) -> void:
 	simulation_authority_enabled = enabled
 	if _timer != null:
@@ -904,6 +941,7 @@ func register_citizen(citizen: Citizen) -> void:
 		return
 	citizens.append(citizen)
 	citizen.set_world_ref(self)
+	_citizen_last_sim_tick_minute[citizen.get_instance_id()] = _get_absolute_sim_minute()
 	_register_citizen_lod_state(citizen)
 	citizen_registered.emit(citizen)
 
@@ -913,6 +951,7 @@ func unregister_citizen(citizen: Citizen) -> void:
 	var was_registered := citizens.has(citizen)
 	citizens.erase(citizen)
 	_unregister_citizen_lod_state(citizen)
+	_citizen_last_sim_tick_minute.erase(citizen.get_instance_id())
 	if citizen.job != null:
 		unregister_job(citizen.job)
 	if was_registered:

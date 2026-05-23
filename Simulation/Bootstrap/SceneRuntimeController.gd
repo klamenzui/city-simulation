@@ -66,6 +66,8 @@ func setup(
 	_spawn_citizens(initial_citizen_count)
 	if world != null and world.has_method("capture_population_target_floor"):
 		world.capture_population_target_floor()
+	if world != null and world.has_method("start_simulation_clock"):
+		world.start_simulation_clock()
 	_setup_selection_state_controller()
 	_setup_dialogue_runtime(headless_runtime)
 	_setup_conversation_manager()
