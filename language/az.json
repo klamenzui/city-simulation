@@ -6,6 +6,10 @@
 		"play": "Oyuna başla",
 		"load": "Oyunu yüklə",
 		"multiplayer": "Çox oyunçulu",
+		"pause_title": "Pauza",
+		"resume": "Davam et",
+		"save": "Saxla",
+		"return_to_menu": "Əsas menyu",
 		"quit": "Çıx",
 		"language": "Dil"
 	},

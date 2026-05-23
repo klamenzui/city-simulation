@@ -2191,15 +2191,15 @@ func set_world_ref(p_world: Node) -> void:
 	call_deferred("_auto_resolve_refs")
 
 
-func sim_tick(p_world: Node) -> void:
+func sim_tick(p_world: Node, tick_minutes: int = -1, force_lod_due: bool = false) -> void:
 	if network_replica_mode:
 		return
-	if not should_run_simulation_lod_tick(p_world):
+	if not force_lod_due and not should_run_simulation_lod_tick(p_world):
 		return
 	if _sim != null:
 		_sim.tick(p_world)
 	if _agent != null:
-		_agent.sim_tick(self, p_world)
+		_agent.sim_tick(self, p_world, tick_minutes)
 
 
 func notify_job_lost(_old_workplace: Building = null, reason: String = "") -> void:
@@ -2333,6 +2333,17 @@ func begin_travel_to(target_pos: Vector3, target_building: Building = null) -> b
 	_travel_target = target_pos
 	_travel_target_building = target_building
 	_debug_last_travel_failed = false
+	if target_building != null and _is_within_direct_arrival_tolerance(target_pos):
+		_target_position = target_pos
+		_global_path = PackedVector3Array()
+		_path_index = 0
+		_is_travelling = false
+		_debug_last_travel_route = PackedVector3Array([global_position, target_pos])
+		velocity.x = 0.0
+		velocity.z = 0.0
+		return true
+	if _should_use_abstract_lod_travel():
+		return _begin_abstract_lod_travel_to(target_pos, target_building)
 	var ok := set_global_target(target_pos)
 	if ok:
 		_travel_target = _target_position
@@ -2340,6 +2351,45 @@ func begin_travel_to(target_pos: Vector3, target_building: Building = null) -> b
 	if not ok:
 		_debug_last_travel_failed = true
 	return ok
+
+func _is_within_direct_arrival_tolerance(target_pos: Vector3) -> bool:
+	var tolerance := maxf(final_arrival_distance + 0.05, waypoint_reach_distance + 0.05)
+	return _planar_distance(global_position, target_pos) <= tolerance
+
+
+func _should_use_abstract_lod_travel() -> bool:
+	if network_replica_mode:
+		return false
+	if is_manual_control_enabled() or is_click_move_mode_enabled():
+		return false
+	if has_method("is_keyboard_control_enabled") and is_keyboard_control_enabled():
+		return false
+	if _sim == null or _sim.lod == null:
+		return false
+	return _sim.lod.tier == CitizenLodComponent.TIER_COARSE and _sim.lod.presence_hidden
+
+
+func _begin_abstract_lod_travel_to(target_pos: Vector3, target_building: Building = null) -> bool:
+	var route := PackedVector3Array()
+	route.append(global_position)
+	if _planar_distance(global_position, target_pos) > 0.05:
+		route.append(target_pos)
+	_debug_travel_target_building = target_building
+	_travel_target = target_pos
+	_travel_target_building = target_building
+	_debug_last_travel_failed = false
+	_global_path = route
+	_path_index = 1 if route.size() >= 2 else 0
+	_target_position = target_pos
+	_is_travelling = route.size() >= 2
+	_debug_last_travel_route = PackedVector3Array(route)
+	velocity = Vector3.ZERO
+	if _is_travelling:
+		_stuck.reset_for_new_target(global_position)
+		_debug.update_global_path(_global_path, _path_index)
+	else:
+		_path_index = route.size()
+	return true
 
 
 func begin_custom_travel_route(route_points: PackedVector3Array,
@@ -2379,6 +2429,53 @@ func has_reached_travel_target() -> bool:
 		final_target = _travel_target
 	var tolerance := maxf(final_arrival_distance + 0.05, waypoint_reach_distance + 0.05)
 	return _planar_distance(global_position, final_target) <= tolerance
+
+
+func advance_coarse_travel_by_distance(distance: float) -> void:
+	if distance <= 0.0 or not _is_travelling:
+		return
+	if _global_path.is_empty():
+		if _travel_target == Vector3.ZERO and _travel_target_building == null:
+			_is_travelling = false
+			return
+		var route := PackedVector3Array()
+		route.append(global_position)
+		route.append(_travel_target)
+		_global_path = route
+		_path_index = 1
+	var remaining := distance
+	while remaining > 0.0 and _path_index < _global_path.size():
+		var next_point := _global_path[_path_index]
+		var planar_delta := next_point - global_position
+		planar_delta.y = 0.0
+		var segment_distance := planar_delta.length()
+		if segment_distance <= 0.05:
+			_set_coarse_travel_position(next_point)
+			_path_index += 1
+			continue
+		if remaining >= segment_distance:
+			_set_coarse_travel_position(next_point)
+			remaining -= segment_distance
+			_path_index += 1
+			continue
+		var ratio := remaining / segment_distance
+		_set_coarse_travel_position(global_position.lerp(next_point, ratio))
+		remaining = 0.0
+	if _path_index >= _global_path.size():
+		_path_index = _global_path.size()
+		if not _global_path.is_empty():
+			_set_coarse_travel_position(_global_path[_global_path.size() - 1])
+		_is_travelling = false
+		_debug.clear_target_marker()
+	else:
+		_debug.update_global_path(_global_path, _path_index)
+
+
+func _set_coarse_travel_position(pos: Vector3) -> void:
+	global_position = pos
+	velocity = Vector3.ZERO
+	_last_safe_respawn_position = global_position
+	_has_last_safe_respawn_position = true
 
 
 func did_debug_last_travel_fail() -> bool:

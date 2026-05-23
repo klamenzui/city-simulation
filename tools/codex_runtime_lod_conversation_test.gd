@@ -6,6 +6,7 @@ const RestaurantScript = preload("res://Entities/Buildings/Restaurant.gd")
 const ParkScript = preload("res://Entities/Buildings/Park.gd")
 const WorldScript = preload("res://Simulation/World.gd")
 const ActionScript = preload("res://Actions/Action.gd")
+const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
 const CitizenSimulationLodControllerScript = preload("res://Simulation/Citizens/CitizenSimulationLodController.gd")
 const CitizenConversationManagerScript = preload("res://Simulation/Conversation/CitizenConversationManager.gd")
 const LocalDialogueRuntimeServiceScript = preload("res://Simulation/AI/LocalDialogueRuntimeService.gd")
@@ -87,6 +88,7 @@ func _run_all_tests() -> void:
 	var failed: Array[String] = []
 	for test_name in [
 		"coarse_scheduler_only_ticks_due_slots",
+		"coarse_travel_uses_direct_route_and_elapsed_minutes",
 		"conversation_manager_clears_stale_player_interest",
 		"conversation_manager_respects_materialize_hysteresis",
 		"conversation_start_rules_block_low_social_smalltalk",
@@ -148,6 +150,8 @@ func _run_test(test_name: String) -> String:
 	match test_name:
 		"coarse_scheduler_only_ticks_due_slots":
 			return _test_coarse_scheduler_only_ticks_due_slots()
+		"coarse_travel_uses_direct_route_and_elapsed_minutes":
+			return _test_coarse_travel_uses_direct_route_and_elapsed_minutes()
 		"conversation_manager_clears_stale_player_interest":
 			return _test_conversation_manager_clears_stale_player_interest()
 		"conversation_manager_respects_materialize_hysteresis":
@@ -241,11 +245,51 @@ func _test_coarse_scheduler_only_ticks_due_slots() -> String:
 	_expect_eq(citizen.current_action.elapsed_minutes, 0, "coarse scheduler should not tick the citizen before its scheduled slot")
 
 	world._on_tick()
-	_expect_eq(citizen.current_action.elapsed_minutes, 1, "coarse scheduler should tick the citizen on its scheduled slot")
+	_expect_eq(citizen.current_action.elapsed_minutes, 5, "coarse scheduler should tick elapsed minutes on its scheduled slot")
 
 	for _i in range(5):
 		world._on_tick()
-	_expect_eq(citizen.current_action.elapsed_minutes, 2, "coarse scheduler should continue ticking only on later scheduled slots")
+	_expect_eq(citizen.current_action.elapsed_minutes, 10, "coarse scheduler should continue ticking elapsed minutes on later scheduled slots")
+
+	_free_world(world)
+	return _current_error
+
+func _test_coarse_travel_uses_direct_route_and_elapsed_minutes() -> String:
+	var world := _new_world()
+	var citizen := _new_citizen("Coarse Traveler", Vector3.ZERO)
+	world.register_citizen(citizen)
+	citizen.set_simulation_lod_state("coarse", false, false, 5)
+	citizen._simulation_lod_tick_phase_seed = 0
+	world.notify_citizen_lod_changed(citizen)
+
+	var target := Vector3(10.0, 0.0, 0.0)
+	var started := citizen.begin_travel_to(target)
+	_expect(started, "coarse hidden citizen should start abstract travel without requiring a pedestrian route")
+	_expect_eq(citizen.get_debug_travel_route_points().size(), 2, "abstract coarse route should only keep start and target points")
+
+	citizen.advance_coarse_travel_by_distance(4.0)
+	_expect(citizen.is_travelling(), "coarse citizen should still travel after partial distance")
+	_expect(absf(citizen.global_position.x - 4.0) < 0.01, "coarse travel should advance by the requested distance")
+
+	citizen.advance_coarse_travel_by_distance(6.0)
+	_expect(not citizen.is_travelling(), "coarse citizen should finish after covering the route distance")
+	_expect(citizen.has_reached_travel_target(), "coarse citizen should report arrival after abstract travel")
+
+	var worker := _new_citizen("Coarse Worker", Vector3.ZERO)
+	var workplace := _new_residential("Coarse Workplace", Vector3(10.0, 0.0, 0.0))
+	world.register_building(workplace)
+	world.register_citizen(worker)
+	worker.set_simulation_lod_state("coarse", false, false, 5)
+	worker._simulation_lod_tick_phase_seed = 0
+	world.notify_citizen_lod_changed(worker)
+	worker.current_action = GoToBuildingActionScript.new(workplace, 20, false)
+	worker.current_action.start(world, worker)
+	_expect(worker.is_travelling(), "coarse worker should start background travel to the workplace")
+
+	for _i in range(5):
+		world._on_tick()
+	_expect(worker.current_location == workplace, "coarse worker should enter the target building on the scheduled background tick")
+	_expect(not worker.is_travelling(), "coarse worker should stop travelling after entering the building")
 
 	_free_world(world)
 	return _current_error
