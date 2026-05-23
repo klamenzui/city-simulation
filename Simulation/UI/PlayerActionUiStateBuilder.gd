@@ -84,6 +84,13 @@ static func _append_location_actions(
 			and restaurant.is_open(world.time.get_hour()) \
 			and citizen.can_afford_restaurant_at(restaurant, world)
 		buttons.append(_make_button("eat", LocaleServiceScript.t("action.eat"), can_eat, LocaleServiceScript.t("player_disabled.restaurant_closed_or_poor")))
+	elif location is Cafe:
+		var cafe := location as Cafe
+		var can_eat := world != null \
+			and cafe.is_open(world.time.get_hour()) \
+			and cafe.can_sell_snack() \
+			and citizen.can_afford_cafe_at(cafe, world)
+		buttons.append(_make_button("eat", LocaleServiceScript.t("action.eat"), can_eat, LocaleServiceScript.t("player_disabled.cafe_closed_or_poor_or_empty")))
 	elif location is University:
 		var university := location as University
 		var can_study := world != null and university.can_study(citizen)

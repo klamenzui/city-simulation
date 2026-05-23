@@ -13,6 +13,7 @@ Legacy/resource-style action classes for citizen behaviors.
 | Actions/Action.gd | Action | Resource |
 | Actions/BuyClothingAction.gd | BuyClothingAction | - |
 | Actions/BuyGroceriesAction.gd | BuyGroceriesAction | Action |
+| Actions/EatAtCafeAction.gd | EatAtCafeAction | Action |
 | Actions/EatAtHomeAction.gd | EatAtHomeAction | Action |
 | Actions/EatAtRestaurantAction.gd | EatAtRestaurantAction | Action |
 | Actions/GoToBenchAction.gd | GoToBenchAction | Action |

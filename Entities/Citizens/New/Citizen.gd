@@ -28,6 +28,7 @@ const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService
 const WorkActionScript = preload("res://Actions/WorkAction.gd")
 const EatAtHomeActionScript = preload("res://Actions/EatAtHomeAction.gd")
 const EatAtRestaurantActionScript = preload("res://Actions/EatAtRestaurantAction.gd")
+const EatAtCafeActionScript = preload("res://Actions/EatAtCafeAction.gd")
 const SleepActionScript = preload("res://Actions/SleepAction.gd")
 const StudyAtUniversityActionScript = preload("res://Actions/StudyAtUniversityAction.gd")
 const RelaxAtHomeActionScript = preload("res://Actions/RelaxAtHomeAction.gd")
@@ -1049,12 +1050,14 @@ func player_eat(world: Node = null) -> bool:
 		return false
 	if location is Restaurant:
 		return _start_player_action(EatAtRestaurantActionScript.new(location as Restaurant), resolved_world)
+	if location is Cafe:
+		return _start_player_action(EatAtCafeActionScript.new(location as Cafe), resolved_world)
 	if _is_player_home_location(location):
 		if home_food_stock <= 0:
 			debug_log("Player eat failed: no food stock at home.")
 			return false
 		return _start_player_action(EatAtHomeActionScript.new(), resolved_world)
-	debug_log("Player eat failed: not at home or in a restaurant.")
+	debug_log("Player eat failed: not at home or in a food service building.")
 	return false
 
 
@@ -1309,7 +1312,9 @@ func _active_player_action_id() -> String:
 		return ""
 	if current_action is WorkActionScript:
 		return "work"
-	if current_action is EatAtHomeActionScript or current_action is EatAtRestaurantActionScript:
+	if current_action is EatAtHomeActionScript \
+		or current_action is EatAtRestaurantActionScript \
+		or current_action is EatAtCafeActionScript:
 		return "eat"
 	if current_action is SleepActionScript:
 		return "sleep"
@@ -2465,6 +2470,12 @@ func can_afford_restaurant(world: World) -> bool:
 	return can_afford_restaurant_at(favorite_restaurant, world)
 
 
+func can_afford_cafe_at(cafe: Cafe, world: World) -> bool:
+	if cafe == null or wallet == null:
+		return false
+	return wallet.balance >= cafe.get_snack_price(world)
+
+
 func can_afford_groceries_at(supermarket: Supermarket, world: World) -> bool:
 	if supermarket == null or wallet == null:
 		return false
@@ -2548,6 +2559,14 @@ func _find_nearest_restaurant_with_meal(from_pos: Vector3, require_open: bool = 
 	if _agent.query_resolver.has_method("find_nearest_restaurant_with_meal"):
 		return _agent.query_resolver.find_nearest_restaurant_with_meal(self, from_pos, require_open)
 	return _agent.query_resolver.find_nearest_restaurant(self, from_pos, require_open)
+
+
+func _find_nearest_cafe_with_snack(from_pos: Vector3, require_open: bool = true) -> Cafe:
+	if _agent == null or _agent.query_resolver == null:
+		return null
+	if _agent.query_resolver.has_method("find_nearest_cafe_with_snack"):
+		return _agent.query_resolver.find_nearest_cafe_with_snack(self, from_pos, require_open)
+	return null
 
 
 func _find_nearest_supermarket(from_pos: Vector3, require_open: bool = true) -> Supermarket:

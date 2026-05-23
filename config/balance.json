@@ -193,6 +193,16 @@
       "energy_add": 0.22,
       "fun_add": 0.08
     },
+    "eat_cafe": {
+      "max_minutes": 35,
+      "hunger_mul": 0.25,
+      "energy_mul": 0.55,
+      "fun_mul": 0.75,
+      "hunger_add": -0.72,
+      "energy_add": 0.08,
+      "fun_add": 0.05,
+      "stop_hunger_threshold": 45.0
+    },
     "relax_home": {
       "hunger_mul": 1.0,
       "energy_mul": 1.0,
@@ -308,6 +318,7 @@
     "fallback_home_travel_minutes": 20,
     "survival_home_travel_minutes": 20,
     "survival_restaurant_travel_minutes": 15,
+    "survival_cafe_travel_minutes": 12,
     "survival_supermarket_travel_minutes": 18,
     "work_travel_minutes": 20,
     "emotion": {
@@ -386,12 +397,15 @@
     "hunger": {
       "go_home_cost": 1.3,
       "go_restaurant_cost": 1.0,
+      "go_cafe_cost": 1.15,
       "go_supermarket_cost": 1.1,
       "buy_groceries_cost": 0.8,
       "eat_home_cost": 0.9,
       "eat_restaurant_cost": 0.8,
+      "eat_cafe_cost": 1.0,
       "home_travel_minutes": 20,
       "restaurant_travel_minutes": 15,
+      "cafe_travel_minutes": 12,
       "supermarket_travel_minutes": 18
     },
     "energy": {
@@ -435,7 +449,11 @@
       "drink_price": 8,
       "drink_start_stock": 45,
       "drink_restock_target": 70,
-      "drink_restock_batch": 26
+      "drink_restock_batch": 26,
+      "snack_price": 9,
+      "snack_start_stock": 36,
+      "snack_restock_target": 60,
+      "snack_restock_batch": 22
     },
     "shop": {
       "capacity": 25,

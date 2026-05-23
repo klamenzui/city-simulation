@@ -7,16 +7,20 @@ const GoapPlannerScript = preload("res://Simulation/GOAP/GoapPlanner.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
 const EatAtHomeActionScript = preload("res://Actions/EatAtHomeAction.gd")
 const EatAtRestaurantActionScript = preload("res://Actions/EatAtRestaurantAction.gd")
+const EatAtCafeActionScript = preload("res://Actions/EatAtCafeAction.gd")
 const BuyGroceriesActionScript = preload("res://Actions/BuyGroceriesAction.gd")
 
 var _go_home_cost: float = BalanceConfig.get_float("goap.hunger.go_home_cost", 1.3)
 var _go_restaurant_cost: float = BalanceConfig.get_float("goap.hunger.go_restaurant_cost", 1.0)
+var _go_cafe_cost: float = BalanceConfig.get_float("goap.hunger.go_cafe_cost", 1.15)
 var _go_supermarket_cost: float = BalanceConfig.get_float("goap.hunger.go_supermarket_cost", 1.1)
 var _buy_groceries_cost: float = BalanceConfig.get_float("goap.hunger.buy_groceries_cost", 0.8)
 var _eat_home_cost: float = BalanceConfig.get_float("goap.hunger.eat_home_cost", 0.9)
 var _eat_restaurant_cost: float = BalanceConfig.get_float("goap.hunger.eat_restaurant_cost", 0.8)
+var _eat_cafe_cost: float = BalanceConfig.get_float("goap.hunger.eat_cafe_cost", 1.0)
 var _home_travel_minutes: int = BalanceConfig.get_int("goap.hunger.home_travel_minutes", 20)
 var _restaurant_travel_minutes: int = BalanceConfig.get_int("goap.hunger.restaurant_travel_minutes", 15)
+var _cafe_travel_minutes: int = BalanceConfig.get_int("goap.hunger.cafe_travel_minutes", 12)
 var _supermarket_travel_minutes: int = BalanceConfig.get_int("goap.hunger.supermarket_travel_minutes", 18)
 var _night_start_hour: int = BalanceConfig.get_int("schedule.night_start_hour", 22)
 var _day_start_hour: int = BalanceConfig.get_int("schedule.day_start_hour", 6)
@@ -26,31 +30,38 @@ func try_plan(world, citizen) -> bool:
 		return false
 
 	var target_restaurant := _select_restaurant(world, citizen)
+	var target_cafe := _select_cafe(world, citizen)
 	var target_supermarket := _select_supermarket(world, citizen)
-	var state: Dictionary = _build_state(world, citizen, target_restaurant, target_supermarket)
+	var state: Dictionary = _build_state(world, citizen, target_restaurant, target_cafe, target_supermarket)
 	var goal: Dictionary = {"hunger_satisfied": true}
 	var actions: Array = _build_actions()
 	var plan: Array = GoapPlannerScript.plan(state, goal, actions, 6)
 	if plan.is_empty():
 		return false
 
-	return _execute_first_action(plan[0], world, citizen, target_restaurant, target_supermarket)
+	return _execute_first_action(plan[0], world, citizen, target_restaurant, target_cafe, target_supermarket)
 
-func _build_state(world, citizen, target_restaurant: Restaurant, target_supermarket: Supermarket) -> Dictionary:
+func _build_state(world, citizen, target_restaurant: Restaurant, target_cafe: Cafe, target_supermarket: Supermarket) -> Dictionary:
 	var state: Dictionary = {}
 	var restaurant_open: bool = target_restaurant != null and target_restaurant.is_open(world.time.get_hour())
+	var cafe_open: bool = target_cafe != null and target_cafe.is_open(world.time.get_hour())
 	var supermarket_open: bool = target_supermarket != null and target_supermarket.is_open(world.time.get_hour())
 	state["at_home"] = citizen.current_location == citizen.home
 	state["at_restaurant"] = citizen.current_location == target_restaurant
+	state["at_cafe"] = citizen.current_location == target_cafe
 	state["at_supermarket"] = citizen.current_location == target_supermarket
 	state["has_home"] = citizen.home != null
 	state["has_restaurant"] = target_restaurant != null
+	state["has_cafe"] = target_cafe != null
 	state["has_supermarket"] = target_supermarket != null
 	state["restaurant_open"] = restaurant_open
 	state["restaurant_has_meal"] = restaurant_open and target_restaurant.can_sell_item("meal", 1)
+	state["cafe_open"] = cafe_open
+	state["cafe_has_snack"] = cafe_open and target_cafe.can_sell_snack()
 	state["supermarket_open"] = supermarket_open
 	state["supermarket_has_groceries"] = supermarket_open and target_supermarket.can_sell_item("grocery_bundle", 1)
 	state["can_afford_restaurant"] = citizen.can_afford_restaurant_at(target_restaurant, world)
+	state["can_afford_cafe"] = citizen.can_afford_cafe_at(target_cafe, world)
 	state["can_afford_groceries"] = citizen.can_afford_groceries_at(target_supermarket, world)
 	state["has_home_food"] = citizen.home_food_stock > 0
 	state["hunger_satisfied"] = citizen.needs.hunger <= citizen.needs.TARGET_HUNGER_MAX
@@ -63,19 +74,25 @@ func _build_actions() -> Array:
 		"go_home",
 		_go_home_cost,
 		{"has_home": true, "at_home": false},
-		{"at_home": true, "at_restaurant": false, "at_supermarket": false}
+		{"at_home": true, "at_restaurant": false, "at_cafe": false, "at_supermarket": false}
 	))
 	actions.append(GoapActionScript.new(
 		"go_restaurant",
 		_go_restaurant_cost,
 		{"has_restaurant": true, "restaurant_open": true, "restaurant_has_meal": true, "can_afford_restaurant": true, "at_restaurant": false, "is_night": false},
-		{"at_restaurant": true, "at_home": false, "at_supermarket": false}
+		{"at_restaurant": true, "at_home": false, "at_cafe": false, "at_supermarket": false}
+	))
+	actions.append(GoapActionScript.new(
+		"go_cafe",
+		_go_cafe_cost,
+		{"has_cafe": true, "cafe_open": true, "cafe_has_snack": true, "can_afford_cafe": true, "at_cafe": false, "is_night": false},
+		{"at_cafe": true, "at_home": false, "at_restaurant": false, "at_supermarket": false}
 	))
 	actions.append(GoapActionScript.new(
 		"go_supermarket",
 		_go_supermarket_cost,
 		{"has_supermarket": true, "supermarket_open": true, "supermarket_has_groceries": true, "can_afford_groceries": true, "at_supermarket": false},
-		{"at_supermarket": true, "at_home": false, "at_restaurant": false}
+		{"at_supermarket": true, "at_home": false, "at_restaurant": false, "at_cafe": false}
 	))
 	actions.append(GoapActionScript.new(
 		"buy_groceries",
@@ -95,9 +112,15 @@ func _build_actions() -> Array:
 		{"at_restaurant": true, "restaurant_has_meal": true, "can_afford_restaurant": true},
 		{"hunger_satisfied": true}
 	))
+	actions.append(GoapActionScript.new(
+		"eat_cafe",
+		_eat_cafe_cost,
+		{"at_cafe": true, "cafe_has_snack": true, "can_afford_cafe": true},
+		{"hunger_satisfied": true}
+	))
 	return actions
 
-func _execute_first_action(action, world, citizen, target_restaurant: Restaurant, target_supermarket: Supermarket) -> bool:
+func _execute_first_action(action, world, citizen, target_restaurant: Restaurant, target_cafe: Cafe, target_supermarket: Supermarket) -> bool:
 	if action == null:
 		return false
 
@@ -111,6 +134,11 @@ func _execute_first_action(action, world, citizen, target_restaurant: Restaurant
 			if target_restaurant == null:
 				return false
 			citizen.start_action(GoToBuildingActionScript.new(target_restaurant, _restaurant_travel_minutes), world)
+			return true
+		"go_cafe":
+			if target_cafe == null:
+				return false
+			citizen.start_action(GoToBuildingActionScript.new(target_cafe, _cafe_travel_minutes), world)
 			return true
 		"go_supermarket":
 			if target_supermarket == null:
@@ -130,6 +158,11 @@ func _execute_first_action(action, world, citizen, target_restaurant: Restaurant
 				return false
 			citizen.start_action(EatAtRestaurantActionScript.new(target_restaurant), world)
 			return true
+		"eat_cafe":
+			if target_cafe == null:
+				return false
+			citizen.start_action(EatAtCafeActionScript.new(target_cafe), world)
+			return true
 		_:
 			return false
 
@@ -146,6 +179,19 @@ func _select_restaurant(world, citizen) -> Restaurant:
 
 	if _restaurant_can_feed(world, citizen, citizen.favorite_restaurant):
 		return citizen.favorite_restaurant
+	return null
+
+
+func _select_cafe(world, citizen) -> Cafe:
+	var current := citizen.current_location as Cafe
+	if _cafe_can_feed(world, citizen, current):
+		return current
+
+	var nearest: Cafe = null
+	if citizen.has_method("_find_nearest_cafe_with_snack"):
+		nearest = citizen._find_nearest_cafe_with_snack(citizen.global_position, true)
+	if _cafe_can_feed(world, citizen, nearest):
+		return nearest
 	return null
 
 
@@ -173,6 +219,16 @@ func _restaurant_can_feed(world, citizen, restaurant: Restaurant) -> bool:
 	if not restaurant.can_sell_item("meal", 1):
 		return false
 	return citizen.can_afford_restaurant_at(restaurant, world)
+
+
+func _cafe_can_feed(world, citizen, cafe: Cafe) -> bool:
+	if cafe == null:
+		return false
+	if not cafe.is_open(world.time.get_hour()):
+		return false
+	if not cafe.can_sell_snack():
+		return false
+	return citizen.can_afford_cafe_at(cafe, world)
 
 
 func _supermarket_can_feed_home(world, citizen, supermarket: Supermarket) -> bool:

@@ -3,6 +3,7 @@ extends SceneTree
 const MainScene := preload("res://Main.tscn")
 const BuyGroceriesActionScript := preload("res://Actions/BuyGroceriesAction.gd")
 const EatAtRestaurantActionScript := preload("res://Actions/EatAtRestaurantAction.gd")
+const EatAtCafeActionScript := preload("res://Actions/EatAtCafeAction.gd")
 const WorkActionScript := preload("res://Actions/WorkAction.gd")
 
 var _checks_run: int = 0
@@ -37,22 +38,27 @@ func _run() -> void:
 	_set_time(world, 12, 0)
 
 	var restaurants := _collect_buildings(world, Building.BuildingType.RESTAURANT)
+	var cafes := _collect_buildings(world, Building.BuildingType.CAFE)
 	var supermarkets := _collect_buildings(world, Building.BuildingType.SUPERMARKET)
 	_expect(restaurants.size() > 0, "Main scene should have restaurants")
+	_expect(cafes.size() > 0, "Main scene should have cafes")
 	_expect(supermarkets.size() > 0, "Main scene should have supermarkets")
-	_expect_all_food_buildings_open(restaurants, world, "restaurant")
+	_expect_all_food_buildings_open(cafes, world, "cafe")
 	_expect_all_food_buildings_open(supermarkets, world, "supermarket")
 
 	var restaurant := _first_open_restaurant_with_stock(restaurants, world)
+	var cafe := _first_open_cafe_with_stock(cafes, world)
 	var supermarket := _first_open_supermarket_with_stock(supermarkets, world)
-	_expect(restaurant != null, "At least one open restaurant should have meal stock")
+	_expect(cafe != null, "At least one open cafe should have snack stock")
 	_expect(supermarket != null, "At least one open supermarket should have grocery stock")
 
 	var citizen := _find_test_citizen(world)
 	_expect(citizen != null, "Main scene should have a registered citizen")
-	if citizen != null and restaurant != null and supermarket != null:
+	if citizen != null and cafe != null and supermarket != null:
 		_prepare_citizen_for_instant_economy(citizen, world, restaurant, supermarket)
-		_test_restaurant_meal_flow(citizen, world, restaurant)
+		if restaurant != null:
+			_test_restaurant_meal_flow(citizen, world, restaurant)
+		_test_cafe_snack_flow(citizen, world, cafe)
 		_test_supermarket_grocery_flow(citizen, world, supermarket)
 		_test_work_flow_without_travel_delay(citizen, world, supermarket)
 
@@ -92,6 +98,14 @@ func _first_open_restaurant_with_stock(buildings: Array[Building], world: World)
 		var restaurant := building as Restaurant
 		if restaurant != null and restaurant.is_open(world.time.get_hour()) and restaurant.can_sell_item("meal", 1):
 			return restaurant
+	return null
+
+
+func _first_open_cafe_with_stock(buildings: Array[Building], world: World) -> Cafe:
+	for building in buildings:
+		var cafe := building as Cafe
+		if cafe != null and cafe.is_open(world.time.get_hour()) and cafe.can_sell_snack():
+			return cafe
 	return null
 
 
@@ -169,6 +183,33 @@ func _test_restaurant_meal_flow(citizen: Citizen, world: World, restaurant: Rest
 	_expect(citizen.needs.hunger < hunger_before, "Restaurant meal should reduce hunger")
 	_expect(citizen.wallet.balance < wallet_before, "Restaurant meal should charge the citizen")
 	_expect(restaurant.get_stock("meal") == stock_before - 1, "Restaurant meal should consume one meal stock")
+	_clear_action(citizen, world)
+
+
+func _test_cafe_snack_flow(citizen: Citizen, world: World, cafe: Cafe) -> void:
+	_set_time(world, 12, 0)
+	_clear_action(citizen, world)
+	_prepare_direct_visitor_slot(cafe, citizen)
+	citizen.current_location = cafe
+	citizen.home_food_stock = 0
+	citizen.wallet.balance = 200
+	citizen.needs.hunger = 70.0
+	var hunger_before := citizen.needs.hunger
+	var wallet_before := citizen.wallet.balance
+	var snack_price := cafe.get_snack_price(world)
+	var stock_before := cafe.get_stock("snack")
+
+	citizen.plan_next_action(world)
+	_expect(citizen.current_action is EatAtCafeActionScript, "Hungry citizen already at cafe should start EatAtCafe")
+	for _i in range(40):
+		if citizen.current_action == null:
+			break
+		citizen.sim_tick(world)
+
+	_expect(citizen.needs.hunger < hunger_before, "Cafe snack should reduce hunger")
+	_expect(citizen.needs.hunger > citizen.needs.TARGET_HUNGER_MAX, "Cafe snack should be a small hunger reduction, not a full meal")
+	_expect(citizen.wallet.balance == wallet_before - snack_price, "Cafe snack should charge the citizen")
+	_expect(cafe.get_stock("snack") == stock_before - 1, "Cafe snack should consume one snack stock")
 	_clear_action(citizen, world)
 
 

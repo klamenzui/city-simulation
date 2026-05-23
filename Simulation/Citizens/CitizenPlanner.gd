@@ -12,6 +12,7 @@ const CitizenEmotionScript = preload("res://Simulation/Citizens/CitizenEmotion.g
 const BuyGroceriesActionScript = preload("res://Actions/BuyGroceriesAction.gd")
 const EatAtHomeActionScript = preload("res://Actions/EatAtHomeAction.gd")
 const EatAtRestaurantActionScript = preload("res://Actions/EatAtRestaurantAction.gd")
+const EatAtCafeActionScript = preload("res://Actions/EatAtCafeAction.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
 const RelaxAtHomeActionScript = preload("res://Actions/RelaxAtHomeAction.gd")
 const SleepActionScript = preload("res://Actions/SleepAction.gd")
@@ -51,6 +52,7 @@ var _work_fit_hunger_threshold: float = BalanceConfig.get_float("planner.work_fi
 var _fallback_home_travel_minutes: int = BalanceConfig.get_int("planner.fallback_home_travel_minutes", 20)
 var _survival_home_travel_minutes: int = BalanceConfig.get_int("planner.survival_home_travel_minutes", 20)
 var _survival_restaurant_travel_minutes: int = BalanceConfig.get_int("planner.survival_restaurant_travel_minutes", 15)
+var _survival_cafe_travel_minutes: int = BalanceConfig.get_int("planner.survival_cafe_travel_minutes", 12)
 var _survival_supermarket_travel_minutes: int = BalanceConfig.get_int("planner.survival_supermarket_travel_minutes", 18)
 var _work_travel_minutes: int = BalanceConfig.get_int("planner.work_travel_minutes", 20)
 var _night_start_hour: int = BalanceConfig.get_int("schedule.night_start_hour", 22)
@@ -253,6 +255,14 @@ func _try_survival_override(world, citizen) -> bool:
 				citizen.start_action(GoToBuildingActionScript.new(survival_restaurant, _survival_restaurant_travel_minutes), world)
 			return true
 
+		var survival_cafe := _select_survival_cafe(world, citizen)
+		if survival_cafe != null:
+			if citizen.current_location == survival_cafe:
+				citizen.start_action(EatAtCafeActionScript.new(survival_cafe), world)
+			else:
+				citizen.start_action(GoToBuildingActionScript.new(survival_cafe, _survival_cafe_travel_minutes), world)
+			return true
+
 		var survival_supermarket := _select_survival_supermarket(world, citizen)
 		if survival_supermarket != null:
 			if citizen.current_location == survival_supermarket:
@@ -352,6 +362,18 @@ func _select_survival_restaurant(world, citizen) -> Restaurant:
 		return citizen.favorite_restaurant
 	return null
 
+func _select_survival_cafe(world, citizen) -> Cafe:
+	var current := citizen.current_location as Cafe
+	if _can_eat_at_cafe(world, citizen, current):
+		return current
+
+	var nearest: Cafe = null
+	if citizen.has_method("_find_nearest_cafe_with_snack"):
+		nearest = citizen._find_nearest_cafe_with_snack(citizen.global_position, true)
+	if _can_eat_at_cafe(world, citizen, nearest):
+		return nearest
+	return null
+
 func _select_survival_supermarket(world, citizen) -> Supermarket:
 	var current := citizen.current_location as Supermarket
 	if _can_buy_groceries(world, citizen, current):
@@ -375,6 +397,15 @@ func _can_eat_at_restaurant(world, citizen, restaurant: Restaurant) -> bool:
 	if not restaurant.can_sell_item("meal", 1):
 		return false
 	return citizen.can_afford_restaurant_at(restaurant, world)
+
+func _can_eat_at_cafe(world, citizen, cafe: Cafe) -> bool:
+	if cafe == null:
+		return false
+	if not cafe.is_open(world.time.get_hour()):
+		return false
+	if not cafe.can_sell_snack():
+		return false
+	return citizen.can_afford_cafe_at(cafe, world)
 
 func _can_buy_groceries(world, citizen, supermarket: Supermarket) -> bool:
 	if supermarket == null:

@@ -4,6 +4,7 @@ const BuildingScript = preload("res://Entities/Buildings/Building.gd")
 const ParkScript = preload("res://Entities/Buildings/Park.gd")
 const CinemaScript = preload("res://Entities/Buildings/Cinema.gd")
 const RestaurantScript = preload("res://Entities/Buildings/Restaurant.gd")
+const CafeScript = preload("res://Entities/Buildings/Cafe.gd")
 const ResidentialBuildingScript = preload("res://Entities/Buildings/ResidentialBuilding.gd")
 const ShopScript = preload("res://Entities/Buildings/Shop.gd")
 const SupermarketScript = preload("res://Entities/Buildings/Supermarket.gd")
@@ -15,6 +16,7 @@ const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.
 const ActionScript = preload("res://Actions/Action.gd")
 const WorkActionScript = preload("res://Actions/WorkAction.gd")
 const EatAtRestaurantActionScript = preload("res://Actions/EatAtRestaurantAction.gd")
+const EatAtCafeActionScript = preload("res://Actions/EatAtCafeAction.gd")
 const StudyAtUniversityActionScript = preload("res://Actions/StudyAtUniversityAction.gd")
 const RelaxAtHomeActionScript = preload("res://Actions/RelaxAtHomeAction.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
@@ -26,6 +28,7 @@ const WatchCinemaActionScript = preload("res://Actions/WatchCinemaAction.gd")
 const SimulationInteractionControllerScript = preload("res://Simulation/UI/SimulationInteractionController.gd")
 const PlayerInventoryWindowScript = preload("res://Simulation/UI/PlayerInventoryWindow.gd")
 const ToastControllerScript = preload("res://Simulation/UI/ToastController.gd")
+const PlayerActionUiStateBuilderScript = preload("res://Simulation/UI/PlayerActionUiStateBuilder.gd")
 const MultiplayerHostAuthorityScript = preload("res://Simulation/Multiplayer/server/MultiplayerHostAuthority.gd")
 const NetworkEntityRegistryScript = preload("res://Simulation/Multiplayer/shared/NetworkEntityRegistry.gd")
 const WorldSnapshotSerializerScript = preload("res://Simulation/Multiplayer/shared/WorldSnapshotSerializer.gd")
@@ -118,6 +121,7 @@ func _run_all_tests() -> void:
 		"job_absence_fires_after_three_days",
 		"university_requires_worker_for_study",
 		"restaurant_requires_worker_for_meals",
+		"cafe_snack_reduces_hunger_without_staff",
 		"university_accepts_education_service_staff",
 		"university_unstaffed_label_is_teaching_specific",
 		"park_entry_keeps_citizen_visible",
@@ -220,6 +224,8 @@ func _run_test(test_name: String) -> String:
 			return _test_university_requires_worker_for_study()
 		"restaurant_requires_worker_for_meals":
 			return _test_restaurant_requires_worker_for_meals()
+		"cafe_snack_reduces_hunger_without_staff":
+			return _test_cafe_snack_reduces_hunger_without_staff()
 		"university_accepts_education_service_staff":
 			return _test_university_accepts_education_service_staff()
 		"university_unstaffed_label_is_teaching_specific":
@@ -377,6 +383,43 @@ func _test_restaurant_requires_worker_for_meals() -> String:
 	_expect(restaurant.try_hire(worker), "restaurant should accept its first worker")
 	_expect(restaurant.is_open(12), "restaurant should open after hiring a worker")
 	_expect(restaurant.sell_meal(world, guest), "staffed restaurant should sell meals")
+
+	_free_world(world)
+	return _current_error
+
+func _test_cafe_snack_reduces_hunger_without_staff() -> String:
+	var world: World = _new_world()
+	world.time.minutes_total = 12 * 60
+	var cafe: Cafe = _new_cafe("Snack Cafe", Vector3.ZERO)
+	cafe.job_capacity = 3
+	world.register_building(cafe)
+
+	var guest: Citizen = _new_citizen("Snack Guest")
+	world.register_citizen(guest)
+	guest.wallet.balance = 100
+	guest.current_location = cafe
+	guest.needs.hunger = 70.0
+	var hunger_before := guest.needs.hunger
+	var wallet_before := guest.wallet.balance
+	var price_before := cafe.get_snack_price(world)
+	var stock_before := cafe.get_stock("snack")
+
+	_expect(not cafe.requires_staff_to_operate(), "cafe should stay usable as a food fallback without staff")
+	_expect(cafe.is_open(12), "cafe should be open at noon without staff")
+	_expect(cafe.can_sell_snack(), "cafe should have snack stock")
+	var ui_state: Dictionary = PlayerActionUiStateBuilderScript.build(guest, world)
+	_expect(_player_ui_button_enabled(ui_state, "eat"), "player eat button should be enabled inside a stocked cafe")
+
+	guest.start_action(EatAtCafeActionScript.new(cafe), world)
+	for _i in range(40):
+		if guest.current_action == null:
+			break
+		guest.sim_tick(world)
+
+	_expect(guest.needs.hunger < hunger_before, "cafe snack should reduce hunger")
+	_expect(guest.needs.hunger > guest.needs.TARGET_HUNGER_MAX, "cafe snack should not behave like a full meal")
+	_expect_eq(guest.wallet.balance, wallet_before - price_before, "cafe snack should charge the citizen")
+	_expect_eq(cafe.get_stock("snack"), stock_before - 1, "cafe snack should consume one snack stock")
 
 	_free_world(world)
 	return _current_error
@@ -2261,6 +2304,20 @@ func _new_restaurant(building_name: String, position: Vector3) -> Restaurant:
 	restaurant.add_child(entrance)
 	_harness_root.add_child(restaurant)
 	return restaurant
+
+func _new_cafe(building_name: String, position: Vector3 = Vector3.ZERO) -> Cafe:
+	var cafe: Cafe = CafeScript.new()
+	cafe.name = building_name
+	cafe.building_name = building_name
+	cafe.position = position
+	var entrance := Node3D.new()
+	entrance.name = "Entrance"
+	entrance.position = Vector3(0.0, 0.0, 1.1)
+	cafe.add_child(entrance)
+	_harness_root.add_child(cafe)
+	if cafe.get_stock("snack") <= 0:
+		cafe.define_stock_item("snack", 8, cafe.snack_price, 12, 4, "food")
+	return cafe
 
 func _staff_restaurant(restaurant: Restaurant, worker_name: String) -> Citizen:
 	if restaurant == null:
