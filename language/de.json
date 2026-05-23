@@ -224,6 +224,7 @@
 		"no_home_food": "Keine Vorräte zuhause.",
 		"no_free_home": "Keine freie Wohnung.",
 		"restaurant_closed_or_poor": "Restaurant geschlossen oder zu wenig Geld.",
+		"cafe_closed_or_poor_or_empty": "Cafe geschlossen, ausverkauft oder zu wenig Geld.",
 		"university_unavailable": "Uni ist geschlossen oder hat keine Lehrkraft.",
 		"social_blocked": "Erst essen oder erholen.",
 		"cinema_closed_or_poor": "Kino geschlossen oder zu wenig Geld.",

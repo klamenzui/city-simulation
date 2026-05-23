@@ -74,6 +74,26 @@ func find_nearest_restaurant_with_meal(citizen: Citizen, from_pos: Vector3, requ
 			return restaurant.can_sell_item("meal", 1) and restaurant.estimate_can_afford(citizen, "meal", 1)
 	) as Restaurant
 
+func find_nearest_cafe_with_snack(citizen: Citizen, from_pos: Vector3, require_open: bool = true) -> Cafe:
+	var query_world := resolve_query_world(citizen)
+	if query_world != null:
+		if query_world.has_method("find_nearest_cafe_with_snack"):
+			return query_world.find_nearest_cafe_with_snack(from_pos, require_open, citizen)
+		if query_world.has_method("find_nearest_building_with_service"):
+			return query_world.find_nearest_building_with_service(from_pos, "food", require_open, citizen) as Cafe
+	return find_nearest_tree_building(
+		citizen,
+		from_pos,
+		"buildings",
+		func(building: Building) -> bool:
+			if building is not Cafe:
+				return false
+			if require_open and not building.is_open(-1):
+				return false
+			var cafe := building as Cafe
+			return cafe.can_sell_snack() and cafe.estimate_can_afford(citizen, "snack", 1)
+	) as Cafe
+
 func find_nearest_supermarket(citizen: Citizen, from_pos: Vector3, require_open: bool = true) -> Supermarket:
 	var query_world := resolve_query_world(citizen)
 	if query_world != null:

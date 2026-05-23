@@ -30,6 +30,7 @@ var buildings: Array[Building] = []
 var jobs: Array[Job] = []
 var _residential_buildings: Array[ResidentialBuilding] = []
 var _restaurants: Array[Restaurant] = []
+var _cafes: Array[Cafe] = []
 var _supermarkets: Array[Supermarket] = []
 var _shops: Array[Shop] = []
 var _cinemas: Array[Cinema] = []
@@ -1258,6 +1259,46 @@ func find_nearest_restaurant_with_meal(from_pos: Vector3, require_open: bool = t
 			best = restaurant
 	return best
 
+func find_nearest_cafe(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> Cafe:
+	var best: Cafe = null
+	var best_dist := INF
+	for cafe in _cafes:
+		if cafe == null or not is_instance_valid(cafe):
+			continue
+		if _is_building_temporarily_blocked_for(cafe, seeker):
+			continue
+		if require_open and not cafe.is_open(time.get_hour()):
+			continue
+		if not _is_building_pedestrian_reachable(from_pos, cafe):
+			continue
+		var dist := from_pos.distance_to(cafe.global_position)
+		if dist < best_dist:
+			best_dist = dist
+			best = cafe
+	return best
+
+func find_nearest_cafe_with_snack(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> Cafe:
+	var best: Cafe = null
+	var best_dist := INF
+	for cafe in _cafes:
+		if cafe == null or not is_instance_valid(cafe):
+			continue
+		if _is_building_temporarily_blocked_for(cafe, seeker):
+			continue
+		if require_open and not cafe.is_open(time.get_hour()):
+			continue
+		if not cafe.can_sell_snack():
+			continue
+		if seeker != null and not cafe.estimate_can_afford(seeker, "snack", 1):
+			continue
+		if not _is_building_pedestrian_reachable(from_pos, cafe):
+			continue
+		var dist := from_pos.distance_to(cafe.global_position)
+		if dist < best_dist:
+			best_dist = dist
+			best = cafe
+	return best
+
 func find_nearest_shop(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> Shop:
 	var best: Shop = null
 	var best_dist := INF
@@ -1634,6 +1675,8 @@ func _index_building(building: Building) -> void:
 		_append_unique(_residential_buildings, building as ResidentialBuilding)
 	if building is Restaurant:
 		_append_unique(_restaurants, building as Restaurant)
+	if building is Cafe:
+		_append_unique(_cafes, building as Cafe)
 	if building is Supermarket:
 		_append_unique(_supermarkets, building as Supermarket)
 	elif building is Shop:
@@ -1654,6 +1697,8 @@ func _deindex_building(building: Building) -> void:
 		_residential_buildings.erase(building as ResidentialBuilding)
 	if building is Restaurant:
 		_restaurants.erase(building as Restaurant)
+	if building is Cafe:
+		_cafes.erase(building as Cafe)
 	if building is Supermarket:
 		_supermarkets.erase(building as Supermarket)
 	elif building is Shop:

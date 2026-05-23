@@ -99,6 +99,34 @@ entertainment `2000 / 2500 / 2`, fuel `680 / 900 / 5`.
   `FACTORY`/`CITY_HALL`; MaintenanceWorker fast überall). Fehlt ein Titel ⇒ keine
   Beschränkung.
 
+**Effektive Beruf → Arbeitsgebäude.** Schnitt aus `allowed_building_types` (Obergrenze)
+und den Kandidatenlisten je Gebäudetyp in `World._get_candidate_job_titles_for_building`.
+„Bildung" = `required_education` (siehe oben).
+
+| Beruf | Arbeitsgebäude | Bildung |
+| --- | --- | --- |
+| Doctor | City Hall | 3 |
+| Professor | Universität | 3 |
+| Teacher | Universität | 2 |
+| Engineer | Fabrik | 2 |
+| Programmierer | City Hall | 2 |
+| Technician | Fabrik, City Hall | 1 |
+| Mechaniker | Fabrik, Tankstelle, Farm | 1 |
+| Designer | Kino | 1 |
+| MaintenanceWorker | alle Gebäude (außer generisch) | 1 |
+| Baecker | Restaurant, Café | 0 |
+| Kellner | Restaurant, Café | 0 |
+| Fahrer | Fabrik, Farm | 0 |
+| Tankwart | Tankstelle | 0 |
+| Verkaeufer | Laden, Supermarkt, Tankstelle | 0 |
+| Janitor | Universität, City Hall, Park | 0 |
+| Gardener | Park | 0 |
+
+> `allowed_building_types` ist nur die Obergrenze; tatsächlich angeboten werden Berufe
+> über die Kandidatenlisten. Daher arbeiten Janitor/Gardener trotz häufiger „Angebote"
+> nur an den oben gelisteten Gebäuden — der Rest wird in `_build_job_offer_for_citizen`
+> herausgefiltert.
+
 #### economy.jobs.wage_progression — Lohn-Progression
 
 Tageslohn = `wage_per_hour × gearbeitete_Stunden × Multiplikator`.
@@ -273,6 +301,7 @@ Effekt einer laufenden Aktion auf die Bedürfnisse, pro Spielminute. Muster:
 | --- | --- |
 | `eat_home` | max 70 min; hunger ×0.25 / −0.95, energy ×0.45 / +0.14, fun ×1.0 / −0.02. |
 | `eat_restaurant` | max 80 min; hunger ×0.15 / −1.15, energy ×0.35 / +0.22, fun ×0.55 / +0.08 (besser, aber kostet). |
+| `eat_cafe` | max 35 min; hunger ×0.25 / −0.72, energy ×0.55 / +0.08, fun ×0.75 / +0.05; stoppt bei Hunger ≤45 als kleiner Snack. |
 | `relax_home` | hunger ×1.0, energy +0.1, **fun +0.45**. |
 | `relax_park` | 15 (10–20) min; fun +0.22; ohne Bank energy +0.0, mit Bank energy +0.1 & fun-Bonus +0.03; Stop bei energy ≤18 / health ≤35. |
 | `relax_bench` | 45 min; energy +0.18; Stop bei hunger ≥70 / health ≤35. |
@@ -317,6 +346,7 @@ GOAP-Zielauswahl: Schwellen, Prioritäts-Skalen und Gewichte.
 | `fallback_home_travel_minutes` | `20` | Angenommene Heimreisezeit (Fallback-Planung). |
 | `survival_home_travel_minutes` | `20` | Heimreisezeit in Überlebensplanung. |
 | `survival_restaurant_travel_minutes` | `15` | Restaurant-Reisezeit (Überleben). |
+| `survival_cafe_travel_minutes` | `12` | Cafe-Reisezeit (Snack-Fallback im Überleben). |
 | `survival_supermarket_travel_minutes` | `18` | Supermarkt-Reisezeit (Überleben). |
 | `work_travel_minutes` | `20` | Angenommene Arbeitsweg-Zeit. |
 
@@ -413,9 +443,9 @@ bevorzugt), `*_travel_minutes` = angenommene Reisezeit für die Planung,
 
 | Key | Default | Wirkung |
 | --- | --- | --- |
-| `go_home_cost` / `go_restaurant_cost` / `go_supermarket_cost` | `1.3` / `1.0` / `1.1` | Wegekosten je Essensziel. |
-| `buy_groceries_cost` / `eat_home_cost` / `eat_restaurant_cost` | `0.8` / `0.9` / `0.8` | Aktionskosten. |
-| `home_/restaurant_/supermarket_travel_minutes` | `20` / `15` / `18` | Reisezeiten. |
+| `go_home_cost` / `go_restaurant_cost` / `go_cafe_cost` / `go_supermarket_cost` | `1.3` / `1.0` / `1.15` / `1.1` | Wegekosten je Essensziel. |
+| `buy_groceries_cost` / `eat_home_cost` / `eat_restaurant_cost` / `eat_cafe_cost` | `0.8` / `0.9` / `0.8` / `1.0` | Aktionskosten. |
+| `home_/restaurant_/cafe_/supermarket_travel_minutes` | `20` / `15` / `12` / `18` | Reisezeiten. |
 
 ### goap.energy
 
@@ -447,7 +477,7 @@ Keys sind unten genannt.
 | --- | --- |
 | `residential` | capacity 10; `rent_per_day` 15. |
 | `restaurant` | capacity 20, jobs 5, 8–22 Uhr; `meal_price` 15; Stock 48, Restock-Ziel 70, Batch 30. |
-| `cafe` | capacity 18, jobs 3, 7–20 Uhr; `drink_price` 8; Stock 45, Ziel 70, Batch 26. |
+| `cafe` | capacity 18, jobs 3, 7–20 Uhr; `drink_price` 8; Drink-Stock 45, Ziel 70, Batch 26; `snack_price` 9; Snack-Stock 36, Ziel 60, Batch 22. |
 | `shop` | capacity 25, jobs 4, 9–20 Uhr; `item_price` 18; `fun_gain` 5.0; Kleidung-Stock 34, Ziel 56, Batch 20. |
 | `supermarket` | capacity 30, jobs 6, 7–22 Uhr; `grocery_price` 10, `groceries_per_purchase` 3, `clothing_price` 24; Lebensmittel-Stock 60, Ziel 90, Batch 35. |
 | `cinema` | capacity 35, jobs 5, 12–23 Uhr; `ticket_price` 14. |
