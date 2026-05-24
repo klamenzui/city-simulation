@@ -3,21 +3,29 @@ class_name CitizenOverviewController
 
 ## Renders a compact citizen list in an overview panel, paired with
 ## BuildingOverviewController. HudOverlayController owns construction and
-## toggling. Severity is derived from HP, hunger, and energy so critical
-## citizens stay at the top.
+## toggling. Severity is derived from HP, hunger, and energy and remains visible
+## in each row while the user chooses the primary list sort.
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
+
+const SORT_BY_NAME := "name"
+const SORT_BY_JOB := "job"
+const SORT_BY_MONEY := "money"
 
 var world: World = null
 var panel: PanelContainer = null
 var label: RichTextLabel = null
 var button: Button = null
+var sort_name_button: Button = null
+var sort_job_button: Button = null
+var sort_money_button: Button = null
 var refresh_interval_sec: float = 0.5
 
 var _refresh_left: float = 0.0
 var _mark_ui_interacted: Callable = Callable()
 var _select_citizen: Callable = Callable()
+var _sort_mode: String = SORT_BY_NAME
 
 func setup(
 	world_ref: World,
@@ -26,12 +34,18 @@ func setup(
 	button_ref: Button,
 	mark_ui_interacted: Callable,
 	select_citizen: Callable,
-	refresh_interval: float = 0.5
+	refresh_interval: float = 0.5,
+	sort_name_button_ref: Button = null,
+	sort_job_button_ref: Button = null,
+	sort_money_button_ref: Button = null
 ) -> void:
 	world = world_ref
 	panel = panel_ref
 	label = label_ref
 	button = button_ref
+	sort_name_button = sort_name_button_ref
+	sort_job_button = sort_job_button_ref
+	sort_money_button = sort_money_button_ref
 	refresh_interval_sec = maxf(refresh_interval, 0.05)
 	_mark_ui_interacted = mark_ui_interacted
 	_select_citizen = select_citizen
@@ -40,6 +54,10 @@ func setup(
 		# resolves selection through the supplied `select_citizen` callback.
 		if not label.meta_clicked.is_connected(_on_meta_clicked):
 			label.meta_clicked.connect(_on_meta_clicked)
+	_connect_sort_button(sort_name_button, Callable(self, "_on_sort_name_pressed"))
+	_connect_sort_button(sort_job_button, Callable(self, "_on_sort_job_pressed"))
+	_connect_sort_button(sort_money_button, Callable(self, "_on_sort_money_pressed"))
+	_apply_sort_button_state()
 
 func toggle_visibility() -> void:
 	_mark_interacted()
@@ -86,15 +104,16 @@ func _refresh_citizen_overview() -> void:
 		if severity == "critical":
 			critical_count += 1
 		entries.append({
+			"id": int(citizen.get_instance_id()),
 			"severity_rank": _severity_rank(severity),
 			"name": display_name,
+			"job": _get_job_sort_label(citizen),
+			"money": _get_wallet_balance(citizen),
 			"line": _format_citizen_overview_line(citizen, severity, display_name),
 		})
 
 	entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		if int(a.get("severity_rank", 99)) != int(b.get("severity_rank", 99)):
-			return int(a.get("severity_rank", 99)) < int(b.get("severity_rank", 99))
-		return str(a.get("name", "")).to_lower() < str(b.get("name", "")).to_lower()
+		return _compare_citizen_entries(a, b)
 	)
 
 	var lines: PackedStringArray = []
@@ -117,7 +136,7 @@ func _format_citizen_overview_line(citizen: Citizen, severity: String, display_n
 	var job_label := _format_job_label(citizen)
 	var action_label := citizen.current_action.label if citizen.current_action != null else LocaleServiceScript.t("overview.action_idle")
 	var needs_label := _format_needs_label(citizen)
-	var money := citizen.wallet.balance if citizen.wallet != null else 0
+	var money := _get_wallet_balance(citizen)
 	var body := "%s | %s | %s | %d EUR" % [job_label, action_label, needs_label, money]
 	var inner := "[color=%s]%s[/color]  [b]%s[/b]  %s" % [
 		color,
@@ -157,7 +176,67 @@ func _format_job_label(citizen: Citizen) -> String:
 		return LocaleServiceScript.t("overview.jobless")
 	var workplace := citizen.job.workplace
 	var workplace_name := workplace.get_display_name() if workplace.has_method("get_display_name") else workplace.building_name
-	return "%s @ %s" % [citizen.job.title, workplace_name]
+	return "%s @ %s" % [Building.get_job_title_display_label(citizen.job.title), workplace_name]
+
+func _get_job_sort_label(citizen: Citizen) -> String:
+	if citizen.job == null or citizen.job.workplace == null:
+		return "~%s" % LocaleServiceScript.t("overview.jobless").to_lower()
+	return Building.get_job_title_display_label(citizen.job.title).strip_edges().to_lower()
+
+func _get_wallet_balance(citizen: Citizen) -> int:
+	return citizen.wallet.balance if citizen.wallet != null else 0
+
+func _compare_citizen_entries(a: Dictionary, b: Dictionary) -> bool:
+	match _sort_mode:
+		SORT_BY_JOB:
+			var job_a := str(a.get("job", ""))
+			var job_b := str(b.get("job", ""))
+			if job_a != job_b:
+				return job_a < job_b
+		SORT_BY_MONEY:
+			var money_a := int(a.get("money", 0))
+			var money_b := int(b.get("money", 0))
+			if money_a != money_b:
+				return money_a > money_b
+		_:
+			pass
+
+	var name_a := str(a.get("name", "")).to_lower()
+	var name_b := str(b.get("name", "")).to_lower()
+	if name_a != name_b:
+		return name_a < name_b
+	if int(a.get("severity_rank", 99)) != int(b.get("severity_rank", 99)):
+		return int(a.get("severity_rank", 99)) < int(b.get("severity_rank", 99))
+	return int(a.get("id", 0)) < int(b.get("id", 0))
+
+func _connect_sort_button(sort_button: Button, handler: Callable) -> void:
+	if sort_button == null or not handler.is_valid():
+		return
+	if not sort_button.pressed.is_connected(handler):
+		sort_button.pressed.connect(handler)
+
+func _on_sort_name_pressed() -> void:
+	_set_sort_mode(SORT_BY_NAME)
+
+func _on_sort_job_pressed() -> void:
+	_set_sort_mode(SORT_BY_JOB)
+
+func _on_sort_money_pressed() -> void:
+	_set_sort_mode(SORT_BY_MONEY)
+
+func _set_sort_mode(sort_mode: String) -> void:
+	_mark_interacted()
+	if _sort_mode == sort_mode:
+		return
+	_sort_mode = sort_mode
+	_apply_sort_button_state()
+	_refresh_left = 0.0
+	_refresh_citizen_overview()
+
+func _apply_sort_button_state() -> void:
+	UiThemeScript.apply_accent_state(sort_name_button, _sort_mode == SORT_BY_NAME)
+	UiThemeScript.apply_accent_state(sort_job_button, _sort_mode == SORT_BY_JOB)
+	UiThemeScript.apply_accent_state(sort_money_button, _sort_mode == SORT_BY_MONEY)
 
 func _format_needs_label(citizen: Citizen) -> String:
 	if citizen.needs == null:
