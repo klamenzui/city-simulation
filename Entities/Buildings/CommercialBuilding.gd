@@ -51,6 +51,28 @@ func set_item_base_price(item: String, price: int) -> void:
 func get_stock(item: String) -> int:
 	return maxi(int(inventory.get(item, 0)), 0)
 
+func get_restock_need(item: String) -> int:
+	if item == "":
+		return 0
+	var target: int = maxi(int(restock_targets.get(item, 0)), 0)
+	if target <= 0:
+		return 0
+	return maxi(target - get_stock(item), 0)
+
+func receive_direct_supply(item: String, quantity: int, total_cost: int = 0) -> int:
+	if item == "" or quantity <= 0:
+		return 0
+	if not inventory.has(item):
+		return 0
+	var accepted: int = mini(maxi(quantity, 0), get_restock_need(item))
+	if accepted <= 0:
+		return 0
+	inventory[item] = get_stock(item) + accepted
+	supply_today[item] = int(supply_today.get(item, 0)) + accepted
+	if total_cost > 0:
+		record_production_expense(total_cost)
+	return accepted
+
 func can_sell_item(item: String, quantity: int = 1) -> bool:
 	if quantity <= 0:
 		return true

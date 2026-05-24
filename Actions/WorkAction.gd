@@ -72,6 +72,7 @@ func tick(world, citizen, dt: int) -> void:
 	if not is_lunch:
 		worked_net += dt
 		citizen.work_minutes_today += dt
+		_tick_workplace_activity(world, citizen, dt)
 
 	citizen.needs.energy -= _extra_energy_drain_per_min * float(dt)
 	citizen.needs.hunger += _extra_hunger_gain_per_min * float(dt)
@@ -105,6 +106,8 @@ func tick(world, citizen, dt: int) -> void:
 
 func finish(world, citizen) -> void:
 	var workplace_label = job.workplace.get_display_name() if job != null and job.workplace != null else "Unknown"
+	if job != null and job.workplace != null and job.workplace.has_method("on_work_finished"):
+		job.workplace.call("on_work_finished", world, citizen)
 	if _finish_reason != "":
 		citizen.debug_log("Work shift stopped at %s: %s. worked_today=%d/%d min." % [
 			workplace_label,
@@ -116,6 +119,13 @@ func finish(world, citizen) -> void:
 func _is_lunch_break(hour: int, minute: int) -> bool:
 	var now_total: int = hour * 60 + minute
 	return now_total >= _lunch_start_minute and now_total <= _lunch_end_minute
+
+func _tick_workplace_activity(world, citizen, dt: int) -> void:
+	if job == null or job.workplace == null:
+		return
+	if not job.workplace.has_method("on_work_tick"):
+		return
+	job.workplace.call("on_work_tick", world, citizen, dt)
 
 func _format_clock(total_minutes: int) -> String:
 	var hour: int = int(total_minutes / 60) % 24
