@@ -864,6 +864,10 @@ func _try_player_enter_building() -> bool:
 	var player: Citizen = _get_player_citizen()
 	if player == null or world == null or player.is_inside_building():
 		return false
+	if player.has_method("is_inside_vehicle") and player.is_inside_vehicle():
+		return false
+	if _try_player_enter_vehicle(player):
+		return true
 	var nearest: Building = null
 	var best := 3.5  # max flat distance to a building entrance to allow R-enter
 	for b in world.buildings:
@@ -891,9 +895,31 @@ func _try_player_enter_building() -> bool:
 	_show_toast(enter_message, "success" if entered else "warning")
 	return entered
 
+func _try_player_enter_vehicle(player: Citizen) -> bool:
+	if player == null:
+		return false
+	var vehicle := _find_nearest_enterable_vehicle(player.global_position, 3.5)
+	if vehicle == null:
+		return false
+	if _is_network_session_active():
+		return false
+	var entered := bool(vehicle.call("board_driver", player))
+	_show_toast("Entered vehicle" if entered else "Vehicle entry failed", "success" if entered else "warning")
+	return entered
+
 func _try_player_exit_building() -> bool:
 	var player: Citizen = _get_player_citizen()
 	if player == null:
+		return false
+	if player.has_method("is_inside_vehicle") and player.is_inside_vehicle():
+		if _is_network_session_active():
+			return false
+		var vehicle := player.current_vehicle
+		if vehicle != null and is_instance_valid(vehicle) and vehicle.has_method("unboard_driver"):
+			var exit_pos: Vector3 = vehicle.call("get_entry_point_global") if vehicle.has_method("get_entry_point_global") else player.global_position
+			var exited := vehicle.call("unboard_driver", world, exit_pos) != null
+			_show_toast("Exited vehicle" if exited else "Vehicle exit failed", "success" if exited else "warning")
+			return exited
 		return false
 	if _is_network_session_active():
 		var requested := _request_network_player_action("exit_building")
@@ -904,6 +930,31 @@ func _try_player_exit_building() -> bool:
 	var exited := player.player_exit_building(world)
 	_show_toast(LocaleServiceScript.t("interaction.building_left") if exited else LocaleServiceScript.t("interaction.exit_failed"), "success" if exited else "warning")
 	return exited
+
+func _find_nearest_enterable_vehicle(origin: Vector3, max_distance: float) -> Node:
+	var best_vehicle: Node = null
+	var best_distance := max_distance
+	var candidates: Array[Node] = []
+	if world != null:
+		for vehicle in world.vehicles:
+			if vehicle is Node:
+				candidates.append(vehicle as Node)
+	if owner_node != null and owner_node.get_tree() != null:
+		for vehicle in owner_node.get_tree().get_nodes_in_group("vehicles"):
+			if vehicle is Node and not candidates.has(vehicle):
+				candidates.append(vehicle as Node)
+	for vehicle in candidates:
+		if vehicle == null or not is_instance_valid(vehicle) or not vehicle.has_method("get_entry_point_global"):
+			continue
+		if vehicle.has_method("is_driving") and bool(vehicle.call("is_driving")):
+			continue
+		var entry_pos: Vector3 = vehicle.call("get_entry_point_global")
+		var distance := Vector2(origin.x - entry_pos.x, origin.z - entry_pos.z).length()
+		if distance > best_distance:
+			continue
+		best_distance = distance
+		best_vehicle = vehicle
+	return best_vehicle
 
 func _refresh_player_home_marker() -> void:
 	var player := _get_player_citizen()

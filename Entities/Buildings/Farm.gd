@@ -13,9 +13,12 @@ const HARVEST_PHASE_HARVESTING := "harvesting"
 const HARVEST_PHASE_TO_STORAGE := "to_storage"
 const DELIVERY_PHASE_NONE := ""
 const DELIVERY_PHASE_TO_STORAGE := "to_storage"
-const DELIVERY_PHASE_TO_TARGET := "to_target"
+const DELIVERY_PHASE_TO_VEHICLE := "to_vehicle"
+const DELIVERY_PHASE_DRIVING_TO_TARGET := "driving_to_target"
 const DELIVERY_PHASE_UNLOADING := "unloading"
-const DELIVERY_PHASE_RETURNING := "returning"
+const DELIVERY_PHASE_DRIVING_RETURN := "driving_return"
+const TRUCK_SCENE_PATH := "res://Entities/Transport/Truck_NormalTrailler_001.tscn"
+const DeliveryTruckScene := preload("res://Entities/Transport/Truck_NormalTrailler_001.tscn")
 
 @export var base_food_output_per_day: int = 60
 @export var production_cost_per_unit: int = 1
@@ -49,6 +52,7 @@ var _delivery_target: Supermarket = null
 var _delivery_phase: String = DELIVERY_PHASE_NONE
 var _delivery_quantity: int = 0
 var _delivery_minutes_left: int = 0
+var _delivery_vehicle = null
 
 func _ready() -> void:
 	super._ready()
@@ -165,6 +169,8 @@ func on_work_finished(world: World, citizen: Citizen) -> void:
 			citizen.stop_travel()
 		if citizen.has_method("clear_rest_pose"):
 			citizen.clear_rest_pose(true)
+		if _delivery_vehicle != null and is_instance_valid(_delivery_vehicle) and citizen.has_method("is_inside_vehicle") and citizen.is_inside_vehicle():
+			_delivery_vehicle.unboard_driver(world, _delivery_vehicle.get_entry_point_global())
 		_release_delivery_worker()
 
 func get_harvest_point_global() -> Vector3:
@@ -306,18 +312,36 @@ func _tick_delivery_worker(world: World, citizen: Citizen, tick_minutes: int) ->
 			if _delivery_quantity <= 0:
 				_release_delivery_worker()
 				return
-			_delivery_phase = DELIVERY_PHASE_TO_TARGET
-			_start_worker_travel_to(world, citizen, _get_delivery_target_position())
-		DELIVERY_PHASE_TO_TARGET:
+			if not _ensure_delivery_vehicle(world):
+				_release_delivery_worker()
+				return
+			_delivery_phase = DELIVERY_PHASE_TO_VEHICLE
+			_start_worker_travel_to(world, citizen, _delivery_vehicle.get_entry_point_global())
+		DELIVERY_PHASE_TO_VEHICLE:
 			if _delivery_target == null or not is_instance_valid(_delivery_target):
 				_release_delivery_worker()
 				return
-			if not _worker_reached(citizen, _get_delivery_target_position()):
+			if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
+				_release_delivery_worker()
+				return
+			if not _worker_reached(citizen, _delivery_vehicle.get_entry_point_global()):
 				return
 			if citizen.has_method("stop_travel"):
 				citizen.stop_travel()
+			if not _delivery_vehicle.assign_delivery_driver(citizen, _delivery_target, world):
+				_release_delivery_worker()
+				return
+			_delivery_phase = DELIVERY_PHASE_DRIVING_TO_TARGET
+		DELIVERY_PHASE_DRIVING_TO_TARGET:
+			if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
+				_release_delivery_worker()
+				return
+			if _delivery_vehicle.is_driving():
+				return
+			if citizen.has_method("is_inside_vehicle") and citizen.is_inside_vehicle():
+				return
 			if citizen.has_method("set_rest_pose"):
-				citizen.set_rest_pose(_get_delivery_target_position(), citizen.rotation.y)
+				citizen.set_rest_pose(citizen.global_position, citizen.rotation.y)
 			_delivery_phase = DELIVERY_PHASE_UNLOADING
 			_delivery_minutes_left = delivery_unload_duration_minutes
 		DELIVERY_PHASE_UNLOADING:
@@ -327,17 +351,22 @@ func _tick_delivery_worker(world: World, citizen: Citizen, tick_minutes: int) ->
 			if citizen.has_method("clear_rest_pose"):
 				citizen.clear_rest_pose(true)
 			_complete_delivery_to_supermarket(world, _delivery_target, _delivery_quantity)
-			_delivery_phase = DELIVERY_PHASE_RETURNING
 			_delivery_quantity = 0
-			_start_worker_travel_to(world, citizen, get_storage_point_global())
-		DELIVERY_PHASE_RETURNING:
-			if not _worker_reached(citizen, get_storage_point_global()):
+			if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
+				_release_delivery_worker()
 				return
-			if citizen.has_method("stop_travel"):
-				citizen.stop_travel()
-			_release_delivery_worker()
+			if not _delivery_vehicle.assign_delivery_driver_to_position(citizen, get_storage_point_global(), world, self):
+				_release_delivery_worker()
+				return
+			_delivery_phase = DELIVERY_PHASE_DRIVING_RETURN
+		DELIVERY_PHASE_DRIVING_RETURN:
+			if _delivery_vehicle != null and is_instance_valid(_delivery_vehicle) and _delivery_vehicle.is_driving():
+				return
+			if citizen.has_method("is_inside_vehicle") and citizen.is_inside_vehicle():
+				return
 			if citizen.has_method("enter_building"):
 				citizen.enter_building(self, world, true, true)
+			_release_delivery_worker()
 
 func _complete_delivery_to_supermarket(world: World, market: Supermarket, requested_qty: int) -> int:
 	if world == null or market == null or not is_instance_valid(market):
@@ -386,6 +415,26 @@ func _get_delivery_target_position() -> Vector3:
 	if _delivery_target != null and is_instance_valid(_delivery_target):
 		return _delivery_target.get_entrance_pos()
 	return get_storage_point_global()
+
+func _ensure_delivery_vehicle(world: World) -> bool:
+	if _delivery_vehicle != null and is_instance_valid(_delivery_vehicle):
+		return true
+	var instance := DeliveryTruckScene.instantiate()
+	if instance == null or instance is not Node3D or not instance.has_method("assign_delivery_driver"):
+		push_warning("Farm: Could not instantiate delivery truck from %s." % TRUCK_SCENE_PATH)
+		if instance != null:
+			instance.queue_free()
+		return false
+	_delivery_vehicle = instance as Node3D
+	_delivery_vehicle.name = "%s_DeliveryTruck" % get_display_name().replace(" ", "_")
+	var parent: Node = world.get_parent() if world != null and world.get_parent() != null else world
+	if parent == null:
+		parent = self
+	parent.add_child(_delivery_vehicle)
+	_delivery_vehicle.global_position = get_storage_point_global()
+	if world != null and world.has_method("register_vehicle"):
+		world.register_vehicle(_delivery_vehicle)
+	return true
 
 func _find_supermarket_delivery_targets(world: World) -> Array[Supermarket]:
 	var targets: Array[Supermarket] = []

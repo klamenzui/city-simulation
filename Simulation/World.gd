@@ -37,6 +37,7 @@ var _cinemas: Array[Cinema] = []
 var _universities: Array[University] = []
 var _city_halls: Array[CityHall] = []
 var _parks: Array[Park] = []
+var vehicles: Array[Node3D] = []
 var _buildings_by_service_type: Dictionary = {}
 var _canonical_building_by_instance_id: Dictionary = {}
 var _park_representative_by_cluster_id: Dictionary = {}
@@ -851,6 +852,24 @@ func get_road_path(start_pos: Vector3, end_pos: Vector3) -> PackedVector3Array:
 	if road_graph == null:
 		return PackedVector3Array()
 	return road_graph.find_path_points(start_pos, end_pos)
+
+func get_vehicle_road_path(start_pos: Vector3, end_pos: Vector3) -> PackedVector3Array:
+	var lane_offset := BalanceConfig.get_float("transport.vehicle_lane_offset", 0.45)
+	if road_graph == null:
+		return PackedVector3Array([start_pos, end_pos])
+	if road_graph.has_method("find_vehicle_path_points"):
+		return road_graph.find_vehicle_path_points(start_pos, end_pos, lane_offset)
+	return road_graph.find_path_points(start_pos, end_pos)
+
+func register_vehicle(vehicle: Node3D) -> void:
+	if vehicle == null or vehicles.has(vehicle):
+		return
+	vehicles.append(vehicle)
+
+func unregister_vehicle(vehicle: Node3D) -> void:
+	if vehicle == null:
+		return
+	vehicles.erase(vehicle)
 
 func get_pedestrian_path(start_pos: Vector3, end_pos: Vector3, start_building: Building = null, end_building: Building = null) -> PackedVector3Array:
 	if pedestrian_graph != null and pedestrian_graph.has_graph():

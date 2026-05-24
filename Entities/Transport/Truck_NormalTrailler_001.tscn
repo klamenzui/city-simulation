@@ -1,5 +1,10 @@
 [gd_scene format=4 uid="uid://dxgr2otrkdkq2"]
 
+[ext_resource type="Script" uid="uid://cd1nnk30w7t4c" path="res://Simulation/Transport/VehicleAgent.gd" id="1_vehicle_agent"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_vehicle_body"]
+size = Vector3(4.2, 2.8, 11.6)
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kk7fc"]
 resource_name = "Rough"
 cull_mode = 2
@@ -789,7 +794,15 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_bhmh1")
 
-[node name="Truck_NormalTrailler_0012" type="Node3D" unique_id=1092581037]
+[node name="Truck_NormalTrailler_0012" type="CharacterBody3D" unique_id=1092581037]
+transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, 0, 0, 0)
+collision_layer = 4
+collision_mask = 1
+script = ExtResource("1_vehicle_agent")
+
+[node name="VehicleCollisionShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.55, -4.9)
+shape = SubResource("BoxShape3D_vehicle_body")
 
 [node name="Truck_Chassy_Short" type="MeshInstance3D" parent="." unique_id=1168994609]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9584219, 0.3086977)
@@ -860,3 +873,9 @@ skeleton = NodePath("")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0440916, -6.6958275)
 mesh = SubResource("ArrayMesh_87kqi")
 skeleton = NodePath("")
+
+[node name="EntryPoint" type="Node3D" parent="." unique_id=1286578358]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.45, 0.05, -0.65)
+
+[node name="SeatPoint" type="Node3D" parent="." unique_id=1143444894]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, 2.25, -0.55)
