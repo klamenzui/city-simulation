@@ -106,6 +106,8 @@ static func _build_building_snapshots(world: World, root: Node, include_static: 
 			var commercial := building as CommercialBuilding
 			data["inventory"] = commercial.inventory.duplicate(true)
 			data["base_prices"] = commercial.base_prices.duplicate(true)
+		if building.has_method("get_farm_state_snapshot"):
+			data["farm_state"] = building.call("get_farm_state_snapshot")
 		snapshots.append(data)
 	return snapshots
 
@@ -272,6 +274,8 @@ static func _apply_building_snapshots(world: World, root: Node, entries: Variant
 		building.citizen_owner = citizen_lookup.get(owner_id, null) as Citizen if not owner_id.is_empty() else null
 		if building is CommercialBuilding:
 			_apply_commercial_snapshot(building as CommercialBuilding, data)
+		if building.has_method("apply_farm_state_snapshot") and data.get("farm_state", null) is Dictionary:
+			building.call("apply_farm_state_snapshot", data.get("farm_state", {}))
 
 static func _build_citizen_lookup(world: World) -> Dictionary:
 	var lookup: Dictionary = {}

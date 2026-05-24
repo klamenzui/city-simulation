@@ -135,6 +135,7 @@ func _on_tick() -> void:
 		return
 
 	time.advance(minutes_per_tick)
+	_tick_building_simulation(minutes_per_tick)
 	var tick_index := _simulation_tick_counter + 1
 	_tick_citizen_bucket(_focus_citizens)
 	_tick_citizen_bucket(_active_citizens)
@@ -399,6 +400,14 @@ func _run_daily_market_cycle() -> void:
 	for building2 in buildings:
 		if building2 is CommercialBuilding:
 			(building2 as CommercialBuilding).run_daily_supply(self)
+
+func _tick_building_simulation(elapsed_minutes: int) -> void:
+	var snapshot := buildings.duplicate()
+	for building in snapshot:
+		if building == null or not is_instance_valid(building):
+			continue
+		if building.has_method("sim_tick"):
+			building.call("sim_tick", self, elapsed_minutes)
 
 func _tick_citizen_bucket(bucket: Array[Citizen]) -> void:
 	if bucket.is_empty():
@@ -1990,11 +1999,15 @@ func _score_job_offer_for_citizen(
 	var score := 0.0
 	var university_missing_teaching := false
 	var park_missing_gardener := false
+	var farm_missing_driver := false
 	if building.building_type == Building.BuildingType.UNIVERSITY:
 		var university := building as University
 		university_missing_teaching = university == null or not university.has_teaching_staff()
 	if building.building_type == Building.BuildingType.PARK:
 		park_missing_gardener = building.get_workers_by_titles(["Gardener"]).is_empty()
+	if building.building_type == Building.BuildingType.FARM:
+		var farm := building as Farm
+		farm_missing_driver = farm == null or not farm.has_delivery_staff()
 
 	score -= distance * 1.6
 	score += float(maxi(free_slots, 1)) * 40.0
@@ -2040,6 +2053,11 @@ func _score_job_offer_for_citizen(
 				score += 180.0
 			elif job_title == "MaintenanceWorker":
 				score += 120.0
+		Building.BuildingType.FARM:
+			if job_title == "Fahrer":
+				score += 650.0 if farm_missing_driver else 120.0
+			elif job_title == "Gardener":
+				score += 180.0
 
 	if citizen.job != null and citizen.job.title == job_title:
 		score += 30.0

@@ -179,6 +179,7 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_economy_test.gd | - | SceneTree |
 | tools/codex_emotion_test.gd | - | SceneTree |
 | tools/codex_facade_caller_drift_test.gd | - | SceneTree |
+| tools/codex_farm_scene_probe.gd | - | SceneTree |
 | tools/codex_game_smoke_test.gd | - | SceneTree |
 | tools/codex_goal_cooldown_test.gd | - | SceneTree |
 | tools/codex_live_economy_food_test.gd | - | SceneTree |
