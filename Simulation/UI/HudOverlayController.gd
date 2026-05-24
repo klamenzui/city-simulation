@@ -211,8 +211,19 @@ func _build_citizen_overview_overlay(
 	citizen_heading.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
 	citizen_vbox.add_child(citizen_heading)
 
+	var citizen_sort_row := HBoxContainer.new()
+	citizen_sort_row.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
+	citizen_vbox.add_child(citizen_sort_row)
+
+	var citizen_sort_name_button := _make_segment_button(LocaleServiceScript.t("overview.citizens_sort_name"))
+	citizen_sort_row.add_child(citizen_sort_name_button)
+	var citizen_sort_job_button := _make_segment_button(LocaleServiceScript.t("overview.citizens_sort_job"))
+	citizen_sort_row.add_child(citizen_sort_job_button)
+	var citizen_sort_money_button := _make_segment_button(LocaleServiceScript.t("overview.citizens_sort_money"))
+	citizen_sort_row.add_child(citizen_sort_money_button)
+
 	var citizen_overview_scroll := ScrollContainer.new()
-	citizen_overview_scroll.custom_minimum_size = Vector2(354, 256)
+	citizen_overview_scroll.custom_minimum_size = Vector2(354, 222)
 	citizen_overview_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	citizen_vbox.add_child(citizen_overview_scroll)
 
@@ -220,7 +231,7 @@ func _build_citizen_overview_overlay(
 	citizen_overview_label.bbcode_enabled = true
 	citizen_overview_label.fit_content = true
 	citizen_overview_label.scroll_active = false
-	citizen_overview_label.custom_minimum_size = Vector2(340, 240)
+	citizen_overview_label.custom_minimum_size = Vector2(340, 206)
 	citizen_overview_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	citizen_overview_scroll.add_child(citizen_overview_label)
 
@@ -232,7 +243,10 @@ func _build_citizen_overview_overlay(
 		citizen_overview_button_ref,
 		mark_ui_interacted,
 		select_citizen,
-		refresh_interval_sec
+		refresh_interval_sec,
+		citizen_sort_name_button,
+		citizen_sort_job_button,
+		citizen_sort_money_button
 	)
 
 func _build_economy_overview_overlay(
@@ -405,3 +419,11 @@ func _toggle_overview_exclusive(target) -> void:
 
 func _is_controller_visible(controller) -> bool:
 	return controller != null and controller.has_method("is_visible") and bool(controller.is_visible())
+
+func _make_segment_button(text: String) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = Vector2(74, 28)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return button
