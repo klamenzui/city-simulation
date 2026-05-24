@@ -138,6 +138,11 @@ $availableTests = @(
 		Script = "res://tools/codex_farm_scene_probe.gd"
 	}
 	[pscustomobject]@{
+		Key = "vehicle"
+		Label = "Vehicle Transport"
+		Script = "res://tools/codex_vehicle_transport_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "occupancy"
 		Label = "Building Occupancy Test"
 		Script = "res://tools/codex_building_occupancy_test.gd"

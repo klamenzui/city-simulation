@@ -68,6 +68,12 @@ func find_path_points(start_pos: Vector3, end_pos: Vector3) -> PackedVector3Arra
 	route.append(end_pos)
 	return _remove_close_duplicates(route)
 
+func find_vehicle_path_points(start_pos: Vector3, end_pos: Vector3, lane_offset: float = 0.45) -> PackedVector3Array:
+	var center_path := find_path_points(start_pos, end_pos)
+	if center_path.size() < 2:
+		return center_path
+	return _center_path_to_right_lane(center_path, lane_offset)
+
 func get_nearest_node_index(pos: Vector3) -> int:
 	if nodes.is_empty():
 		return -1
@@ -194,6 +200,28 @@ func _remove_close_duplicates(path: PackedVector3Array, min_dist: float = 0.15) 
 		if out[out.size() - 1].distance_to(p) >= min_dist:
 			out.append(p)
 	return out
+
+func _center_path_to_right_lane(center_path: PackedVector3Array, lane_offset: float) -> PackedVector3Array:
+	if center_path.size() < 2:
+		return center_path
+
+	var offset := maxf(lane_offset, 0.0)
+	var lane_path := PackedVector3Array()
+	for i in range(center_path.size()):
+		var center := center_path[i]
+		var direction := Vector3.ZERO
+		if i < center_path.size() - 1:
+			direction = center_path[i + 1] - center
+		else:
+			direction = center - center_path[i - 1]
+		direction.y = 0.0
+		if direction.length_squared() <= 0.0001:
+			lane_path.append(center)
+			continue
+		direction = direction.normalized()
+		var right := Vector3(-direction.z, 0.0, direction.x)
+		lane_path.append(center + right * offset)
+	return _remove_close_duplicates(lane_path, 0.22)
 
 func _grid_key(pos: Vector3) -> String:
 	var x: float = round(pos.x / DEDUPE_STEP) * DEDUPE_STEP

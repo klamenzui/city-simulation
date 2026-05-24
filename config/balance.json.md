@@ -53,6 +53,38 @@ Takt der Simulationsschleife und Stadt-Startkapital.
 
 ---
 
+## transport
+
+Vehicle pathing and first delivery-truck movement tuning.
+
+| Key | Default | Wirkung |
+| --- | --- | --- |
+| `vehicle_lane_offset` | `0.45` | Offset from RoadGraph centerline to the right-side vehicle lane. |
+| `vehicle.max_speed` | `5.0` | Maximum truck speed in world units per second. |
+| `vehicle.acceleration` | `2.8` | Truck acceleration. |
+| `vehicle.braking_acceleration` | `5.5` | Truck deceleration while slowing down. |
+| `vehicle.braking_distance` | `2.2` | Distance before destination where the truck starts slowing down. |
+| `vehicle.turn_speed` | `5.0` | Yaw interpolation speed while following route waypoints. |
+| `vehicle.waypoint_reach_distance` | `0.45` | Distance at which the next vehicle waypoint is considered reached. |
+| `vehicle.forward_yaw_offset` | `0.0` | Optional mesh yaw correction if a vehicle model faces a different local axis. |
+| `vehicle.manual_drive_enabled` | `true` | Enables direct player driving after a controlled citizen enters a vehicle. |
+| `vehicle.manual_max_speed` | `4.5` | Maximum forward speed for player-driven vehicles. |
+| `vehicle.manual_reverse_speed` | `2.0` | Maximum reverse speed for player-driven vehicles. |
+| `vehicle.manual_acceleration` | `3.8` | Acceleration while the player holds forward or reverse. |
+| `vehicle.manual_braking_acceleration` | `6.5` | Deceleration when changing direction or braking against current speed. |
+| `vehicle.manual_coast_deceleration` | `2.0` | Passive slowdown when the player releases throttle. |
+| `vehicle.manual_turn_speed` | `1.7` | Yaw speed for player steering in radians per second. |
+| `vehicle.manual_min_turn_factor` | `0.25` | Minimum turn responsiveness while moving slowly. |
+| `vehicle.ground_snap_enabled` | `true` | Keeps kinematic vehicles grounded by ray-snapping to static road/world surfaces. |
+| `vehicle.ground_probe_up` | `2.0` | Upward ray start offset for vehicle ground probes. |
+| `vehicle.ground_probe_down` | `8.0` | Downward ray length for vehicle ground probes. |
+| `vehicle.ground_height_offset` | `0.0` | Height added to the probed ground point before placing the vehicle root. |
+| `vehicle.ground_snap_speed` | `30.0` | Interpolation speed used when snapping vehicle height during simulation. |
+| `vehicle.ground_min_normal_y` | `0.45` | Minimum upward surface normal accepted as vehicle ground. |
+| `vehicle.ground_collision_mask` | `1` | Physics mask used by vehicle ground probes. |
+
+---
+
 ## economy
 
 Markt, Jobs, Stadtkasse und Gebäude-Finanz-Defaults.

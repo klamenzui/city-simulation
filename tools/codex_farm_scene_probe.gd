@@ -180,6 +180,7 @@ func _check_daily_production(farm: Farm, errors: Array[String]) -> void:
 
 	var supermarket := Supermarket.new()
 	supermarket.name = "FarmDeliveryProbeSupermarket"
+	supermarket.position = Vector3(8.0, 0.0, 0.0)
 	root.add_child(supermarket)
 	await process_frame
 	world.buildings.append(supermarket)
@@ -221,14 +222,24 @@ func _check_daily_production(farm: Farm, errors: Array[String]) -> void:
 	driver.current_action = delivery_action
 	delivery_action.start(world, driver)
 	delivery_action.tick(world, driver, 5)
+	var truck := _first_delivery_vehicle()
+	if truck == null:
+		errors.append("Farm Fahrer delivery should spawn a delivery truck.")
+	else:
+		driver.global_position = truck.call("get_entry_point_global") as Vector3
+		driver.stop_travel()
+		delivery_action.tick(world, driver, 5)
+		if not driver.has_method("is_inside_vehicle") or not driver.is_inside_vehicle():
+			errors.append("Farm Fahrer should enter the delivery truck before driving.")
+		_advance_vehicle_until_stopped(truck)
+		delivery_action.tick(world, driver, 5)
+		for _i in range(3):
+			delivery_action.tick(world, driver, 5)
+		_advance_vehicle_until_stopped(truck)
+		delivery_action.tick(world, driver, 5)
+
 	driver.global_position = supermarket.get_entrance_pos()
 	driver.stop_travel()
-	delivery_action.tick(world, driver, 5)
-	for _i in range(2):
-		delivery_action.tick(world, driver, 5)
-	driver.global_position = farm.get_storage_point_global()
-	driver.stop_travel()
-	delivery_action.tick(world, driver, 5)
 
 	if supermarket.get_stock("grocery_bundle") <= grocery_stock_before:
 		errors.append("Farm Fahrer should increase supermarket grocery stock from storage.")
@@ -257,6 +268,22 @@ func _check_daily_production(farm: Farm, errors: Array[String]) -> void:
 	driver.free()
 	worker.free()
 	world.free()
+
+
+func _first_delivery_vehicle() -> Node:
+	for node in get_nodes_in_group("delivery_vehicles"):
+		return node
+	return null
+
+
+func _advance_vehicle_until_stopped(vehicle: Node, max_steps: int = 160) -> void:
+	if vehicle == null:
+		return
+	for _i in range(max_steps):
+		if not vehicle.has_method("is_driving") or not bool(vehicle.call("is_driving")):
+			return
+		if vehicle.has_method("advance_vehicle_simulation"):
+			vehicle.call("advance_vehicle_simulation", 0.2)
 
 
 func _count_nodes_of_type(node: Node, type_ref: Variant) -> int:

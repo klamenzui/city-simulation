@@ -64,6 +64,7 @@ var _auto_resolved_refs: bool = false
 var _saved_collision_layer: int = 0
 var _saved_collision_mask: int = 0
 var _interior_presence_hidden: bool = false
+var _vehicle_presence_hidden: bool = false
 var _debug_repath_count: int = 0
 var _debug_last_travel_route: PackedVector3Array = PackedVector3Array()
 var _debug_last_travel_failed: bool = false
@@ -98,6 +99,7 @@ var _last_safe_respawn_position: Vector3 = Vector3.ZERO
 var _has_last_safe_respawn_position: bool = false
 var _fall_respawn_cooldown_sec: float = 0.0
 var _fall_respawn_count: int = 0
+var current_vehicle: Node = null
 var cheap_path_follow_lod_enabled: bool = true
 var cheap_path_follow_camera_distance: float = 80.0
 var obstacle_sensor_height: float = 0.9
@@ -1757,7 +1759,7 @@ func _apply_combined_presence_state() -> void:
 	# When LOD wants to hide and we're not already hidden by indoor presence,
 	# trigger the hide path. When LOD wants to show but we ARE indoor, the
 	# indoor flag wins.
-	var should_hide := _sim.lod.presence_hidden or _interior_presence_hidden
+	var should_hide := _sim.lod.presence_hidden or _interior_presence_hidden or _vehicle_presence_hidden
 	if should_hide and visible:
 		hide()
 		velocity = Vector3.ZERO
@@ -1777,7 +1779,7 @@ func _apply_combined_presence_state() -> void:
 
 func _is_body_presence_hidden() -> bool:
 	var lod_hidden := _sim != null and _sim.lod != null and _sim.lod.presence_hidden
-	return _interior_presence_hidden or lod_hidden
+	return _interior_presence_hidden or _vehicle_presence_hidden or lod_hidden
 
 
 func is_autonomous_simulation_enabled() -> bool:
@@ -1891,6 +1893,32 @@ func is_inside_building() -> bool:
 		return _network_inside_building
 	return _sim != null and _sim.location != null and _sim.location.is_inside()
 
+func is_inside_vehicle() -> bool:
+	return _vehicle_presence_hidden and current_vehicle != null and is_instance_valid(current_vehicle)
+
+func enter_vehicle(vehicle: Node, seat_pos: Vector3 = Vector3.ZERO) -> void:
+	if vehicle == null:
+		return
+	clear_rest_pose(true)
+	stop_travel()
+	current_vehicle = vehicle
+	current_location = null
+	_vehicle_presence_hidden = true
+	var resolved_seat := seat_pos
+	if resolved_seat == Vector3.ZERO and vehicle is Node3D:
+		resolved_seat = (vehicle as Node3D).global_position
+	_set_position_grounded(resolved_seat)
+	_apply_combined_presence_state()
+
+func exit_vehicle(exit_pos: Vector3, world: Node = null) -> void:
+	if current_vehicle == null and not _vehicle_presence_hidden:
+		return
+	current_vehicle = null
+	_vehicle_presence_hidden = false
+	_set_position_grounded(exit_pos)
+	if world != null:
+		_world_ref = world as World
+	_apply_combined_presence_state()
 
 func get_navigation_points_for_building(building: Building, world: Node = null) -> Dictionary:
 	if _sim == null or _sim.location == null:
