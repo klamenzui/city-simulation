@@ -10,6 +10,7 @@ const ShopScript = preload("res://Entities/Buildings/Shop.gd")
 const SupermarketScript = preload("res://Entities/Buildings/Supermarket.gd")
 const UniversityScript = preload("res://Entities/Buildings/University.gd")
 const CityHallScript = preload("res://Entities/Buildings/CityHall.gd")
+const HospitalScript = preload("res://Entities/Buildings/Hospital.gd")
 const CitizenScript = preload("res://Entities/Citizens/New/Citizen.gd")
 const WorldScript = preload("res://Simulation/World.gd")
 const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
@@ -1019,12 +1020,16 @@ func _test_citizen_factory_seeds_university_and_city_hall_staff() -> String:
 	var city_hall: CityHall = _new_city_hall("Seed City Hall")
 	city_hall.job_capacity = 5
 	world.register_building(city_hall)
+	var hospital = _new_hospital("Seed Hospital")
+	hospital.job_capacity = 5
+	world.register_building(hospital)
 
 	# Seeding fills the deadlock-critical roles up front: a University needs
-	# teaching staff before anyone can study, but teaching now requires a degree.
-	var spawned: Array[Citizen] = CitizenFactoryScript.spawn_citizens(_harness_root, world, 3, true)
-	_expect_eq(spawned.size(), 3, "factory should spawn the seeded staff")
-	if spawned.size() < 3:
+	# teaching staff before anyone can study, City Hall needs a Mayor, and
+	# Hospital needs core medical staff before treatment can begin.
+	var spawned: Array[Citizen] = CitizenFactoryScript.spawn_citizens(_harness_root, world, 5, true)
+	_expect_eq(spawned.size(), 5, "factory should spawn the seeded staff")
+	if spawned.size() < 5:
 		_free_world(world)
 		return _current_error
 
@@ -1041,11 +1046,24 @@ func _test_citizen_factory_seeds_university_and_city_hall_staff() -> String:
 
 	_expect(uni.has_teaching_staff(), "seeded university must report teaching staff so studying can begin")
 
-	var doctor := spawned[2]
-	_expect(doctor.job != null and doctor.job.title == "Doctor", "third seed should be a Doctor")
+	var mayor := spawned[2]
+	_expect(mayor.job != null and mayor.job.title == "Mayor", "third seed should be a Mayor")
+	_expect_eq(mayor.education_level, 3, "seeded mayor should start educated to level 3")
+	_expect(mayor.job != null and mayor.job.workplace == city_hall, "seeded mayor should be employed at the city hall")
+	_expect(city_hall.workers.has(mayor), "city hall should employ the seeded mayor")
+
+	var doctor := spawned[3]
+	_expect(doctor.job != null and doctor.job.title == "Doctor", "fourth seed should be a Doctor")
 	_expect_eq(doctor.education_level, 3, "seeded doctor should start educated to level 3")
-	_expect(doctor.job != null and doctor.job.workplace == city_hall, "seeded doctor should be employed at the city hall")
-	_expect(city_hall.workers.has(doctor), "city hall should employ the seeded doctor")
+	_expect(doctor.job != null and doctor.job.workplace == hospital, "seeded doctor should be employed at the hospital")
+	_expect(hospital.workers.has(doctor), "hospital should employ the seeded doctor")
+
+	var nurse := spawned[4]
+	_expect(nurse.job != null and nurse.job.title == "Nurse", "fifth seed should be a Nurse")
+	_expect_eq(nurse.education_level, 2, "seeded nurse should start educated to level 2")
+	_expect(nurse.job != null and nurse.job.workplace == hospital, "seeded nurse should be employed at the hospital")
+	_expect(hospital.workers.has(nurse), "hospital should employ the seeded nurse")
+	_expect(hospital.has_core_medical_staff(), "seeded hospital must report core medical staff")
 
 	_free_world(world)
 	return _current_error
@@ -2329,6 +2347,17 @@ func _new_city_hall(building_name: String) -> CityHall:
 	hall.add_child(entrance)
 	_harness_root.add_child(hall)
 	return hall
+
+func _new_hospital(building_name: String):
+	var hospital = HospitalScript.new()
+	hospital.name = building_name
+	hospital.building_name = building_name
+	var entrance := Node3D.new()
+	entrance.name = "Entrance"
+	entrance.position = Vector3(0.0, 0.0, 1.4)
+	hospital.add_child(entrance)
+	_harness_root.add_child(hospital)
+	return hospital
 
 func _new_restaurant(building_name: String, position: Vector3) -> Restaurant:
 	var restaurant: Restaurant = RestaurantScript.new()

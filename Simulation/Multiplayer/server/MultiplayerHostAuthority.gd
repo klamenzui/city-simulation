@@ -361,6 +361,8 @@ func _apply_player_action_command(peer_id: int, action_id: String) -> Dictionary
 			accepted = player.player_socialize(world)
 		"watch_cinema":
 			accepted = player.player_watch_cinema(world)
+		"treat":
+			accepted = player.player_treat(world)
 		"buy_shop_item":
 			accepted = player.player_buy_shop_item(world)
 		"buy_groceries":
@@ -1031,6 +1033,8 @@ func _player_action_label(action_id: String) -> String:
 			return "Sozialisieren"
 		"watch_cinema":
 			return "Film schauen"
+		"treat":
+			return "Behandlung"
 		"buy_shop_item":
 			return "Kleidung kaufen"
 		"buy_groceries":

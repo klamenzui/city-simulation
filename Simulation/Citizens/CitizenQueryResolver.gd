@@ -169,6 +169,23 @@ func find_nearest_university(citizen: Citizen, from_pos: Vector3, require_open: 
 			return not require_open or building.is_open(-1)
 	) as University
 
+func find_nearest_hospital(citizen: Citizen, from_pos: Vector3, require_open: bool = true):
+	var query_world := resolve_query_world(citizen)
+	if query_world != null:
+		if query_world.has_method("find_nearest_hospital"):
+			return query_world.find_nearest_hospital(from_pos, require_open, citizen)
+		if query_world.has_method("find_nearest_building_with_service"):
+			return query_world.find_nearest_building_with_service(from_pos, "healthcare", require_open, citizen)
+	return find_nearest_tree_building(
+		citizen,
+		from_pos,
+		"healthcare",
+		func(building: Building) -> bool:
+			if building.building_type != Building.BuildingType.HOSPITAL:
+				return false
+			return not require_open or building.is_open(-1)
+	)
+
 func find_nearest_park(citizen: Citizen, from_pos: Vector3) -> Building:
 	var query_world := resolve_query_world(citizen)
 	if query_world != null:

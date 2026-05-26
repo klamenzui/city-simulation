@@ -35,6 +35,7 @@ var _supermarkets: Array[Supermarket] = []
 var _shops: Array[Shop] = []
 var _cinemas: Array[Cinema] = []
 var _universities: Array[University] = []
+var _hospitals: Array[Building] = []
 var _city_halls: Array[CityHall] = []
 var _parks: Array[Park] = []
 var vehicles: Array[Node3D] = []
@@ -555,13 +556,15 @@ func _pay_welfare(citizen: Citizen, amount: int, city_hall) -> bool:
 		return true
 	return false
 
-func _pay_salary(citizen: Citizen, amount: int, _city_hall) -> String:
+func _pay_salary(citizen: Citizen, amount: int, city_hall) -> String:
 	if amount <= 0:
 		return ""
 
 	var workplace: Building = citizen.job.workplace if citizen.job != null else null
 	if workplace is CityHall:
 		(workplace as CityHall).ensure_operating_liquidity(self, "city_hall_payroll")
+	elif workplace != null and workplace.requires_public_funding() and city_hall != null:
+		city_hall.ensure_operating_liquidity(self, "public_payroll")
 	if workplace != null and economy.pay_to_wallet(workplace.account, citizen, amount):
 		workplace.record_wage_expense(amount)
 		return "work"
@@ -1752,6 +1755,8 @@ func _index_building(building: Building) -> void:
 		_append_unique(_cinemas, building as Cinema)
 	if building is University:
 		_append_unique(_universities, building as University)
+	if building.building_type == Building.BuildingType.HOSPITAL:
+		_append_unique(_hospitals, building)
 	if building is CityHall:
 		_append_unique(_city_halls, building as CityHall)
 	if building is Park:
@@ -1774,6 +1779,8 @@ func _deindex_building(building: Building) -> void:
 		_cinemas.erase(building as Cinema)
 	if building is University:
 		_universities.erase(building as University)
+	if building.building_type == Building.BuildingType.HOSPITAL:
+		_hospitals.erase(building)
 	if building is CityHall:
 		_city_halls.erase(building as CityHall)
 	if building is Park:
@@ -1828,6 +1835,25 @@ func find_nearest_university(from_pos: Vector3, require_open: bool = true, seeke
 		if dist < best_dist:
 			best_dist = dist
 			best = uni
+	return best
+
+func find_nearest_hospital(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null):
+	var best = null
+	var best_score := INF
+	for hospital in _hospitals:
+		if hospital == null or not is_instance_valid(hospital):
+			continue
+		if _is_building_temporarily_blocked_for(hospital, seeker):
+			continue
+		if require_open and not hospital.is_open(time.get_hour()):
+			continue
+		if not _is_building_pedestrian_reachable(from_pos, hospital):
+			continue
+		var load := float(hospital.get_total_patient_load()) / float(maxi(hospital.get_effective_patient_capacity(), 1))
+		var score := load * 1000.0 + from_pos.distance_to(hospital.global_position)
+		if score < best_score:
+			best_score = score
+			best = hospital
 	return best
 
 func find_nearest_building_with_service(from_pos: Vector3, service_type: String, require_open: bool = true, seeker: Citizen = null) -> Building:
@@ -2019,6 +2045,7 @@ func _score_job_offer_for_citizen(
 	var university_missing_teaching := false
 	var park_missing_gardener := false
 	var farm_missing_driver := false
+	var hospital_missing_medical := false
 	if building.building_type == Building.BuildingType.UNIVERSITY:
 		var university := building as University
 		university_missing_teaching = university == null or not university.has_teaching_staff()
@@ -2027,6 +2054,9 @@ func _score_job_offer_for_citizen(
 	if building.building_type == Building.BuildingType.FARM:
 		var farm := building as Farm
 		farm_missing_driver = farm == null or not farm.has_delivery_staff()
+	if building.building_type == Building.BuildingType.HOSPITAL:
+		var hospital: Variant = building
+		hospital_missing_medical = hospital == null or not hospital.has_core_medical_staff()
 
 	score -= distance * 1.6
 	score += float(maxi(free_slots, 1)) * 40.0
@@ -2060,8 +2090,21 @@ func _score_job_offer_for_citizen(
 			if job_title == "Gardener":
 				score += 520.0 if park_missing_gardener else 90.0
 		Building.BuildingType.CITY_HALL:
-			if job_title == "Programmierer" or job_title == "Technician":
+			if job_title == "Mayor":
+				score += 460.0
+			elif job_title == "Janitor" or job_title == "MaintenanceWorker":
+				score += 130.0
+			elif job_title == "Programmierer" or job_title == "Technician":
 				score += 250.0
+		Building.BuildingType.HOSPITAL:
+			if job_title == "Doctor":
+				score += 900.0 if hospital_missing_medical else 240.0
+			elif job_title == "Nurse":
+				score += 720.0 if hospital_missing_medical else 220.0
+			elif job_title == "Pharmacist" or job_title == "Therapist":
+				score += 180.0
+			elif job_title == "Janitor" or job_title == "MaintenanceWorker":
+				score += 130.0
 		Building.BuildingType.FACTORY:
 			if job_title == "Technician" or job_title == "Engineer":
 				score += 180.0
@@ -2093,7 +2136,9 @@ func _get_candidate_job_titles_for_building(building: Building) -> Array[String]
 		Building.BuildingType.PARK:
 			return ["Gardener", "MaintenanceWorker", "Janitor"]
 		Building.BuildingType.CITY_HALL:
-			return ["Programmierer", "Technician", "Janitor", "Doctor", "MaintenanceWorker"]
+			return ["Mayor", "Programmierer", "Technician", "Janitor", "MaintenanceWorker"]
+		Building.BuildingType.HOSPITAL:
+			return ["Doctor", "Nurse", "Pharmacist", "Therapist", "Janitor", "MaintenanceWorker"]
 		Building.BuildingType.RESTAURANT, Building.BuildingType.CAFE:
 			return ["Kellner", "Baecker", "Janitor", "MaintenanceWorker"]
 		Building.BuildingType.SHOP, Building.BuildingType.SUPERMARKET:

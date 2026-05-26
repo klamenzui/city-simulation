@@ -570,7 +570,7 @@ func _offline_player_action_toast_message(action_id: String, accepted: bool, pla
 	if not notice.is_empty():
 		return notice
 	match action_id:
-		"work", "eat", "sleep", "study", "relax", "socialize", "watch_cinema":
+		"work", "eat", "sleep", "study", "relax", "socialize", "watch_cinema", "treat":
 			return LocaleServiceScript.t("interaction.action_started") % label
 		"buy_shop_item", "buy_groceries":
 			return LocaleServiceScript.t("interaction.action_bought") % label
@@ -659,6 +659,8 @@ func handle_debug_panel_player_action_pressed(action_id: String) -> void:
 			accepted = player.player_socialize(world)
 		"watch_cinema":
 			accepted = player.player_watch_cinema(world)
+		"treat":
+			accepted = player.player_treat(world)
 		"buy_shop_item":
 			accepted = player.player_buy_shop_item(world)
 		"buy_groceries":

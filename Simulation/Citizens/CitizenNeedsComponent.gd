@@ -16,6 +16,7 @@ func tick_needs(world, citizen, tick_minutes: int = -1) -> float:
 		mod.fun_mul,
 		mod.get("hunger_add", 0.0),
 		mod.energy_add,
-		mod.fun_add
+		mod.fun_add,
+		mod.get("health_add", 0.0)
 	)
 	return citizen.needs.get_health_delta()

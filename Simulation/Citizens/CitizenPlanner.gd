@@ -8,6 +8,7 @@ const CitizenEnergyGoapScript = preload("res://Simulation/GOAP/CitizenEnergyGoap
 const CitizenWorkGoapScript = preload("res://Simulation/GOAP/CitizenWorkGoap.gd")
 const CitizenEducationGoapScript = preload("res://Simulation/GOAP/CitizenEducationGoap.gd")
 const CitizenSocialGoapScript = preload("res://Simulation/GOAP/CitizenSocialGoap.gd")
+const CitizenHealthGoapScript = preload("res://Simulation/GOAP/CitizenHealthGoap.gd")
 const CitizenEmotionScript = preload("res://Simulation/Citizens/CitizenEmotion.gd")
 const BuyGroceriesActionScript = preload("res://Actions/BuyGroceriesAction.gd")
 const EatAtHomeActionScript = preload("res://Actions/EatAtHomeAction.gd")
@@ -24,6 +25,7 @@ var _energy_goap = CitizenEnergyGoapScript.new()
 var _work_goap = CitizenWorkGoapScript.new()
 var _education_goap = CitizenEducationGoapScript.new()
 var _social_goap = CitizenSocialGoapScript.new()
+var _health_goap = CitizenHealthGoapScript.new()
 
 var _critical_hunger: float = BalanceConfig.get_float("planner.critical_hunger", 80.0)
 var _critical_energy: float = BalanceConfig.get_float("planner.critical_energy", 10.0)
@@ -40,6 +42,13 @@ var _goal_priority_education_weight: float = BalanceConfig.get_float("planner.go
 var _goal_priority_work_weight: float = BalanceConfig.get_float("planner.goal_priority_work_weight", 0.9)
 var _goal_priority_fun_weight: float = BalanceConfig.get_float("planner.goal_priority_fun_weight", 0.65)
 var _goal_priority_social_weight: float = BalanceConfig.get_float("planner.goal_priority_social_weight", 0.6)
+var _goal_priority_health_weight: float = BalanceConfig.get_float("planner.goal_priority_health_weight", 1.6)
+var _health_priority_scale: float = BalanceConfig.get_float("planner.health.priority_scale", 20.0)
+var _health_visit_threshold: float = BalanceConfig.get_float("planner.health.visit_threshold", 20.0)
+var _health_emergency_threshold: float = BalanceConfig.get_float("planner.health.emergency_threshold", 5.0)
+var _sick_work_skip_threshold: float = BalanceConfig.get_float("planner.health.sick_work_skip_threshold", 55.0)
+var _sick_work_skip_base_probability: float = BalanceConfig.get_float("planner.health.sick_work_skip_base_probability", 0.18)
+var _sick_work_skip_max_probability: float = BalanceConfig.get_float("planner.health.sick_work_skip_max_probability", 0.75)
 var _work_need_base_priority: float = BalanceConfig.get_float("planner.work_need_base_priority", 0.45)
 var _work_need_remaining_weight: float = BalanceConfig.get_float("planner.work_need_remaining_weight", 0.55)
 var _low_health_hunger_alert_threshold: float = BalanceConfig.get_float("planner.low_health_hunger_alert_threshold", 65.0)
@@ -74,6 +83,7 @@ var _goal_cooldown_minutes: Dictionary = {
 	"hunger": BalanceConfig.get_int("planner.goal_cooldowns.hunger", 0),
 	"energy": BalanceConfig.get_int("planner.goal_cooldowns.energy", 0),
 	"education": BalanceConfig.get_int("planner.goal_cooldowns.education", 0),
+	"health": BalanceConfig.get_int("planner.goal_cooldowns.health", 0),
 	"work": BalanceConfig.get_int("planner.goal_cooldowns.work", 0),
 	"fun": BalanceConfig.get_int("planner.goal_cooldowns.fun", 0),
 	"social": BalanceConfig.get_int("planner.goal_cooldowns.social", 0),
@@ -149,6 +159,10 @@ func _build_goal_candidates(world, citizen) -> Array:
 	if citizen.needs.hunger >= _fun_block_hunger_threshold or citizen.needs.energy <= _fun_block_energy_threshold or low_health:
 		social_deficit = 0.0
 
+	var health_deficit: float = clamp((_health_visit_threshold - citizen.needs.health) / maxf(_health_priority_scale, 0.001), 0.0, 1.0)
+	if citizen.needs.health < _health_emergency_threshold:
+		health_deficit = maxf(health_deficit, 1.25)
+
 	var education_need: float = 0.0
 	if citizen.job != null and not citizen.job.meets_requirements(citizen) and not is_night and not low_health:
 		education_need = 1.0
@@ -185,6 +199,7 @@ func _build_goal_candidates(world, citizen) -> Array:
 		social_emo_mult = CitizenEmotionScript.social_priority_multiplier(emo, _emotion_cfg)
 
 	return [
+		{"id": "health", "priority": health_deficit * _goal_priority_health_weight},
 		{"id": "hunger", "priority": hunger_deficit * _goal_priority_hunger_weight},
 		{"id": "energy", "priority": energy_deficit * _goal_priority_energy_weight},
 		{"id": "education", "priority": education_need * _goal_priority_education_weight},
@@ -198,6 +213,8 @@ func _sort_goal_candidates(a, b) -> bool:
 
 func _try_goal(goal_id: String, world, citizen) -> bool:
 	match goal_id:
+		"health":
+			return _health_goap.try_plan(world, citizen)
 		"hunger":
 			return _hunger_goap.try_plan(world, citizen)
 		"energy":
@@ -237,6 +254,9 @@ func _try_survival_override(world, citizen) -> bool:
 
 	if not critical_hunger and not critical_energy and not critical_health:
 		return false
+
+	if critical_health and _health_goap.try_plan(world, citizen):
+		return true
 
 	if critical_hunger:
 		if citizen.current_location == citizen.home and citizen.home_food_stock > 0:
@@ -299,6 +319,8 @@ func _try_work_schedule(world, citizen) -> bool:
 	if world.time.is_weekend():
 		return false
 	if citizen.needs.health <= _low_health:
+		return false
+	if _should_skip_work_for_sickness(world, citizen):
 		return false
 
 	var shift_minutes: int = int(citizen.job.shift_hours * 60)
@@ -415,6 +437,32 @@ func _can_buy_groceries(world, citizen, supermarket: Supermarket) -> bool:
 	if not supermarket.can_sell_item("grocery_bundle", 1):
 		return false
 	return citizen.can_afford_groceries_at(supermarket, world)
+
+func _should_skip_work_for_sickness(world, citizen) -> bool:
+	if world == null or citizen == null or citizen.needs == null:
+		return false
+	if citizen.needs.health > _sick_work_skip_threshold:
+		return false
+	var denominator := maxf(_sick_work_skip_threshold - _health_visit_threshold, 1.0)
+	var severity := clampf((_sick_work_skip_threshold - citizen.needs.health) / denominator, 0.0, 1.0)
+	var probability := lerpf(_sick_work_skip_base_probability, _sick_work_skip_max_probability, severity)
+	var roll := _stable_daily_roll(citizen, world, "sick_work")
+	if roll >= probability:
+		return false
+	citizen.debug_log_once_per_day(
+		"work_sick_skip_%s" % citizen.job.title,
+		"Skipping work due to sickness: health %.0f, chance %.0f%%. %s" % [
+			citizen.needs.health,
+			probability * 100.0,
+			citizen.get_job_debug_summary()
+		]
+	)
+	return true
+
+func _stable_daily_roll(citizen, world, salt: String) -> float:
+	var day: int = int(world.world_day()) if world != null and world.has_method("world_day") else 0
+	var raw := hash("%d:%d:%s" % [citizen.get_instance_id(), day, salt])
+	return float(posmod(int(raw), 10000)) / 10000.0
 
 func _is_night(hour: int) -> bool:
 	return hour >= _night_start_hour or hour < _day_start_hour

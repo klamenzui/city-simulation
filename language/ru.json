@@ -170,6 +170,7 @@
 		"relax": "Отдыхать",
 		"socialize": "Общаться",
 		"watch_cinema": "Смотреть фильм",
+		"treat": "Лечение",
 		"inventory": "Инвентарь",
 		"shop": "Покупки",
 		"inventory_close": "Закрыть инвентарь",
@@ -218,6 +219,7 @@
 		"status_wage_progression": "Оплата: %d EUR/ч (база %d, +%d%% образование, +%d%% опыт)",
 		"status_company_tenure": "Компания: %s%s - здесь %d дней",
 		"status_absence": "Отсутствие: %d / %d дней",
+		"status_hospital_quality": "Качество больницы: %d%%",
 		"profit_weak": "слабая",
 		"profit_normal": "нормальная",
 		"profit_strong": "сильная"
@@ -232,6 +234,7 @@
 		"university_unavailable": "Университет закрыт или нет преподавателя.",
 		"social_blocked": "Сначала поешьте или восстановитесь.",
 		"cinema_closed_or_poor": "Кинотеатр закрыт или не хватает денег.",
+		"hospital_unavailable": "Больница закрыта, заполнена или без персонала.",
 		"building_not_buyable": "Здание нельзя купить.",
 		"already_owned": "Уже принадлежит вам.",
 		"already_sold": "Уже продано.",
@@ -263,6 +266,9 @@
 		"eat_before_socialize": "Сначала поешьте перед общением.",
 		"health_low": "Здоровье слишком низкое для общения.",
 		"no_cinema": "Здесь нет кинотеатра.",
+		"no_hospital": "Здесь нет больницы.",
+		"hospital_unstaffed": "В больнице нет врача или медсестры.",
+		"hospital_full": "В больнице нет свободных мест для пациентов.",
 		"closed_named": "%s закрыт.",
 		"not_enough_money_price": "Недостаточно денег: нужно %d EUR.",
 		"social_visit": "Встреча в %s.",
@@ -303,6 +309,7 @@
 			"occupancy": "Заполненность",
 			"finance": "Финансы",
 			"maintenance": "Обслуживание и затраты",
+			"healthcare": "Здравоохранение",
 			"needs": "Потребности",
 			"activity": "Активность"
 		},
@@ -346,7 +353,13 @@
 			"company": "Компания",
 			"owned": "Собственность",
 			"food_stock": "Запасы",
-			"clothing": "Одежда"
+			"clothing": "Одежда",
+			"patients": "Пациенты",
+			"queue": "Очередь",
+			"treatment_capacity": "Пропускная способность лечения",
+			"service_quality": "Качество сервиса",
+			"treatments_today": "Лечений сегодня",
+			"charity_care": "Благотворительное лечение"
 		},
 		"value": {
 			"education_stage": "Уровень %d (%s)",
@@ -382,7 +395,8 @@
 			"park": "Парк",
 			"farm": "Ферма",
 			"factory": "Фабрика",
-			"gas_station": "Заправка"
+			"gas_station": "Заправка",
+			"hospital": "Больница"
 		},
 		"service_type": {
 			"commerce": "Коммерция",
@@ -393,6 +407,7 @@
 			"fun": "Досуг",
 			"generic": "Общее",
 			"governance": "Управление",
+			"healthcare": "Здравоохранение",
 			"housing": "Жилье",
 			"production_food": "Производство еды",
 			"production_goods": "Производство товаров",
@@ -408,6 +423,10 @@
 			"salesperson": "Продавец",
 			"designer": "Дизайнер",
 			"doctor": "Врач",
+			"nurse": "Медсестра",
+			"pharmacist": "Фармацевт",
+			"therapist": "Терапевт",
+			"mayor": "Мэр",
 			"teacher": "Преподаватель",
 			"engineer": "Инженер",
 			"professor": "Профессор",
@@ -445,7 +464,8 @@
 		"staff_requirement": {
 			"generic": "нет персонала",
 			"gas_station": "нет персонала заправки",
-			"teacher": "нет преподавателя"
+			"teacher": "нет преподавателя",
+			"medical": "нет врача или медсестры"
 		}
 	},
 

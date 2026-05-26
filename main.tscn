@@ -11,10 +11,13 @@
 [ext_resource type="PackedScene" uid="uid://bj5iflrv1q80d" path="res://Scenes/CityBuildings/services/services_001_bf24cdee.tscn" id="9_elw4l"]
 [ext_resource type="PackedScene" uid="uid://c6aq6481iy1ul" path="res://Scenes/CityBuildings/services/services_002_16fa335f.tscn" id="12_05tku"]
 [ext_resource type="PackedScene" uid="uid://d1w6v6f36ay88" path="res://Scenes/CityBuildings/services/services_003_bb6f7293.tscn" id="15_6ibml"]
-[ext_resource type="PackedScene" path="res://Scenes/Farm.tscn" id="15_b1va2"]
+[ext_resource type="PackedScene" uid="uid://clc4gmqsftxix" path="res://Scenes/Farm.tscn" id="15_b1va2"]
 [ext_resource type="PackedScene" path="res://Scenes/CityHall.tscn" id="15_sx4hl"]
 [ext_resource type="PackedScene" uid="uid://bby4h5xvcfpkj" path="res://Scenes/CityBuildings/services/services_004_b6d7b717.tscn" id="17_xnuy3"]
+[ext_resource type="PackedScene" path="res://Entities/Transport/Vehicle_Minivan.tscn" id="18_6nglk"]
+[ext_resource type="PackedScene" path="res://Entities/Transport/Vehicle_TowTruck.tscn" id="19_dsf7v"]
 [ext_resource type="PackedScene" uid="uid://tmijvs5i73a8" path="res://Scenes/CityBuildings/garages/garages_001_59117338.tscn" id="19_hoo0a"]
+[ext_resource type="PackedScene" path="res://Entities/Transport/Vehicle_TrailerTruck.tscn" id="20_xbxht"]
 [ext_resource type="PackedScene" uid="uid://cu4dqnf76c0g0" path="res://Scenes/CityBuildings/garages/garages_002_1d40ed03.tscn" id="21_6qke2"]
 [ext_resource type="PackedScene" uid="uid://cvxa1q31crm40" path="res://Scenes/CityBuildings/garages/garages_003_4e747945.tscn" id="23_8um1n"]
 [ext_resource type="PackedScene" uid="uid://cy7ejlinvbnv3" path="res://Scenes/CityBuildings/garages/garages_004_926a0961.tscn" id="24_myh4s"]
@@ -73,6 +76,7 @@
 [ext_resource type="PackedScene" uid="uid://cib1b468oy5er" path="res://Scenes/CityBuildings/multilayer/multilayer_005_ae5226aa.tscn" id="100_inxc5"]
 [ext_resource type="PackedScene" uid="uid://d180o3e5em11x" path="res://Scenes/CityBuildings/multilayer/multilayer_006_51b92887.tscn" id="102_xpnqb"]
 [ext_resource type="PackedScene" uid="uid://cw6isxw0hvwun" path="res://Scenes/CityBuildings/multilayer/multilayer_007_8ef7bcee.tscn" id="104_bbw0l"]
+[ext_resource type="PackedScene" uid="uid://dk4v7jnlcj4xt" path="res://Scenes/CityBuildings/services/Hospital.tscn" id="104_dsf7v"]
 [ext_resource type="PackedScene" uid="uid://dxgr2otrkdkq2" path="res://Entities/Transport/Truck_NormalTrailler_001.tscn" id="106_al55t"]
 [ext_resource type="PackedScene" uid="uid://cpjwfjfva60al" path="res://Entities/Citizens/CitizenNew.tscn" id="106_llcqu"]
 [ext_resource type="PackedScene" uid="uid://588lo1wwkgfu" path="res://Scenes/CityBuildings/foundation/foundation_001_64613340.tscn" id="107_bcjhn"]
@@ -796,7 +800,7 @@ transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 22, 0,
 [node name="Production" type="Node3D" parent="World/City/only_people_nav/only_people" unique_id=1574422090]
 
 [node name="Farm" parent="World/City/only_people_nav/only_people/Production" unique_id=386220770 instance=ExtResource("15_b1va2")]
-transform = Transform3D(1, 0, 0, 0, 0.9999999, 0, 0, 0, 1, 16.125982, 0.20581385, -25.552)
+transform = Transform3D(1, 0, 0, 0, 0.9999999, 0, 0, 0, 1, 16.128733, -0.0101110935, -25.556316)
 building_type = 10
 
 [node name="Garages" type="Node3D" parent="World/City/only_people_nav/only_people" unique_id=726476429]
@@ -1010,7 +1014,7 @@ transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 8, 0, 
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 32, 0, 10)
 
 [node name="Multilayer001_06" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=1741254408 instance=ExtResource("89_183p3")]
-transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 4, 0, 22)
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 0.021809697, 0, 31.99548)
 
 [node name="Multilayer002_06" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=883062628 instance=ExtResource("93_mr67e")]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 22, 0, 4)
@@ -1232,7 +1236,7 @@ transform = Transform3D(1, 0, -5.84119e-06, 0, 1, 0, 5.84119e-06, 0, 1, 4.00507,
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -2)
 
 [node name="MultiBuilding002_01" parent="World/City/only_people_nav/only_people/Multi-building" unique_id=481123667 instance=ExtResource("110_vm52a")]
-transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 2, 0, 32)
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 4.0008616, 0, 21.997217)
 
 [node name="MultiBuilding002_02" parent="World/City/only_people_nav/only_people/Multi-building" unique_id=296126099 instance=ExtResource("110_vm52a")]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 32, 0, 2)
@@ -1280,7 +1284,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26, 0, -2)
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -2, 0, 26)
 
 [node name="MultiBuilding004_03" parent="World/City/only_people_nav/only_people/Multi-building" unique_id=1640196517 instance=ExtResource("114_aquj3")]
-transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 0, 0, 32)
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 2.016401, 0, 32)
 
 [node name="MultiBuilding004_04" parent="World/City/only_people_nav/only_people/Multi-building" unique_id=1614186384 instance=ExtResource("114_aquj3")]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 12, 0, 4)
@@ -2156,11 +2160,14 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -84.91101, -1.2723389, -6.922
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 84.91101, 1.2723389, 6.9225693)
 shape = SubResource("ConcavePolygonShape3D_deygs")
 
+[node name="Hospital" parent="World/StaticBody3D" unique_id=1585581247 instance=ExtResource("104_dsf7v")]
+transform = Transform3D(-6.06069e-08, 0, 1.3865242, 0, 1.3865241, 0, -1.3865242, 0, -6.06069e-08, 81.152565, 1.2723389, 38.389084)
+
 [node name="SkyBridge" type="Node" parent="." unique_id=1781400]
 script = ExtResource("401_skybr")
 
 [node name="ControlledCitizen" parent="." unique_id=1375507526 instance=ExtResource("106_llcqu")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.04, 0.156, 18.66)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.04, 0.156, -15.1684)
 collision_layer = 0
 autonomous_simulation_enabled = false
 move_speed = 0.9
@@ -2173,5 +2180,14 @@ local_astar_radius = 0.6
 jump_velocity = 3.2
 log_file_path = "res://controlled_citizen.log"
 
+[node name="Vehicle_Minivan" parent="." unique_id=385987254 instance=ExtResource("18_6nglk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.054972, 0.06279731, -19.180878)
+
+[node name="Vehicle_TowTruck" parent="." unique_id=891135846 instance=ExtResource("19_dsf7v")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.318912, 0.11082408, -18.286476)
+
+[node name="Vehicle_TrailerTruck" parent="." unique_id=788327754 instance=ExtResource("20_xbxht")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.549235, 0.06279755, -17.073765)
+
 [node name="Truck_NormalTrailler_0012" parent="." unique_id=1092581037 instance=ExtResource("106_al55t")]
-transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, 19.696564, 0.3005532, 20.17918)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.548128, 0.3005532, -16.933512)

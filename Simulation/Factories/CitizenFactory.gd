@@ -26,7 +26,8 @@ const CITIZEN_SERIAL_META := "_citizen_factory_next_serial"
 const JOB_TITLES := [
 	"Baecker", "Kellner", "Programmierer", "Fahrer", "Mechaniker",
 	"Tankwart", "Verkaeufer", "Designer", "Doctor", "Teacher", "Engineer",
-	"Professor", "Janitor", "Gardener", "MaintenanceWorker", "Technician"
+	"Professor", "Janitor", "Gardener", "MaintenanceWorker", "Technician",
+	"Mayor", "Nurse", "Pharmacist", "Therapist"
 ]
 
 # Pre-educated starting staff. Without it the University has no teaching staff
@@ -36,7 +37,9 @@ const JOB_TITLES := [
 const STAFF_SEED := [
 	{"title": "Professor", "education": 3},
 	{"title": "Teacher", "education": 2},
+	{"title": "Mayor", "education": 3},
 	{"title": "Doctor", "education": 3},
+	{"title": "Nurse", "education": 2},
 ]
 
 const JOB_SERVICE_TYPES := {
@@ -48,7 +51,11 @@ const JOB_SERVICE_TYPES := {
 	"Tankwart": "fuel",
 	"Verkaeufer": "shopping",
 	"Designer": "fun",
-	"Doctor": "governance",
+	"Doctor": "healthcare",
+	"Nurse": "healthcare",
+	"Pharmacist": "healthcare",
+	"Therapist": "healthcare",
+	"Mayor": "governance",
 	"Teacher": "education",
 	"Engineer": "production_goods",
 	"Professor": "education",
@@ -68,6 +75,7 @@ const BUILDING_TYPE_NAMES := {
 	"FARM": BuildingScript.BuildingType.FARM,
 	"FACTORY": BuildingScript.BuildingType.FACTORY,
 	"GAS_STATION": BuildingScript.BuildingType.GAS_STATION,
+	"HOSPITAL": BuildingScript.BuildingType.HOSPITAL,
 }
 
 static func spawn_citizens(parent: Node, world: World, count: int, seed_staff: bool = false) -> Array[Citizen]:

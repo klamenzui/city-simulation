@@ -170,6 +170,7 @@
 		"relax": "Entspannen",
 		"socialize": "Sozialisieren",
 		"watch_cinema": "Film schauen",
+		"treat": "Behandlung",
 		"inventory": "Inventar",
 		"shop": "Einkaufen",
 		"inventory_close": "Inventar schließen",
@@ -218,6 +219,7 @@
 		"status_wage_progression": "Lohn: %d EUR/h (Basis %d, +%d%% Bildung, +%d%% Erfahrung)",
 		"status_company_tenure": "Firma: %s%s - seit %d Tagen hier",
 		"status_absence": "Abwesenheit: %d / %d Tage",
+		"status_hospital_quality": "Hospital-Qualität: %d%%",
 		"profit_weak": "schwach",
 		"profit_normal": "normal",
 		"profit_strong": "stark"
@@ -232,6 +234,7 @@
 		"university_unavailable": "Uni ist geschlossen oder hat keine Lehrkraft.",
 		"social_blocked": "Erst essen oder erholen.",
 		"cinema_closed_or_poor": "Kino geschlossen oder zu wenig Geld.",
+		"hospital_unavailable": "Hospital geschlossen, voll oder ohne medizinisches Personal.",
 		"building_not_buyable": "Gebäude ist nicht kaufbar.",
 		"already_owned": "Gehört dir bereits.",
 		"already_sold": "Bereits verkauft.",
@@ -263,6 +266,9 @@
 		"eat_before_socialize": "Erst essen vor dem Sozialisieren.",
 		"health_low": "Gesundheit zu niedrig zum Sozialisieren.",
 		"no_cinema": "Hier ist kein Kino.",
+		"no_hospital": "Hier ist kein Hospital.",
+		"hospital_unstaffed": "Hospital hat keinen Arzt oder keine Pflegekraft.",
+		"hospital_full": "Patientenkapazität im Hospital ist voll.",
 		"closed_named": "%s ist geschlossen.",
 		"not_enough_money_price": "Zu wenig Geld: %d EUR nötig.",
 		"social_visit": "Verabredung bei %s.",
@@ -303,6 +309,7 @@
 			"occupancy": "Belegung",
 			"finance": "Finanzen",
 			"maintenance": "Wartung & Kosten",
+			"healthcare": "Gesundheitsversorgung",
 			"needs": "Bedürfnisse",
 			"activity": "Aktivität"
 		},
@@ -346,7 +353,13 @@
 			"company": "Firma",
 			"owned": "Besitz",
 			"food_stock": "Vorräte",
-			"clothing": "Kleidung"
+			"clothing": "Kleidung",
+			"patients": "Patienten",
+			"queue": "Warteschlange",
+			"treatment_capacity": "Behandlungskapazität",
+			"service_quality": "Servicequalität",
+			"treatments_today": "Behandlungen heute",
+			"charity_care": "Solidarbehandlung"
 		},
 		"value": {
 			"education_stage": "Stufe %d (%s)",
@@ -382,7 +395,8 @@
 			"park": "Park",
 			"farm": "Farm",
 			"factory": "Fabrik",
-			"gas_station": "Tankstelle"
+			"gas_station": "Tankstelle",
+			"hospital": "Hospital"
 		},
 		"service_type": {
 			"commerce": "Handel",
@@ -393,6 +407,7 @@
 			"fun": "Freizeit",
 			"generic": "Allgemein",
 			"governance": "Verwaltung",
+			"healthcare": "Gesundheit",
 			"housing": "Wohnen",
 			"production_food": "Lebensmittelproduktion",
 			"production_goods": "Warenproduktion",
@@ -408,6 +423,10 @@
 			"salesperson": "Verkäufer",
 			"designer": "Designer",
 			"doctor": "Arzt",
+			"nurse": "Pflegekraft",
+			"pharmacist": "Apotheker",
+			"therapist": "Therapeut",
+			"mayor": "Bürgermeister",
 			"teacher": "Lehrkraft",
 			"engineer": "Ingenieur",
 			"professor": "Professor",
@@ -445,7 +464,8 @@
 		"staff_requirement": {
 			"generic": "kein Personal",
 			"gas_station": "Tankstellenpersonal fehlt",
-			"teacher": "keine Lehrkraft"
+			"teacher": "keine Lehrkraft",
+			"medical": "kein Arzt oder keine Pflegekraft"
 		}
 	},
 

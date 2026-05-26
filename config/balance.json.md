@@ -55,7 +55,7 @@ Takt der Simulationsschleife und Stadt-Startkapital.
 
 ## transport
 
-Vehicle pathing and first delivery-truck movement tuning.
+Vehicle pathing, delivery route-following, and first VehicleBody3D truck tuning.
 
 | Key | Default | Wirkung |
 | --- | --- | --- |
@@ -67,21 +67,47 @@ Vehicle pathing and first delivery-truck movement tuning.
 | `vehicle.turn_speed` | `5.0` | Yaw interpolation speed while following route waypoints. |
 | `vehicle.waypoint_reach_distance` | `0.45` | Distance at which the next vehicle waypoint is considered reached. |
 | `vehicle.forward_yaw_offset` | `0.0` | Optional mesh yaw correction if a vehicle model faces a different local axis. |
+| `vehicle.mass` | `35.0` | VehicleBody3D rigid-body mass for the scaled delivery truck. |
+| `vehicle.center_of_mass_x/y/z` | `0.0 / 0.12 / -0.45` | Custom center of mass to reduce rollovers and flying. |
 | `vehicle.manual_drive_enabled` | `true` | Enables direct player driving after a controlled citizen enters a vehicle. |
+| `vehicle.manual_engine_force` | `40.0` | Wheel engine force for player-driven VehicleBody3D trucks. |
+| `vehicle.manual_reverse_force_multiplier` | `1.7` | Reverse force multiplier. |
+| `vehicle.manual_brake_strength` | `2.2` | Brake force when the driver presses against current motion. |
+| `vehicle.manual_parking_brake` | `6.0` | Brake value used when the truck is parked/frozen. |
+| `vehicle.manual_steer_speed` | `1.5` | Steering interpolation speed. |
+| `vehicle.manual_steer_limit` | `0.42` | Maximum steering angle. |
 | `vehicle.manual_max_speed` | `4.5` | Maximum forward speed for player-driven vehicles. |
 | `vehicle.manual_reverse_speed` | `2.0` | Maximum reverse speed for player-driven vehicles. |
-| `vehicle.manual_acceleration` | `3.8` | Acceleration while the player holds forward or reverse. |
-| `vehicle.manual_braking_acceleration` | `6.5` | Deceleration when changing direction or braking against current speed. |
-| `vehicle.manual_coast_deceleration` | `2.0` | Passive slowdown when the player releases throttle. |
-| `vehicle.manual_turn_speed` | `1.7` | Yaw speed for player steering in radians per second. |
-| `vehicle.manual_min_turn_factor` | `0.25` | Minimum turn responsiveness while moving slowly. |
-| `vehicle.ground_snap_enabled` | `true` | Keeps kinematic vehicles grounded by ray-snapping to static road/world surfaces. |
+| `vehicle.manual_low_speed_force_boost` | `2.5` | Extra engine force near zero speed for easier starts. |
+| `vehicle.manual_forward_engine_sign` | `1.0` | Direction correction for models whose VehicleBody forward axis differs. |
+| `vehicle.wheel_track_half_width` | `0.26` | Half width between left and right VehicleWheel3D nodes. |
+| `vehicle.wheel_front_z` | `0.04` | Local Z position of the front axle. |
+| `vehicle.wheel_rear_z` | `-1.0` | Local Z position of the rear axle. |
+| `vehicle.wheel_mount_y` | `0.16` | Local Y position of wheel suspension mounts. |
+| `vehicle.wheel_radius` | `0.155` | Physics wheel radius, matched to the visible scaled tire radius. |
+| `vehicle.wheel_roll_influence` | `0.28` | Roll influence for VehicleWheel3D. |
+| `vehicle.wheel_friction_slip` | `1.25` | Wheel tire friction. |
+| `vehicle.suspension_stiffness` | `20.0` | Wheel suspension stiffness. |
+| `vehicle.suspension_travel` | `0.16` | Wheel suspension travel. |
+| `vehicle.damping_compression` | `1.0` | Suspension compression damping. |
+| `vehicle.damping_relaxation` | `1.8` | Suspension relaxation damping. |
+| `vehicle.ground_snap_enabled` | `true` | Keeps parked and route-following vehicles grounded by ray-snapping to static road/world surfaces. |
 | `vehicle.ground_probe_up` | `2.0` | Upward ray start offset for vehicle ground probes. |
 | `vehicle.ground_probe_down` | `8.0` | Downward ray length for vehicle ground probes. |
 | `vehicle.ground_height_offset` | `0.0` | Height added to the probed ground point before placing the vehicle root. |
 | `vehicle.ground_snap_speed` | `30.0` | Interpolation speed used when snapping vehicle height during simulation. |
 | `vehicle.ground_min_normal_y` | `0.45` | Minimum upward surface normal accepted as vehicle ground. |
 | `vehicle.ground_collision_mask` | `1` | Physics mask used by vehicle ground probes. |
+| `vehicle.audio_enabled` | `true` | Enables generated EngineSound/ImpactSound players on VehicleAgent scenes. |
+| `vehicle.engine_audio_path` | `res://environment/audio/vehicles/engine.wav` | Default looping engine sound used when a vehicle scene has no stream assigned. |
+| `vehicle.impact_audio_path` | `res://environment/audio/vehicles/impact_1.wav` | Default impact sound used for sudden speed changes. |
+| `vehicle.engine_audio_min_pitch` | `0.05` | Idle pitch for vehicle engine loops. |
+| `vehicle.engine_audio_pitch_per_speed` | `0.08` | Extra engine pitch per meter/second of vehicle speed. |
+| `vehicle.engine_audio_idle_volume_db` | `-28.0` | Engine volume while idling with a driver. |
+| `vehicle.engine_audio_drive_volume_db` | `-11.0` | Engine volume while moving or route-driving. |
+| `vehicle.engine_audio_lerp_speed` | `8.0` | Smooth speed for engine pitch/volume changes. |
+| `vehicle.impact_speed_delta_threshold` | `1.8` | Speed delta that triggers the impact sound. |
+| `vehicle.impact_min_interval` | `0.35` | Minimum seconds between impact sounds. |
 
 ---
 
@@ -105,7 +131,8 @@ Globaler Warenpool je Gut. Gleiche Keys für `food`, `clothes`, `entertainment`,
 | `base_price` | Grundpreis pro Einheit (EUR), Basis der Preisbildung. |
 
 Defaults: food `900 / 1200 / 4`, clothes `480 / 700 / 7`,
-entertainment `2000 / 2500 / 2`, fuel `680 / 900 / 5`.
+entertainment `2000 / 2500 / 2`, fuel `680 / 900 / 5`,
+medicine `420 / 650 / 6`.
 
 ### economy.jobs
 
@@ -118,18 +145,21 @@ entertainment `2000 / 2500 / 2`, fuel `680 / 900 / 5`.
 
 - **`wage_per_hour_by_title`** — Stundenlohn (EUR) je Job-Titel. Werte:
   Baecker 12, Kellner 12, Programmierer 24, Fahrer 15, Mechaniker 18, Tankwart 14,
-  Verkaeufer 13, Designer 19, Doctor 30, Teacher 18, Engineer 26, Professor 28,
+  Verkaeufer 13, Designer 19, Doctor 30, Nurse 22, Pharmacist 25, Therapist 24,
+  Mayor 32, Teacher 18, Engineer 26, Professor 28,
   Janitor 13, Gardener 14, MaintenanceWorker 16, Technician 22.
 - **`required_education`** — Mindest-`education_level` je Titel (fehlt ein Titel ⇒ 0).
-  Doctor 3, Professor 3, Teacher 2, Engineer 2, Programmierer 2,
+  Doctor 3, Nurse 2, Pharmacist 2, Therapist 2, Mayor 3, Professor 3, Teacher 2,
+  Engineer 2, Programmierer 2,
   Mechaniker/Designer/MaintenanceWorker/Technician 1; übrige 0. Lehrjobs verlangen
   einen Abschluss — eine unbesetzte Pflicht-Uni stellt jedoch eine Trainee-Lehrkraft
   trotz Bildungslücke ein (`World._building_needs_emergency_staffing`), damit das
   Bildungssystem nie verklemmt.
 - **`allowed_building_types`** — auf welche Gebäudetypen ein Titel beschränkt ist
-  (z. B. Teacher/Professor nur `UNIVERSITY`, Gardener nur `PARK`, Technician
-  `FACTORY`/`CITY_HALL`; MaintenanceWorker fast überall). Fehlt ein Titel ⇒ keine
-  Beschränkung.
+  (z. B. Doctor/Nurse/Pharmacist/Therapist nur `HOSPITAL`, Mayor nur `CITY_HALL`,
+  Teacher/Professor nur `UNIVERSITY`, Gardener nur `PARK`, Technician
+  `FACTORY`/`CITY_HALL`/`HOSPITAL`; MaintenanceWorker fast überall). Fehlt ein
+  Titel ⇒ keine Beschränkung.
 
 **Effektive Beruf → Arbeitsgebäude.** Schnitt aus `allowed_building_types` (Obergrenze)
 und den Kandidatenlisten je Gebäudetyp in `World._get_candidate_job_titles_for_building`.
@@ -137,12 +167,16 @@ und den Kandidatenlisten je Gebäudetyp in `World._get_candidate_job_titles_for_
 
 | Beruf | Arbeitsgebäude | Bildung |
 | --- | --- | --- |
-| Doctor | City Hall | 3 |
+| Doctor | Hospital | 3 |
+| Nurse | Hospital | 2 |
+| Pharmacist | Hospital | 2 |
+| Therapist | Hospital | 2 |
+| Mayor | City Hall | 3 |
 | Professor | Universität | 3 |
 | Teacher | Universität | 2 |
 | Engineer | Fabrik | 2 |
 | Programmierer | City Hall | 2 |
-| Technician | Fabrik, City Hall | 1 |
+| Technician | Fabrik, City Hall, Hospital | 1 |
 | Mechaniker | Fabrik, Tankstelle, Farm | 1 |
 | Designer | Kino | 1 |
 | MaintenanceWorker | alle Gebäude (außer generisch) | 1 |
@@ -151,7 +185,7 @@ und den Kandidatenlisten je Gebäudetyp in `World._get_candidate_job_titles_for_
 | Fahrer | Fabrik, Farm | 0 |
 | Tankwart | Tankstelle | 0 |
 | Verkaeufer | Laden, Supermarkt, Tankstelle | 0 |
-| Janitor | Universität, City Hall, Park | 0 |
+| Janitor | Universität, City Hall, Park, Hospital | 0 |
 | Gardener | Park | 0 |
 
 > `allowed_building_types` ist nur die Obergrenze; tatsächlich angeboten werden Berufe
@@ -342,6 +376,7 @@ Effekt einer laufenden Aktion auf die Bedürfnisse, pro Spielminute. Muster:
 | `study` | 90 min; Stop bei hunger ≥70 / health ≤35. (Bildungsgewinn: `buildings.university.education_gain`.) |
 | `work` | Mittagspause `lunch_start_minute` 690 (11:30) – `lunch_end_minute` 810 (13:30); needs-Mul hunger 1.8 / energy 1.625 / fun 2.0; Extra-Drain/min energy 0.05, hunger 0.04, fun 0.03; Stop bei health ≤35 / hunger ≥75. |
 | `socialize` | 30 (20–40) min; **social +1.5/min**; Stop bei hunger ≥70 / health ≤35. |
+| `hospital_treatment` | Normal: 20–70 min bis health 75, health +0.95/min × Servicequalität. Notfall: 15–55 min bis health 85, health +1.7/min × Servicequalität. |
 
 ---
 
@@ -366,6 +401,7 @@ GOAP-Zielauswahl: Schwellen, Prioritäts-Skalen und Gewichte.
 | `goal_priority_work_weight` | `0.9` | Gewicht des Arbeits-Ziels. |
 | `goal_priority_fun_weight` | `0.65` | Gewicht des Fun-Ziels. |
 | `goal_priority_social_weight` | `0.6` | Gewicht des Social-Ziels. |
+| `goal_priority_health_weight` | `1.6` | Gewicht des Health-/Hospital-Ziels. |
 | `work_need_base_priority` | `0.45` | Grund-Priorität für Arbeit. |
 | `work_need_remaining_weight` | `0.55` | Zusatzgewicht nach verbleibender Schichtzeit. |
 | `low_health_hunger_alert_threshold` | `65.0` | Hunger-Alarmschwelle bei niedriger Gesundheit. |
@@ -381,6 +417,16 @@ GOAP-Zielauswahl: Schwellen, Prioritäts-Skalen und Gewichte.
 | `survival_cafe_travel_minutes` | `12` | Cafe-Reisezeit (Snack-Fallback im Überleben). |
 | `survival_supermarket_travel_minutes` | `18` | Supermarkt-Reisezeit (Überleben). |
 | `work_travel_minutes` | `20` | Angenommene Arbeitsweg-Zeit. |
+
+### planner.health
+
+| Key | Default | Wirkung |
+| --- | --- | --- |
+| `visit_threshold` | `20.0` | Unter dieser Gesundheit plant der Bürger eine Hospital-Behandlung. |
+| `emergency_threshold` | `5.0` | Unter dieser Gesundheit wird Notfallbehandlung priorisiert. |
+| `priority_scale` | `20.0` | Skaliert, wie schnell das Health-Ziel an Priorität gewinnt. |
+| `sick_work_skip_threshold` | `55.0` | Unter dieser Gesundheit kann ein Bürger krankheitsbedingt Arbeit auslassen. |
+| `sick_work_skip_base_probability` / `_max_probability` | `0.18` / `0.75` | Tagesstabile Wahrscheinlichkeit fürs Auslassen der Schicht je nach Schwere. |
 
 ### planner.emotion
 
@@ -427,7 +473,7 @@ Flackern.
 | Key | Default | Wirkung |
 | --- | --- | --- |
 | `enabled` | `true` | Cooldowns an/aus. |
-| `hunger` / `energy` / `education` / `work` | `0` | Keine Pause für überlebens-/pflichtnahe Ziele. |
+| `hunger` / `energy` / `education` / `health` / `work` | `0` | Keine Pause für überlebens-/pflichtnahe Ziele. |
 | `fun` | `20` | 20 min Pause zwischen Freizeit-Zielen. |
 | `social` | `25` | 25 min Pause zwischen Sozial-Zielen. |
 
@@ -448,6 +494,14 @@ bevorzugt), `*_travel_minutes` = angenommene Reisezeit für die Planung,
 | `go_university_cost` | `1.0` | Kosten „zur Uni gehen". |
 | `study_cost` | `0.65` | Kosten „studieren". |
 | `travel_minutes` | `24` | Angenommene Reisezeit zur Uni. |
+
+### goap.health
+
+| Key | Default | Wirkung |
+| --- | --- | --- |
+| `go_hospital_cost` | `0.45` | Wegekosten zum Hospital. |
+| `treatment_cost` | `0.25` | Aktionskosten der Behandlung. |
+| `travel_minutes` | `18` | Angenommene Reisezeit zum Hospital. |
 
 ### goap.work
 
@@ -514,6 +568,7 @@ Keys sind unten genannt.
 | `supermarket` | capacity 30, jobs 6, 7–22 Uhr; `grocery_price` 10, `groceries_per_purchase` 3, `clothing_price` 24; Lebensmittel-Stock 60, Ziel 90, Batch 35. |
 | `cinema` | capacity 35, jobs 5, 12–23 Uhr; `ticket_price` 14. |
 | `city_hall` | capacity 15, jobs 5, 6–19 Uhr. |
+| `hospital` | capacity 20, jobs 5, 0–24 Uhr; `patient_capacity` 20; `treatment_capacity_per_hour` 6; `service_quality` 1.0; `treatment_price` 25; `emergency_treatment_price` 60; `daily_operating_cost` 250; `patient_wait_timeout_minutes` 180; `charity_care_city_subsidy_ratio` 1.0; `citizen_payment_reserve` 35. |
 | `university` | capacity 40, jobs 8, 7–21 Uhr; `base_operating_cost` 110; **`education_gain` 1** (Bildungsstufen pro Studien-Session). |
 | `park` | capacity 40, jobs 2, 6–23 Uhr; `base_operating_cost` 32. Navigations-Tuning: `navigation_blocker_margin` 1.35, `entrance_clearance_width` 2.6, `entrance_clearance_depth` 1.9, `entrance_trigger_radius` 0.9, `entrance_trigger_outset` 0.8. |
 | `farm` | capacity 8, jobs 6, 5–19 Uhr; `base_food_output_per_day` 60, `production_cost_per_unit` 1; Crops grow for 2 days, then workers harvest into 300 food storage. `Fahrer` workers deliver stored food directly to supermarkets (`direct_delivery_batch_per_supermarket` 35, unload 10 min, price multiplier 0.85); remaining food can fall back to market export. |

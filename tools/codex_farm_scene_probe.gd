@@ -56,10 +56,18 @@ func _check_scene_contract(farm: Node, errors: Array[String]) -> void:
 		"HarvestPoint",
 		"StoragePoint",
 		"ClickArea/CollisionShape3D",
+		"Buildings/SmallBarnModel",
+		"Buildings/BigBarnModel",
+		"Buildings/SiloModel",
+		"Fields/FieldWest/FarmlandModel",
+		"Fields/FieldEast/FarmlandModel",
+		"Props/WellModel",
+		"Props/Pumpkins/PumpkinA",
 		"Obstacles/HouseShape",
 		"Obstacles/BarnShape",
 		"Obstacles/SiloShape",
-		"Obstacles/TractorShape",
+		"Obstacles/WellShape",
+		"Obstacles/StorageShape",
 	]
 	for node_path in required_nodes:
 		if farm.get_node_or_null(NodePath(node_path)) == null:
