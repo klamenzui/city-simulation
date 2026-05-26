@@ -81,6 +81,8 @@ func start(world: World, citizen: Citizen) -> void:
 		finished = true
 		return
 
+	_sync_arrival_target_to_route_end(citizen)
+
 	if world != null and world.has_method("describe_pedestrian_path"):
 		SimLogger.log("[Citizen %s] GoTo path %s" % [
 			citizen.citizen_name,
@@ -209,6 +211,14 @@ func _has_arrived_at_destination(citizen: Citizen) -> bool:
 	if _is_park_target(target):
 		tolerance = PARK_ENTRY_ARRIVAL_TOLERANCE
 	return remaining.length() <= tolerance
+
+func _sync_arrival_target_to_route_end(citizen: Citizen) -> void:
+	if citizen == null:
+		return
+	var route_points := citizen.get_debug_travel_route_points()
+	if route_points.size() < 2:
+		return
+	_arrival_target = route_points[route_points.size() - 1]
 
 func _format_point(pos: Vector3) -> String:
 	return "(%.1f, %.1f, %.1f)" % [pos.x, pos.y, pos.z]

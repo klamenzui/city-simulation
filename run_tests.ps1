@@ -113,6 +113,24 @@ function Test-GodotOutputHealthy {
 	return $true
 }
 
+function Resolve-TestKeyFilter {
+	param([string[]]$RawKeys)
+
+	$keys = New-Object System.Collections.Generic.List[string]
+	foreach ($rawKey in $RawKeys) {
+		if ([string]::IsNullOrWhiteSpace($rawKey)) {
+			continue
+		}
+		foreach ($part in ($rawKey -split ",")) {
+			$trimmed = $part.Trim()
+			if (-not [string]::IsNullOrWhiteSpace($trimmed)) {
+				$keys.Add($trimmed)
+			}
+		}
+	}
+	return @($keys)
+}
+
 $projectPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $godotConsole = Resolve-GodotConsoleExe -RequestedPath $GodotExe
 
@@ -136,6 +154,11 @@ $availableTests = @(
 		Key = "farm"
 		Label = "Farm Scene/Production"
 		Script = "res://tools/codex_farm_scene_probe.gd"
+	}
+	[pscustomobject]@{
+		Key = "farm_live_delivery"
+		Label = "Farm Live Delivery"
+		Script = "res://tools/codex_farm_live_delivery_test.gd"
 	}
 	[pscustomobject]@{
 		Key = "vehicle"
@@ -281,9 +304,11 @@ $availableTests = @(
 	}
 )
 
+$onlyKeys = Resolve-TestKeyFilter -RawKeys $Only
+
 $selectedTests = $availableTests | Where-Object {
-	if ($Only.Count -gt 0) {
-		return $Only -contains $_.Key
+	if ($onlyKeys.Count -gt 0) {
+		return $onlyKeys -contains $_.Key
 	}
 	if ($_.Key -eq "sky") {
 		return $IncludeSky.IsPresent

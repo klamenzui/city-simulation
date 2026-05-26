@@ -4,6 +4,7 @@ class_name Supermarket
 @export var grocery_price: int = 10
 @export var groceries_per_purchase: int = 3
 @export var clothing_price: int = 24
+@export var bread_price: int = 7
 
 func _ready() -> void:
 	super._ready()
@@ -12,6 +13,7 @@ func _ready() -> void:
 	grocery_price = int(settings.get("grocery_price", grocery_price))
 	groceries_per_purchase = int(settings.get("groceries_per_purchase", groceries_per_purchase))
 	clothing_price = int(settings.get("clothing_price", clothing_price))
+	bread_price = int(settings.get("bread_price", bread_price))
 	define_stock_item(
 		"grocery_bundle",
 		int(settings.get("grocery_start_stock", 60)),
@@ -19,6 +21,14 @@ func _ready() -> void:
 		int(settings.get("grocery_restock_target", 90)),
 		int(settings.get("grocery_restock_batch", 35)),
 		"food"
+	)
+	define_stock_item(
+		"bread",
+		int(settings.get("bread_start_stock", 12)),
+		bread_price,
+		int(settings.get("bread_restock_target", 36)),
+		int(settings.get("bread_restock_batch", 18)),
+		"bread"
 	)
 	set_item_base_price("clothing", clothing_price)
 
@@ -55,4 +65,5 @@ func _get_extra_info(_world = null) -> Dictionary:
 	info["Groceries/visit"] = str(groceries_per_purchase)
 	info["Clothing price"] = "%d EUR" % get_item_price_quote(1.0)
 	info["Grocery stock"] = str(get_stock("grocery_bundle"))
+	info["Bread stock"] = str(get_stock("bread"))
 	return info
