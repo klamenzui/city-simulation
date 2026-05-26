@@ -170,6 +170,7 @@
 		"relax": "Відпочити",
 		"socialize": "Спілкуватися",
 		"watch_cinema": "Дивитися фільм",
+		"treat": "Лікування",
 		"inventory": "Інвентар",
 		"shop": "Покупки",
 		"inventory_close": "Закрити інвентар",
@@ -218,6 +219,7 @@
 		"status_wage_progression": "Оплата: %d EUR/год (база %d, +%d%% освіта, +%d%% досвід)",
 		"status_company_tenure": "Компанія: %s%s - тут %d днів",
 		"status_absence": "Відсутність: %d / %d днів",
+		"status_hospital_quality": "Якість лікарні: %d%%",
 		"profit_weak": "слабкий",
 		"profit_normal": "нормальний",
 		"profit_strong": "сильний"
@@ -232,6 +234,7 @@
 		"university_unavailable": "Університет закритий або немає викладача.",
 		"social_blocked": "Спочатку поїжте або відновіться.",
 		"cinema_closed_or_poor": "Кінотеатр закритий або бракує грошей.",
+		"hospital_unavailable": "Лікарня закрита, заповнена або без персоналу.",
 		"building_not_buyable": "Будівлю не можна купити.",
 		"already_owned": "Вже належить вам.",
 		"already_sold": "Вже продано.",
@@ -263,6 +266,9 @@
 		"eat_before_socialize": "Спочатку поїжте перед спілкуванням.",
 		"health_low": "Здоров'я занадто низьке для спілкування.",
 		"no_cinema": "Тут немає кінотеатру.",
+		"no_hospital": "Тут немає лікарні.",
+		"hospital_unstaffed": "У лікарні немає лікаря або медсестри.",
+		"hospital_full": "У лікарні немає місць для пацієнтів.",
 		"closed_named": "%s закрито.",
 		"not_enough_money_price": "Бракує грошей: потрібно %d EUR.",
 		"social_visit": "Зустріч у %s.",
@@ -303,6 +309,7 @@
 			"occupancy": "Заповненість",
 			"finance": "Фінанси",
 			"maintenance": "Обслуговування і витрати",
+			"healthcare": "Охорона здоров'я",
 			"needs": "Потреби",
 			"activity": "Активність"
 		},
@@ -346,7 +353,13 @@
 			"company": "Компанія",
 			"owned": "Власність",
 			"food_stock": "Запаси",
-			"clothing": "Одяг"
+			"clothing": "Одяг",
+			"patients": "Пацієнти",
+			"queue": "Черга",
+			"treatment_capacity": "Пропускна здатність лікування",
+			"service_quality": "Якість сервісу",
+			"treatments_today": "Лікувань сьогодні",
+			"charity_care": "Благодійне лікування"
 		},
 		"value": {
 			"education_stage": "Рівень %d (%s)",
@@ -382,7 +395,8 @@
 			"park": "Парк",
 			"farm": "Ферма",
 			"factory": "Фабрика",
-			"gas_station": "Заправка"
+			"gas_station": "Заправка",
+			"hospital": "Лікарня"
 		},
 		"service_type": {
 			"commerce": "Комерція",
@@ -393,6 +407,7 @@
 			"fun": "Дозвілля",
 			"generic": "Загальне",
 			"governance": "Управління",
+			"healthcare": "Охорона здоров'я",
 			"housing": "Житло",
 			"production_food": "Виробництво їжі",
 			"production_goods": "Виробництво товарів",
@@ -408,6 +423,10 @@
 			"salesperson": "Продавець",
 			"designer": "Дизайнер",
 			"doctor": "Лікар",
+			"nurse": "Медсестра",
+			"pharmacist": "Фармацевт",
+			"therapist": "Терапевт",
+			"mayor": "Мер",
 			"teacher": "Викладач",
 			"engineer": "Інженер",
 			"professor": "Професор",
@@ -445,7 +464,8 @@
 		"staff_requirement": {
 			"generic": "немає персоналу",
 			"gas_station": "немає персоналу заправки",
-			"teacher": "немає викладача"
+			"teacher": "немає викладача",
+			"medical": "немає лікаря або медсестри"
 		}
 	},
 

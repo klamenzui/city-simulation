@@ -6,6 +6,7 @@ const AccountScript = preload("res://Entities/Account.gd")
 const JobScript = preload("res://Entities/Job.gd")
 const BuildingScript = preload("res://Entities/Buildings/Building.gd")
 const CityHallScript = preload("res://Entities/Buildings/CityHall.gd")
+const HospitalScript = preload("res://Entities/Buildings/Hospital.gd")
 const ResidentialBuildingScript = preload("res://Entities/Buildings/ResidentialBuilding.gd")
 const CitizenScript = preload("res://Entities/Citizens/New/Citizen.gd")
 const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
@@ -24,6 +25,8 @@ func _initialize() -> void:
 		"public_buildings_are_tax_exempt",
 		"reserve_transfer_supports_city_hall_liquidity",
 		"public_funding_covers_public_payroll",
+		"hospital_treatment_uses_public_subsidy",
+		"hospital_charity_care_tracks_unfunded_shortfall",
 		"public_underfunding_is_soft_before_closure",
 		"maintenance_shortfall_is_soft_before_closure",
 		"unemployed_citizens_seek_new_jobs",
@@ -64,6 +67,10 @@ func _run_test(test_name: String) -> String:
 			return _test_reserve_transfer_supports_city_hall_liquidity()
 		"public_funding_covers_public_payroll":
 			return _test_public_funding_covers_public_payroll()
+		"hospital_treatment_uses_public_subsidy":
+			return _test_hospital_treatment_uses_public_subsidy()
+		"hospital_charity_care_tracks_unfunded_shortfall":
+			return _test_hospital_charity_care_tracks_unfunded_shortfall()
 		"public_underfunding_is_soft_before_closure":
 			return _test_public_underfunding_is_soft_before_closure()
 		"maintenance_shortfall_is_soft_before_closure":
@@ -284,6 +291,65 @@ func _test_public_funding_covers_public_payroll() -> String:
 	_free_world(world)
 	return _current_error
 
+func _test_hospital_treatment_uses_public_subsidy() -> String:
+	var world = _new_world()
+	var city_hall = _new_city_hall(1000)
+	var hospital = _new_hospital(0)
+	var doctor = _assign_worker(hospital, "Doctor Mara", "Doctor", 30, 8.0)
+	var patient = _new_citizen("Patient Robin")
+	patient.wallet.balance = 40
+	patient.needs.health = 10.0
+	world.buildings.append(city_hall)
+	world.buildings.append(hospital)
+	world.citizens.append(patient)
+	world._city_halls.append(city_hall)
+
+	_expect(hospital.has_core_medical_staff(), "hospital should be operational with a Doctor")
+	_expect(hospital.request_treatment(patient, world, false), "staffed hospital should accept a patient")
+	_expect(hospital.can_start_treatment(patient), "queued patient should start treatment when capacity is available")
+	var payment: Dictionary = hospital.begin_treatment(patient, world, false)
+
+	_expect(bool(payment.get("started", false)), "treatment should start")
+	_expect_eq(int(payment.get("paid", 0)), 5, "citizen should only pay above the configured reserve")
+	_expect_eq(int(payment.get("subsidy", 0)), 20, "city hall should subsidize treatment shortfall")
+	_expect_eq(int(payment.get("charity", 0)), 0, "fully subsidized care should not become charity care")
+	_expect_eq(patient.wallet.balance, 35, "hospital payment should preserve the citizen reserve")
+	_expect_eq(hospital.account.balance, 25, "hospital account should receive citizen payment plus public subsidy")
+	_expect_eq(city_hall.hospital_funding_today, 20, "city hall should track hospital treatment subsidy")
+	_expect(hospital.get_effective_healing_per_minute(false) > 0.0, "staffed hospital should provide positive healing")
+
+	_free_nodes([patient, doctor, hospital, city_hall])
+	_free_world(world)
+	return _current_error
+
+func _test_hospital_charity_care_tracks_unfunded_shortfall() -> String:
+	var world = _new_world()
+	var city_hall = _new_city_hall(0)
+	var hospital = _new_hospital(0)
+	var doctor = _assign_worker(hospital, "Doctor Lee", "Doctor", 30, 8.0)
+	var patient = _new_citizen("Patient Sam")
+	patient.wallet.balance = 0
+	patient.needs.health = 4.0
+	world.city_account.balance = 0
+	world.buildings.append(city_hall)
+	world.buildings.append(hospital)
+	world.citizens.append(patient)
+	world._city_halls.append(city_hall)
+
+	_expect(hospital.request_treatment(patient, world, true), "emergency patient should be accepted when capacity exists")
+	var payment: Dictionary = hospital.begin_treatment(patient, world, true)
+
+	_expect(bool(payment.get("started", false)), "emergency treatment should still start without patient money")
+	_expect_eq(int(payment.get("paid", 0)), 0, "cashless citizen should not pay")
+	_expect_eq(int(payment.get("subsidy", 0)), 0, "empty city hall should not create subsidy money")
+	_expect_eq(int(payment.get("charity", 0)), hospital.emergency_treatment_price, "unfunded emergency care should be tracked as charity care")
+	_expect_eq(hospital.charity_care_today, hospital.emergency_treatment_price, "hospital should accumulate charity-care cost")
+	_expect(hospital.public_funding_shortfall_today >= hospital.emergency_treatment_price, "hospital should expose public funding shortfall")
+
+	_free_nodes([patient, doctor, hospital, city_hall])
+	_free_world(world)
+	return _current_error
+
 func _test_public_underfunding_is_soft_before_closure() -> String:
 	var world = _new_world()
 	var city_hall = _new_city_hall(0)
@@ -438,6 +504,41 @@ func _test_teaching_jobs_require_degree() -> String:
 		CitizenFactoryScript.get_allowed_building_types_for_job_title("Professor").has(BuildingScript.BuildingType.UNIVERSITY),
 		"professor jobs should be limited to universities"
 	)
+	_expect_eq(
+		CitizenFactoryScript.get_required_education_for_job_title("Doctor"),
+		3,
+		"doctor jobs should require education 3"
+	)
+	_expect_eq(
+		CitizenFactoryScript.get_required_education_for_job_title("Nurse"),
+		2,
+		"nurse jobs should require education 2"
+	)
+	_expect_eq(
+		CitizenFactoryScript.get_required_education_for_job_title("Mayor"),
+		3,
+		"mayor jobs should require education 3"
+	)
+	_expect(
+		CitizenFactoryScript.get_allowed_building_types_for_job_title("Doctor").has(BuildingScript.BuildingType.HOSPITAL),
+		"doctor jobs should be limited to hospitals"
+	)
+	_expect(
+		not CitizenFactoryScript.get_allowed_building_types_for_job_title("Doctor").has(BuildingScript.BuildingType.CITY_HALL),
+		"doctor jobs should not be allowed in city hall"
+	)
+	_expect(
+		CitizenFactoryScript.get_allowed_building_types_for_job_title("Pharmacist").has(BuildingScript.BuildingType.HOSPITAL),
+		"pharmacist jobs should be limited to hospitals"
+	)
+	_expect(
+		CitizenFactoryScript.get_allowed_building_types_for_job_title("Therapist").has(BuildingScript.BuildingType.HOSPITAL),
+		"therapist jobs should be limited to hospitals"
+	)
+	_expect(
+		CitizenFactoryScript.get_allowed_building_types_for_job_title("Mayor").has(BuildingScript.BuildingType.CITY_HALL),
+		"mayor jobs should be limited to city hall"
+	)
 
 	var teacher_job = JobScript.new()
 	teacher_job.title = "Teacher"
@@ -546,6 +647,27 @@ func _new_city_hall(balance: int) -> CityHall:
 	city_hall.building_type = BuildingScript.BuildingType.CITY_HALL
 	city_hall.account.balance = balance
 	return city_hall
+
+func _new_hospital(balance: int = 0):
+	var hospital = HospitalScript.new()
+	hospital.name = "Hospital"
+	hospital.building_name = "Hospital"
+	hospital.building_type = BuildingScript.BuildingType.HOSPITAL
+	hospital.capacity = 20
+	hospital.job_capacity = 5
+	hospital.patient_capacity = 20
+	hospital.treatment_capacity_per_hour = 6
+	hospital.open_hour = 0
+	hospital.close_hour = 24
+	hospital.is_public_service = true
+	hospital.service_quality = 1.0
+	hospital.treatment_price = 25
+	hospital.emergency_treatment_price = 60
+	hospital.daily_operating_cost = 250
+	hospital.base_operating_cost = 250
+	hospital.account.balance = balance
+	hospital._treatment_tokens = 6.0
+	return hospital
 
 func _new_citizen(citizen_name: String) -> Citizen:
 	var citizen = CitizenScript.new()

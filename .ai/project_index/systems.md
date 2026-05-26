@@ -26,6 +26,7 @@ Legacy/resource-style action classes for citizen behaviors.
 | Actions/SocializeAction.gd | SocializeAction | Action |
 | Actions/SocialVisitAction.gd | SocialVisitAction | Action |
 | Actions/StudyAtUniversityAction.gd | StudyAtUniversityAction | Action |
+| Actions/TreatAtHospitalAction.gd | TreatAtHospitalAction | Action |
 | Actions/WatchCinemaAction.gd | WatchCinemaAction | Action |
 | Actions/WorkAction.gd | WorkAction | Action |
 
@@ -44,6 +45,7 @@ Runtime domain objects: buildings, citizens, accounts, jobs, and benches.
 | Entities/Buildings/Factory.gd | Factory | CommercialBuilding |
 | Entities/Buildings/Farm.gd | Farm | CommercialBuilding |
 | Entities/Buildings/GasStation.gd | GasStation | CommercialBuilding |
+| Entities/Buildings/Hospital.gd | Hospital | Building |
 | Entities/Buildings/Park.gd | Park | Building |
 | Entities/Buildings/ResidentialBuilding.gd | ResidentialBuilding | - |
 | Entities/Buildings/Restaurant.gd | Restaurant | CommercialBuilding |
@@ -69,7 +71,6 @@ Runtime domain objects: buildings, citizens, accounts, jobs, and benches.
 | Entities/Citizens/New/Sim/CitizenLocation.gd | CitizenLocation | RefCounted |
 | Entities/Citizens/New/Sim/CitizenLodComponent.gd | CitizenLodComponent | RefCounted |
 | Entities/Citizens/New/Sim/CitizenManualControl.gd | CitizenManualControl | RefCounted |
-| Entities/Citizens/New/Sim/CitizenRestPose.gd | CitizenRestPose | RefCounted |
 
 ## ImportedCitySource
 
@@ -143,10 +144,10 @@ World orchestration, economy, time, bootstrap, navigation, GOAP, UI, debug, logg
 | Simulation/GOAP/CitizenEducationGoap.gd | CitizenEducationGoap | RefCounted |
 | Simulation/GOAP/CitizenEnergyGoap.gd | CitizenEnergyGoap | RefCounted |
 | Simulation/GOAP/CitizenFunGoap.gd | CitizenFunGoap | RefCounted |
+| Simulation/GOAP/CitizenHealthGoap.gd | CitizenHealthGoap | RefCounted |
 | Simulation/GOAP/CitizenHungerGoap.gd | CitizenHungerGoap | RefCounted |
 | Simulation/GOAP/CitizenSocialGoap.gd | CitizenSocialGoap | RefCounted |
 | Simulation/GOAP/CitizenWorkGoap.gd | CitizenWorkGoap | RefCounted |
-| Simulation/GOAP/GoapAction.gd | GoapAction | RefCounted |
 
 ## config
 

@@ -106,6 +106,15 @@ static func _append_location_actions(
 			and citizen.wallet != null \
 			and citizen.wallet.balance >= cinema.ticket_price
 		buttons.append(_make_button("watch_cinema", LocaleServiceScript.t("action.watch_cinema"), can_watch, LocaleServiceScript.t("player_disabled.cinema_closed_or_poor")))
+	elif location.building_type == Building.BuildingType.HOSPITAL:
+		var hospital: Variant = location
+		var can_treat: bool = world != null \
+			and hospital.is_open(world.time.get_hour()) \
+			and hospital.has_core_medical_staff() \
+			and hospital.can_accept_patient(citizen) \
+			and not action_running
+		status_lines.append(LocaleServiceScript.t("player.status_hospital_quality") % int(round(hospital.get_service_quality() * 100.0)))
+		buttons.append(_make_button("treat", LocaleServiceScript.t("action.treat"), can_treat, LocaleServiceScript.t("player_disabled.hospital_unavailable")))
 
 	if location is Shop:
 		buttons.append(_make_button("shop", LocaleServiceScript.t("action.shop"), true))

@@ -170,6 +170,7 @@
 		"relax": "Relax",
 		"socialize": "Socialize",
 		"watch_cinema": "Watch movie",
+		"treat": "Treatment",
 		"inventory": "Inventory",
 		"shop": "Shop",
 		"inventory_close": "Close inventory",
@@ -218,6 +219,7 @@
 		"status_wage_progression": "Wage: %d EUR/h (base %d, +%d%% education, +%d%% experience)",
 		"status_company_tenure": "Company: %s%s - here for %d days",
 		"status_absence": "Absence: %d / %d days",
+		"status_hospital_quality": "Hospital quality: %d%%",
 		"profit_weak": "weak",
 		"profit_normal": "normal",
 		"profit_strong": "strong"
@@ -232,6 +234,7 @@
 		"university_unavailable": "University is closed or has no teacher.",
 		"social_blocked": "Eat or recover first.",
 		"cinema_closed_or_poor": "Cinema closed or not enough money.",
+		"hospital_unavailable": "Hospital closed, full, or unstaffed.",
 		"building_not_buyable": "Building cannot be bought.",
 		"already_owned": "Already yours.",
 		"already_sold": "Already sold.",
@@ -263,6 +266,9 @@
 		"eat_before_socialize": "Eat before socializing.",
 		"health_low": "Health too low for socializing.",
 		"no_cinema": "No cinema here.",
+		"no_hospital": "No hospital here.",
+		"hospital_unstaffed": "Hospital has no Doctor or Nurse.",
+		"hospital_full": "Hospital patient capacity is full.",
 		"closed_named": "%s is closed.",
 		"not_enough_money_price": "Not enough money: %d EUR needed.",
 		"social_visit": "Meet up at %s.",
@@ -303,6 +309,7 @@
 			"occupancy": "Occupancy",
 			"finance": "Finances",
 			"maintenance": "Maintenance & Costs",
+			"healthcare": "Healthcare",
 			"needs": "Needs",
 			"activity": "Activity"
 		},
@@ -346,7 +353,13 @@
 			"company": "Company",
 			"owned": "Owned",
 			"food_stock": "Supplies",
-			"clothing": "Clothing"
+			"clothing": "Clothing",
+			"patients": "Patients",
+			"queue": "Queue",
+			"treatment_capacity": "Treatment capacity",
+			"service_quality": "Service quality",
+			"treatments_today": "Treatments today",
+			"charity_care": "Charity care"
 		},
 		"value": {
 			"education_stage": "Level %d (%s)",
@@ -382,7 +395,8 @@
 			"park": "Park",
 			"farm": "Farm",
 			"factory": "Factory",
-			"gas_station": "Gas Station"
+			"gas_station": "Gas Station",
+			"hospital": "Hospital"
 		},
 		"service_type": {
 			"commerce": "Commerce",
@@ -393,6 +407,7 @@
 			"fun": "Leisure",
 			"generic": "Generic",
 			"governance": "Governance",
+			"healthcare": "Healthcare",
 			"housing": "Housing",
 			"production_food": "Food production",
 			"production_goods": "Goods production",
@@ -408,6 +423,10 @@
 			"salesperson": "Salesperson",
 			"designer": "Designer",
 			"doctor": "Doctor",
+			"nurse": "Nurse",
+			"pharmacist": "Pharmacist",
+			"therapist": "Therapist",
+			"mayor": "Mayor",
 			"teacher": "Teacher",
 			"engineer": "Engineer",
 			"professor": "Professor",
@@ -445,7 +464,8 @@
 		"staff_requirement": {
 			"generic": "no staff",
 			"gas_station": "gas station staff missing",
-			"teacher": "no teacher"
+			"teacher": "no teacher",
+			"medical": "no Doctor or Nurse"
 		}
 	},
 

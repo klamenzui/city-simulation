@@ -21,6 +21,7 @@ enum BuildingType {
 	FARM,
 	FACTORY,
 	GAS_STATION,
+	HOSPITAL,
 }
 
 @export var building_name: String = "Building"
@@ -753,6 +754,8 @@ func get_building_type_name() -> String:
 			return "Factory"
 		BuildingType.GAS_STATION:
 			return "Gas Station"
+		BuildingType.HOSPITAL:
+			return "Hospital"
 		_:
 			return "Generic"
 
@@ -782,6 +785,8 @@ func get_building_type_display_label() -> String:
 			return LocaleServiceScript.t("details.building_type.factory")
 		BuildingType.GAS_STATION:
 			return LocaleServiceScript.t("details.building_type.gas_station")
+		BuildingType.HOSPITAL:
+			return LocaleServiceScript.t("details.building_type.hospital")
 		_:
 			return LocaleServiceScript.t("details.building_type.generic")
 
@@ -811,6 +816,14 @@ static func _job_title_locale_key(job_title: String) -> String:
 			return "designer"
 		"Doctor":
 			return "doctor"
+		"Nurse":
+			return "nurse"
+		"Pharmacist":
+			return "pharmacist"
+		"Therapist":
+			return "therapist"
+		"Mayor":
+			return "mayor"
 		"Teacher":
 			return "teacher"
 		"Engineer":
@@ -840,6 +853,8 @@ func get_default_job_title() -> String:
 			return "Verkaeufer"
 		BuildingType.GAS_STATION:
 			return "Tankwart"
+		BuildingType.HOSPITAL:
+			return "Doctor"
 		BuildingType.UNIVERSITY:
 			return "Teacher"
 		BuildingType.FARM:
@@ -847,7 +862,7 @@ func get_default_job_title() -> String:
 		BuildingType.FACTORY:
 			return "Technician"
 		BuildingType.CITY_HALL:
-			return "Programmierer"
+			return "Mayor"
 		_:
 			return "Worker"
 
@@ -936,7 +951,7 @@ func get_economy_category_label() -> String:
 
 func is_public_building() -> bool:
 	match building_type:
-		BuildingType.CITY_HALL, BuildingType.UNIVERSITY, BuildingType.PARK:
+		BuildingType.CITY_HALL, BuildingType.UNIVERSITY, BuildingType.PARK, BuildingType.HOSPITAL:
 			return true
 		_:
 			return false
@@ -1061,7 +1076,7 @@ func pays_business_tax() -> bool:
 	return is_economic_building()
 
 func requires_public_funding() -> bool:
-	return building_type == BuildingType.UNIVERSITY or building_type == BuildingType.PARK
+	return building_type == BuildingType.UNIVERSITY or building_type == BuildingType.PARK or building_type == BuildingType.HOSPITAL
 
 func can_be_force_closed() -> bool:
 	return building_type != BuildingType.CITY_HALL
@@ -1103,6 +1118,8 @@ func can_accept_workers() -> bool:
 func get_public_funding_priority() -> int:
 	match building_type:
 		BuildingType.CITY_HALL:
+			return 4
+		BuildingType.HOSPITAL:
 			return 3
 		BuildingType.UNIVERSITY:
 			return 2
@@ -1218,6 +1235,8 @@ func get_service_type_display_label() -> String:
 			return LocaleServiceScript.t("details.service_type.generic")
 		"governance":
 			return LocaleServiceScript.t("details.service_type.governance")
+		"healthcare":
+			return LocaleServiceScript.t("details.service_type.healthcare")
 		"housing":
 			return LocaleServiceScript.t("details.service_type.housing")
 		"production_food":
@@ -1233,6 +1252,8 @@ func get_staff_requirement_label() -> String:
 	match building_type:
 		BuildingType.GAS_STATION:
 			return LocaleServiceScript.t("details.staff_requirement.gas_station")
+		BuildingType.HOSPITAL:
+			return LocaleServiceScript.t("details.staff_requirement.medical")
 		_:
 			return LocaleServiceScript.t("details.staff_requirement.generic")
 
@@ -1476,6 +1497,8 @@ func get_maintenance_role_titles() -> Array[String]:
 			return ["Janitor", "MaintenanceWorker", "Technician"]
 		BuildingType.CITY_HALL:
 			return ["Janitor", "Technician", "MaintenanceWorker"]
+		BuildingType.HOSPITAL:
+			return ["Janitor", "MaintenanceWorker", "Technician"]
 		BuildingType.FACTORY:
 			return ["Technician", "MaintenanceWorker"]
 		BuildingType.GAS_STATION:

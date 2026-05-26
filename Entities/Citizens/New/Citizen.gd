@@ -36,6 +36,7 @@ const RelaxAtParkActionScript = preload("res://Actions/RelaxAtParkAction.gd")
 const SocializeActionScript = preload("res://Actions/SocializeAction.gd")
 const WatchCinemaActionScript = preload("res://Actions/WatchCinemaAction.gd")
 const SocialVisitActionScript = preload("res://Actions/SocialVisitAction.gd")
+const TreatAtHospitalActionScript = preload("res://Actions/TreatAtHospitalAction.gd")
 const PlayerActionUiStateBuilderScript = preload("res://Simulation/UI/PlayerActionUiStateBuilder.gd")
 const PlayerInventoryUiStateBuilderScript = preload("res://Simulation/UI/PlayerInventoryUiStateBuilder.gd")
 const FALL_RESPAWN_DEPTH_METERS := 8.0
@@ -1129,6 +1130,31 @@ func player_watch_cinema(world: Node = null) -> bool:
 	_player_action_notice = ""
 	return _start_player_action(WatchCinemaActionScript.new(cinema), resolved_world)
 
+func player_treat(world: Node = null) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	var location := _get_player_current_building()
+	if resolved_world == null or location == null or location.building_type != Building.BuildingType.HOSPITAL:
+		_player_action_notice = LocaleServiceScript.t("player_notice.no_hospital")
+		return false
+	var hospital: Variant = location
+	if current_action is TreatAtHospitalActionScript:
+		return true
+	if current_action != null:
+		_player_action_notice = LocaleServiceScript.t("player_notice.action_running")
+		return false
+	if not hospital.is_open(resolved_world.time.get_hour()):
+		_player_action_notice = LocaleServiceScript.t("player_notice.closed_named") % _building_label(hospital)
+		return false
+	if not hospital.has_core_medical_staff():
+		_player_action_notice = LocaleServiceScript.t("player_notice.hospital_unstaffed")
+		return false
+	if not hospital.can_accept_patient(self):
+		_player_action_notice = LocaleServiceScript.t("player_notice.hospital_full")
+		return false
+	var emergency := needs != null and needs.health < BalanceConfig.get_float("planner.health.emergency_threshold", 5.0)
+	_player_action_notice = ""
+	return _start_player_action(TreatAtHospitalActionScript.new(hospital, emergency), resolved_world)
+
 func start_social_visit(world: Node, target: Building, activity: String, as_player_action: bool = false) -> bool:
 	var resolved_world := _resolve_world_arg(world)
 	if resolved_world == null or target == null:
@@ -1328,6 +1354,8 @@ func _active_player_action_id() -> String:
 		return "socialize"
 	if current_action is WatchCinemaActionScript:
 		return "watch_cinema"
+	if current_action is TreatAtHospitalActionScript:
+		return "treat"
 	if current_action is SocialVisitActionScript:
 		return "social_visit"
 	return ""
@@ -2724,6 +2752,13 @@ func _find_nearest_university(from_pos: Vector3, require_open: bool = true) -> U
 	if _agent == null or _agent.query_resolver == null:
 		return null
 	return _agent.query_resolver.find_nearest_university(self, from_pos, require_open)
+
+func _find_nearest_hospital(from_pos: Vector3, require_open: bool = true):
+	if _agent == null or _agent.query_resolver == null:
+		return null
+	if _agent.query_resolver.has_method("find_nearest_hospital"):
+		return _agent.query_resolver.find_nearest_hospital(self, from_pos, require_open)
+	return null
 
 
 func _find_nearest_park(from_pos: Vector3) -> Building:

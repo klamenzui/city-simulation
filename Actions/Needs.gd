@@ -61,7 +61,8 @@ func advance(
 	fun_mul: float = 1.0,
 	hunger_add: float = 0.0,
 	energy_add: float = 0.0,
-	fun_add: float = 0.0
+	fun_add: float = 0.0,
+	health_add: float = 0.0
 ) -> void:
 	var m := float(minutes)
 
@@ -93,6 +94,7 @@ func advance(
 	if all_ok and health < TARGET_HEALTH:
 		health_delta += health_recovery_per_min * m
 
+	health_delta += health_add * m
 	health += health_delta
 	_clamp()
 

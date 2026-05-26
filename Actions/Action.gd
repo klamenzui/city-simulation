@@ -7,7 +7,8 @@ const DEFAULT_NEEDS_MOD := {
 	"fun_mul": 1.0,
 	"hunger_add": 0.0,
 	"energy_add": 0.0,
-	"fun_add": 0.0
+	"fun_add": 0.0,
+	"health_add": 0.0
 }
 
 var label: String = "Action"

@@ -1,5 +1,7 @@
 [gd_scene format=4 uid="uid://dk4v7jnlcj4xt"]
 
+[ext_resource type="Script" path="res://Entities/Buildings/Hospital.gd" id="1_0wh7s"]
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_eijy8"]
 resource_name = "Hospital1"
 cull_mode = 2
@@ -197,23 +199,27 @@ shadow_mesh = SubResource("ArrayMesh_5ueh7")
 
 [node name="Hospital" type="Node3D" unique_id=1585581247]
 transform = Transform3D(1.386524, 0, 0, 0, 1.386524, 0, 0, 0, 1.386524, 0, 0, 0)
+script = ExtResource("1_0wh7s")
 
 [node name="Hospital_Hospital1_0" type="MeshInstance3D" parent="." unique_id=1181027394]
-transform = Transform3D(1.0000001, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 7.131169, 0, 0)
+transform = Transform3D(0.20000002, 0, 0, 0, 0.20000002, 0, 0, 0, 0.20000002, 1.7798513, 0, 0)
 mesh = SubResource("ArrayMesh_gohfv")
 
 [node name="Hospital_Hospital2_0" type="MeshInstance3D" parent="." unique_id=1981752118]
-transform = Transform3D(1.0000001, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 7.131169, 0, 0)
+transform = Transform3D(0.20000002, 0, 0, 0, 0.20000002, 0, 0, 0, 0.20000002, 1.7798513, 0, 0)
 mesh = SubResource("ArrayMesh_lx4ou")
 
 [node name="Hospital_B_Windows_0" type="MeshInstance3D" parent="." unique_id=514276898]
-transform = Transform3D(1.0000001, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 7.131169, 0, 0)
+transform = Transform3D(0.20000002, 0, 0, 0, 0.20000002, 0, 0, 0, 0.20000002, 1.7798513, 0, 0)
 mesh = SubResource("ArrayMesh_ciop3")
 
 [node name="Hospital_B1_Roof_0" type="MeshInstance3D" parent="." unique_id=463668590]
-transform = Transform3D(1.0000001, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 7.131169, 0, 0)
+transform = Transform3D(0.20000002, 0, 0, 0, 0.20000002, 0, 0, 0, 0.20000002, 1.7798513, 0, 0)
 mesh = SubResource("ArrayMesh_c1831")
 
 [node name="Hospital_B_Gray_0" type="MeshInstance3D" parent="." unique_id=1825928944]
-transform = Transform3D(1.0000001, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 7.131169, 0, 0)
+transform = Transform3D(0.20000002, 0, 0, 0, 0.20000002, 0, 0, 0, 0.20000002, 1.7798513, 0, 0)
 mesh = SubResource("ArrayMesh_5rta5")
+
+[node name="Entrance" type="Marker3D" parent="." unique_id=1821122307]
+transform = Transform3D(1.0000001, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 1.5115665, 0.033441786, 0.91970074)

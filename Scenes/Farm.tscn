@@ -1,593 +1,270 @@
-[gd_scene load_steps=43 format=3]
+[gd_scene format=3 uid="uid://clc4gmqsftxix"]
 
-; Low-poly farm building, scaled to match the city's other models: individual
-; structures are roughly building-sized (~2x2 footprint, heights in the 2.2-3.7
-; band) on a single 8x9 farm lot. Visual content is built from primitive meshes.
-; The root keeps the Farm.gd contract used by the economy/job systems: it stays
-; in the "buildings" group, exposes an "Entrance" Node3D, and keeps a clickable
-; "ClickArea". All solid structures share one "Obstacles" StaticBody3D on physics
-; layer 1, with a gate gap on the +Z side so citizens can reach the entrance.
-; Crop detail uses MultiMeshInstance3D to keep the scene cheap when many farms
-; are present.
-
-[ext_resource type="Script" path="res://Entities/Buildings/Farm.gd" id="1"]
-
-[sub_resource type="BoxMesh" id="m_box"]
-size = Vector3(1, 1, 1)
-
-[sub_resource type="PrismMesh" id="m_prism"]
-size = Vector3(1, 1, 1)
-
-[sub_resource type="CylinderMesh" id="m_cyl"]
-top_radius = 0.5
-bottom_radius = 0.5
-height = 1.0
-radial_segments = 8
-rings = 1
-
-[sub_resource type="CylinderMesh" id="m_cone"]
-top_radius = 0.0
-bottom_radius = 0.5
-height = 1.0
-radial_segments = 8
-rings = 1
+[ext_resource type="Script" uid="uid://bbrtbqlqde5u0" path="res://Entities/Buildings/Farm.gd" id="1_farm"]
+[ext_resource type="ArrayMesh" uid="uid://eb2315b2a8ik" path="res://Scenes/FarmAssets/Quaternius/BigBarn.obj" id="2_bigbarn"]
+[ext_resource type="ArrayMesh" uid="uid://lyjs6d7u3q5r" path="res://Scenes/FarmAssets/Quaternius/SmallBarn.obj" id="3_smallbarn"]
+[ext_resource type="ArrayMesh" uid="uid://ca1vtd81e3se4" path="res://Scenes/FarmAssets/Quaternius/Silo.obj" id="4_silo"]
+[ext_resource type="ArrayMesh" uid="uid://x7b4ouylben2" path="res://Scenes/FarmAssets/Quaternius/Well.obj" id="5_well"]
+[ext_resource type="ArrayMesh" uid="uid://dh5bkqoyudi2q" path="res://Scenes/FarmAssets/Quaternius/Fence.obj" id="6_fence"]
+[ext_resource type="ArrayMesh" uid="uid://buo3q6sbf8qk1" path="res://Scenes/FarmAssets/FarmPack/farmland_large.obj" id="7_farmland"]
+[ext_resource type="ArrayMesh" uid="uid://csnkf2ch6grci" path="res://Scenes/FarmAssets/FarmPack/wheat.obj" id="8_wheat"]
+[ext_resource type="ArrayMesh" uid="uid://djdf1fqsljmpm" path="res://Scenes/FarmAssets/FarmPack/planted_carrots.obj" id="9_carrots"]
+[ext_resource type="ArrayMesh" uid="uid://dsuyoctsrn7v0" path="res://Scenes/FarmAssets/FarmPack/planted_cabbage.obj" id="10_cabbage"]
+[ext_resource type="ArrayMesh" uid="uid://c5pfi0exr6ktm" path="res://Scenes/FarmAssets/FarmPack/pumpkin.obj" id="11_pumpkin"]
 
 [sub_resource type="StandardMaterial3D" id="mt_grass"]
-albedo_color = Color(0.36, 0.55, 0.24, 1)
-roughness = 1.0
+albedo_color = Color(0.33, 0.52, 0.23, 1)
 
-[sub_resource type="StandardMaterial3D" id="mt_soil"]
-albedo_color = Color(0.42, 0.28, 0.16, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_crop"]
-albedo_color = Color(0.34, 0.62, 0.22, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_leaf"]
-albedo_color = Color(0.44, 0.74, 0.24, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_wall"]
-albedo_color = Color(0.9, 0.85, 0.7, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_roofred"]
-albedo_color = Color(0.62, 0.18, 0.14, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_barn"]
-albedo_color = Color(0.55, 0.13, 0.11, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_barnroof"]
-albedo_color = Color(0.3, 0.12, 0.1, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_silo"]
-albedo_color = Color(0.74, 0.75, 0.78, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_siloroof"]
-albedo_color = Color(0.5, 0.52, 0.55, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_wood"]
-albedo_color = Color(0.48, 0.33, 0.19, 1)
-roughness = 1.0
+[sub_resource type="BoxMesh" id="m_box"]
 
 [sub_resource type="StandardMaterial3D" id="mt_path"]
-albedo_color = Color(0.8, 0.71, 0.52, 1)
-roughness = 1.0
+albedo_color = Color(0.78, 0.68, 0.48, 1)
 
-[sub_resource type="StandardMaterial3D" id="mt_door"]
-albedo_color = Color(0.32, 0.2, 0.12, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_window"]
-albedo_color = Color(0.55, 0.72, 0.82, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_white"]
-albedo_color = Color(0.92, 0.92, 0.88, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_hay"]
-albedo_color = Color(0.86, 0.72, 0.3, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_barrel"]
-albedo_color = Color(0.22, 0.4, 0.46, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_tractor"]
-albedo_color = Color(0.2, 0.48, 0.24, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_wheel"]
-albedo_color = Color(0.12, 0.12, 0.13, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mt_stone"]
-albedo_color = Color(0.5, 0.5, 0.52, 1)
-roughness = 1.0
-
-[sub_resource type="MultiMesh" id="mm_west_stems"]
+[sub_resource type="MultiMesh" id="mm_west_wheat"]
 transform_format = 1
 instance_count = 16
-mesh = SubResource("m_cyl")
-buffer = PackedFloat32Array(0.08, 0, 0, -3.2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 0.4, 0.08, 0, 0, -2.6, 0, 0.36, 0, 0.46, 0, 0, 0.08, 0.4, 0.08, 0, 0, -2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 0.4, 0.08, 0, 0, -1.4, 0, 0.36, 0, 0.46, 0, 0, 0.08, 0.4, 0.08, 0, 0, -3.2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 1.2, 0.08, 0, 0, -2.6, 0, 0.36, 0, 0.46, 0, 0, 0.08, 1.2, 0.08, 0, 0, -2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 1.2, 0.08, 0, 0, -1.4, 0, 0.36, 0, 0.46, 0, 0, 0.08, 1.2, 0.08, 0, 0, -3.2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2, 0.08, 0, 0, -2.6, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2, 0.08, 0, 0, -2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2, 0.08, 0, 0, -1.4, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2, 0.08, 0, 0, -3.2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2.8, 0.08, 0, 0, -2.6, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2.8, 0.08, 0, 0, -2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2.8, 0.08, 0, 0, -1.4, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2.8)
+mesh = ExtResource("8_wheat")
+buffer = PackedFloat32Array(3, 0, 0, -3.2, 0, 3, 0, 0.08, 0, 0, 3, 0.4, 3, 0, 0, -2.6, 0, 3, 0, 0.08, 0, 0, 3, 0.4, 3, 0, 0, -2, 0, 3, 0, 0.08, 0, 0, 3, 0.4, 3, 0, 0, -1.4, 0, 3, 0, 0.08, 0, 0, 3, 0.4, 3, 0, 0, -3.2, 0, 3, 0, 0.08, 0, 0, 3, 1.2, 3, 0, 0, -2.6, 0, 3, 0, 0.08, 0, 0, 3, 1.2, 3, 0, 0, -2, 0, 3, 0, 0.08, 0, 0, 3, 1.2, 3, 0, 0, -1.4, 0, 3, 0, 0.08, 0, 0, 3, 1.2, 3, 0, 0, -3.2, 0, 3, 0, 0.08, 0, 0, 3, 2, 3, 0, 0, -2.6, 0, 3, 0, 0.08, 0, 0, 3, 2, 3, 0, 0, -2, 0, 3, 0, 0.08, 0, 0, 3, 2, 3, 0, 0, -1.4, 0, 3, 0, 0.08, 0, 0, 3, 2, 3, 0, 0, -3.2, 0, 3, 0, 0.08, 0, 0, 3, 2.8, 3, 0, 0, -2.6, 0, 3, 0, 0.08, 0, 0, 3, 2.8, 3, 0, 0, -2, 0, 3, 0, 0.08, 0, 0, 3, 2.8, 3, 0, 0, -1.4, 0, 3, 0, 0.08, 0, 0, 3, 2.8)
 
-[sub_resource type="MultiMesh" id="mm_west_leaf_a"]
+[sub_resource type="MultiMesh" id="mm_west_carrots"]
 transform_format = 1
 instance_count = 16
-mesh = SubResource("m_box")
-buffer = PackedFloat32Array(0.2283, 0.017, 0, -3.11, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 0.42, 0.2283, 0.017, 0, -2.51, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 0.42, 0.2283, 0.017, 0, -1.91, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 0.42, 0.2283, 0.017, 0, -1.31, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 0.42, 0.2283, 0.017, 0, -3.11, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 1.22, 0.2283, 0.017, 0, -2.51, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 1.22, 0.2283, 0.017, 0, -1.91, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 1.22, 0.2283, 0.017, 0, -1.31, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 1.22, 0.2283, 0.017, 0, -3.11, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.02, 0.2283, 0.017, 0, -2.51, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.02, 0.2283, 0.017, 0, -1.91, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.02, 0.2283, 0.017, 0, -1.31, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.02, 0.2283, 0.017, 0, -3.11, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.82, 0.2283, 0.017, 0, -2.51, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.82, 0.2283, 0.017, 0, -1.91, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.82, 0.2283, 0.017, 0, -1.31, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.82)
+mesh = ExtResource("9_carrots")
+buffer = PackedFloat32Array(1.8, 0, 0, -3.2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 0.4, 1.8, 0, 0, -2.6, 0, 1.8, 0, 0.08, 0, 0, 1.8, 0.4, 1.8, 0, 0, -2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 0.4, 1.8, 0, 0, -1.4, 0, 1.8, 0, 0.08, 0, 0, 1.8, 0.4, 1.8, 0, 0, -3.2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 1.2, 1.8, 0, 0, -2.6, 0, 1.8, 0, 0.08, 0, 0, 1.8, 1.2, 1.8, 0, 0, -2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 1.2, 1.8, 0, 0, -1.4, 0, 1.8, 0, 0.08, 0, 0, 1.8, 1.2, 1.8, 0, 0, -3.2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2, 1.8, 0, 0, -2.6, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2, 1.8, 0, 0, -2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2, 1.8, 0, 0, -1.4, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2, 1.8, 0, 0, -3.2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2.8, 1.8, 0, 0, -2.6, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2.8, 1.8, 0, 0, -2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2.8, 1.8, 0, 0, -1.4, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2.8)
 
-[sub_resource type="MultiMesh" id="mm_west_leaf_b"]
+[sub_resource type="MultiMesh" id="mm_west_cabbage"]
 transform_format = 1
 instance_count = 16
-mesh = SubResource("m_box")
-buffer = PackedFloat32Array(0.2092, -0.017, 0, -3.29, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 0.38, 0.2092, -0.017, 0, -2.69, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 0.38, 0.2092, -0.017, 0, -2.09, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 0.38, 0.2092, -0.017, 0, -1.49, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 0.38, 0.2092, -0.017, 0, -3.29, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.18, 0.2092, -0.017, 0, -2.69, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.18, 0.2092, -0.017, 0, -2.09, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.18, 0.2092, -0.017, 0, -1.49, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.18, 0.2092, -0.017, 0, -3.29, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.98, 0.2092, -0.017, 0, -2.69, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.98, 0.2092, -0.017, 0, -2.09, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.98, 0.2092, -0.017, 0, -1.49, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.98, 0.2092, -0.017, 0, -3.29, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 2.78, 0.2092, -0.017, 0, -2.69, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 2.78, 0.2092, -0.017, 0, -2.09, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 2.78, 0.2092, -0.017, 0, -1.49, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 2.78)
+mesh = ExtResource("10_cabbage")
+buffer = PackedFloat32Array(2.2, 0, 0, -3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, -2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, -2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, -1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, -3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, -2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, -2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, -1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, -3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, -2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, -2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, -1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, -3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8, 2.2, 0, 0, -2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8, 2.2, 0, 0, -2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8, 2.2, 0, 0, -1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8)
 
-[sub_resource type="MultiMesh" id="mm_east_stems"]
+[sub_resource type="MultiMesh" id="mm_east_wheat"]
 transform_format = 1
 instance_count = 16
-mesh = SubResource("m_cyl")
-buffer = PackedFloat32Array(0.08, 0, 0, 1.4, 0, 0.36, 0, 0.46, 0, 0, 0.08, 0.4, 0.08, 0, 0, 2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 0.4, 0.08, 0, 0, 2.6, 0, 0.36, 0, 0.46, 0, 0, 0.08, 0.4, 0.08, 0, 0, 3.2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 0.4, 0.08, 0, 0, 1.4, 0, 0.36, 0, 0.46, 0, 0, 0.08, 1.2, 0.08, 0, 0, 2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 1.2, 0.08, 0, 0, 2.6, 0, 0.36, 0, 0.46, 0, 0, 0.08, 1.2, 0.08, 0, 0, 3.2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 1.2, 0.08, 0, 0, 1.4, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2, 0.08, 0, 0, 2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2, 0.08, 0, 0, 2.6, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2, 0.08, 0, 0, 3.2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2, 0.08, 0, 0, 1.4, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2.8, 0.08, 0, 0, 2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2.8, 0.08, 0, 0, 2.6, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2.8, 0.08, 0, 0, 3.2, 0, 0.36, 0, 0.46, 0, 0, 0.08, 2.8)
+mesh = ExtResource("8_wheat")
+buffer = PackedFloat32Array(3, 0, 0, 1.4, 0, 3, 0, 0.08, 0, 0, 3, 0.4, 3, 0, 0, 2, 0, 3, 0, 0.08, 0, 0, 3, 0.4, 3, 0, 0, 2.6, 0, 3, 0, 0.08, 0, 0, 3, 0.4, 3, 0, 0, 3.2, 0, 3, 0, 0.08, 0, 0, 3, 0.4, 3, 0, 0, 1.4, 0, 3, 0, 0.08, 0, 0, 3, 1.2, 3, 0, 0, 2, 0, 3, 0, 0.08, 0, 0, 3, 1.2, 3, 0, 0, 2.6, 0, 3, 0, 0.08, 0, 0, 3, 1.2, 3, 0, 0, 3.2, 0, 3, 0, 0.08, 0, 0, 3, 1.2, 3, 0, 0, 1.4, 0, 3, 0, 0.08, 0, 0, 3, 2, 3, 0, 0, 2, 0, 3, 0, 0.08, 0, 0, 3, 2, 3, 0, 0, 2.6, 0, 3, 0, 0.08, 0, 0, 3, 2, 3, 0, 0, 3.2, 0, 3, 0, 0.08, 0, 0, 3, 2, 3, 0, 0, 1.4, 0, 3, 0, 0.08, 0, 0, 3, 2.8, 3, 0, 0, 2, 0, 3, 0, 0.08, 0, 0, 3, 2.8, 3, 0, 0, 2.6, 0, 3, 0, 0.08, 0, 0, 3, 2.8, 3, 0, 0, 3.2, 0, 3, 0, 0.08, 0, 0, 3, 2.8)
 
-[sub_resource type="MultiMesh" id="mm_east_leaf_a"]
+[sub_resource type="MultiMesh" id="mm_east_carrots"]
 transform_format = 1
 instance_count = 16
-mesh = SubResource("m_box")
-buffer = PackedFloat32Array(0.2283, 0.017, 0, 1.49, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 0.42, 0.2283, 0.017, 0, 2.09, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 0.42, 0.2283, 0.017, 0, 2.69, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 0.42, 0.2283, 0.017, 0, 3.29, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 0.42, 0.2283, 0.017, 0, 1.49, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 1.22, 0.2283, 0.017, 0, 2.09, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 1.22, 0.2283, 0.017, 0, 2.69, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 1.22, 0.2283, 0.017, 0, 3.29, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 1.22, 0.2283, 0.017, 0, 1.49, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.02, 0.2283, 0.017, 0, 2.09, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.02, 0.2283, 0.017, 0, 2.69, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.02, 0.2283, 0.017, 0, 3.29, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.02, 0.2283, 0.017, 0, 1.49, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.82, 0.2283, 0.017, 0, 2.09, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.82, 0.2283, 0.017, 0, 2.69, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.82, 0.2283, 0.017, 0, 3.29, -0.0742, 0.0523, 0, 0.65, 0, 0, 0.12, 2.82)
+mesh = ExtResource("9_carrots")
+buffer = PackedFloat32Array(1.8, 0, 0, 1.4, 0, 1.8, 0, 0.08, 0, 0, 1.8, 0.4, 1.8, 0, 0, 2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 0.4, 1.8, 0, 0, 2.6, 0, 1.8, 0, 0.08, 0, 0, 1.8, 0.4, 1.8, 0, 0, 3.2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 0.4, 1.8, 0, 0, 1.4, 0, 1.8, 0, 0.08, 0, 0, 1.8, 1.2, 1.8, 0, 0, 2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 1.2, 1.8, 0, 0, 2.6, 0, 1.8, 0, 0.08, 0, 0, 1.8, 1.2, 1.8, 0, 0, 3.2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 1.2, 1.8, 0, 0, 1.4, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2, 1.8, 0, 0, 2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2, 1.8, 0, 0, 2.6, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2, 1.8, 0, 0, 3.2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2, 1.8, 0, 0, 1.4, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2.8, 1.8, 0, 0, 2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2.8, 1.8, 0, 0, 2.6, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2.8, 1.8, 0, 0, 3.2, 0, 1.8, 0, 0.08, 0, 0, 1.8, 2.8)
 
-[sub_resource type="MultiMesh" id="mm_east_leaf_b"]
+[sub_resource type="MultiMesh" id="mm_east_cabbage"]
 transform_format = 1
 instance_count = 16
-mesh = SubResource("m_box")
-buffer = PackedFloat32Array(0.2092, -0.017, 0, 1.31, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 0.38, 0.2092, -0.017, 0, 1.91, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 0.38, 0.2092, -0.017, 0, 2.51, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 0.38, 0.2092, -0.017, 0, 3.11, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 0.38, 0.2092, -0.017, 0, 1.31, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.18, 0.2092, -0.017, 0, 1.91, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.18, 0.2092, -0.017, 0, 2.51, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.18, 0.2092, -0.017, 0, 3.11, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.18, 0.2092, -0.017, 0, 1.31, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.98, 0.2092, -0.017, 0, 1.91, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.98, 0.2092, -0.017, 0, 2.51, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.98, 0.2092, -0.017, 0, 3.11, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 1.98, 0.2092, -0.017, 0, 1.31, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 2.78, 0.2092, -0.017, 0, 1.91, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 2.78, 0.2092, -0.017, 0, 2.51, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 2.78, 0.2092, -0.017, 0, 3.11, 0.068, 0.0523, 0, 0.58, 0, 0, 0.12, 2.78)
+mesh = ExtResource("10_cabbage")
+buffer = PackedFloat32Array(2.2, 0, 0, 1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, 2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, 2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, 3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, 1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, 2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, 2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, 3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, 1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, 2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, 2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, 3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, 1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8, 2.2, 0, 0, 2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8, 2.2, 0, 0, 2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8, 2.2, 0, 0, 3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8)
 
 [sub_resource type="BoxShape3D" id="s_house"]
-size = Vector3(2.1, 2.3, 1.8)
+size = Vector3(2.35, 2, 2.4)
 
 [sub_resource type="BoxShape3D" id="s_barn"]
-size = Vector3(2.4, 2.7, 2.0)
+size = Vector3(2.8, 2.8, 3)
 
 [sub_resource type="CylinderShape3D" id="s_silo"]
-radius = 0.62
 height = 2.9
+radius = 0.62
+
+[sub_resource type="CylinderShape3D" id="s_well"]
+height = 1.25
 
 [sub_resource type="BoxShape3D" id="s_fence_back"]
-size = Vector3(7.4, 1.0, 0.2)
+size = Vector3(7.4, 0.45, 0.1)
 
 [sub_resource type="BoxShape3D" id="s_fence_side"]
-size = Vector3(0.2, 1.0, 8.4)
+size = Vector3(0.1, 0.45, 8.4)
 
 [sub_resource type="BoxShape3D" id="s_fence_front"]
-size = Vector3(2.8, 1.0, 0.2)
+size = Vector3(2.8, 0.45, 0.1)
 
-[sub_resource type="CylinderShape3D" id="s_barrel"]
-radius = 0.35
-height = 0.95
-
-[sub_resource type="BoxShape3D" id="s_hay"]
-size = Vector3(0.9, 1.0, 1.2)
-
-[sub_resource type="BoxShape3D" id="s_crate"]
-size = Vector3(1.1, 1.0, 0.6)
-
-[sub_resource type="BoxShape3D" id="s_tractor"]
-size = Vector3(1.5, 1.0, 1.8)
+[sub_resource type="BoxShape3D" id="s_storage"]
+size = Vector3(1.2, 0.7, 1)
 
 [sub_resource type="BoxShape3D" id="s_click"]
 size = Vector3(8, 2.6, 9)
 
-[node name="Farm" type="Node3D" groups=["buildings"] node_paths=PackedStringArray("entrance")]
-script = ExtResource("1")
+[node name="Farm" type="Node3D" unique_id=1354300990 node_paths=PackedStringArray("entrance") groups=["buildings"]]
+script = ExtResource("1_farm")
 building_name = "Farm"
-entrance = NodePath("Entrance")
+entrance = NodePath("")
 job_capacity = 6
 
-[node name="Ground" type="MeshInstance3D" parent="."]
-transform = Transform3D(8, 0, 0, 0, 0.2, 0, 0, 0, 9, 0, -0.08, 0)
-mesh = SubResource("m_box")
+[node name="Ground" type="MeshInstance3D" parent="." unique_id=1667693276]
+transform = Transform3D(8, 0, 0, 0, 0.16, 0, 0, 0, 9, 0, -0.08, 0)
 material_override = SubResource("mt_grass")
-
-[node name="Path" type="MeshInstance3D" parent="."]
-transform = Transform3D(1.4, 0, 0, 0, 0.06, 0, 0, 0, 4.9, 0, 0.05, 1.85)
 mesh = SubResource("m_box")
+
+[node name="Path" type="MeshInstance3D" parent="." unique_id=814400092]
+transform = Transform3D(1.35, 0, 0, 0, 0.05, 0, 0, 0, 4.9, 0, -0.022526346, 1.85)
 material_override = SubResource("mt_path")
-
-[node name="Buildings" type="Node3D" parent="."]
-
-[node name="Farmhouse" type="Node3D" parent="Buildings"]
-
-[node name="Foundation" type="MeshInstance3D" parent="Buildings/Farmhouse"]
-transform = Transform3D(2.35, 0, 0, 0, 0.3, 0, 0, 0, 2.05, -2.4, 0.17, -2.6)
 mesh = SubResource("m_box")
-material_override = SubResource("mt_stone")
-
-[node name="Walls" type="MeshInstance3D" parent="Buildings/Farmhouse"]
-transform = Transform3D(2.1, 0, 0, 0, 2, 0, 0, 0, 1.8, -2.4, 1.32, -2.6)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wall")
-
-[node name="Roof" type="MeshInstance3D" parent="Buildings/Farmhouse"]
-transform = Transform3D(2.5, 0, 0, 0, 0.9, 0, 0, 0, 2.1, -2.4, 2.77, -2.6)
-mesh = SubResource("m_prism")
-material_override = SubResource("mt_roofred")
-
-[node name="Door" type="MeshInstance3D" parent="Buildings/Farmhouse"]
-transform = Transform3D(0.7, 0, 0, 0, 1.3, 0, 0, 0, 0.15, -2.4, 0.97, -1.62)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_door")
-
-[node name="WindowFront" type="MeshInstance3D" parent="Buildings/Farmhouse"]
-transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.12, -1.7, 1.5, -1.64)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_window")
-
-[node name="WindowSide" type="MeshInstance3D" parent="Buildings/Farmhouse"]
-transform = Transform3D(0.12, 0, 0, 0, 0.5, 0, 0, 0, 0.5, -1.35, 1.5, -2.6)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_window")
-
-[node name="Chimney" type="MeshInstance3D" parent="Buildings/Farmhouse"]
-transform = Transform3D(0.3, 0, 0, 0, 0.7, 0, 0, 0, 0.3, -2.9, 2.52, -3)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_stone")
-
-[node name="Barn" type="Node3D" parent="Buildings"]
-
-[node name="Foundation" type="MeshInstance3D" parent="Buildings/Barn"]
-transform = Transform3D(2.55, 0, 0, 0, 0.3, 0, 0, 0, 2.15, 0.4, 0.17, -2.8)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_stone")
-
-[node name="Walls" type="MeshInstance3D" parent="Buildings/Barn"]
-transform = Transform3D(2.4, 0, 0, 0, 2.4, 0, 0, 0, 2, 0.4, 1.52, -2.8)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_barn")
-
-[node name="Roof" type="MeshInstance3D" parent="Buildings/Barn"]
-transform = Transform3D(2.8, 0, 0, 0, 1, 0, 0, 0, 2.2, 0.4, 3.22, -2.8)
-mesh = SubResource("m_prism")
-material_override = SubResource("mt_barnroof")
-
-[node name="Door" type="MeshInstance3D" parent="Buildings/Barn"]
-transform = Transform3D(1.3, 0, 0, 0, 1.8, 0, 0, 0, 0.15, 0.4, 1.22, -1.72)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_door")
-
-[node name="TrimBand" type="MeshInstance3D" parent="Buildings/Barn"]
-transform = Transform3D(2.4, 0, 0, 0, 0.18, 0, 0, 0, 0.05, 0.4, 2.34, -1.79)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_white")
-
-[node name="Silo" type="Node3D" parent="Buildings"]
-
-[node name="Body" type="MeshInstance3D" parent="Buildings/Silo"]
-transform = Transform3D(1.24, 0, 0, 0, 2.9, 0, 0, 0, 1.24, 2.9, 1.47, -2.9)
-mesh = SubResource("m_cyl")
-material_override = SubResource("mt_silo")
-
-[node name="BandLow" type="MeshInstance3D" parent="Buildings/Silo"]
-transform = Transform3D(1.34, 0, 0, 0, 0.12, 0, 0, 0, 1.34, 2.9, 1, -2.9)
-mesh = SubResource("m_cyl")
-material_override = SubResource("mt_siloroof")
-
-[node name="BandHigh" type="MeshInstance3D" parent="Buildings/Silo"]
-transform = Transform3D(1.34, 0, 0, 0, 0.12, 0, 0, 0, 1.34, 2.9, 2.3, -2.9)
-mesh = SubResource("m_cyl")
-material_override = SubResource("mt_siloroof")
-
-[node name="Roof" type="MeshInstance3D" parent="Buildings/Silo"]
-transform = Transform3D(1.4, 0, 0, 0, 0.8, 0, 0, 0, 1.4, 2.9, 3.32, -2.9)
-mesh = SubResource("m_cone")
-material_override = SubResource("mt_siloroof")
-
-[node name="Fields" type="Node3D" parent="."]
-
-[node name="FieldWest" type="Node3D" parent="Fields"]
-
-[node name="Soil" type="MeshInstance3D" parent="Fields/FieldWest"]
-transform = Transform3D(2.6, 0, 0, 0, 0.14, 0, 0, 0, 3.4, -2.3, 0.07, 1.6)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_soil")
-
-[node name="Row1" type="MeshInstance3D" parent="Fields/FieldWest"]
-transform = Transform3D(2.3, 0, 0, 0, 0.28, 0, 0, 0, 0.26, -2.3, 0.28, 0.4)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_crop")
-
-[node name="Row2" type="MeshInstance3D" parent="Fields/FieldWest"]
-transform = Transform3D(2.3, 0, 0, 0, 0.28, 0, 0, 0, 0.26, -2.3, 0.28, 1.2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_crop")
-
-[node name="Row3" type="MeshInstance3D" parent="Fields/FieldWest"]
-transform = Transform3D(2.3, 0, 0, 0, 0.28, 0, 0, 0, 0.26, -2.3, 0.28, 2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_crop")
-
-[node name="Row4" type="MeshInstance3D" parent="Fields/FieldWest"]
-transform = Transform3D(2.3, 0, 0, 0, 0.28, 0, 0, 0, 0.26, -2.3, 0.28, 2.8)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_crop")
-
-[node name="CropStemInstances" type="MultiMeshInstance3D" parent="Fields/FieldWest"]
-material_override = SubResource("mt_crop")
-multimesh = SubResource("mm_west_stems")
-
-[node name="CropLeafAInstances" type="MultiMeshInstance3D" parent="Fields/FieldWest"]
-material_override = SubResource("mt_leaf")
-multimesh = SubResource("mm_west_leaf_a")
-
-[node name="CropLeafBInstances" type="MultiMeshInstance3D" parent="Fields/FieldWest"]
-material_override = SubResource("mt_leaf")
-multimesh = SubResource("mm_west_leaf_b")
-
-[node name="FieldEast" type="Node3D" parent="Fields"]
-
-[node name="Soil" type="MeshInstance3D" parent="Fields/FieldEast"]
-transform = Transform3D(2.6, 0, 0, 0, 0.14, 0, 0, 0, 3.4, 2.3, 0.07, 1.6)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_soil")
-
-[node name="Row1" type="MeshInstance3D" parent="Fields/FieldEast"]
-transform = Transform3D(2.3, 0, 0, 0, 0.28, 0, 0, 0, 0.26, 2.3, 0.28, 0.4)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_crop")
-
-[node name="Row2" type="MeshInstance3D" parent="Fields/FieldEast"]
-transform = Transform3D(2.3, 0, 0, 0, 0.28, 0, 0, 0, 0.26, 2.3, 0.28, 1.2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_crop")
-
-[node name="Row3" type="MeshInstance3D" parent="Fields/FieldEast"]
-transform = Transform3D(2.3, 0, 0, 0, 0.28, 0, 0, 0, 0.26, 2.3, 0.28, 2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_crop")
-
-[node name="Row4" type="MeshInstance3D" parent="Fields/FieldEast"]
-transform = Transform3D(2.3, 0, 0, 0, 0.28, 0, 0, 0, 0.26, 2.3, 0.28, 2.8)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_crop")
-
-[node name="CropStemInstances" type="MultiMeshInstance3D" parent="Fields/FieldEast"]
-material_override = SubResource("mt_crop")
-multimesh = SubResource("mm_east_stems")
-
-[node name="CropLeafAInstances" type="MultiMeshInstance3D" parent="Fields/FieldEast"]
-material_override = SubResource("mt_leaf")
-multimesh = SubResource("mm_east_leaf_a")
-
-[node name="CropLeafBInstances" type="MultiMeshInstance3D" parent="Fields/FieldEast"]
-material_override = SubResource("mt_leaf")
-multimesh = SubResource("mm_east_leaf_b")
-
-[node name="Fence" type="Node3D" parent="."]
-
-[node name="RailBackTop" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(7.4, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 0, 0.78, -4.2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="RailBackBottom" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(7.4, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 0, 0.28, -4.2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="RailEastTop" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 8.4, 3.7, 0.78, 0)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="RailEastBottom" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 8.4, 3.7, 0.28, 0)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="RailWestTop" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 8.4, -3.7, 0.78, 0)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="RailWestBottom" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 8.4, -3.7, 0.28, 0)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="RailFrontLeftTop" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(2.8, 0, 0, 0, 0.1, 0, 0, 0, 0.1, -2.3, 0.78, 4.2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="RailFrontLeftBottom" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(2.8, 0, 0, 0, 0.1, 0, 0, 0, 0.1, -2.3, 0.28, 4.2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="RailFrontRightTop" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(2.8, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 2.3, 0.78, 4.2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="RailFrontRightBottom" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(2.8, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 2.3, 0.28, 4.2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="PostNW" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(0.15, 0, 0, 0, 1, 0, 0, 0, 0.15, -3.7, 0.52, -4.2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="PostNE" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(0.15, 0, 0, 0, 1, 0, 0, 0, 0.15, 3.7, 0.52, -4.2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="PostSW" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(0.15, 0, 0, 0, 1, 0, 0, 0, 0.15, -3.7, 0.52, 4.2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="PostSE" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(0.15, 0, 0, 0, 1, 0, 0, 0, 0.15, 3.7, 0.52, 4.2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="PostGateLeft" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(0.15, 0, 0, 0, 1, 0, 0, 0, 0.15, -0.9, 0.52, 4.2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="PostGateRight" type="MeshInstance3D" parent="Fence"]
-transform = Transform3D(0.15, 0, 0, 0, 1, 0, 0, 0, 0.15, 0.9, 0.52, 4.2)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="Props" type="Node3D" parent="."]
-
-[node name="Crates" type="Node3D" parent="Props"]
-
-[node name="Crate1" type="MeshInstance3D" parent="Props/Crates"]
-transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 1.7, 0.27, -0.6)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="Crate2" type="MeshInstance3D" parent="Props/Crates"]
-transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 2.2, 0.27, -0.6)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="Crate3" type="MeshInstance3D" parent="Props/Crates"]
-transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 1.95, 0.77, -0.6)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_wood")
-
-[node name="HayBales" type="Node3D" parent="Props"]
-
-[node name="Bale1" type="MeshInstance3D" parent="Props/HayBales"]
-transform = Transform3D(0.9, 0, 0, 0, 0.5, 0, 0, 0, 0.5, -1.1, 0.29, -0.7)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_hay")
-
-[node name="Bale2" type="MeshInstance3D" parent="Props/HayBales"]
-transform = Transform3D(0.9, 0, 0, 0, 0.5, 0, 0, 0, 0.5, -1.1, 0.29, -0.1)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_hay")
-
-[node name="Bale3" type="MeshInstance3D" parent="Props/HayBales"]
-transform = Transform3D(0.9, 0, 0, 0, 0.5, 0, 0, 0, 0.5, -1.1, 0.79, -0.4)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_hay")
-
-[node name="WaterBarrel" type="Node3D" parent="Props"]
-
-[node name="Barrel" type="MeshInstance3D" parent="Props/WaterBarrel"]
-transform = Transform3D(0.7, 0, 0, 0, 0.95, 0, 0, 0, 0.7, -2.9, 0.495, -0.6)
-mesh = SubResource("m_cyl")
-material_override = SubResource("mt_barrel")
-
-[node name="Tractor" type="Node3D" parent="Props"]
-
-[node name="Body" type="MeshInstance3D" parent="Props/Tractor"]
-transform = Transform3D(0.9, 0, 0, 0, 0.55, 0, 0, 0, 1.4, 1.4, 0.47, 0.4)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_tractor")
-
-[node name="Cabin" type="MeshInstance3D" parent="Props/Tractor"]
-transform = Transform3D(0.7, 0, 0, 0, 0.6, 0, 0, 0, 0.65, 1.4, 0.92, 0.1)
-mesh = SubResource("m_box")
-material_override = SubResource("mt_tractor")
-
-[node name="WheelRearLeft" type="MeshInstance3D" parent="Props/Tractor"]
-transform = Transform3D(0, 0.64, 0, 0.2, 0, 0, 0, 0, 0.64, 0.9, 0.34, 0)
-mesh = SubResource("m_cyl")
-material_override = SubResource("mt_wheel")
-
-[node name="WheelRearRight" type="MeshInstance3D" parent="Props/Tractor"]
-transform = Transform3D(0, 0.64, 0, 0.2, 0, 0, 0, 0, 0.64, 1.9, 0.34, 0)
-mesh = SubResource("m_cyl")
-material_override = SubResource("mt_wheel")
-
-[node name="WheelFrontLeft" type="MeshInstance3D" parent="Props/Tractor"]
-transform = Transform3D(0, 0.44, 0, 0.18, 0, 0, 0, 0, 0.44, 0.95, 0.24, 0.9)
-mesh = SubResource("m_cyl")
-material_override = SubResource("mt_wheel")
-
-[node name="WheelFrontRight" type="MeshInstance3D" parent="Props/Tractor"]
-transform = Transform3D(0, 0.44, 0, 0.18, 0, 0, 0, 0, 0.44, 1.85, 0.24, 0.9)
-mesh = SubResource("m_cyl")
-material_override = SubResource("mt_wheel")
-
-[node name="Obstacles" type="StaticBody3D" parent="."]
-collision_layer = 1
-collision_mask = 1
-
-[node name="HouseShape" type="CollisionShape3D" parent="Obstacles"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.4, 1.17, -2.6)
+
+[node name="Buildings" type="Node3D" parent="." unique_id=428045421]
+
+[node name="SmallBarnModel" type="MeshInstance3D" parent="Buildings" unique_id=1207815180]
+transform = Transform3D(0.38, 0, 0, 0, 0.38, 0, 0, 0, 0.38, -2.35, 0, -2.65)
+mesh = ExtResource("3_smallbarn")
+
+[node name="BigBarnModel" type="MeshInstance3D" parent="Buildings" unique_id=549962428]
+transform = Transform3D(0.34, 0, 0, 0, 0.34, 0, 0, 0, 0.34, 0.35, 0, -2.75)
+mesh = ExtResource("2_bigbarn")
+
+[node name="SiloModel" type="MeshInstance3D" parent="Buildings" unique_id=991172482]
+transform = Transform3D(0.32, 0, 0, 0, 0.32, 0, 0, 0, 0.32, 2.85, 0.02, -2.75)
+mesh = ExtResource("4_silo")
+
+[node name="Fields" type="Node3D" parent="." unique_id=333459182]
+
+[node name="FieldWest" type="Node3D" parent="Fields" unique_id=420499292]
+
+[node name="FarmlandModel" type="MeshInstance3D" parent="Fields/FieldWest" unique_id=1091205674]
+transform = Transform3D(2.9, 0, 0, 0, 1, 0, 0, 0, 3.8, -2.3, 0, 1.6)
+mesh = ExtResource("7_farmland")
+
+[node name="CropStemInstances" type="MultiMeshInstance3D" parent="Fields/FieldWest" unique_id=366693363]
+multimesh = SubResource("mm_west_wheat")
+
+[node name="CropLeafAInstances" type="MultiMeshInstance3D" parent="Fields/FieldWest" unique_id=1835509154]
+multimesh = SubResource("mm_west_carrots")
+
+[node name="CropLeafBInstances" type="MultiMeshInstance3D" parent="Fields/FieldWest" unique_id=2106868713]
+multimesh = SubResource("mm_west_cabbage")
+
+[node name="FieldEast" type="Node3D" parent="Fields" unique_id=735316847]
+
+[node name="FarmlandModel" type="MeshInstance3D" parent="Fields/FieldEast" unique_id=1488055558]
+transform = Transform3D(2.9, 0, 0, 0, 1, 0, 0, 0, 3.8, 2.3, 0, 1.6)
+mesh = ExtResource("7_farmland")
+
+[node name="CropStemInstances" type="MultiMeshInstance3D" parent="Fields/FieldEast" unique_id=112336689]
+multimesh = SubResource("mm_east_wheat")
+
+[node name="CropLeafAInstances" type="MultiMeshInstance3D" parent="Fields/FieldEast" unique_id=122181466]
+multimesh = SubResource("mm_east_carrots")
+
+[node name="CropLeafBInstances" type="MultiMeshInstance3D" parent="Fields/FieldEast" unique_id=298994894]
+multimesh = SubResource("mm_east_cabbage")
+
+[node name="Fence" type="Node3D" parent="." unique_id=1984403890]
+
+[node name="BackFenceModel" type="MeshInstance3D" parent="Fence" unique_id=1267928044]
+transform = Transform3D(1.26, 0, 0, 0, 0.4, 0, 0, 0, 0.4, 0, 0, -4.2)
+mesh = ExtResource("6_fence")
+
+[node name="EastFenceModel" type="MeshInstance3D" parent="Fence" unique_id=366940272]
+transform = Transform3D(0, 0, 0.656204, 0, 0.4, 0, -0.4, 0, 0, 3.7, 0, -0.7401347)
+mesh = ExtResource("6_fence")
+
+[node name="WestFenceModel" type="MeshInstance3D" parent="Fence" unique_id=1293093616]
+transform = Transform3D(0, 0, 0.7066502, 0, 0.4, 0, -0.4, 0, 0, -3.7, 0, -3.0523748)
+mesh = ExtResource("6_fence")
+
+[node name="FrontLeftFenceModel" type="MeshInstance3D" parent="Fence" unique_id=159379823]
+transform = Transform3D(0.48, 0, 0, 0, 0.4, 0, 0, 0, 0.4, -2.3, 0, 4.2)
+mesh = ExtResource("6_fence")
+
+[node name="FrontRightFenceModel" type="MeshInstance3D" parent="Fence" unique_id=1479919849]
+transform = Transform3D(0.48, 0, 0, 0, 0.4, 0, 0, 0, 0.4, 2.3, 0, 4.2)
+mesh = ExtResource("6_fence")
+
+[node name="EastFenceModel2" type="MeshInstance3D" parent="Fence" unique_id=1915778539]
+transform = Transform3D(0, 0, 0.656204, 0, 0.4, 0, -0.4, 0, 0, 3.7, 0, -3.0478325)
+mesh = ExtResource("6_fence")
+
+[node name="EastFenceModel3" type="MeshInstance3D" parent="Fence" unique_id=824011173]
+transform = Transform3D(0, 0, 0.656204, 0, 0.4, 0, -0.4, 0, 0, 3.7, 0, 1.5555098)
+mesh = ExtResource("6_fence")
+
+[node name="EastFenceModel4" type="MeshInstance3D" parent="Fence" unique_id=1953484671]
+transform = Transform3D(0, 0, 0.656204, 0, 0.4, 0, -0.4, 0, 0, 3.7, 0, 3.0531852)
+mesh = ExtResource("6_fence")
+
+[node name="WestFenceModel2" type="MeshInstance3D" parent="Fence" unique_id=2126301880]
+transform = Transform3D(0, 0, 0.7066502, 0, 0.4, 0, -0.4, 0, 0, -3.7, 0, -0.74044347)
+mesh = ExtResource("6_fence")
+
+[node name="WestFenceModel3" type="MeshInstance3D" parent="Fence" unique_id=1434703202]
+transform = Transform3D(0, 0, 0.7066502, 0, 0.4, 0, -0.4, 0, 0, -3.7, 0, 1.5624633)
+mesh = ExtResource("6_fence")
+
+[node name="WestFenceModel4" type="MeshInstance3D" parent="Fence" unique_id=228606544]
+transform = Transform3D(0, 0, 0.7066502, 0, 0.4, 0, -0.4, 0, 0, -3.7, 0, 3.056997)
+mesh = ExtResource("6_fence")
+
+[node name="Props" type="Node3D" parent="." unique_id=946691504]
+
+[node name="WellModel" type="MeshInstance3D" parent="Props" unique_id=584560012]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, -2.85, 0, -0.45)
+mesh = ExtResource("5_well")
+
+[node name="Pumpkins" type="Node3D" parent="Props" unique_id=1619069031]
+
+[node name="PumpkinA" type="MeshInstance3D" parent="Props/Pumpkins" unique_id=1922701589]
+transform = Transform3D(2.4, 0, 0, 0, 2.4, 0, 0, 0, 2.4, 1.25, 0.03, -0.75)
+mesh = ExtResource("11_pumpkin")
+
+[node name="PumpkinB" type="MeshInstance3D" parent="Props/Pumpkins" unique_id=1326220731]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 1.75, 0.03, -0.55)
+mesh = ExtResource("11_pumpkin")
+
+[node name="PumpkinC" type="MeshInstance3D" parent="Props/Pumpkins" unique_id=1776059487]
+transform = Transform3D(1.8, 0, 0, 0, 1.8, 0, 0, 0, 1.8, 1.48, 0.03, -0.25)
+mesh = ExtResource("11_pumpkin")
+
+[node name="Obstacles" type="StaticBody3D" parent="." unique_id=1308532648]
+
+[node name="HouseShape" type="CollisionShape3D" parent="Obstacles" unique_id=297700470]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.35, 1, -2.65)
 shape = SubResource("s_house")
 
-[node name="BarnShape" type="CollisionShape3D" parent="Obstacles"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.4, 1.37, -2.8)
+[node name="BarnShape" type="CollisionShape3D" parent="Obstacles" unique_id=1817960823]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 1.4, -2.75)
 shape = SubResource("s_barn")
 
-[node name="SiloShape" type="CollisionShape3D" parent="Obstacles"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9, 1.47, -2.9)
+[node name="SiloShape" type="CollisionShape3D" parent="Obstacles" unique_id=165083668]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.85, 1.45, -2.75)
 shape = SubResource("s_silo")
 
-[node name="FenceBackShape" type="CollisionShape3D" parent="Obstacles"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.52, -4.2)
+[node name="WellShape" type="CollisionShape3D" parent="Obstacles" unique_id=1476326400]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.85, 0.62, -0.45)
+shape = SubResource("s_well")
+
+[node name="FenceBackShape" type="CollisionShape3D" parent="Obstacles" unique_id=1231976053]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, -4.2)
 shape = SubResource("s_fence_back")
 
-[node name="FenceEastShape" type="CollisionShape3D" parent="Obstacles"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.7, 0.52, 0)
+[node name="FenceEastShape" type="CollisionShape3D" parent="Obstacles" unique_id=306475338]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.7, 0.55, 0)
 shape = SubResource("s_fence_side")
 
-[node name="FenceWestShape" type="CollisionShape3D" parent="Obstacles"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.7, 0.52, 0)
+[node name="FenceWestShape" type="CollisionShape3D" parent="Obstacles" unique_id=1514384097]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.7, 0.55, 0)
 shape = SubResource("s_fence_side")
 
-[node name="FenceFrontLeftShape" type="CollisionShape3D" parent="Obstacles"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.3, 0.52, 4.2)
+[node name="FenceFrontLeftShape" type="CollisionShape3D" parent="Obstacles" unique_id=1852440098]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.3, 0.55, 4.2)
 shape = SubResource("s_fence_front")
 
-[node name="FenceFrontRightShape" type="CollisionShape3D" parent="Obstacles"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.3, 0.52, 4.2)
+[node name="FenceFrontRightShape" type="CollisionShape3D" parent="Obstacles" unique_id=485117262]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.3, 0.55, 4.2)
 shape = SubResource("s_fence_front")
 
-[node name="BarrelShape" type="CollisionShape3D" parent="Obstacles"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.9, 0.495, -0.6)
-shape = SubResource("s_barrel")
+[node name="StorageShape" type="CollisionShape3D" parent="Obstacles" unique_id=904724289]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.35, -0.55)
+shape = SubResource("s_storage")
 
-[node name="HayShape" type="CollisionShape3D" parent="Obstacles"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1, 0.52, -0.4)
-shape = SubResource("s_hay")
+[node name="ClickArea" type="Area3D" parent="." unique_id=1627996486]
 
-[node name="CrateShape" type="CollisionShape3D" parent="Obstacles"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.95, 0.52, -0.6)
-shape = SubResource("s_crate")
-
-[node name="TractorShape" type="CollisionShape3D" parent="Obstacles"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 0.52, 0.4)
-shape = SubResource("s_tractor")
-
-[node name="ClickArea" type="Area3D" parent="."]
-input_ray_pickable = true
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="ClickArea"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ClickArea" unique_id=911487625]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
 shape = SubResource("s_click")
 
-[node name="Entrance" type="Node3D" parent="."]
+[node name="Entrance" type="Marker3D" parent="." unique_id=359425961]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3.7)
 
-[node name="HarvestPoint" type="Node3D" parent="."]
+[node name="HarvestPoint" type="Node3D" parent="." unique_id=1003652875]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.9, 0, 1.2)
 
-[node name="StoragePoint" type="Node3D" parent="."]
+[node name="StoragePoint" type="Node3D" parent="." unique_id=2102548439]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0, -1.45)

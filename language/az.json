@@ -170,6 +170,7 @@
 		"relax": "Dincəl",
 		"socialize": "Sosiallaş",
 		"watch_cinema": "Filmə bax",
+		"treat": "Müalicə",
 		"inventory": "İnventar",
 		"shop": "Alış-veriş",
 		"inventory_close": "İnventarı bağla",
@@ -218,6 +219,7 @@
 		"status_wage_progression": "Maaş: %d EUR/saat (baza %d, +%d%% təhsil, +%d%% təcrübə)",
 		"status_company_tenure": "Şirkət: %s%s - burada %d gündür",
 		"status_absence": "Yoxluq: %d / %d gün",
+		"status_hospital_quality": "Xəstəxana keyfiyyəti: %d%%",
 		"profit_weak": "zəif",
 		"profit_normal": "normal",
 		"profit_strong": "güclü"
@@ -232,6 +234,7 @@
 		"university_unavailable": "Universitet bağlıdır və ya müəllim yoxdur.",
 		"social_blocked": "Əvvəlcə ye və ya bərpa ol.",
 		"cinema_closed_or_poor": "Kino bağlıdır və ya pul çatmır.",
+		"hospital_unavailable": "Xəstəxana bağlıdır, doludur və ya personalsızdır.",
 		"building_not_buyable": "Bu binanı almaq olmur.",
 		"already_owned": "Artıq sənindir.",
 		"already_sold": "Artıq satılıb.",
@@ -263,6 +266,9 @@
 		"eat_before_socialize": "Sosiallaşmadan əvvəl ye.",
 		"health_low": "Sosiallaşmaq üçün sağlamlıq çox aşağıdır.",
 		"no_cinema": "Burada kino yoxdur.",
+		"no_hospital": "Burada xəstəxana yoxdur.",
+		"hospital_unstaffed": "Xəstəxanada həkim və ya tibb bacısı yoxdur.",
+		"hospital_full": "Xəstəxanada pasiyent yeri doludur.",
 		"closed_named": "%s bağlıdır.",
 		"not_enough_money_price": "Pul çatmır: %d EUR lazımdır.",
 		"social_visit": "%s yerində görüş.",
@@ -303,6 +309,7 @@
 			"occupancy": "Doluluq",
 			"finance": "Maliyyə",
 			"maintenance": "Baxım və xərclər",
+			"healthcare": "Səhiyyə",
 			"needs": "Ehtiyaclar",
 			"activity": "Fəaliyyət"
 		},
@@ -346,7 +353,13 @@
 			"company": "Şirkət",
 			"owned": "Mülkiyyət",
 			"food_stock": "Ehtiyatlar",
-			"clothing": "Geyim"
+			"clothing": "Geyim",
+			"patients": "Pasiyentlər",
+			"queue": "Növbə",
+			"treatment_capacity": "Müalicə tutumu",
+			"service_quality": "Xidmət keyfiyyəti",
+			"treatments_today": "Bugünkü müalicələr",
+			"charity_care": "Xeyriyyə müalicəsi"
 		},
 		"value": {
 			"education_stage": "Səviyyə %d (%s)",
@@ -382,7 +395,8 @@
 			"park": "Park",
 			"farm": "Ferma",
 			"factory": "Fabrik",
-			"gas_station": "Yanacaqdoldurma"
+			"gas_station": "Yanacaqdoldurma",
+			"hospital": "Xəstəxana"
 		},
 		"service_type": {
 			"commerce": "Ticarət",
@@ -393,6 +407,7 @@
 			"fun": "İstirahət",
 			"generic": "Ümumi",
 			"governance": "İdarəetmə",
+			"healthcare": "Səhiyyə",
 			"housing": "Yaşayış",
 			"production_food": "Qida istehsalı",
 			"production_goods": "Məhsul istehsalı",
@@ -408,6 +423,10 @@
 			"salesperson": "Satıcı",
 			"designer": "Dizayner",
 			"doctor": "Həkim",
+			"nurse": "Tibb bacısı",
+			"pharmacist": "Əczaçı",
+			"therapist": "Terapevt",
+			"mayor": "Mer",
 			"teacher": "Müəllim",
 			"engineer": "Mühəndis",
 			"professor": "Professor",
@@ -445,7 +464,8 @@
 		"staff_requirement": {
 			"generic": "personal yoxdur",
 			"gas_station": "yanacaqdoldurma personalı yoxdur",
-			"teacher": "müəllim yoxdur"
+			"teacher": "müəllim yoxdur",
+			"medical": "həkim və ya tibb bacısı yoxdur"
 		}
 	},
 

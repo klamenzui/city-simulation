@@ -16,6 +16,7 @@ var public_funding_requested_total_today: int = 0
 var public_funding_total_today: int = 0
 var university_funding_today: int = 0
 var park_funding_today: int = 0
+var hospital_funding_today: int = 0
 var public_funding_failures_today: int = 0
 var infrastructure_paid_today: int = 0
 var infrastructure_unpaid_today: int = 0
@@ -48,6 +49,7 @@ func begin_new_day() -> void:
 	public_funding_total_today = 0
 	university_funding_today = 0
 	park_funding_today = 0
+	hospital_funding_today = 0
 	public_funding_failures_today = 0
 	infrastructure_paid_today = 0
 	infrastructure_unpaid_today = 0
@@ -160,6 +162,8 @@ func fund_public_buildings(world: World) -> void:
 				university_funding_today += paid
 			elif building.building_type == BuildingType.PARK:
 				park_funding_today += paid
+			elif building.building_type == BuildingType.HOSPITAL:
+				hospital_funding_today += paid
 			if paid >= request and building.is_financially_closed():
 				building.reopen_after_funding()
 
@@ -172,6 +176,28 @@ func fund_public_buildings(world: World) -> void:
 				paid,
 				request - paid
 			])
+
+func subsidize_healthcare(world: World, hospital: Building, requested_amount: int) -> int:
+	if world == null or hospital == null or requested_amount <= 0:
+		return 0
+	public_funding_requested_total_today += requested_amount
+	ensure_operating_liquidity(world, "hospital_treatment")
+	var welfare_reserve := _get_reserved_welfare_budget(world)
+	var available_budget := maxi(account.balance - welfare_reserve, 0)
+	var paid := mini(requested_amount, available_budget)
+	if paid <= 0:
+		public_funding_failures_today += 1
+		return 0
+	if not world.economy.fund_public_building(account, hospital.account, paid):
+		public_funding_failures_today += 1
+		return 0
+	record_expense(paid)
+	public_funding_total_today += paid
+	hospital_funding_today += paid
+	hospital.record_public_funding(paid)
+	if paid < requested_amount:
+		public_funding_failures_today += 1
+	return paid
 
 func pay_welfare(world: World, citizen: Citizen, amount: int = -1) -> bool:
 	if citizen == null:
@@ -225,6 +251,7 @@ func _get_extra_info(_world = null) -> Dictionary:
 		"Public funding requested": "%d EUR" % public_funding_requested_total_today,
 		"University funding": "%d EUR" % university_funding_today,
 		"Park funding": "%d EUR" % park_funding_today,
+		"Hospital funding": "%d EUR" % hospital_funding_today,
 		"Funding failures": str(public_funding_failures_today),
 		"Infrastructure paid / unpaid": "%d / %d EUR" % [infrastructure_paid_today, infrastructure_unpaid_today],
 	}
