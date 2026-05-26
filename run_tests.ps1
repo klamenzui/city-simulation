@@ -156,6 +156,16 @@ $availableTests = @(
 		Script = "res://tools/codex_farm_scene_probe.gd"
 	}
 	[pscustomobject]@{
+		Key = "grass"
+		Label = "Exterior Grass Scene"
+		Script = "res://tools/codex_exterior_grass_scene_probe.gd"
+	}
+	[pscustomobject]@{
+		Key = "forest"
+		Label = "Forest MultiMesh Scene"
+		Script = "res://tools/codex_forest_multimesh_scene_probe.gd"
+	}
+	[pscustomobject]@{
 		Key = "farm_live_delivery"
 		Label = "Farm Live Delivery"
 		Script = "res://tools/codex_farm_live_delivery_test.gd"

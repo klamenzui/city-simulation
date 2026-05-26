@@ -3,6 +3,11 @@ extends SceneTree
 const RESOURCES := [
 	"res://main.gd",
 	"res://Main.tscn",
+	"res://Scenes/Environment/ExteriorGrassDecorator.gd",
+	"res://Scenes/Environment/Grass/GrassShader.tres",
+	"res://Scenes/Environment/Grass/Stylized3DGrass.tres",
+	"res://Scenes/Environment/Grass/grass.glb",
+	"res://Scenes/Plants/ForestMultiMesh.tscn",
 	"res://Entities/Buildings/Building.gd",
 	"res://Entities/Buildings/Hospital.gd",
 	"res://Entities/Citizens/New/Citizen.gd",
@@ -42,6 +47,9 @@ const RESOURCES := [
 	"res://tools/codex_multiplayer_two_process_test.gd",
 	"res://tools/codex_runtime_lod_conversation_test.gd",
 	"res://tools/codex_dialogue_probe.gd",
+	"res://tools/codex_exterior_grass_scene_probe.gd",
+	"res://tools/codex_forest_multimesh_scene_probe.gd",
+	"res://tools/codex_generate_forest_scene.gd",
 	"res://tools/codex_locale_test.gd",
 ]
 
