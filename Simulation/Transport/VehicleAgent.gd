@@ -78,6 +78,7 @@ var _engine_sound_player: AudioStreamPlayer3D = null
 var _impact_sound_player: AudioStreamPlayer3D = null
 var _previous_audio_speed: float = 0.0
 var _impact_audio_cooldown: float = 0.0
+var _registered_world: World = null
 
 
 func _ready() -> void:
@@ -94,10 +95,12 @@ func _ready() -> void:
 	_ensure_marker("SeatPoint", Vector3(0.12, 0.3375, -0.0825))
 	_set_manual_physics_active(false)
 	set_physics_process(true)
+	call_deferred("_register_with_world")
 	call_deferred("_snap_to_ground_now")
 
 
 func _exit_tree() -> void:
+	_unregister_from_world()
 	if _engine_sound_player != null:
 		_engine_sound_player.stop()
 		_engine_sound_player.stream = null
@@ -735,11 +738,29 @@ func _resolve_world_from_tree() -> World:
 		if node is World:
 			return node as World
 		node = node.get_parent()
+	if is_inside_tree():
+		for candidate in get_tree().get_nodes_in_group("world"):
+			if candidate is World:
+				return candidate as World
 	return null
 
 
 func _is_finite_vector(value: Vector3) -> bool:
 	return is_finite(value.x) and is_finite(value.y) and is_finite(value.z)
+
+
+func _register_with_world() -> void:
+	var world := _resolve_world_from_tree()
+	if world != null and world.has_method("register_vehicle"):
+		world.register_vehicle(self)
+		_registered_world = world
+
+
+func _unregister_from_world() -> void:
+	var world := _registered_world if _registered_world != null and is_instance_valid(_registered_world) else _resolve_world_from_tree()
+	if world != null and world.has_method("unregister_vehicle"):
+		world.unregister_vehicle(self)
+	_registered_world = null
 
 
 func _planar_distance(a: Vector3, b: Vector3) -> float:

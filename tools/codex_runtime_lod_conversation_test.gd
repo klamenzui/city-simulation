@@ -1847,6 +1847,7 @@ func _new_citizen(citizen_name: String, spawn_position: Vector3 = Vector3.ZERO) 
 	var citizen: Citizen = CitizenScript.new()
 	citizen.name = citizen_name
 	citizen.citizen_name = citizen_name
+	citizen.jump_low_obstacles = false
 	_harness_root.add_child(citizen)
 	citizen.global_position = spawn_position
 	return citizen

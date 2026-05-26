@@ -80,6 +80,11 @@
         "target_stock": 1200,
         "base_price": 4
       },
+      "bread": {
+        "stock": 320,
+        "target_stock": 520,
+        "base_price": 6
+      },
       "clothes": {
         "stock": 480,
         "target_stock": 700,
@@ -573,9 +578,13 @@
       "grocery_price": 10,
       "groceries_per_purchase": 3,
       "clothing_price": 24,
+      "bread_price": 7,
       "grocery_start_stock": 60,
       "grocery_restock_target": 90,
-      "grocery_restock_batch": 35
+      "grocery_restock_batch": 35,
+      "bread_start_stock": 12,
+      "bread_restock_target": 36,
+      "bread_restock_batch": 18
     },
     "cinema": {
       "capacity": 35,

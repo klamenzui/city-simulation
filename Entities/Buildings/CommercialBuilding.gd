@@ -70,7 +70,10 @@ func receive_direct_supply(item: String, quantity: int, total_cost: int = 0) -> 
 	inventory[item] = get_stock(item) + accepted
 	supply_today[item] = int(supply_today.get(item, 0)) + accepted
 	if total_cost > 0:
-		record_production_expense(total_cost)
+		var accepted_cost := total_cost
+		if accepted < quantity:
+			accepted_cost = int(round(float(total_cost) * float(accepted) / float(maxi(quantity, 1))))
+		record_production_expense(accepted_cost)
 	return accepted
 
 func can_sell_item(item: String, quantity: int = 1) -> bool:

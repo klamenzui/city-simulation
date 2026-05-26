@@ -3,11 +3,12 @@ extends SceneTree
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
 
 const SETTLE_FRAMES := 30
-const MAX_TRAVEL_SECONDS := 120.0
+const MAX_TRAVEL_SECONDS := 30.0
 const PHYSICS_HZ := 60.0
 const ACTION_TICK_FRAMES := 30
+const ROUTE_CANDIDATE_LIMIT := 80
 
-func _init() -> void:
+func _initialize() -> void:
 	print("=== Building entry travel test ===")
 
 	var main_scene := load("res://Main.tscn")
@@ -149,8 +150,7 @@ func _prepare_scripted_travel_citizen(citizen: Citizen) -> Citizen:
 
 
 func _find_short_entry_route(world: World) -> Dictionary:
-	var best: Dictionary = {}
-	var best_len := INF
+	var candidates: Array[Dictionary] = []
 	for source in world.buildings:
 		if source == null or _is_outdoor(source):
 			continue
@@ -161,20 +161,38 @@ func _find_short_entry_route(world: World) -> Dictionary:
 			var target_points := target.get_navigation_points(world, 0.0)
 			var source_pos: Vector3 = source_points.get("access", source.get_entrance_pos())
 			var target_pos: Vector3 = target_points.get("access", target.get_entrance_pos())
-			var route: PackedVector3Array = world.get_pedestrian_path(source_pos, target_pos, source, target)
-			if route.size() < 2:
+			var direct_length := _planar_distance(source_pos, target_pos)
+			if direct_length < 1.0:
 				continue
-			var length := _route_length(route)
-			if length < 1.0 or length >= best_len:
-				continue
-			best_len = length
-			best = {
+			candidates.append({
 				"source": source,
 				"target": target,
 				"source_pos": source_pos,
-				"route": route,
-			}
-	return best
+				"target_pos": target_pos,
+				"direct_length": direct_length,
+			})
+	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a.get("direct_length", INF)) < float(b.get("direct_length", INF))
+	)
+	var checks := mini(candidates.size(), ROUTE_CANDIDATE_LIMIT)
+	for index in range(checks):
+		var candidate := candidates[index]
+		var source: Building = candidate.get("source")
+		var target: Building = candidate.get("target")
+		var source_pos: Vector3 = candidate.get("source_pos")
+		var target_pos: Vector3 = candidate.get("target_pos")
+		var route: PackedVector3Array = world.get_pedestrian_path(source_pos, target_pos, source, target)
+		if route.size() < 2:
+			continue
+		if _route_length(route) < 1.0:
+			continue
+		return {
+			"source": source,
+			"target": target,
+			"source_pos": source_pos,
+			"route": route,
+		}
+	return {}
 
 
 func _is_outdoor(building: Building) -> bool:
@@ -190,6 +208,12 @@ func _route_length(route: PackedVector3Array) -> float:
 		b.y = 0.0
 		total += a.distance_to(b)
 	return total
+
+
+func _planar_distance(a: Vector3, b: Vector3) -> float:
+	a.y = 0.0
+	b.y = 0.0
+	return a.distance_to(b)
 
 
 func _print_debug(citizen: Citizen, source: Building, target: Building, route: PackedVector3Array) -> void:

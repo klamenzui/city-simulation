@@ -180,6 +180,7 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_economy_test.gd | - | SceneTree |
 | tools/codex_emotion_test.gd | - | SceneTree |
 | tools/codex_facade_caller_drift_test.gd | - | SceneTree |
+| tools/codex_farm_live_delivery_test.gd | - | SceneTree |
 | tools/codex_farm_scene_probe.gd | - | SceneTree |
 | tools/codex_game_smoke_test.gd | - | SceneTree |
 | tools/codex_goal_cooldown_test.gd | - | SceneTree |
@@ -204,4 +205,3 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_sim_components_test.gd | - | SceneTree |
 | tools/codex_sky_probe.gd | - | SceneTree |
 | tools/codex_social_need_test.gd | - | SceneTree |
-| tools/codex_social_visit_test.gd | - | SceneTree |

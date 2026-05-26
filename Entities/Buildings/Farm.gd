@@ -25,6 +25,9 @@ const DeliveryTruckScene := preload("res://Entities/Transport/Truck_NormalTraill
 @export var crop_growth_days: int = 2
 @export var harvest_duration_minutes: int = 45
 @export var storage_capacity: int = 300
+@export var product_commodity: String = "food"
+@export var product_display_name: String = "food"
+@export var supermarket_delivery_item: String = "grocery_bundle"
 @export var direct_supermarket_delivery_enabled: bool = true
 @export var direct_delivery_batch_per_supermarket: int = 35
 @export var delivery_unload_duration_minutes: int = 10
@@ -63,6 +66,9 @@ func _ready() -> void:
 	crop_growth_days = maxi(int(settings.get("crop_growth_days", crop_growth_days)), 1)
 	harvest_duration_minutes = maxi(int(settings.get("harvest_duration_minutes", harvest_duration_minutes)), 1)
 	storage_capacity = maxi(int(settings.get("storage_capacity", storage_capacity)), 1)
+	product_commodity = str(settings.get("product_commodity", product_commodity)).strip_edges()
+	product_display_name = str(settings.get("product_display_name", product_display_name)).strip_edges()
+	supermarket_delivery_item = str(settings.get("supermarket_delivery_item", supermarket_delivery_item)).strip_edges()
 	direct_supermarket_delivery_enabled = bool(settings.get("direct_supermarket_delivery_enabled", direct_supermarket_delivery_enabled))
 	direct_delivery_batch_per_supermarket = maxi(int(settings.get("direct_delivery_batch_per_supermarket", direct_delivery_batch_per_supermarket)), 1)
 	delivery_unload_duration_minutes = maxi(int(settings.get("delivery_unload_duration_minutes", delivery_unload_duration_minutes)), 1)
@@ -70,11 +76,47 @@ func _ready() -> void:
 	market_export_enabled = bool(settings.get("market_export_enabled", market_export_enabled))
 	market_export_limit_per_day = maxi(int(settings.get("market_export_limit_per_day", market_export_limit_per_day)), 0)
 	restock_enabled = false
+	_ensure_product_inventory_registered()
 	_collect_crop_visual_nodes()
 	_refresh_crop_visuals(true)
 
 func get_service_type() -> String:
 	return "production_food"
+
+func get_product_commodity() -> String:
+	if product_commodity.strip_edges().is_empty():
+		return "food"
+	return product_commodity.strip_edges()
+
+func get_product_display_name() -> String:
+	if product_display_name.strip_edges().is_empty():
+		return get_product_commodity()
+	return product_display_name.strip_edges()
+
+func get_supermarket_delivery_item() -> String:
+	if supermarket_delivery_item.strip_edges().is_empty():
+		return "grocery_bundle"
+	return supermarket_delivery_item.strip_edges()
+
+func get_product_inventory_snapshot() -> Dictionary:
+	_sync_active_product_from_legacy()
+	var snapshot: Dictionary = {}
+	for key in inventory.keys():
+		var product_key := str(key).strip_edges()
+		if product_key.is_empty():
+			continue
+		var amount := _get_inventory_amount(product_key)
+		if amount > 0 or product_key == get_product_commodity():
+			snapshot[product_key] = amount
+	return snapshot
+
+func get_product_inventory_amount(product_key: String = "") -> int:
+	_sync_active_product_from_legacy()
+	return _get_inventory_amount(_resolve_product_key(product_key))
+
+func set_product_inventory_amount(product_key: String, amount: int) -> void:
+	_set_inventory_amount_clamped(_resolve_product_key(product_key), amount)
+	_sync_legacy_stored_product_from_inventory()
 
 func sim_tick(_world: World, tick_minutes: int) -> void:
 	if is_financially_closed():
@@ -186,8 +228,13 @@ func get_storage_point_global() -> Vector3:
 	return get_entrance_pos()
 
 func get_farm_state_snapshot() -> Dictionary:
+	_sync_active_product_from_legacy()
 	return {
 		"stored_food": stored_food,
+		"product_inventory": get_product_inventory_snapshot(),
+		"product_commodity": get_product_commodity(),
+		"product_display_name": get_product_display_name(),
+		"supermarket_delivery_item": get_supermarket_delivery_item(),
 		"crop_growth_minutes": crop_growth_minutes,
 		"crop_state": int(crop_state),
 		"output_today": output_today,
@@ -199,7 +246,24 @@ func get_farm_state_snapshot() -> Dictionary:
 func apply_farm_state_snapshot(data: Dictionary) -> void:
 	if data.is_empty():
 		return
+	if data.has("product_commodity"):
+		product_commodity = str(data.get("product_commodity", product_commodity)).strip_edges()
+	if data.has("product_display_name"):
+		product_display_name = str(data.get("product_display_name", product_display_name)).strip_edges()
+	if data.has("supermarket_delivery_item"):
+		supermarket_delivery_item = str(data.get("supermarket_delivery_item", supermarket_delivery_item)).strip_edges()
 	stored_food = clampi(int(data.get("stored_food", stored_food)), 0, storage_capacity)
+	if data.get("product_inventory", null) is Dictionary:
+		inventory.clear()
+		var inventory_data := data.get("product_inventory", {}) as Dictionary
+		for key in inventory_data.keys():
+			var product_key := str(key).strip_edges()
+			if product_key.is_empty():
+				continue
+			_set_inventory_amount_clamped(product_key, int(inventory_data.get(key, 0)))
+	else:
+		inventory[get_product_commodity()] = stored_food
+	_ensure_product_inventory_registered()
 	crop_growth_minutes = clampi(
 		int(data.get("crop_growth_minutes", crop_growth_minutes)),
 		0,
@@ -269,7 +333,7 @@ func _complete_harvest(world: World, citizen: Citizen) -> void:
 			return
 		record_production_expense(production_cost)
 
-	stored_food += harvested
+	_add_product_to_inventory(get_product_commodity(), harvested)
 	output_today += harvested
 	crop_growth_minutes = 0
 	crop_state = CropState.GROWING
@@ -284,7 +348,7 @@ func _tick_delivery_activity(world: World, citizen: Citizen, tick_minutes: int) 
 		return
 	if _delivery_worker != null and _delivery_worker != citizen:
 		return
-	if _delivery_worker == null and stored_food <= 0:
+	if _delivery_worker == null and get_product_inventory_amount() <= 0:
 		return
 	if _delivery_worker == null:
 		var target := _select_delivery_target(world)
@@ -379,7 +443,7 @@ func _complete_delivery_to_supermarket(world: World, market: Supermarket, reques
 	var total_cost := qty * unit_price
 	if not world.economy.transfer(market.account, account, total_cost):
 		return 0
-	var accepted := market.receive_direct_supply("grocery_bundle", qty, total_cost)
+	var accepted := market.receive_direct_supply(get_supermarket_delivery_item(), qty, total_cost)
 	if accepted <= 0:
 		world.economy.transfer(account, market.account, total_cost)
 		return 0
@@ -388,7 +452,7 @@ func _complete_delivery_to_supermarket(world: World, market: Supermarket, reques
 		world.economy.transfer(account, market.account, refund)
 		total_cost = accepted * unit_price
 
-	stored_food = maxi(stored_food - accepted, 0)
+	_remove_product_from_inventory(get_product_commodity(), accepted)
 	shipped_food_today += accepted
 	delivered_food_today += accepted
 	record_income(total_cost)
@@ -403,13 +467,14 @@ func _select_delivery_target(world: World) -> Supermarket:
 func _calculate_delivery_quantity(world: World, market: Supermarket, max_qty: int = -1) -> int:
 	if world == null or market == null or not is_instance_valid(market):
 		return 0
-	var need := market.get_restock_need("grocery_bundle")
+	var need := market.get_restock_need(get_supermarket_delivery_item())
 	if need <= 0:
 		return 0
 	var limit := direct_delivery_batch_per_supermarket if max_qty < 0 else mini(max_qty, direct_delivery_batch_per_supermarket)
 	var unit_price := _get_direct_delivery_unit_price(world)
 	var affordable_qty: int = market.account.balance / unit_price
-	return maxi(mini(stored_food, mini(need, mini(limit, affordable_qty))), 0)
+	var available_stock := get_product_inventory_amount()
+	return maxi(mini(available_stock, mini(need, mini(limit, affordable_qty))), 0)
 
 func _get_delivery_target_position() -> Vector3:
 	if _delivery_target != null and is_instance_valid(_delivery_target):
@@ -448,7 +513,7 @@ func _find_supermarket_delivery_targets(world: World) -> Array[Supermarket]:
 			continue
 		if not market.restock_enabled:
 			continue
-		if market.get_restock_need("grocery_bundle") <= 0:
+		if market.get_restock_need(get_supermarket_delivery_item()) <= 0:
 			continue
 		targets.append(market)
 	targets.sort_custom(func(a: Supermarket, b: Supermarket) -> bool:
@@ -459,21 +524,23 @@ func _find_supermarket_delivery_targets(world: World) -> Array[Supermarket]:
 func _get_direct_delivery_unit_price(world: World) -> int:
 	if world == null or world.economy == null:
 		return 1
-	var wholesale_price := world.economy.get_wholesale_unit_price("food")
+	var wholesale_price := world.economy.get_wholesale_unit_price(get_product_commodity())
 	return maxi(int(round(float(wholesale_price) * direct_delivery_price_multiplier)), 1)
 
 func _export_stored_food_to_market(world: World) -> void:
-	if stored_food <= 0:
+	var product_key := get_product_commodity()
+	var available_stock := get_product_inventory_amount(product_key)
+	if available_stock <= 0:
 		return
-	var offered := stored_food
+	var offered := available_stock
 	if market_export_limit_per_day > 0:
 		offered = mini(offered, market_export_limit_per_day)
 	if offered <= 0:
 		return
 
-	var result: Dictionary = world.economy.sell_wholesale_to_market(account, "food", offered)
+	var result: Dictionary = world.economy.sell_wholesale_to_market(account, get_product_commodity(), offered)
 	var accepted_qty: int = int(result.get("qty", 0))
-	stored_food = maxi(stored_food - accepted_qty, 0)
+	_remove_product_from_inventory(product_key, accepted_qty)
 	shipped_food_today += accepted_qty
 	market_exported_food_today += accepted_qty
 	var total_revenue: int = int(result.get("total_revenue", 0))
@@ -505,7 +572,7 @@ func _worker_reached(citizen: Citizen, target_pos: Vector3) -> bool:
 	return delta.length() <= 0.45
 
 func _get_available_storage() -> int:
-	return maxi(storage_capacity - stored_food, 0)
+	return maxi(storage_capacity - _get_total_inventory_units(), 0)
 
 func _prune_invalid_harvest_worker() -> void:
 	if _harvest_worker == null:
@@ -541,6 +608,87 @@ func _is_delivery_worker(citizen: Citizen) -> bool:
 	if citizen == null or citizen.job == null:
 		return false
 	return citizen.job.title.strip_edges().to_lower() == "fahrer"
+
+func _ensure_product_inventory_registered() -> void:
+	var product_key := get_product_commodity()
+	if not inventory.has(product_key):
+		inventory[product_key] = maxi(stored_food, 0)
+	_sync_active_product_from_legacy()
+
+func _resolve_product_key(product_key: String) -> String:
+	var cleaned := product_key.strip_edges()
+	if cleaned.is_empty():
+		return get_product_commodity()
+	return cleaned
+
+func _get_inventory_amount(product_key: String) -> int:
+	if product_key.strip_edges().is_empty():
+		return 0
+	return maxi(int(inventory.get(product_key, 0)), 0)
+
+func _set_inventory_amount_clamped(product_key: String, amount: int) -> void:
+	var cleaned := _resolve_product_key(product_key)
+	var current := _get_inventory_amount(cleaned)
+	var other_products := _get_total_inventory_units_raw() - current
+	var allowed := maxi(storage_capacity - other_products, 0)
+	inventory[cleaned] = mini(maxi(amount, 0), allowed)
+
+func _add_product_to_inventory(product_key: String, amount: int) -> int:
+	if amount <= 0:
+		return 0
+	var cleaned := _resolve_product_key(product_key)
+	var accepted := mini(maxi(amount, 0), _get_available_storage())
+	if accepted <= 0:
+		return 0
+	inventory[cleaned] = _get_inventory_amount(cleaned) + accepted
+	_sync_legacy_stored_product_from_inventory()
+	return accepted
+
+func _remove_product_from_inventory(product_key: String, amount: int) -> int:
+	if amount <= 0:
+		return 0
+	var cleaned := _resolve_product_key(product_key)
+	var current := _get_inventory_amount(cleaned)
+	var removed := mini(maxi(amount, 0), current)
+	if removed <= 0:
+		return 0
+	inventory[cleaned] = current - removed
+	_sync_legacy_stored_product_from_inventory()
+	return removed
+
+func _sync_active_product_from_legacy() -> void:
+	var product_key := get_product_commodity()
+	var current := _get_inventory_amount(product_key)
+	if stored_food > current:
+		_set_inventory_amount_clamped(product_key, stored_food)
+	elif not inventory.has(product_key):
+		inventory[product_key] = current
+	_sync_legacy_stored_product_from_inventory()
+
+func _sync_legacy_stored_product_from_inventory() -> void:
+	stored_food = _get_inventory_amount(get_product_commodity())
+
+func _get_total_inventory_units() -> int:
+	_sync_active_product_from_legacy()
+	return _get_total_inventory_units_raw()
+
+func _get_total_inventory_units_raw() -> int:
+	var total := 0
+	for key in inventory.keys():
+		total += _get_inventory_amount(str(key))
+	return total
+
+func _format_product_inventory() -> String:
+	_sync_active_product_from_legacy()
+	var parts: PackedStringArray = []
+	for key in inventory.keys():
+		var product_key := str(key).strip_edges()
+		if product_key.is_empty():
+			continue
+		parts.append("%s:%d" % [product_key, _get_inventory_amount(product_key)])
+	if parts.is_empty():
+		return "-"
+	return ", ".join(parts)
 
 func _collect_crop_visual_nodes() -> void:
 	_crop_stem_nodes.clear()
@@ -582,13 +730,16 @@ func _apply_crop_nodes_stage(nodes: Array[Node3D], visible: bool, scale_value: f
 			node.scale = Vector3.ONE * maxf(scale_value, 0.01)
 
 func _get_extra_info(_world = null) -> Dictionary:
-	var info := get_commercial_info()
+	var info: Dictionary = {}
+	var product_name := get_product_display_name()
 	info["Crop"] = "ready" if crop_state == CropState.READY else "stage %d/3" % get_crop_visual_stage()
-	info["Stored food"] = "%d / %d" % [stored_food, storage_capacity]
-	info["Harvested today"] = "%d food" % output_today
-	info["Delivered today"] = "%d food" % delivered_food_today
-	info["Market export today"] = "%d food" % market_exported_food_today
-	info["Shipped today"] = "%d food" % shipped_food_today
+	info["Product"] = product_name
+	info["Inventory"] = _format_product_inventory()
+	info["Stored %s" % product_name] = "%d / %d" % [stored_food, storage_capacity]
+	info["Harvested today"] = "%d %s" % [output_today, product_name]
+	info["Delivered today"] = "%d %s" % [delivered_food_today, product_name]
+	info["Market export today"] = "%d %s" % [market_exported_food_today, product_name]
+	info["Shipped today"] = "%d %s" % [shipped_food_today, product_name]
 	info["Delivery staff"] = str(get_workers_by_titles(["Fahrer"]).size())
 	if _delivery_target != null and is_instance_valid(_delivery_target):
 		info["Delivery target"] = _delivery_target.get_display_name()

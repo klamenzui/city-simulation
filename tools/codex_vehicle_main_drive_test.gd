@@ -23,6 +23,7 @@ func _initialize() -> void:
 
 	var truck := _find_main_truck(main)
 	var citizen := _find_controlled_citizen(main)
+	var world := main.get_node_or_null("World") as World
 	if truck == null:
 		_errors.append("Main scene should contain a truck in the vehicles group.")
 		_finish(main)
@@ -31,6 +32,12 @@ func _initialize() -> void:
 		_errors.append("Main scene should contain a controllable Citizen.")
 		_finish(main)
 		return
+	if world == null:
+		_errors.append("Main scene should expose $World.")
+		_finish(main)
+		return
+	if not world.vehicles.has(truck):
+		_errors.append("Main-scene truck should register itself in World.vehicles.")
 
 	if citizen.has_method("enter_keyboard_control_mode"):
 		citizen.enter_keyboard_control_mode(false)
