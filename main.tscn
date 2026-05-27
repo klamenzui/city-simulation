@@ -83,6 +83,7 @@
 [ext_resource type="PackedScene" uid="uid://cpjwfjfva60al" path="res://Entities/Citizens/CitizenNew.tscn" id="106_llcqu"]
 [ext_resource type="PackedScene" uid="uid://588lo1wwkgfu" path="res://Scenes/CityBuildings/foundation/foundation_001_64613340.tscn" id="107_bcjhn"]
 [ext_resource type="PackedScene" uid="uid://deo16kr38jbmc" path="res://Scenes/CityBuildings/multi_building/multi_building_001_04e25c36.tscn" id="108_k5qk0"]
+[ext_resource type="PackedScene" uid="uid://biiat8unqbjop" path="res://Scenes/Plants/ForestScatterAuthoring.tscn" id="109_ucq2w"]
 [ext_resource type="PackedScene" uid="uid://c3fiy3c1p7yh4" path="res://Scenes/CityBuildings/multi_building/multi_building_002_e2882763.tscn" id="110_vm52a"]
 [ext_resource type="PackedScene" uid="uid://cnbp643i1mta7" path="res://Scenes/CityBuildings/multi_building/multi_building_003_d0a32ce0.tscn" id="112_qr1df"]
 [ext_resource type="PackedScene" uid="uid://cn00e3vrxiei3" path="res://Scenes/CityBuildings/multi_building/multi_building_004_eb500c74.tscn" id="114_aquj3"]
@@ -113,7 +114,7 @@
 [ext_resource type="Script" uid="uid://bvbbkwfa8hqcf" path="res://Simulation/Camera/CityBuilderCamera.gd" id="400_camctl"]
 [ext_resource type="Script" uid="uid://c6yi1cvdganj0" path="res://environment/sky/simulation_sky_bridge.gd" id="401_skybr"]
 [ext_resource type="Script" uid="uid://cf5fwy7a8urcx" path="res://Scenes/Environment/ExteriorGrassDecorator.gd" id="402_grass"]
-[ext_resource type="PackedScene" uid="uid://dddwl6kx8e1ku" path="res://Scenes/Plants/ForestMultiMesh.tscn" id="403_forest"]
+[ext_resource type="PackedScene" path="res://Scenes/Plants/ForestMultiMesh.tscn" id="403_forest"]
 
 [sub_resource type="Curve3D" id="Curve3D_cxcit"]
 closed = true
@@ -2172,11 +2173,14 @@ light_color = 1
 script = ExtResource("402_grass")
 
 [node name="ForestMultiMesh" parent="World" unique_id=1633894487 instance=ExtResource("403_forest")]
+visible = false
 
 [node name="StaticBody3D" type="StaticBody3D" parent="World" unique_id=1215521871]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="World/StaticBody3D" unique_id=575735385]
 shape = SubResource("ConcavePolygonShape3D_67x5q")
+
+[node name="ForestScatter" parent="World" unique_id=1222217103 instance=ExtResource("109_ucq2w")]
 
 [node name="SkyBridge" type="Node" parent="." unique_id=1781400]
 script = ExtResource("401_skybr")
