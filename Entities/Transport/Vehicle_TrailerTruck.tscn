@@ -1,0 +1,158 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://Simulation/Transport/VehicleAgent.gd" id="1_vehicle_agent"]
+[ext_resource type="ArrayMesh" path="res://Entities/Transport/TruckTown/meshes/truck_cab.res" id="2_cab_mesh"]
+[ext_resource type="ArrayMesh" path="res://Entities/Transport/TruckTown/meshes/wheel.res" id="4_wheel_mesh"]
+[ext_resource type="AudioStream" path="res://environment/audio/vehicles/engine.wav" id="5_engine_audio"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_vehicle_body"]
+size = Vector3(0.82, 0.62, 2.55)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_trailer"]
+albedo_color = Color(0.08, 0.12, 0.28, 1)
+roughness = 0.62
+
+[sub_resource type="BoxMesh" id="BoxMesh_trailer"]
+size = Vector3(1.25, 0.95, 2.2)
+material = SubResource("StandardMaterial3D_trailer")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_drawbar"]
+albedo_color = Color(0.08, 0.08, 0.075, 1)
+roughness = 0.55
+
+[sub_resource type="BoxMesh" id="BoxMesh_drawbar"]
+size = Vector3(0.18, 0.12, 0.85)
+material = SubResource("StandardMaterial3D_drawbar")
+
+[node name="Vehicle_TrailerTruck" type="VehicleBody3D"]
+collision_layer = 4
+mass = 24.0
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, 0.1, -0.45)
+script = ExtResource("1_vehicle_agent")
+delivery_vehicle = true
+use_balance_vehicle_geometry = false
+vehicle_mass = 24.0
+center_of_mass_offset = Vector3(0, 0.1, -0.45)
+wheel_track_half_width = 0.315
+wheel_front_z = 0.607
+wheel_rear_z = -0.431
+wheel_mount_y = 0.126
+wheel_radius = 0.126
+wheel_roll_influence = 0.28
+wheel_friction_slip = 1.2
+suspension_stiffness = 28.0
+suspension_travel = 0.13
+damping_compression = 0.9
+damping_relaxation = 1.7
+collision_shape_size = Vector3(0.82, 0.62, 2.55)
+collision_shape_offset = Vector3(0, 0.42, -0.55)
+
+[node name="VehicleCollisionShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.42, -0.55)
+shape = SubResource("BoxShape3D_vehicle_body")
+
+[node name="FrontLeftWheel" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.315, 0.126, 0.607)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.28
+wheel_radius = 0.126
+wheel_friction_slip = 1.2
+suspension_travel = 0.13
+suspension_stiffness = 28.0
+damping_compression = 0.9
+damping_relaxation = 1.7
+
+[node name="WheelMesh" type="MeshInstance3D" parent="FrontLeftWheel"]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0, 0, 0)
+mesh = ExtResource("4_wheel_mesh")
+
+[node name="FrontRightWheel" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.315, 0.126, 0.607)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.28
+wheel_radius = 0.126
+wheel_friction_slip = 1.2
+suspension_travel = 0.13
+suspension_stiffness = 28.0
+damping_compression = 0.9
+damping_relaxation = 1.7
+
+[node name="WheelMesh" type="MeshInstance3D" parent="FrontRightWheel"]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0, 0, 0)
+mesh = ExtResource("4_wheel_mesh")
+
+[node name="RearLeftWheel" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.315, 0.126, -0.431)
+use_as_traction = true
+wheel_roll_influence = 0.28
+wheel_radius = 0.126
+wheel_friction_slip = 1.2
+suspension_travel = 0.13
+suspension_stiffness = 28.0
+damping_compression = 0.9
+damping_relaxation = 1.7
+
+[node name="WheelMesh" type="MeshInstance3D" parent="RearLeftWheel"]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0, 0, 0)
+mesh = ExtResource("4_wheel_mesh")
+
+[node name="RearRightWheel" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.315, 0.126, -0.431)
+use_as_traction = true
+wheel_roll_influence = 0.28
+wheel_radius = 0.126
+wheel_friction_slip = 1.2
+suspension_travel = 0.13
+suspension_stiffness = 28.0
+damping_compression = 0.9
+damping_relaxation = 1.7
+
+[node name="WheelMesh" type="MeshInstance3D" parent="RearRightWheel"]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0, 0, 0)
+mesh = ExtResource("4_wheel_mesh")
+
+[node name="VisualRoot" type="Node3D" parent="."]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0, 0, 0)
+
+[node name="Cab" type="MeshInstance3D" parent="VisualRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.229, 0)
+mesh = ExtResource("2_cab_mesh")
+
+[node name="Trailer" type="MeshInstance3D" parent="VisualRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.62, -2.55)
+mesh = SubResource("BoxMesh_trailer")
+
+[node name="TrailerDrawbar" type="MeshInstance3D" parent="VisualRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.24, -1.35)
+mesh = SubResource("BoxMesh_drawbar")
+
+[node name="TrailerWheelFrontLeft" type="MeshInstance3D" parent="VisualRoot"]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, -0.57, 0.23, -2.15)
+mesh = ExtResource("4_wheel_mesh")
+
+[node name="TrailerWheelFrontRight" type="MeshInstance3D" parent="VisualRoot"]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0.57, 0.23, -2.15)
+mesh = ExtResource("4_wheel_mesh")
+
+[node name="TrailerWheelRearLeft" type="MeshInstance3D" parent="VisualRoot"]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, -0.57, 0.23, -2.95)
+mesh = ExtResource("4_wheel_mesh")
+
+[node name="TrailerWheelRearRight" type="MeshInstance3D" parent="VisualRoot"]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0.57, 0.23, -2.95)
+mesh = ExtResource("4_wheel_mesh")
+
+[node name="EntryPoint" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.48, 0.03, 0.06)
+
+[node name="SeatPoint" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 0.47, 0.11)
+
+[node name="EngineSound" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("5_engine_audio")
+pitch_scale = 0.05
+volume_db = -28.0
+attenuation_filter_cutoff_hz = 20500.0

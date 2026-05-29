@@ -1,0 +1,114 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://addons/yamms/MultiScatter.gd" id="1_vdnhc"]
+[ext_resource type="Script" path="res://addons/yamms/MultiScatterExclude.gd" id="2_ishpy"]
+[ext_resource type="ArrayMesh" path="res://Scenes/Plants/PalmTree_2.obj" id="3_yuhty"]
+[ext_resource type="Script" path="res://addons/yamms/MultiScatterItem.gd" id="4_vcxr0"]
+[ext_resource type="Script" path="res://addons/yamms/PMDropOnCollider.gd" id="5_glbrs"]
+[ext_resource type="ArrayMesh" path="res://Scenes/Plants/PalmTree_3.obj" id="6_fm14h"]
+[ext_resource type="ArrayMesh" path="res://Scenes/Plants/Plant_2.obj" id="7_iabif"]
+[ext_resource type="ArrayMesh" path="res://Scenes/Plants/Plant_5.obj" id="8_a2esc"]
+
+[sub_resource type="Curve3D" id="Curve3D_vlea7"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 40, 42, 30, 0, 0, 0, 0, 0, 0, 100, 42, 30, 0, 0, 0, 0, 0, 0, 100, 42, 100, 0, 0, 0, 0, 0, 0, 40, 42, 100),
+"tilts": PackedFloat32Array(0, 0, 0, 0)
+}
+point_count = 4
+
+[sub_resource type="Curve3D" id="Curve3D_gr3rm"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -12, 0, -46, 0, 0, 0, 0, 0, 0, 46, 0, -46, 0, 0, 0, 0, 0, 0, 46, 0, 48, 0, 0, 0, 0, 0, 0, -12, 0, 48),
+"tilts": PackedFloat32Array(0, 0, 0, 0)
+}
+point_count = 4
+
+[sub_resource type="MultiMesh" id="MultiMesh_cfvbw"]
+transform_format = 1
+mesh = ExtResource("3_yuhty")
+
+[sub_resource type="MultiMesh" id="MultiMesh_12h7m"]
+transform_format = 1
+mesh = ExtResource("6_fm14h")
+
+[sub_resource type="MultiMesh" id="MultiMesh_b0aka"]
+transform_format = 1
+mesh = ExtResource("7_iabif")
+
+[sub_resource type="MultiMesh" id="MultiMesh_yxtgt"]
+transform_format = 1
+mesh = ExtResource("8_a2esc")
+
+[node name="PalmsScatter" type="Path3D" unique_id=581366121]
+curve = SubResource("Curve3D_vlea7")
+script = ExtResource("1_vdnhc")
+amount = 154
+seed = 202605261
+
+[node name="CityExclude" type="Path3D" parent="." unique_id=1462214201]
+curve = SubResource("Curve3D_gr3rm")
+script = ExtResource("2_ishpy")
+
+[node name="PalmTree2Item" type="MultiMeshInstance3D" parent="." unique_id=1988750714]
+gi_mode = 0
+visibility_range_end = 180.0
+multimesh = SubResource("MultiMesh_cfvbw")
+script = ExtResource("4_vcxr0")
+percentage = 18.181818181818183
+
+[node name="DropOnGround" type="Node3D" parent="PalmTree2Item" unique_id=1805137897]
+script = ExtResource("5_glbrs")
+normal_influence = 0.0
+random_scale_type = 1
+max_random_scale = 1.4
+min_random_scale = 0.8
+randomize_rotation = true
+max_random_rotation = Vector3(0, 360, 0)
+
+[node name="PalmTree3Item" type="MultiMeshInstance3D" parent="." unique_id=706145753]
+gi_mode = 0
+visibility_range_end = 180.0
+multimesh = SubResource("MultiMesh_12h7m")
+script = ExtResource("4_vcxr0")
+percentage = 16.883116883116884
+
+[node name="DropOnGround" type="Node3D" parent="PalmTree3Item" unique_id=1834974729]
+script = ExtResource("5_glbrs")
+normal_influence = 0.0
+random_scale_type = 1
+max_random_scale = 1.4
+min_random_scale = 0.8
+randomize_rotation = true
+max_random_rotation = Vector3(0, 360, 0)
+
+[node name="Plant2Item" type="MultiMeshInstance3D" parent="." unique_id=143399002]
+gi_mode = 0
+visibility_range_end = 180.0
+multimesh = SubResource("MultiMesh_b0aka")
+script = ExtResource("4_vcxr0")
+percentage = 32.467532467532465
+
+[node name="DropOnGround" type="Node3D" parent="Plant2Item" unique_id=2027368382]
+script = ExtResource("5_glbrs")
+normal_influence = 0.0
+random_scale_type = 1
+max_random_scale = 1.2
+min_random_scale = 0.7
+randomize_rotation = true
+max_random_rotation = Vector3(0, 360, 0)
+
+[node name="Plant5Item" type="MultiMeshInstance3D" parent="." unique_id=878340753]
+gi_mode = 0
+visibility_range_end = 180.0
+multimesh = SubResource("MultiMesh_yxtgt")
+script = ExtResource("4_vcxr0")
+percentage = 32.467532467532465
+
+[node name="DropOnGround" type="Node3D" parent="Plant5Item" unique_id=1556815352]
+script = ExtResource("5_glbrs")
+normal_influence = 0.0
+random_scale_type = 1
+max_random_scale = 1.2
+min_random_scale = 0.7
+randomize_rotation = true
+max_random_rotation = Vector3(0, 360, 0)

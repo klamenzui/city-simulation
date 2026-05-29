@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://cf4uep73gxnw6"]
+
+[ext_resource type="ArrayMesh" uid="uid://p1pcj4nu5hy" path="res://Scenes/Plants/new_array_mesh.tres" id="1_bkfvh"]
+
+[node name="SpruceMk4" type="Node3D" unique_id=499139715]
+
+[node name="SpruceMK4" type="Node3D" parent="." unique_id=102778672]
+
+[node name="Cylinder" type="MeshInstance3D" parent="SpruceMK4" unique_id=1318099720]
+mesh = ExtResource("1_bkfvh")
+skeleton = NodePath("")
