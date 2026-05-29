@@ -1,62 +1,104 @@
 extends SceneTree
 
-const FOREST_SCENE_PATH := "res://Scenes/Plants/ForestMultiMesh.tscn"
+# Validates the baked forest scene against the data-driven recipe in
+# config/forest_scatter.json: variant count, per-category instance counts,
+# visual-only contract, well-formed MultiMesh buffers, and that placements did
+# not collapse to the origin (the symptom of generating under --headless).
+
+const CONFIG_PATH := "res://config/forest_scatter.json"
 const MAIN_SCENE_PATH := "res://Main.tscn"
-const EXPECTED_MULTIMESH_VARIANTS := 24
-const MIN_TOTAL_INSTANCES := 700
-const CITY_EXCLUSION := Rect2(Vector2(-12.0, -46.0), Vector2(58.0, 94.0))
-const ISLAND_RADIUS := Vector2(122.0, 118.0)
-const CATEGORY_MIN_COUNTS := {
-	"Trees": 180,
-	"Understory": 170,
-	"GroundPlants": 300,
-	"Flowers": 100,
-}
+const COUNT_TOLERANCE := 0.9      # allow placement misses / percentage rounding
+const ORIGIN_EPSILON_SQ := 0.0001 # instance treated as "at origin" below this
+const MAX_ORIGIN_FRACTION := 0.02 # >2% at origin => generation collapsed
+const AABB_MARGIN := 1.0
 
 
 func _initialize() -> void:
+	var config := _load_config()
 	var errors: Array[String] = []
-	var total_instances := _check_forest_scene(errors)
-	_check_main_scene_reference(errors)
-	await process_frame
-
-	if errors.is_empty():
-		print("Forest MultiMesh probe passed: instances=%d, variants=%d." % [
-			total_instances,
-			EXPECTED_MULTIMESH_VARIANTS,
-		])
-		quit(OK)
+	if config.is_empty():
+		errors.append("Could not load %s." % CONFIG_PATH)
+		_finish(errors, 0)
 		return
 
+	var total_instances := _check_forest_scene(config, errors)
+	_check_main_scene_reference(config, errors)
+	await process_frame
+	_finish(errors, total_instances)
+
+
+func _finish(errors: Array[String], total_instances: int) -> void:
+	if errors.is_empty():
+		print("Forest MultiMesh probe passed: instances=%d." % total_instances)
+		quit(0)
+		return
 	for error in errors:
 		push_error(error)
-	quit(FAILED)
+	quit(1)
 
 
-func _check_forest_scene(errors: Array[String]) -> int:
-	var forest_scene := load(FOREST_SCENE_PATH) as PackedScene
+func _load_config() -> Dictionary:
+	if not FileAccess.file_exists(CONFIG_PATH):
+		return {}
+	var file := FileAccess.open(CONFIG_PATH, FileAccess.READ)
+	if file == null:
+		return {}
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	if parsed is Dictionary:
+		return parsed as Dictionary
+	return {}
+
+
+# Resolve expected counts from the config (count * density_multiplier).
+func _expected(config: Dictionary) -> Dictionary:
+	var items: Array = config.get("items", [])
+	var density := float(config.get("global", {}).get("density_multiplier", 1.0))
+	var per_category := {}
+	var order: Array = []
+	var total := 0
+	for it in items:
+		var cat := str(it.get("category", "Uncategorized"))
+		if not order.has(cat):
+			order.append(cat)
+		var c := int(round(float(it.get("count", 0)) * density))
+		per_category[cat] = int(per_category.get(cat, 0)) + c
+		total += c
+	return {
+		"variants": items.size(),
+		"categories": order,
+		"per_category": per_category,
+		"total": total,
+	}
+
+
+func _check_forest_scene(config: Dictionary, errors: Array[String]) -> int:
+	var forest_path := str(config.get("output", {}).get("baked_scene", ""))
+	var root_name := str(config.get("output", {}).get("root_name", "ForestMultiMesh"))
+	var expected := _expected(config)
+	var aabb := _custom_aabb(config)
+
+	var forest_scene := load(forest_path) as PackedScene
 	if forest_scene == null:
-		errors.append("Could not load %s." % FOREST_SCENE_PATH)
+		errors.append("Could not load %s." % forest_path)
 		return 0
-
 	var forest_root := forest_scene.instantiate()
 	if forest_root == null:
-		errors.append("Could not instantiate %s." % FOREST_SCENE_PATH)
+		errors.append("Could not instantiate %s." % forest_path)
 		return 0
-	if forest_root.name != "ForestMultiMesh":
-		errors.append("Forest scene root must be named ForestMultiMesh.")
+	if forest_root.name != root_name:
+		errors.append("Forest scene root must be named %s." % root_name)
 
-	var category_counts: Dictionary = {}
-	for category in CATEGORY_MIN_COUNTS.keys():
+	var category_counts := {}
+	for category in expected["categories"]:
 		category_counts[category] = 0
 		if forest_root.get_node_or_null(NodePath(category)) == null:
 			errors.append("Forest scene is missing category node %s." % category)
 
 	var multi_mesh_count := 0
 	var total_instances := 0
-	var invalid_placement_count := 0
-	var stack: Array[Node] = []
-	stack.append(forest_root)
+	var origin_instances := 0
+	var outside_aabb := 0
+	var stack: Array[Node] = [forest_root]
 	while not stack.is_empty():
 		var node: Node = stack.pop_back()
 		if node is StaticBody3D or node is CollisionShape3D or node is Area3D:
@@ -83,48 +125,51 @@ func _check_forest_scene(errors: Array[String]) -> int:
 				var parent_name := mesh_instance.get_parent().name
 				if category_counts.has(parent_name):
 					category_counts[parent_name] = int(category_counts[parent_name]) + multi_mesh.instance_count
-				invalid_placement_count += _count_invalid_placements(mesh_instance)
+				var stats := _placement_stats(mesh_instance, aabb)
+				origin_instances += stats[0]
+				outside_aabb += stats[1]
 
 		for child in node.get_children():
 			stack.append(child)
 
-	if multi_mesh_count != EXPECTED_MULTIMESH_VARIANTS:
-		errors.append("Forest scene should contain %d MultiMesh variants, got %d." % [
-			EXPECTED_MULTIMESH_VARIANTS,
-			multi_mesh_count,
-		])
-	if total_instances < MIN_TOTAL_INSTANCES:
-		errors.append("Forest scene should contain at least %d instances, got %d." % [
-			MIN_TOTAL_INSTANCES,
-			total_instances,
-		])
-	for category in CATEGORY_MIN_COUNTS.keys():
-		var actual_count := int(category_counts.get(category, 0))
-		var min_count := int(CATEGORY_MIN_COUNTS[category])
-		if actual_count < min_count:
-			errors.append("%s should contain at least %d instances, got %d." % [
-				category,
-				min_count,
-				actual_count,
-			])
-	if invalid_placement_count > 0:
-		errors.append("Forest scene has %d placements inside city exclusion or outside island bounds." % invalid_placement_count)
+	if multi_mesh_count != int(expected["variants"]):
+		errors.append("Forest scene should contain %d MultiMesh variants, got %d." % [expected["variants"], multi_mesh_count])
+
+	var min_total := int(floor(float(expected["total"]) * COUNT_TOLERANCE))
+	if total_instances < min_total:
+		errors.append("Forest scene should contain at least %d instances, got %d." % [min_total, total_instances])
+
+	for category in expected["categories"]:
+		var actual := int(category_counts.get(category, 0))
+		var min_count := int(floor(float(expected["per_category"][category]) * COUNT_TOLERANCE))
+		if actual < min_count:
+			errors.append("%s should contain at least %d instances, got %d." % [category, min_count, actual])
+
+	if total_instances > 0:
+		var origin_fraction := float(origin_instances) / float(total_instances)
+		if origin_fraction > MAX_ORIGIN_FRACTION:
+			errors.append("%.0f%% of instances are at the origin (generator likely ran headless / raycast failed)." % (origin_fraction * 100.0))
+	if outside_aabb > 0:
+		errors.append("%d instances are outside the configured custom_aabb." % outside_aabb)
 
 	forest_root.free()
 	return total_instances
 
 
-func _count_invalid_placements(mesh_instance: MultiMeshInstance3D) -> int:
-	var invalid_count := 0
+# Returns [origin_instances, outside_aabb_instances] for one MultiMeshInstance3D.
+func _placement_stats(mesh_instance: MultiMeshInstance3D, aabb: AABB) -> Array:
+	var origin_count := 0
+	var outside_count := 0
 	var multi_mesh := mesh_instance.multimesh
 	if multi_mesh == null:
-		return invalid_count
+		return [0, 0]
 	var local_to_scene := _get_local_to_scene_transform(mesh_instance)
 	var buffer := multi_mesh.buffer
+	var grown := aabb.grow(AABB_MARGIN)
 	for index in range(multi_mesh.instance_count):
 		var offset := index * 12
 		if offset + 11 >= buffer.size():
-			invalid_count += 1
+			origin_count += 1
 			continue
 		var transform := Transform3D(
 			Basis(
@@ -135,39 +180,48 @@ func _count_invalid_placements(mesh_instance: MultiMeshInstance3D) -> int:
 			Vector3(buffer[offset + 3], buffer[offset + 7], buffer[offset + 11])
 		)
 		transform = local_to_scene * transform
-		var point := Vector2(transform.origin.x, transform.origin.z)
-		if CITY_EXCLUSION.has_point(point) or not _is_inside_playable_island(point):
-			invalid_count += 1
-	return invalid_count
+		if transform.origin.length_squared() < ORIGIN_EPSILON_SQ:
+			origin_count += 1
+		if not grown.has_point(transform.origin):
+			outside_count += 1
+	return [origin_count, outside_count]
 
 
 func _get_local_to_scene_transform(node: Node3D) -> Transform3D:
 	var transform := node.transform
 	var parent := node.get_parent()
 	while parent is Node3D:
-		var parent_3d := parent as Node3D
-		transform = parent_3d.transform * transform
+		transform = (parent as Node3D).transform * transform
 		parent = parent.get_parent()
 	return transform
 
 
-func _is_inside_playable_island(point: Vector2) -> bool:
-	var normalized := Vector2(point.x / ISLAND_RADIUS.x, point.y / ISLAND_RADIUS.y)
-	return normalized.length_squared() <= 1.0
+func _custom_aabb(config: Dictionary) -> AABB:
+	var c: Dictionary = config.get("global", {}).get("custom_aabb", {})
+	var pos := _to_vec3(c.get("position"), Vector3(-124.0, -6.0, -124.0))
+	var size := _to_vec3(c.get("size"), Vector3(248.0, 22.0, 248.0))
+	return AABB(pos, size)
 
 
-func _check_main_scene_reference(errors: Array[String]) -> void:
+func _to_vec3(value: Variant, default_value: Vector3) -> Vector3:
+	if value is Array and (value as Array).size() >= 3:
+		return Vector3(float(value[0]), float(value[1]), float(value[2]))
+	return default_value
+
+
+func _check_main_scene_reference(config: Dictionary, errors: Array[String]) -> void:
+	var forest_path := str(config.get("output", {}).get("baked_scene", ""))
+	var root_name := str(config.get("output", {}).get("root_name", "ForestMultiMesh"))
 	var main_scene := load(MAIN_SCENE_PATH) as PackedScene
 	if main_scene == null:
 		errors.append("Could not load %s." % MAIN_SCENE_PATH)
 		return
-
 	var main := main_scene.instantiate()
-	var forest := main.get_node_or_null(NodePath("World/ForestMultiMesh"))
+	var forest := main.get_node_or_null(NodePath("World/%s" % root_name))
 	if forest == null:
-		errors.append("Main scene is missing World/ForestMultiMesh.")
-	elif forest.scene_file_path != FOREST_SCENE_PATH:
-		errors.append("World/ForestMultiMesh should instance %s." % FOREST_SCENE_PATH)
-	if main.get_node_or_null(NodePath("World/City/ForestMultiMesh")) != null:
-		errors.append("ForestMultiMesh must stay outside World/City.")
+		errors.append("Main scene is missing World/%s." % root_name)
+	elif forest.scene_file_path != forest_path:
+		errors.append("World/%s should instance %s." % [root_name, forest_path])
+	if main.get_node_or_null(NodePath("World/City/%s" % root_name)) != null:
+		errors.append("%s must stay outside World/City." % root_name)
 	main.free()

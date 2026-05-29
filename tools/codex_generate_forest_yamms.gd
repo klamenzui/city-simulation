@@ -1,19 +1,20 @@
 extends SceneTree
 
-# Generates the forest with the Yamms MultiMesh scatter plugin and bakes the
-# result into a plugin-free, visual-only MultiMeshInstance3D scene.
+# Builds the forest with the Yamms MultiMesh scatter plugin from a data-driven
+# recipe (config/forest_scatter.json) and bakes the result into a plugin-free,
+# visual-only MultiMeshInstance3D scene.
 #
 # Pipeline:
-#   1) Instance Main.tscn (provides the ground collider for raycast snapping).
-#   2) Build (first run) or load an editable Yamms MultiScatter authoring setup:
-#      island polygon + city exclude + one MultiScatterItem per plant asset with
-#      a PMDropOnCollider (ground snap), proportional scale and random yaw.
-#   3) Generate -> Yamms fills each item's MultiMesh buffer.
-#   4) Bake each item into a plain MultiMeshInstance3D under category nodes and
-#      save res://Scenes/Plants/ForestMultiMesh.tscn (contract preserved).
-#   5) On first run, save the authoring setup so the polygon/scale stay editable.
-#
-# Re-run after editing the authoring scene to regenerate and re-bake.
+#   1) Load config/forest_scatter.json (defaults in code, JSON overrides).
+#   2) Instance Main.tscn (provides the ground collider for raycast snapping).
+#   3) Build a Yamms MultiScatter from the config (one MultiScatterItem per item,
+#      PMDropOnCollider ground snap, proportional scale, random yaw). Items and
+#      all settings ALWAYS come from the config. When area.source == "authoring"
+#      the forest polygon + exclusions are preserved from the existing authoring
+#      scene (so editor reshaping survives); otherwise the config polygon is used.
+#   4) do_generate() -> Yamms fills each item's MultiMesh buffer.
+#   5) Bake each item into a plain MultiMeshInstance3D under category nodes and
+#      save output.baked_scene; rewrite output.authoring_scene (lean, editable).
 #
 # IMPORTANT: run with a REAL renderer, NOT --headless. Yamms fills the MultiMesh
 # through set_instance_transform, which is a no-op under the headless dummy
@@ -21,57 +22,25 @@ extends SceneTree
 #   Godot_v4.6.3-stable_win64_console.exe --path . \
 #     --script res://tools/codex_generate_forest_yamms.gd --quit
 
+const CONFIG_PATH := "res://config/forest_scatter.json"
 const MAIN_SCENE_PATH := "res://Main.tscn"
-const OUTPUT_SCENE_PATH := "res://Scenes/Plants/ForestMultiMesh.tscn"
-const AUTHORING_SCENE_PATH := "res://Scenes/Plants/ForestScatterAuthoring.tscn"
-
-const CITY_EXCLUSION := Rect2(Vector2(-12.0, -46.0), Vector2(58.0, 94.0))
-const ISLAND_RADIUS := Vector2(122.0, 118.0)
-const ISLAND_INSET := 0.95
-const POLY_POINTS := 24
-const POLY_Y := 42.0           # Ray start height above terrain (matches old generator).
-const GROUND_MASK := 0x1       # World/StaticBody3D ground is on the default layer.
-const FOREST_CUSTOM_AABB := AABB(Vector3(-124.0, -6.0, -124.0), Vector3(248.0, 22.0, 248.0))
-const SCATTER_SEED := 202605261
-
-const CATEGORIES := ["Trees", "Understory", "GroundPlants", "Flowers"]
-
-const ASSET_DEFS := [
-	{"name": "Tree01", "category": "Trees", "path": "res://ImportedCitySource/assets/plants/tree01.gltf", "count": 36, "height_min": 4.5, "height_max": 6.7, "shadow": true},
-	{"name": "Tree02", "category": "Trees", "path": "res://ImportedCitySource/assets/plants/tree02.gltf", "count": 38, "height_min": 5.0, "height_max": 7.5, "shadow": true},
-	{"name": "Tree03", "category": "Trees", "path": "res://ImportedCitySource/assets/plants/tree03.gltf", "count": 42, "height_min": 4.8, "height_max": 7.2, "shadow": true},
-	{"name": "Tree04", "category": "Trees", "path": "res://ImportedCitySource/assets/plants/tree04.gltf", "count": 36, "height_min": 4.6, "height_max": 6.9, "shadow": true},
-	{"name": "Tree05", "category": "Trees", "path": "res://ImportedCitySource/assets/plants/tree05.gltf", "count": 34, "height_min": 5.4, "height_max": 8.2, "shadow": true},
-	{"name": "Bush01", "category": "Understory", "path": "res://ImportedCitySource/assets/plants/bush01.gltf", "count": 46, "height_min": 0.8, "height_max": 1.35, "shadow": true},
-	{"name": "Bush02", "category": "Understory", "path": "res://ImportedCitySource/assets/plants/bush02.gltf", "count": 44, "height_min": 0.85, "height_max": 1.45, "shadow": true},
-	{"name": "Bush03", "category": "Understory", "path": "res://ImportedCitySource/assets/plants/bush03.gltf", "count": 48, "height_min": 0.75, "height_max": 1.25, "shadow": true},
-	{"name": "Bush04", "category": "Understory", "path": "res://ImportedCitySource/assets/plants/bush04.gltf", "count": 40, "height_min": 0.9, "height_max": 1.55, "shadow": true},
-	{"name": "Weed01", "category": "GroundPlants", "path": "res://ImportedCitySource/assets/plants/Weed01.gltf", "count": 52, "height_min": 0.35, "height_max": 0.65, "shadow": false},
-	{"name": "Weed02", "category": "GroundPlants", "path": "res://ImportedCitySource/assets/plants/Weed02.gltf", "count": 48, "height_min": 0.35, "height_max": 0.65, "shadow": false},
-	{"name": "Weed03", "category": "GroundPlants", "path": "res://ImportedCitySource/assets/plants/Weed03.gltf", "count": 44, "height_min": 0.35, "height_max": 0.65, "shadow": false},
-	{"name": "Weedplant01", "category": "GroundPlants", "path": "res://ImportedCitySource/assets/plants/Weedplant01.gltf", "count": 32, "height_min": 0.45, "height_max": 0.8, "shadow": false},
-	{"name": "Weedplant02", "category": "GroundPlants", "path": "res://ImportedCitySource/assets/plants/weedplant02.gltf", "count": 32, "height_min": 0.45, "height_max": 0.8, "shadow": false},
-	{"name": "Weedplant03", "category": "GroundPlants", "path": "res://ImportedCitySource/assets/plants/weedplant03.gltf", "count": 28, "height_min": 0.45, "height_max": 0.8, "shadow": false},
-	{"name": "ThreeLeaf01", "category": "GroundPlants", "path": "res://ImportedCitySource/assets/plants/threeleaf01.gltf", "count": 38, "height_min": 0.25, "height_max": 0.48, "shadow": false},
-	{"name": "Mushroom01", "category": "GroundPlants", "path": "res://ImportedCitySource/assets/plants/mushroom01.gltf", "count": 24, "height_min": 0.18, "height_max": 0.36, "shadow": false},
-	{"name": "Mushroom02", "category": "GroundPlants", "path": "res://ImportedCitySource/assets/plants/mushroom02.gltf", "count": 22, "height_min": 0.18, "height_max": 0.36, "shadow": false},
-	{"name": "FlowerBlue01", "category": "Flowers", "path": "res://ImportedCitySource/assets/plants/flowerblue01.gltf", "count": 18, "height_min": 0.28, "height_max": 0.55, "shadow": false},
-	{"name": "FlowerKrokus01", "category": "Flowers", "path": "res://ImportedCitySource/assets/plants/flowerKrokus01.gltf", "count": 18, "height_min": 0.25, "height_max": 0.5, "shadow": false},
-	{"name": "FlowerTulipan01", "category": "Flowers", "path": "res://ImportedCitySource/assets/plants/flowertulipan01.gltf", "count": 18, "height_min": 0.35, "height_max": 0.65, "shadow": false},
-	{"name": "FlowerValmue01", "category": "Flowers", "path": "res://ImportedCitySource/assets/plants/flowervalmue01.gltf", "count": 18, "height_min": 0.35, "height_max": 0.65, "shadow": false},
-	{"name": "Flowers01", "category": "Flowers", "path": "res://ImportedCitySource/assets/plants/flowers01.gltf", "count": 20, "height_min": 0.25, "height_max": 0.5, "shadow": false},
-	{"name": "Flowers02", "category": "Flowers", "path": "res://ImportedCitySource/assets/plants/flowers02.gltf", "count": 20, "height_min": 0.25, "height_max": 0.5, "shadow": false},
-]
 
 const MultiScatterScript := preload("res://addons/yamms/MultiScatter.gd")
 const MultiScatterItemScript := preload("res://addons/yamms/MultiScatterItem.gd")
 const MultiScatterExcludeScript := preload("res://addons/yamms/MultiScatterExclude.gd")
 const PMDropOnColliderScript := preload("res://addons/yamms/PMDropOnCollider.gd")
 
-var _built_new_authoring := false
+var _config: Dictionary = {}
 
 
 func _initialize() -> void:
+	_config = _load_config()
+	var items: Array = _config.get("items", [])
+	if items.is_empty():
+		push_error("%s defines no items." % CONFIG_PATH)
+		quit(1)
+		return
+
 	var main_scene := load(MAIN_SCENE_PATH) as PackedScene
 	if main_scene == null:
 		push_error("Could not load %s." % MAIN_SCENE_PATH)
@@ -80,7 +49,6 @@ func _initialize() -> void:
 
 	var main := main_scene.instantiate()
 	root.add_child(main)
-	# Let physics bodies (ground collider) register before raycasting.
 	for _i in 6:
 		await physics_frame
 
@@ -90,13 +58,13 @@ func _initialize() -> void:
 		quit(1)
 		return
 
-	var multi_scatter := _get_multiscatter(world)
+	var multi_scatter := _build_multiscatter(world)
 	if multi_scatter == null:
 		quit(1)
 		return
 
-	# Run generation synchronously here instead of via _physics_process (Yamms'
-	# editor-thread deferral); a real renderer is required (see header note).
+	# Run generation synchronously here (not via _physics_process); a real
+	# renderer is required (see header note).
 	multi_scatter.do_generate()
 
 	var total := _bake_and_save(multi_scatter)
@@ -104,48 +72,122 @@ func _initialize() -> void:
 		quit(1)
 		return
 
-	if _built_new_authoring:
-		_save_authoring(multi_scatter, world)
+	_save_authoring(multi_scatter, world)
 
 	main.free()
-	print("Yamms forest generated and baked: %d instances across %d variants." % [total, ASSET_DEFS.size()])
+	print("Yamms forest generated and baked: %d instances across %d variants." % [total, items.size()])
 	quit(0)
 
 
-func _get_multiscatter(world: Node3D) -> Node3D:
-	if ResourceLoader.exists(AUTHORING_SCENE_PATH):
-		var packed := load(AUTHORING_SCENE_PATH) as PackedScene
-		if packed != null:
-			var instance := packed.instantiate()
-			world.add_child(instance)
-			print("Loaded existing authoring setup %s." % AUTHORING_SCENE_PATH)
-			return instance as Node3D
-		push_error("Could not load %s; rebuilding default setup." % AUTHORING_SCENE_PATH)
+# --- Config loading -------------------------------------------------------
 
-	return _build_multiscatter(world)
+func _load_config() -> Dictionary:
+	var cfg := _default_config()
+	if not FileAccess.file_exists(CONFIG_PATH):
+		push_warning("%s missing; using built-in defaults." % CONFIG_PATH)
+		return cfg
+	var file := FileAccess.open(CONFIG_PATH, FileAccess.READ)
+	if file == null:
+		push_warning("Could not open %s; using defaults." % CONFIG_PATH)
+		return cfg
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	if parsed is Dictionary:
+		_deep_merge(cfg, parsed as Dictionary)
+	else:
+		push_error("Invalid JSON in %s; using defaults." % CONFIG_PATH)
+	return cfg
 
+
+func _default_config() -> Dictionary:
+	return {
+		"output": {
+			"baked_scene": "res://Scenes/Plants/ForestMultiMesh.tscn",
+			"authoring_scene": "res://Scenes/Plants/ForestScatterAuthoring.tscn",
+			"root_name": "ForestMultiMesh",
+		},
+		"global": {
+			"seed": 202605261,
+			"density_multiplier": 1.0,
+			"ground_collision_mask": 1,
+			"ray_height": 42.0,
+			"visibility_range_end": 180.0,
+			"custom_aabb": {"position": [-124.0, -6.0, -124.0], "size": [248.0, 22.0, 248.0]},
+		},
+		"area": {
+			"source": "authoring",
+			"polygon": {"shape": "ellipse", "radius": [122.0, 118.0], "inset": 0.95, "segments": 24},
+			"exclusions": [],
+		},
+		"placement_defaults": {
+			"mode": "drop_on_collider",
+			"normal_influence": 0.0,
+			"rotation": {"randomize": true, "min_deg": [0.0, 0.0, 0.0], "max_deg": [0.0, 360.0, 0.0]},
+		},
+		"categories": {},
+		"items": [],
+	}
+
+
+func _deep_merge(base: Dictionary, override: Dictionary) -> void:
+	for key in override.keys():
+		var override_value: Variant = override[key]
+		if base.has(key) and base[key] is Dictionary and override_value is Dictionary:
+			_deep_merge(base[key], override_value)
+		else:
+			base[key] = override_value
+
+
+# --- Build ----------------------------------------------------------------
 
 func _build_multiscatter(world: Node3D) -> Node3D:
+	var items: Array = _config["items"]
+	var global: Dictionary = _config["global"]
+	var density := float(global.get("density_multiplier", 1.0))
+
+	var counts: Array[int] = []
 	var total_count := 0
-	for asset_def in ASSET_DEFS:
-		total_count += int(asset_def["count"])
+	for it in items:
+		var c := int(round(float(it.get("count", 0)) * density))
+		counts.append(c)
+		total_count += c
+	if total_count <= 0:
+		push_error("Total instance count resolved to 0.")
+		return null
+
+	# Polygon + exclusions: preserved from the authoring scene when configured.
+	var polygon: Curve3D = null
+	var excludes: Array = []
+	if str(_config["area"].get("source", "authoring")) == "authoring":
+		var preserved := _preserved_area()
+		polygon = preserved[0]
+		excludes = preserved[1]
+	if polygon == null:
+		polygon = _build_area_curve()
+	if excludes.is_empty():
+		excludes = _build_exclude_curves()
 
 	var multi_scatter: Node3D = MultiScatterScript.new()
 	multi_scatter.name = "ForestScatter"
-	multi_scatter.curve = _build_island_curve()
+	multi_scatter.curve = polygon
 	multi_scatter.amount = total_count
-	multi_scatter.seed = SCATTER_SEED
+	multi_scatter.seed = int(global.get("seed", 0))
 	world.add_child(multi_scatter)
 
-	var exclude: Node3D = MultiScatterExcludeScript.new()
-	exclude.name = "CityExclude"
-	exclude.curve = _build_rect_curve(CITY_EXCLUSION)
-	multi_scatter.add_child(exclude)
+	for ex in excludes:
+		var exclude: Node3D = MultiScatterExcludeScript.new()
+		exclude.name = str(ex["name"])
+		exclude.curve = ex["curve"]
+		multi_scatter.add_child(exclude)
 
-	for asset_def in ASSET_DEFS:
-		var mesh := _load_first_mesh(asset_def["path"])
+	var defaults: Dictionary = _config.get("placement_defaults", {})
+	var categories: Dictionary = _config.get("categories", {})
+	for i in items.size():
+		var it: Dictionary = items[i]
+		var cat_cfg: Dictionary = categories.get(str(it.get("category", "")), {})
+
+		var mesh := _load_first_mesh(str(it["mesh"]))
 		if mesh == null:
-			push_error("Could not load mesh from %s." % asset_def["path"])
+			push_error("Could not load mesh from %s." % it.get("mesh", "?"))
 			return null
 		var base_height: float = maxf(mesh.get_aabb().size.y, 0.01)
 
@@ -154,75 +196,130 @@ func _build_multiscatter(world: Node3D) -> Node3D:
 		multi_mesh.mesh = mesh
 
 		var item: Node3D = MultiScatterItemScript.new()
-		item.name = "%sItem" % asset_def["name"]
+		item.name = "%sItem" % str(it["name"])
 		item.multimesh = multi_mesh
-		item.percentage = float(asset_def["count"]) / float(total_count) * 100.0
+		item.percentage = float(counts[i]) / float(total_count) * 100.0
 		multi_scatter.add_child(item)
 
+		var rotation: Dictionary = _resolve_rotation(it, cat_cfg, defaults)
 		var placement: Node3D = PMDropOnColliderScript.new()
 		placement.name = "DropOnGround"
-		placement.collision_mask = GROUND_MASK
+		placement.collision_mask = int(global.get("ground_collision_mask", 1))
 		placement.placement_direction = 1  # direction.Down
-		placement.normal_influence = 0.0   # keep instances upright
+		placement.normal_influence = float(_resolve(it, cat_cfg, defaults, "normal_influence", 0.0))
 		placement.random_scale_type = 1    # scale_type_enum.Proportional
-		placement.min_random_scale = float(asset_def["height_min"]) / base_height
-		placement.max_random_scale = float(asset_def["height_max"]) / base_height
-		placement.randomize_rotation = true
-		placement.min_random_rotation = Vector3.ZERO
-		placement.max_random_rotation = Vector3(0.0, 360.0, 0.0)
+		placement.min_random_scale = float(it["height_min"]) / base_height
+		placement.max_random_scale = float(it["height_max"]) / base_height
+		placement.randomize_rotation = bool(rotation.get("randomize", true))
+		placement.min_random_rotation = _to_vec3(rotation.get("min_deg"), Vector3.ZERO)
+		placement.max_random_rotation = _to_vec3(rotation.get("max_deg"), Vector3(0.0, 360.0, 0.0))
 		item.add_child(placement)
 
-	_built_new_authoring = true
 	return multi_scatter
 
 
-func _build_island_curve() -> Curve3D:
+# Returns [Curve3D polygon_or_null, Array exclude_dicts] from the saved authoring
+# scene, so editor reshaping is preserved across rebuilds.
+func _preserved_area() -> Array:
+	var authoring_path := str(_config["output"].get("authoring_scene", ""))
+	if authoring_path.is_empty() or not ResourceLoader.exists(authoring_path):
+		return [null, []]
+	var packed := load(authoring_path) as PackedScene
+	if packed == null:
+		return [null, []]
+	var old := packed.instantiate() as Path3D
+	if old == null:
+		return [null, []]
+	var polygon: Curve3D = null
+	if old.curve != null:
+		polygon = old.curve.duplicate()
+	var excludes: Array = []
+	for child in old.get_children():
+		if child is MultiScatterExclude and (child as Path3D).curve != null:
+			excludes.append({"name": child.name, "curve": (child as Path3D).curve.duplicate()})
+	old.free()
+	print("Preserved polygon + %d exclusion(s) from existing authoring scene." % excludes.size())
+	return [polygon, excludes]
+
+
+func _build_area_curve() -> Curve3D:
+	var poly: Dictionary = _config["area"].get("polygon", {})
+	var ray_height := float(_config["global"].get("ray_height", 42.0))
 	var curve := Curve3D.new()
-	for i in POLY_POINTS:
-		var angle := TAU * float(i) / float(POLY_POINTS)
-		var x := cos(angle) * ISLAND_RADIUS.x * ISLAND_INSET
-		var z := sin(angle) * ISLAND_RADIUS.y * ISLAND_INSET
-		curve.add_point(Vector3(x, POLY_Y, z))
+	if str(poly.get("shape", "ellipse")) == "points":
+		for p in poly.get("points", []):
+			var v := _to_vec2(p, Vector2.ZERO)
+			curve.add_point(Vector3(v.x, ray_height, v.y))
+	else:
+		var radius := _to_vec2(poly.get("radius"), Vector2(122.0, 118.0))
+		var inset := float(poly.get("inset", 0.95))
+		var segments := int(poly.get("segments", 24))
+		for i in segments:
+			var angle := TAU * float(i) / float(segments)
+			curve.add_point(Vector3(cos(angle) * radius.x * inset, ray_height, sin(angle) * radius.y * inset))
 	return curve
 
 
-func _build_rect_curve(rect: Rect2) -> Curve3D:
-	var curve := Curve3D.new()
-	curve.add_point(Vector3(rect.position.x, 0.0, rect.position.y))
-	curve.add_point(Vector3(rect.position.x + rect.size.x, 0.0, rect.position.y))
-	curve.add_point(Vector3(rect.position.x + rect.size.x, 0.0, rect.position.y + rect.size.y))
-	curve.add_point(Vector3(rect.position.x, 0.0, rect.position.y + rect.size.y))
-	return curve
+func _build_exclude_curves() -> Array:
+	var result: Array = []
+	for ex in _config["area"].get("exclusions", []):
+		var curve := Curve3D.new()
+		if str(ex.get("shape", "rect")) == "points":
+			for p in ex.get("points", []):
+				var v := _to_vec2(p, Vector2.ZERO)
+				curve.add_point(Vector3(v.x, 0.0, v.y))
+		else:
+			var pos := _to_vec2(ex.get("position"), Vector2.ZERO)
+			var size := _to_vec2(ex.get("size"), Vector2.ZERO)
+			curve.add_point(Vector3(pos.x, 0.0, pos.y))
+			curve.add_point(Vector3(pos.x + size.x, 0.0, pos.y))
+			curve.add_point(Vector3(pos.x + size.x, 0.0, pos.y + size.y))
+			curve.add_point(Vector3(pos.x, 0.0, pos.y + size.y))
+		result.append({"name": "%sExclude" % str(ex.get("name", "Area")), "curve": curve})
+	return result
 
+
+# --- Bake -----------------------------------------------------------------
 
 func _bake_and_save(multi_scatter: Node3D) -> int:
+	var items: Array = _config["items"]
+	var categories: Dictionary = _config.get("categories", {})
+	var global: Dictionary = _config["global"]
+	var output: Dictionary = _config["output"]
+	var default_vis := float(global.get("visibility_range_end", 180.0))
+	var aabb := _custom_aabb()
+
 	var forest_root := Node3D.new()
-	forest_root.name = "ForestMultiMesh"
+	forest_root.name = str(output.get("root_name", "ForestMultiMesh"))
 	forest_root.set_meta("visual_only", true)
 	forest_root.set_meta("generated_by", "tools/codex_generate_forest_yamms.gd")
-	forest_root.set_meta("source_assets", "res://ImportedCitySource/assets/plants")
+	forest_root.set_meta("source_config", CONFIG_PATH)
 
 	var category_nodes := {}
-	for category in CATEGORIES:
-		var node := Node3D.new()
-		node.name = category
-		forest_root.add_child(node)
-		node.owner = forest_root
-		category_nodes[category] = node
+	for it in items:
+		var cat := str(it.get("category", "Uncategorized"))
+		if not category_nodes.has(cat):
+			var node := Node3D.new()
+			node.name = cat
+			forest_root.add_child(node)
+			node.owner = forest_root
+			category_nodes[cat] = node
 
-	var items := _collect_items(multi_scatter)
-	if items.size() != ASSET_DEFS.size():
-		push_error("Expected %d MultiScatterItems, found %d." % [ASSET_DEFS.size(), items.size()])
+	var scatter_items := _collect_items(multi_scatter)
+	if scatter_items.size() != items.size():
+		push_error("Expected %d MultiScatterItems, found %d." % [items.size(), scatter_items.size()])
 		forest_root.free()
 		return -1
 
 	var total_instances := 0
-	for i in ASSET_DEFS.size():
-		var asset_def: Dictionary = ASSET_DEFS[i]
-		var item: Node3D = items[i]
+	for i in items.size():
+		var it: Dictionary = items[i]
+		var cat := str(it.get("category", "Uncategorized"))
+		var cat_cfg: Dictionary = categories.get(cat, {})
+		var item: Node3D = scatter_items[i]
 		var source_mm: MultiMesh = item.multimesh
 		if source_mm == null or source_mm.instance_count <= 0:
-			push_error("%s produced no instances." % asset_def["name"])
+			push_error("%s produced no instances." % it.get("name", "?"))
 			forest_root.free()
 			return -1
 
@@ -246,37 +343,38 @@ func _bake_and_save(multi_scatter: Node3D) -> int:
 			buffer[o + 9] = t.basis.y.z
 			buffer[o + 10] = t.basis.z.z
 			buffer[o + 11] = t.origin.z
+
 		var baked_mm := MultiMesh.new()
 		baked_mm.transform_format = MultiMesh.TRANSFORM_3D
 		baked_mm.mesh = source_mm.mesh
 		baked_mm.instance_count = count
 		baked_mm.buffer = buffer
-		baked_mm.custom_aabb = FOREST_CUSTOM_AABB
+		baked_mm.custom_aabb = aabb
 		baked_mm.visible_instance_count = count
 
 		var instance := MultiMeshInstance3D.new()
-		instance.name = "%sMultiMesh" % asset_def["name"]
+		instance.name = "%sMultiMesh" % str(it["name"])
 		instance.multimesh = baked_mm
 		instance.cast_shadow = (
 			GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-			if bool(asset_def["shadow"])
+			if bool(_resolve(it, cat_cfg, {}, "shadow", false))
 			else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		)
 		instance.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
-		instance.visibility_range_end = 180.0
+		instance.visibility_range_end = float(_resolve(it, cat_cfg, {}, "visibility_range_end", default_vis))
 
-		var category_node: Node3D = category_nodes[asset_def["category"]]
+		var category_node: Node3D = category_nodes[cat]
 		category_node.add_child(instance)
 		instance.owner = forest_root
-		total_instances += baked_mm.instance_count
+		total_instances += count
 
 	var packed_scene := PackedScene.new()
 	if packed_scene.pack(forest_root) != OK:
 		push_error("Could not pack baked forest scene.")
 		forest_root.free()
 		return -1
-	if ResourceSaver.save(packed_scene, OUTPUT_SCENE_PATH) != OK:
-		push_error("Could not save %s." % OUTPUT_SCENE_PATH)
+	if ResourceSaver.save(packed_scene, str(output["baked_scene"])) != OK:
+		push_error("Could not save %s." % output["baked_scene"])
 		forest_root.free()
 		return -1
 
@@ -285,6 +383,9 @@ func _bake_and_save(multi_scatter: Node3D) -> int:
 
 
 func _save_authoring(multi_scatter: Node3D, world: Node3D) -> void:
+	var authoring_path := str(_config["output"].get("authoring_scene", ""))
+	if authoring_path.is_empty():
+		return
 	world.remove_child(multi_scatter)
 	# Lean authoring scene: clear baked buffers (regenerate to preview) and own
 	# only the Yamms nodes so density-map preview Decals are not serialized.
@@ -307,14 +408,55 @@ func _save_authoring(multi_scatter: Node3D, world: Node3D) -> void:
 	if packed.pack(multi_scatter) != OK:
 		push_error("Could not pack authoring scene.")
 		return
-	if ResourceSaver.save(packed, AUTHORING_SCENE_PATH) != OK:
-		push_error("Could not save %s." % AUTHORING_SCENE_PATH)
+	if ResourceSaver.save(packed, authoring_path) != OK:
+		push_error("Could not save %s." % authoring_path)
 		return
-	print("Saved editable authoring setup %s." % AUTHORING_SCENE_PATH)
+	print("Saved editable authoring setup %s." % authoring_path)
+
+
+# --- Helpers --------------------------------------------------------------
+
+func _resolve(item: Dictionary, category: Dictionary, defaults: Dictionary, key: String, default_value):
+	if item.has(key):
+		return item[key]
+	if category.has(key):
+		return category[key]
+	if defaults.has(key):
+		return defaults[key]
+	return default_value
+
+
+func _resolve_rotation(item: Dictionary, category: Dictionary, defaults: Dictionary) -> Dictionary:
+	if item.get("rotation") is Dictionary:
+		return item["rotation"]
+	if category.get("rotation") is Dictionary:
+		return category["rotation"]
+	if defaults.get("rotation") is Dictionary:
+		return defaults["rotation"]
+	return {}
+
+
+func _custom_aabb() -> AABB:
+	var c: Dictionary = _config["global"].get("custom_aabb", {})
+	var pos := _to_vec3(c.get("position"), Vector3(-124.0, -6.0, -124.0))
+	var size := _to_vec3(c.get("size"), Vector3(248.0, 22.0, 248.0))
+	return AABB(pos, size)
+
+
+func _to_vec2(value: Variant, default_value: Vector2) -> Vector2:
+	if value is Array and (value as Array).size() >= 2:
+		return Vector2(float(value[0]), float(value[1]))
+	return default_value
+
+
+func _to_vec3(value: Variant, default_value: Vector3) -> Vector3:
+	if value is Array and (value as Array).size() >= 3:
+		return Vector3(float(value[0]), float(value[1]), float(value[2]))
+	return default_value
 
 
 func _collect_items(multi_scatter: Node3D) -> Array:
-	var items := []
+	var items: Array = []
 	for child in multi_scatter.get_children():
 		if child is MultiScatterItem:
 			items.append(child)
