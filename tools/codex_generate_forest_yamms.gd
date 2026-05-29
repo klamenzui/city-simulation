@@ -245,6 +245,7 @@ func _build_area_curve(area: Dictionary) -> Curve3D:
 		for i in segments:
 			var angle := TAU * float(i) / float(segments)
 			curve.add_point(Vector3(cos(angle) * radius.x * inset, ray_height, sin(angle) * radius.y * inset))
+	curve.closed = true
 	return curve
 
 
@@ -263,6 +264,7 @@ func _build_exclude_curves(area: Dictionary) -> Array:
 			curve.add_point(Vector3(pos.x + size.x, 0.0, pos.y))
 			curve.add_point(Vector3(pos.x + size.x, 0.0, pos.y + size.y))
 			curve.add_point(Vector3(pos.x, 0.0, pos.y + size.y))
+		curve.closed = true
 		result.append({"name": "%sExclude" % str(ex.get("name", "Area")), "curve": curve})
 	return result
 
