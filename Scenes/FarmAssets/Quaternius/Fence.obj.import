@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://dh5bkqoyudi2q"
+path="res://.godot/imported/Fence.obj-63e5dbc419e9d2c9d51477b1c83de0ac.mesh"
+
+[deps]
+
+files=["res://.godot/imported/Fence.obj-63e5dbc419e9d2c9d51477b1c83de0ac.mesh"]
+
+source_file="res://Scenes/FarmAssets/Quaternius/Fence.obj"
+dest_files=["res://.godot/imported/Fence.obj-63e5dbc419e9d2c9d51477b1c83de0ac.mesh", "res://.godot/imported/Fence.obj-63e5dbc419e9d2c9d51477b1c83de0ac.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false

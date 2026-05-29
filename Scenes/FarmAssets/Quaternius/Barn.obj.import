@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://c4irpp5yewfik"
+path="res://.godot/imported/Barn.obj-67d8425a01a0f5ee7e1822a87bb3fb34.mesh"
+
+[deps]
+
+files=["res://.godot/imported/Barn.obj-67d8425a01a0f5ee7e1822a87bb3fb34.mesh"]
+
+source_file="res://Scenes/FarmAssets/Quaternius/Barn.obj"
+dest_files=["res://.godot/imported/Barn.obj-67d8425a01a0f5ee7e1822a87bb3fb34.mesh", "res://.godot/imported/Barn.obj-67d8425a01a0f5ee7e1822a87bb3fb34.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false

@@ -1,10 +1,16 @@
 # Godot 4+ specific ignores
 .godot/
+*.translation
+
+# Build / local generated
 /android/
+/environment/audio/
 *.log
-*.uid
+
+# Local project tools / notes
 .obsidian/
 .claude/
+
 # Local AI runtimes, models, and downloaded toolchains should stay machine-local.
 AI/
 .ai/qdrant_storage/
@@ -14,4 +20,6 @@ AI/
 .ai/qdrant_import/
 .ai/.cache/
 .ai/test_runs/
+
+# Python
 __pycache__/

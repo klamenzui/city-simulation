@@ -1,0 +1,118 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://Simulation/Transport/VehicleAgent.gd" id="1_vehicle_agent"]
+[ext_resource type="ArrayMesh" path="res://Entities/Transport/TruckTown/meshes/minivan.res" id="2_body_mesh"]
+[ext_resource type="ArrayMesh" path="res://Entities/Transport/TruckTown/meshes/wheel.res" id="3_wheel_mesh"]
+[ext_resource type="AudioStream" path="res://environment/audio/vehicles/engine.wav" id="4_engine_audio"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_vehicle_body"]
+size = Vector3(0.525, 0.55, 1.28)
+
+[node name="Vehicle_Minivan" type="VehicleBody3D"]
+collision_layer = 4
+mass = 12.0
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, 0.08, 0)
+script = ExtResource("1_vehicle_agent")
+delivery_vehicle = false
+use_balance_vehicle_geometry = false
+vehicle_mass = 12.0
+center_of_mass_offset = Vector3(0, 0.08, 0)
+wheel_track_half_width = 0.315
+wheel_front_z = 0.607
+wheel_rear_z = -0.431
+wheel_mount_y = 0.138
+wheel_radius = 0.138
+wheel_roll_influence = 0.35
+wheel_friction_slip = 1.1
+suspension_stiffness = 34.0
+suspension_travel = 0.14
+damping_compression = 0.9
+damping_relaxation = 1.6
+collision_shape_size = Vector3(0.525, 0.55, 1.28)
+collision_shape_offset = Vector3(0, 0.398, 0.04)
+
+[node name="VehicleCollisionShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.398, 0.04)
+shape = SubResource("BoxShape3D_vehicle_body")
+
+[node name="FrontLeftWheel" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.315, 0.138, 0.607)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.138
+wheel_friction_slip = 1.1
+suspension_travel = 0.14
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="WheelMesh" type="MeshInstance3D" parent="FrontLeftWheel"]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0, 0, 0)
+mesh = ExtResource("3_wheel_mesh")
+
+[node name="FrontRightWheel" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.315, 0.138, 0.607)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.138
+wheel_friction_slip = 1.1
+suspension_travel = 0.14
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="WheelMesh" type="MeshInstance3D" parent="FrontRightWheel"]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0, 0, 0)
+mesh = ExtResource("3_wheel_mesh")
+
+[node name="RearLeftWheel" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.315, 0.138, -0.431)
+use_as_traction = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.138
+wheel_friction_slip = 1.1
+suspension_travel = 0.14
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="WheelMesh" type="MeshInstance3D" parent="RearLeftWheel"]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0, 0, 0)
+mesh = ExtResource("3_wheel_mesh")
+
+[node name="RearRightWheel" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.315, 0.138, -0.431)
+use_as_traction = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.138
+wheel_friction_slip = 1.1
+suspension_travel = 0.14
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="WheelMesh" type="MeshInstance3D" parent="RearRightWheel"]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0, 0, 0)
+mesh = ExtResource("3_wheel_mesh")
+
+[node name="VisualRoot" type="Node3D" parent="."]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0, 0, 0)
+
+[node name="Body" type="MeshInstance3D" parent="VisualRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.135, 0)
+mesh = ExtResource("2_body_mesh")
+
+[node name="EntryPoint" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.46, 0.03, 0.08)
+
+[node name="SeatPoint" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 0.45, 0.11)
+
+[node name="EngineSound" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("4_engine_audio")
+pitch_scale = 0.05
+volume_db = -28.0
+attenuation_filter_cutoff_hz = 20500.0

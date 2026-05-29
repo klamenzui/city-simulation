@@ -163,7 +163,7 @@ $availableTests = @(
 	}
 	[pscustomobject]@{
 		Key = "forest"
-		Label = "Forest MultiMesh Scene"
+		Label = "Biome Scatter Scenes"
 		Script = "res://tools/codex_forest_multimesh_scene_probe.gd"
 	}
 	[pscustomobject]@{
