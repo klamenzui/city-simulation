@@ -1,11 +1,11 @@
-[gd_scene load_steps=21 format=3 uid="uid://c2sjyx3wuxudg"]
+[gd_scene format=3 uid="uid://c2sjyx3wuxudg"]
 
-[ext_resource type="Shader" path="res://environment/sky/stylized-sky.gdshader" id="1_rvtj8"]
-[ext_resource type="Texture2D" path="res://environment/sky/Sun.png" id="2_j74et"]
-[ext_resource type="Texture2D" path="res://environment/sky/Moon.png" id="3_k8l6f"]
-[ext_resource type="Script" path="res://environment/sky/sky_time_manager.gd" id="4_n8hut"]
-[ext_resource type="Script" path="res://environment/sky/celestial_bodies.gd" id="5_3jj7m"]
-[ext_resource type="Texture2D" path="res://environment/sky/shooting_star_sampler.png" id="7_qiy7d"]
+[ext_resource type="Shader" uid="uid://bckg0sdevicre" path="res://environment/sky/stylized-sky.gdshader" id="1_rvtj8"]
+[ext_resource type="Texture2D" uid="uid://v16471cun3qx" path="res://environment/sky/Sun.png" id="2_j74et"]
+[ext_resource type="Texture2D" uid="uid://d4bq5553l3kbx" path="res://environment/sky/Moon.png" id="3_k8l6f"]
+[ext_resource type="Script" uid="uid://nd6pbhngiduw" path="res://environment/sky/sky_time_manager.gd" id="4_n8hut"]
+[ext_resource type="Script" uid="uid://lq3j3eb4t8kb" path="res://environment/sky/celestial_bodies.gd" id="5_3jj7m"]
+[ext_resource type="Texture2D" uid="uid://brun5ustmodc0" path="res://environment/sky/shooting_star_sampler.png" id="7_qiy7d"]
 
 [sub_resource type="Curve" id="Curve_snkxs"]
 _data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.124717, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.738665), 0.0, 0.0, 0, 0]
@@ -18,22 +18,22 @@ curve = SubResource("Curve_snkxs")
 noise_type = 2
 
 [sub_resource type="NoiseTexture2D" id="NoiseTexture2D_hxq44"]
-seamless = true
 noise = SubResource("FastNoiseLite_ompse")
+seamless = true
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_nfynj"]
 noise_type = 2
 
 [sub_resource type="NoiseTexture2D" id="NoiseTexture2D_3opsr"]
-seamless = true
 noise = SubResource("FastNoiseLite_nfynj")
+seamless = true
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_ui3ll"]
 noise_type = 2
 
 [sub_resource type="NoiseTexture2D" id="NoiseTexture2D_fbbf8"]
-seamless = true
 noise = SubResource("FastNoiseLite_ui3ll")
+seamless = true
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_r752e"]
 shader = ExtResource("1_rvtj8")
@@ -106,30 +106,30 @@ _data = {
 &"Cycle": SubResource("Animation_ltkld")
 }
 
-[node name="EnhancedSky" type="Node3D"]
+[node name="EnhancedSky" type="Node3D" unique_id=1355185421]
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1822659625]
 environment = SubResource("Environment_11a00")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=898945315]
 transform = Transform3D(-0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, 0.75, -0.433013, 0, 0, 0)
+light_specular = 0.0
 shadow_enabled = true
+shadow_bias = 1.0
 directional_shadow_mode = 0
 
-[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
-libraries = {
-&"": SubResource("AnimationLibrary_7o7p5")
-}
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=763824754]
+libraries/ = SubResource("AnimationLibrary_7o7p5")
 
-[node name="SkyTimeManager" type="Node" parent="."]
+[node name="SkyTimeManager" type="Node" parent="." unique_id=512065690]
 script = ExtResource("4_n8hut")
 day_length = 240.0
 time_scale = 20.0
 
-[node name="CelestialBodies" type="Node" parent="."]
+[node name="CelestialBodies" type="Node" parent="." unique_id=62899110]
 script = ExtResource("5_3jj7m")
 
-[node name="TimeDisplay" type="Label" parent="."]
+[node name="TimeDisplay" type="Label" parent="." unique_id=1592889035]
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
