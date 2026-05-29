@@ -31,18 +31,20 @@
 [ext_resource type="Texture2D" path="res://ImportedCitySource/assets/plants/flowers02_materialtexture.png" id="29_a82oa"]
 
 [sub_resource type="Curve3D" id="Curve3D_72f36"]
+closed = true
 _data = {
-"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 115.9, 42, 0, 0, 0, 0, 0, 0, 0, 111.950806, 42, 29.013615, 0, 0, 0, 0, 0, 0, 100.372345, 42, 56.05, 0, 0, 0, 0, 0, 0, 81.953674, 42, 79.26667, 0, 0, 0, 0, 0, 0, 57.95, 42, 97.08145, 0, 0, 0, 0, 0, 0, 29.997128, 42, 108.28029, 0, 0, 0, 0, 0, 0, 7.0965937e-15, 42, 112.1, 0, 0, 0, 0, 0, 0, -29.997128, 42, 108.28029, 0, 0, 0, 0, 0, 0, -57.95, 42, 97.08145, 0, 0, 0, 0, 0, 0, -81.953674, 42, 79.26667, 0, 0, 0, 0, 0, 0, -100.372345, 42, 56.05, 0, 0, 0, 0, 0, 0, -111.950806, 42, 29.013615, 0, 0, 0, 0, 0, 0, -115.9, 42, 1.37278376e-14, 0, 0, 0, 0, 0, 0, -111.950806, 42, -29.013615, 0, 0, 0, 0, 0, 0, -100.372345, 42, -56.05, 0, 0, 0, 0, 0, 0, -81.953674, 42, -79.26667, 0, 0, 0, 0, 0, 0, -57.95, 42, -97.08145, 0, 0, 0, 0, 0, 0, -29.997128, 42, -108.28029, 0, 0, 0, 0, 0, 0, -2.1289782e-14, 42, -112.1, 0, 0, 0, 0, 0, 0, 29.997128, 42, -108.28029, 0, 0, 0, 0, 0, 0, 57.95, 42, -97.08145, 0, 0, 0, 0, 0, 0, 81.953674, 42, -79.26667, 0, 0, 0, 0, 0, 0, 100.372345, 42, -56.05, 0, 0, 0, 0, 0, 0, 111.950806, 42, -29.013615),
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 43.41, 42, -6.9, 0, 0, 0, 0, 0, 0, 42.73, 42, 0.97, 0, 0, 0, 0, 0, 0, 39.3, 42, 9.12, 0, 0, 0, 0, 0, 0, 40.46, 42, 17.54, 0, 0, 0, 0, 0, 0, 43.21, 42, 31.3, 0, 0, 0, 0, 0, 0, 36.63, 42, 39.91, 0, 0, 0, 0, 0, 0, 31.34, 42, 62.97, 0, 0, 0, 0, 0, 0, 10.37, 42, 53.71, 0, 0, 0, 0, 0, 0, -5.32, 42, 54.91, 0, 0, 0, 0, 0, 0, -18.58, 42, 44.71, 0, 0, 0, 0, 0, 0, -16.21, 42, 13.74, 0, 0, 0, 0, 0, 0, -17.5, 42, 8.1, 0, 0, 0, 0, 0, 0, -19.88, 42, 0, 0, 0, 0, 0, 0, 0, -17.97, 42, -13.56, 0, 0, 0, 0, 0, 0, -12.07, 42, -29.21, 0, 0, 0, 0, 0, 0, -8.88, 42, -37.13, 0, 0, 0, 0, 0, 0, -9.47, 42, -43.75, 0, 0, 0, 0, 0, 0, -10.39, 42, -62.65, 0, 0, 0, 0, 0, 0, 0, 42, -71.23, 0, 0, 0, 0, 0, 0, 14.52, 42, -61.93, 0, 0, 0, 0, 0, 0, 18.96, 42, -52.85, 0, 0, 0, 0, 0, 0, 26.3, 42, -45.3, 0, 0, 0, 0, 0, 0, 30.75, 42, -37.11, 0, 0, 0, 0, 0, 0, 41.78, 42, -18.88),
 "tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 }
 point_count = 24
 
 [sub_resource type="Curve3D" id="Curve3D_un0es"]
+closed = true
 _data = {
-"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -12, 0, -46, 0, 0, 0, 0, 0, 0, 46, 0, -46, 0, 0, 0, 0, 0, 0, 46, 0, 48, 0, 0, 0, 0, 0, 0, -12, 0, 48),
-"tilts": PackedFloat32Array(0, 0, 0, 0)
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 26.69, 0, -14.74, 0, 0, 0, 0, 0, 0, 32.96, 0, -4.91, 0, 0, 0, 0, 0, 0, 33.14, 0, 31.98, 0, 0, 0, 0, 0, 0, 18.11, 0, 43.26, 0, 0, 0, 0, 0, 0, 13.69, 0, 51.4, 0, 0, 0, 0, 0, 0, 2.06, 0, 46.25, 0, 0, 0, 0, 0, 0, 16.16, 0, 39.48, 0, 0, 0, 0, 0, 0, 2.05, 0, 35.51, 0, 0, 0, 0, 0, 0, -5.31, 0, 34.45, 0, 0, 0, 0, 0, 0, -6.04, 0, 25.9, 0, 0, 0, 0, 0, 0, -3.75, 0, 9.48, 0, 0, 0, 0, 0, 0, -8.45, 0, -27.16, 0, 0, 0, 0, 0, 0, 2.4, 0, -44.98, 0, 0, 0, 0, 0, 0, 20.92, 0, -36.79, 0, 0, 0, 0, 0, 0, 27.65, 0, -26.34, 0, 0, 0, 0, 0, 0, 30.66, 0, -19.31),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 }
-point_count = 4
+point_count = 16
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ii8xx"]
 resource_name = "Material.003"
@@ -1077,24 +1079,24 @@ shadow_mesh = SubResource("ArrayMesh_werob")
 transform_format = 1
 mesh = SubResource("ArrayMesh_lcsux")
 
-[node name="ForestScatter" type="Path3D" unique_id=1596948049]
+[node name="ForestScatter" type="Path3D" unique_id=1129878093]
 curve = SubResource("Curve3D_72f36")
 script = ExtResource("1_yveeq")
 amount = 816
 seed = 202605261
 
-[node name="CityExclude" type="Path3D" parent="." unique_id=278840969]
+[node name="CityExclude" type="Path3D" parent="." unique_id=1312434251]
 curve = SubResource("Curve3D_un0es")
 script = ExtResource("2_l62rl")
 
-[node name="Tree01Item" type="MultiMeshInstance3D" parent="." unique_id=301698124]
+[node name="Tree01Item" type="MultiMeshInstance3D" parent="." unique_id=1551560956]
 gi_mode = 0
 visibility_range_end = 180.0
 multimesh = SubResource("MultiMesh_lwn7q")
 script = ExtResource("4_ces1g")
 percentage = 4.411764705882353
 
-[node name="DropOnGround" type="Node3D" parent="Tree01Item" unique_id=1727504783]
+[node name="DropOnGround" type="Node3D" parent="Tree01Item" unique_id=1508913074]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1103,14 +1105,14 @@ min_random_scale = 1.0464759
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Tree02Item" type="MultiMeshInstance3D" parent="." unique_id=309493578]
+[node name="Tree02Item" type="MultiMeshInstance3D" parent="." unique_id=1468072730]
 gi_mode = 0
 visibility_range_end = 180.0
 multimesh = SubResource("MultiMesh_gmi8s")
 script = ExtResource("4_ces1g")
 percentage = 4.6568627450980395
 
-[node name="DropOnGround" type="Node3D" parent="Tree02Item" unique_id=326725943]
+[node name="DropOnGround" type="Node3D" parent="Tree02Item" unique_id=1133673121]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1119,14 +1121,14 @@ min_random_scale = 1.6543968
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Tree03Item" type="MultiMeshInstance3D" parent="." unique_id=2094556113]
+[node name="Tree03Item" type="MultiMeshInstance3D" parent="." unique_id=1441523207]
 gi_mode = 0
 visibility_range_end = 180.0
 multimesh = SubResource("MultiMesh_l0bk8")
 script = ExtResource("4_ces1g")
 percentage = 5.147058823529411
 
-[node name="DropOnGround" type="Node3D" parent="Tree03Item" unique_id=1748289381]
+[node name="DropOnGround" type="Node3D" parent="Tree03Item" unique_id=662886929]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1135,14 +1137,14 @@ min_random_scale = 1.163339
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Tree04Item" type="MultiMeshInstance3D" parent="." unique_id=671525111]
+[node name="Tree04Item" type="MultiMeshInstance3D" parent="." unique_id=609476868]
 gi_mode = 0
 visibility_range_end = 180.0
 multimesh = SubResource("MultiMesh_dp4jk")
 script = ExtResource("4_ces1g")
 percentage = 4.411764705882353
 
-[node name="DropOnGround" type="Node3D" parent="Tree04Item" unique_id=1423546377]
+[node name="DropOnGround" type="Node3D" parent="Tree04Item" unique_id=1122518008]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1151,14 +1153,14 @@ min_random_scale = 1.3056777
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Tree05Item" type="MultiMeshInstance3D" parent="." unique_id=834955348]
+[node name="Tree05Item" type="MultiMeshInstance3D" parent="." unique_id=1503468867]
 gi_mode = 0
 visibility_range_end = 180.0
 multimesh = SubResource("MultiMesh_l07p7")
 script = ExtResource("4_ces1g")
 percentage = 4.166666666666666
 
-[node name="DropOnGround" type="Node3D" parent="Tree05Item" unique_id=680094732]
+[node name="DropOnGround" type="Node3D" parent="Tree05Item" unique_id=277375905]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1167,14 +1169,14 @@ min_random_scale = 1.1716827
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="SpruceMK4Item" type="MultiMeshInstance3D" parent="." unique_id=949643116]
+[node name="SpruceMK4Item" type="MultiMeshInstance3D" parent="." unique_id=1614445251]
 gi_mode = 0
 visibility_range_end = 180.0
 multimesh = SubResource("MultiMesh_jv6j1")
 script = ExtResource("4_ces1g")
 percentage = 2.450980392156863
 
-[node name="DropOnGround" type="Node3D" parent="SpruceMK4Item" unique_id=1441004356]
+[node name="DropOnGround" type="Node3D" parent="SpruceMK4Item" unique_id=123968895]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1183,14 +1185,14 @@ min_random_scale = 0.2
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Bush01Item" type="MultiMeshInstance3D" parent="." unique_id=523266377]
+[node name="Bush01Item" type="MultiMeshInstance3D" parent="." unique_id=1257736471]
 gi_mode = 0
 visibility_range_end = 180.0
 multimesh = SubResource("MultiMesh_2nms4")
 script = ExtResource("4_ces1g")
 percentage = 5.637254901960785
 
-[node name="DropOnGround" type="Node3D" parent="Bush01Item" unique_id=1568471741]
+[node name="DropOnGround" type="Node3D" parent="Bush01Item" unique_id=381647212]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1199,14 +1201,14 @@ min_random_scale = 0.80627716
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Bush02Item" type="MultiMeshInstance3D" parent="." unique_id=720559113]
+[node name="Bush02Item" type="MultiMeshInstance3D" parent="." unique_id=1964874824]
 gi_mode = 0
 visibility_range_end = 180.0
 multimesh = SubResource("MultiMesh_qhlqq")
 script = ExtResource("4_ces1g")
 percentage = 5.392156862745098
 
-[node name="DropOnGround" type="Node3D" parent="Bush02Item" unique_id=742837453]
+[node name="DropOnGround" type="Node3D" parent="Bush02Item" unique_id=2136038347]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1215,14 +1217,14 @@ min_random_scale = 1.1183516
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Bush03Item" type="MultiMeshInstance3D" parent="." unique_id=2054996107]
+[node name="Bush03Item" type="MultiMeshInstance3D" parent="." unique_id=1416869478]
 gi_mode = 0
 visibility_range_end = 180.0
 multimesh = SubResource("MultiMesh_7m6af")
 script = ExtResource("4_ces1g")
 percentage = 5.88235294117647
 
-[node name="DropOnGround" type="Node3D" parent="Bush03Item" unique_id=111120286]
+[node name="DropOnGround" type="Node3D" parent="Bush03Item" unique_id=822665682]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1231,14 +1233,14 @@ min_random_scale = 0.7641288
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Bush04Item" type="MultiMeshInstance3D" parent="." unique_id=708624022]
+[node name="Bush04Item" type="MultiMeshInstance3D" parent="." unique_id=221651953]
 gi_mode = 0
 visibility_range_end = 180.0
 multimesh = SubResource("MultiMesh_yu4rt")
 script = ExtResource("4_ces1g")
 percentage = 4.901960784313726
 
-[node name="DropOnGround" type="Node3D" parent="Bush04Item" unique_id=1226641094]
+[node name="DropOnGround" type="Node3D" parent="Bush04Item" unique_id=1158289057]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1247,7 +1249,7 @@ min_random_scale = 1.0389377
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Weed01Item" type="MultiMeshInstance3D" parent="." unique_id=138061792]
+[node name="Weed01Item" type="MultiMeshInstance3D" parent="." unique_id=412794721]
 cast_shadow = 0
 gi_mode = 0
 visibility_range_end = 180.0
@@ -1255,7 +1257,7 @@ multimesh = SubResource("MultiMesh_damhi")
 script = ExtResource("4_ces1g")
 percentage = 6.372549019607843
 
-[node name="DropOnGround" type="Node3D" parent="Weed01Item" unique_id=1858002546]
+[node name="DropOnGround" type="Node3D" parent="Weed01Item" unique_id=1581865313]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1264,7 +1266,7 @@ min_random_scale = 0.29554477
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Weed02Item" type="MultiMeshInstance3D" parent="." unique_id=1254084762]
+[node name="Weed02Item" type="MultiMeshInstance3D" parent="." unique_id=1245334781]
 cast_shadow = 0
 gi_mode = 0
 visibility_range_end = 180.0
@@ -1272,7 +1274,7 @@ multimesh = SubResource("MultiMesh_v0t5f")
 script = ExtResource("4_ces1g")
 percentage = 5.88235294117647
 
-[node name="DropOnGround" type="Node3D" parent="Weed02Item" unique_id=1795497065]
+[node name="DropOnGround" type="Node3D" parent="Weed02Item" unique_id=1085197075]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1281,7 +1283,7 @@ min_random_scale = 0.2912018
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Weed03Item" type="MultiMeshInstance3D" parent="." unique_id=841990241]
+[node name="Weed03Item" type="MultiMeshInstance3D" parent="." unique_id=1444783727]
 cast_shadow = 0
 gi_mode = 0
 visibility_range_end = 180.0
@@ -1289,7 +1291,7 @@ multimesh = SubResource("MultiMesh_qrxr4")
 script = ExtResource("4_ces1g")
 percentage = 5.392156862745098
 
-[node name="DropOnGround" type="Node3D" parent="Weed03Item" unique_id=1338682051]
+[node name="DropOnGround" type="Node3D" parent="Weed03Item" unique_id=429336005]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1298,7 +1300,7 @@ min_random_scale = 0.3044876
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Weedplant01Item" type="MultiMeshInstance3D" parent="." unique_id=1277459968]
+[node name="Weedplant01Item" type="MultiMeshInstance3D" parent="." unique_id=1752408063]
 cast_shadow = 0
 gi_mode = 0
 visibility_range_end = 180.0
@@ -1306,7 +1308,7 @@ multimesh = SubResource("MultiMesh_rvxre")
 script = ExtResource("4_ces1g")
 percentage = 3.9215686274509802
 
-[node name="DropOnGround" type="Node3D" parent="Weedplant01Item" unique_id=274801928]
+[node name="DropOnGround" type="Node3D" parent="Weedplant01Item" unique_id=491364346]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1315,7 +1317,7 @@ min_random_scale = 0.5987638
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Weedplant02Item" type="MultiMeshInstance3D" parent="." unique_id=931353925]
+[node name="Weedplant02Item" type="MultiMeshInstance3D" parent="." unique_id=1109248518]
 cast_shadow = 0
 gi_mode = 0
 visibility_range_end = 180.0
@@ -1323,7 +1325,7 @@ multimesh = SubResource("MultiMesh_dadha")
 script = ExtResource("4_ces1g")
 percentage = 3.9215686274509802
 
-[node name="DropOnGround" type="Node3D" parent="Weedplant02Item" unique_id=1874297373]
+[node name="DropOnGround" type="Node3D" parent="Weedplant02Item" unique_id=981579900]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1332,7 +1334,7 @@ min_random_scale = 0.76931316
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Weedplant03Item" type="MultiMeshInstance3D" parent="." unique_id=1110000243]
+[node name="Weedplant03Item" type="MultiMeshInstance3D" parent="." unique_id=2127778627]
 cast_shadow = 0
 gi_mode = 0
 visibility_range_end = 180.0
@@ -1340,7 +1342,7 @@ multimesh = SubResource("MultiMesh_cap1c")
 script = ExtResource("4_ces1g")
 percentage = 3.431372549019608
 
-[node name="DropOnGround" type="Node3D" parent="Weedplant03Item" unique_id=1833630056]
+[node name="DropOnGround" type="Node3D" parent="Weedplant03Item" unique_id=1559547883]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1349,7 +1351,7 @@ min_random_scale = 0.89103925
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="ThreeLeaf01Item" type="MultiMeshInstance3D" parent="." unique_id=922953250]
+[node name="ThreeLeaf01Item" type="MultiMeshInstance3D" parent="." unique_id=1614055466]
 cast_shadow = 0
 gi_mode = 0
 visibility_range_end = 180.0
@@ -1357,7 +1359,7 @@ multimesh = SubResource("MultiMesh_2086f")
 script = ExtResource("4_ces1g")
 percentage = 4.6568627450980395
 
-[node name="DropOnGround" type="Node3D" parent="ThreeLeaf01Item" unique_id=690497583]
+[node name="DropOnGround" type="Node3D" parent="ThreeLeaf01Item" unique_id=493897700]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1366,7 +1368,7 @@ min_random_scale = 0.9513636
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Mushroom01Item" type="MultiMeshInstance3D" parent="." unique_id=67129221]
+[node name="Mushroom01Item" type="MultiMeshInstance3D" parent="." unique_id=731506154]
 cast_shadow = 0
 gi_mode = 0
 visibility_range_end = 180.0
@@ -1374,7 +1376,7 @@ multimesh = SubResource("MultiMesh_uk7j8")
 script = ExtResource("4_ces1g")
 percentage = 2.941176470588235
 
-[node name="DropOnGround" type="Node3D" parent="Mushroom01Item" unique_id=284966699]
+[node name="DropOnGround" type="Node3D" parent="Mushroom01Item" unique_id=628426024]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1383,7 +1385,7 @@ min_random_scale = 1.3709203
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Mushroom02Item" type="MultiMeshInstance3D" parent="." unique_id=133577091]
+[node name="Mushroom02Item" type="MultiMeshInstance3D" parent="." unique_id=614022589]
 cast_shadow = 0
 gi_mode = 0
 visibility_range_end = 180.0
@@ -1391,7 +1393,7 @@ multimesh = SubResource("MultiMesh_q1pos")
 script = ExtResource("4_ces1g")
 percentage = 2.696078431372549
 
-[node name="DropOnGround" type="Node3D" parent="Mushroom02Item" unique_id=797090479]
+[node name="DropOnGround" type="Node3D" parent="Mushroom02Item" unique_id=26878695]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1400,7 +1402,7 @@ min_random_scale = 1.4184102
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="FlowerBlue01Item" type="MultiMeshInstance3D" parent="." unique_id=1402754034]
+[node name="FlowerBlue01Item" type="MultiMeshInstance3D" parent="." unique_id=2073542789]
 cast_shadow = 0
 gi_mode = 0
 visibility_range_end = 180.0
@@ -1408,7 +1410,7 @@ multimesh = SubResource("MultiMesh_frlji")
 script = ExtResource("4_ces1g")
 percentage = 2.2058823529411766
 
-[node name="DropOnGround" type="Node3D" parent="FlowerBlue01Item" unique_id=1742393963]
+[node name="DropOnGround" type="Node3D" parent="FlowerBlue01Item" unique_id=2087760046]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1417,7 +1419,7 @@ min_random_scale = 1.4011594
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="FlowerKrokus01Item" type="MultiMeshInstance3D" parent="." unique_id=1805304560]
+[node name="FlowerKrokus01Item" type="MultiMeshInstance3D" parent="." unique_id=1602052120]
 cast_shadow = 0
 gi_mode = 0
 visibility_range_end = 180.0
@@ -1425,7 +1427,7 @@ multimesh = SubResource("MultiMesh_dj28v")
 script = ExtResource("4_ces1g")
 percentage = 2.2058823529411766
 
-[node name="DropOnGround" type="Node3D" parent="FlowerKrokus01Item" unique_id=211917867]
+[node name="DropOnGround" type="Node3D" parent="FlowerKrokus01Item" unique_id=44429569]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1434,7 +1436,7 @@ min_random_scale = 0.48874244
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="FlowerTulipan01Item" type="MultiMeshInstance3D" parent="." unique_id=964462410]
+[node name="FlowerTulipan01Item" type="MultiMeshInstance3D" parent="." unique_id=502991427]
 cast_shadow = 0
 gi_mode = 0
 visibility_range_end = 180.0
@@ -1442,7 +1444,7 @@ multimesh = SubResource("MultiMesh_bk7ko")
 script = ExtResource("4_ces1g")
 percentage = 2.2058823529411766
 
-[node name="DropOnGround" type="Node3D" parent="FlowerTulipan01Item" unique_id=265872197]
+[node name="DropOnGround" type="Node3D" parent="FlowerTulipan01Item" unique_id=1999007538]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1451,7 +1453,7 @@ min_random_scale = 0.49513504
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="FlowerValmue01Item" type="MultiMeshInstance3D" parent="." unique_id=2123691975]
+[node name="FlowerValmue01Item" type="MultiMeshInstance3D" parent="." unique_id=1870555898]
 cast_shadow = 0
 gi_mode = 0
 visibility_range_end = 180.0
@@ -1459,7 +1461,7 @@ multimesh = SubResource("MultiMesh_453m7")
 script = ExtResource("4_ces1g")
 percentage = 2.2058823529411766
 
-[node name="DropOnGround" type="Node3D" parent="FlowerValmue01Item" unique_id=756030199]
+[node name="DropOnGround" type="Node3D" parent="FlowerValmue01Item" unique_id=338122255]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1468,7 +1470,7 @@ min_random_scale = 0.5356265
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Flowers01Item" type="MultiMeshInstance3D" parent="." unique_id=580472171]
+[node name="Flowers01Item" type="MultiMeshInstance3D" parent="." unique_id=2098625055]
 cast_shadow = 0
 gi_mode = 0
 visibility_range_end = 180.0
@@ -1476,7 +1478,7 @@ multimesh = SubResource("MultiMesh_yjwnl")
 script = ExtResource("4_ces1g")
 percentage = 2.450980392156863
 
-[node name="DropOnGround" type="Node3D" parent="Flowers01Item" unique_id=311968568]
+[node name="DropOnGround" type="Node3D" parent="Flowers01Item" unique_id=853240136]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
@@ -1485,7 +1487,7 @@ min_random_scale = 0.7403578
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Flowers02Item" type="MultiMeshInstance3D" parent="." unique_id=1043723219]
+[node name="Flowers02Item" type="MultiMeshInstance3D" parent="." unique_id=108956726]
 cast_shadow = 0
 gi_mode = 0
 visibility_range_end = 180.0
@@ -1493,7 +1495,7 @@ multimesh = SubResource("MultiMesh_hqtty")
 script = ExtResource("4_ces1g")
 percentage = 2.450980392156863
 
-[node name="DropOnGround" type="Node3D" parent="Flowers02Item" unique_id=765464522]
+[node name="DropOnGround" type="Node3D" parent="Flowers02Item" unique_id=113073222]
 script = ExtResource("5_tp54c")
 normal_influence = 0.0
 random_scale_type = 1
