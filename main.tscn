@@ -119,7 +119,9 @@
 [ext_resource type="PackedScene" uid="uid://bruafiqnpg6jy" path="res://Scenes/CityBuildings/park/park_002_ba27dc0a.tscn" id="130_uttc6"]
 [ext_resource type="PackedScene" uid="uid://inljaydfcofa" path="res://Scenes/CityBuildings/park/park_003_dc0f145b.tscn" id="131_2tdob"]
 [ext_resource type="ArrayMesh" uid="uid://cfjefblx6j1xy" path="res://Scenes/Plants/PalmTree_2.obj" id="131_evvf3"]
+[ext_resource type="PackedScene" path="res://Scenes/Plants/Biomes/Forest.tscn" id="131_xk7tw"]
 [ext_resource type="PackedScene" uid="uid://ba7hrowl0msxu" path="res://Scenes/CityBuildings/park/park_004_96bfce5b.tscn" id="132_mwwwv"]
+[ext_resource type="PackedScene" path="res://Scenes/Plants/Biomes/Palms.tscn" id="132_qyhqv"]
 [ext_resource type="ArrayMesh" uid="uid://cjqe0u0fumm4w" path="res://Scenes/Plants/PalmTree_3.obj" id="132_xk7tw"]
 [ext_resource type="PackedScene" uid="uid://b2rexj6c5avqy" path="res://Scenes/CityBuildings/park/park_005_0d1e38e9.tscn" id="133_6qefh"]
 [ext_resource type="PackedScene" uid="uid://n3bsx4gmqy2" path="res://Scenes/CityBuildings/park/park_006_87861945.tscn" id="134_ahqe7"]
@@ -3335,6 +3337,7 @@ light_color = 1
 shape = SubResource("ConcavePolygonShape3D_67x5q")
 
 [node name="ForestScatter" type="Path3D" parent="World" unique_id=1222217103]
+visible = false
 curve = SubResource("Curve3D_emsgd")
 script = ExtResource("109_vq823")
 amount = 1184
@@ -3691,6 +3694,7 @@ randomize_rotation = true
 metadata/_custom_type_script = "uid://jd66k7ybk2a6"
 
 [node name="MultiScatter" type="Path3D" parent="World" unique_id=1586632938]
+visible = false
 curve = SubResource("Curve3D_vq823")
 script = ExtResource("109_vq823")
 metadata/_custom_type_script = "uid://djep5l057o1tg"
@@ -3738,6 +3742,10 @@ metadata/_custom_type_script = "uid://dtkw3wgchwpvl"
 script = ExtResource("112_evvf3")
 random_scale_type = 1
 metadata/_custom_type_script = "uid://jd66k7ybk2a6"
+
+[node name="ForestScatter2" parent="World" unique_id=1878905947 instance=ExtResource("131_xk7tw")]
+
+[node name="PalmsScatter" parent="World" unique_id=533426157 instance=ExtResource("132_qyhqv")]
 
 [node name="SkyBridge" type="Node" parent="." unique_id=1781400]
 script = ExtResource("401_skybr")
