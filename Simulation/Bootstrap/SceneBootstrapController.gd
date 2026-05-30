@@ -18,7 +18,6 @@ const FarmScene = preload("res://Scenes/Farm.tscn")
 const FactoryScene = preload("res://Scenes/Factory.tscn")
 
 const OCEAN_NODE_NAME := "Ocean"
-const BACKGROUND_MOUNTAINS_NODE_NAME := "BackgroundMountains"
 const MATTE_ROUGHNESS_FLOOR := 0.9
 const MATTE_METALLIC_CAP := 0.02
 const MATTE_SPECULAR_CAP := 0.18
@@ -46,8 +45,6 @@ static func setup_scene(root: Node3D, world: World) -> void:
 	world.rebuild_road_graph(root)
 	world.rebuild_pedestrian_graph(root)
 	_ensure_ocean(world)
-	if not is_headless:
-		_ensure_background_mountains(world)
 
 static func _is_headless_runtime() -> bool:
 	return DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server")
@@ -241,81 +238,6 @@ static func _get_ocean_world_position(world: World, bounds: AABB) -> Vector3:
 	if world != null and world.has_method("get_ground_fallback_y"):
 		water_y = minf(water_y, world.get_ground_fallback_y() - 0.35)
 	return Vector3(center.x, water_y, center.z)
-
-static func _ensure_background_mountains(world: World) -> void:
-	# Procedural low-poly mountain ring around the island. Sits beyond the playable
-	# area so atmospheric fog (set in simulation_sky_bridge) blends them into the
-	# sky — that "distant mountains in haze" silhouette from the reference image.
-	# Idempotent: if the node already exists it is regenerated in place.
-	if world == null or not world.has_method("get_world_bounds"):
-		return
-
-	var root := world.get_node_or_null(BACKGROUND_MOUNTAINS_NODE_NAME) as Node3D
-	if root == null:
-		root = Node3D.new()
-		root.name = BACKGROUND_MOUNTAINS_NODE_NAME
-		world.add_child(root)
-	else:
-		for child in root.get_children():
-			child.queue_free()
-
-	var bounds: AABB = world.get_world_bounds()
-	var center := bounds.position + bounds.size * 0.5
-	var ground_y := bounds.position.y
-	if world.has_method("get_ground_fallback_y"):
-		ground_y = float(world.get_ground_fallback_y())
-
-	var island_radius := maxf(maxf(bounds.size.x, bounds.size.z) * 0.5, 100.0)
-	var ring_radius := island_radius + 150.0
-	var mountain_count := 22
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 20260529
-
-	var material := _build_background_mountain_material()
-	for i in mountain_count:
-		var base_angle := TAU * float(i) / float(mountain_count)
-		var angle_jitter := rng.randf_range(-0.08, 0.08)
-		var radius_jitter := rng.randf_range(-40.0, 60.0)
-		var angle := base_angle + angle_jitter
-		var radius := ring_radius + radius_jitter
-
-		var bottom_radius := rng.randf_range(28.0, 58.0)
-		var height := rng.randf_range(55.0, 115.0)
-		var mesh := CylinderMesh.new()
-		mesh.top_radius = 0.0
-		mesh.bottom_radius = bottom_radius
-		mesh.height = height
-		mesh.radial_segments = 6
-		mesh.rings = 1
-		mesh.material = material
-
-		var peak := MeshInstance3D.new()
-		peak.name = "Peak_%02d" % i
-		peak.mesh = mesh
-		peak.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		peak.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
-		# Sink the base ~20% into the ground so the silhouette starts flush with terrain.
-		var pos := Vector3(
-			center.x + cos(angle) * radius,
-			ground_y + height * 0.5 - height * 0.18,
-			center.z + sin(angle) * radius
-		)
-		peak.position = world.to_local(pos)
-		peak.rotate_y(rng.randf_range(0.0, TAU))
-		root.add_child(peak)
-
-
-static func _build_background_mountain_material() -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	# Cool, desaturated stone — fog (aerial_perspective ~0.55) shifts this toward
-	# the sky color at distance, producing the misty silhouette look.
-	material.albedo_color = Color(0.42, 0.50, 0.58)
-	material.roughness = 0.95
-	material.metallic = 0.0
-	material.metallic_specular = 0.05
-	material.cull_mode = BaseMaterial3D.CULL_BACK
-	return material
-
 
 static func _build_ocean_material() -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
