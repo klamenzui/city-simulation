@@ -28,7 +28,7 @@ func _ready() -> void:
 	_disable_legacy_sky_ui()
 	_connect_world_signals()
 	_sync_sky_rate()
-	_apply_cozy_environment_style()
+	#_apply_cozy_environment_style()
 	call_deferred("_sync_from_world_time", true)
 
 func _is_headless_runtime() -> bool:
