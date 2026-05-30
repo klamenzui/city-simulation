@@ -9,7 +9,7 @@
 [ext_resource type="ArrayMesh" path="res://Scenes/Plants/Plant_2.obj" id="7_iabif"]
 [ext_resource type="ArrayMesh" path="res://Scenes/Plants/Plant_5.obj" id="8_a2esc"]
 
-[sub_resource type="Curve3D" id="Curve3D_vlea7"]
+[sub_resource type="Curve3D" id="Curve3D_vdnhc"]
 closed = true
 _data = {
 "points": PackedVector3Array(0, 0, 0, 0, 0, 0, 58.06, 42, 9.41, 0, 0, 0, 0, 0, 0, 63.54, 42, 38.4, 0, 0, 0, 0, 0, 0, 53.63, 42, 55.79, 0, 0, 0, 0, 0, 0, 42.92, 42, 88, 0, 0, 0, 0, 0, 0, 10.51, 42, 78.36, 0, 0, 0, 0, 0, 0, -15.86, 42, 78.42, 0, 0, 0, 0, 0, 0, -36.16, 42, 63.39, 0, 0, 0, 0, 0, 0, -33.13, 42, 15.5, 0, 0, 0, 0, 0, 0, -37.43, 42, -6.17, 0, 0, 0, 0, 0, 0, -32.71, 42, -32, 0, 0, 0, 0, 0, 0, -20.73, 42, -55.04, 0, 0, 0, 0, 0, 0, -26.71, 42, -88.75, 0, 0, 0, 0, 0, 0, -7.81, 42, -97.9, 0, 0, 0, 0, 0, 0, 16.59, 42, -97.87, 0, 0, 0, 0, 0, 0, 38.45, 42, -78.18, 0, 0, 0, 0, 0, 0, 61.22, 42, -31.11),
@@ -17,7 +17,7 @@ _data = {
 }
 point_count = 16
 
-[sub_resource type="Curve3D" id="Curve3D_gr3rm"]
+[sub_resource type="Curve3D" id="Curve3D_ishpy"]
 closed = true
 _data = {
 "points": PackedVector3Array(0, 0, 0, 0, 0, 0, -19.4, 0, -0.15, 0, 0, 0, 0, 0, 0, -15.08, 0, 15, 0, 0, 0, 0, 0, 0, -17.64, 0, 46.51, 0, 0, 0, 0, 0, 0, -4.14, 0, 55.47, 0, 0, 0, 0, 0, 0, 10.39, 0, 53.95, 0, 0, 0, 0, 0, 0, 27.86, 0, 58.04, 0, 0, 0, 0, 0, 0, 33.87, 0, 37.39, 0, 0, 0, 0, 0, 0, 41.17, 0, 30.03, 0, 0, 0, 0, 0, 0, 38.84, 0, 9.48, 0, 0, 0, 0, 0, 0, 42.73, 0, -4.43, 0, 0, 0, 0, 0, 0, 40.51, 0, -17.68, 0, 0, 0, 0, 0, 0, 29.13, 0, -37.25, 0, 0, 0, 0, 0, 0, 14.61, 0, -57.23, 0, 0, 0, 0, 0, 0, 2.14, 0, -65.19, 0, 0, 0, 0, 0, 0, -6.72, 0, -58.6, 0, 0, 0, 0, 0, 0, -1.03, 0, -42, 0, 0, 0, 0, 0, 0, -4.15, 0, -28.78, 0, 0, 0, 0, 0, 0, -15.44, 0, -13.08),
@@ -25,40 +25,40 @@ _data = {
 }
 point_count = 18
 
-[sub_resource type="MultiMesh" id="MultiMesh_cfvbw"]
+[sub_resource type="MultiMesh" id="MultiMesh_yuhty"]
 transform_format = 1
 mesh = ExtResource("3_yuhty")
 
-[sub_resource type="MultiMesh" id="MultiMesh_12h7m"]
+[sub_resource type="MultiMesh" id="MultiMesh_vcxr0"]
 transform_format = 1
 mesh = ExtResource("6_fm14h")
 
-[sub_resource type="MultiMesh" id="MultiMesh_b0aka"]
+[sub_resource type="MultiMesh" id="MultiMesh_glbrs"]
 transform_format = 1
 mesh = ExtResource("7_iabif")
 
-[sub_resource type="MultiMesh" id="MultiMesh_yxtgt"]
+[sub_resource type="MultiMesh" id="MultiMesh_fm14h"]
 transform_format = 1
 mesh = ExtResource("8_a2esc")
 
-[node name="PalmsScatter" type="Path3D" unique_id=1833005509]
-curve = SubResource("Curve3D_vlea7")
+[node name="PalmsScatter" type="Path3D" unique_id=533426157]
+curve = SubResource("Curve3D_vdnhc")
 script = ExtResource("1_vdnhc")
 amount = 154
 seed = 202605261
 
-[node name="InnerExclude" type="Path3D" parent="." unique_id=407942562]
-curve = SubResource("Curve3D_gr3rm")
+[node name="InnerExclude" type="Path3D" parent="." unique_id=289557944]
+curve = SubResource("Curve3D_ishpy")
 script = ExtResource("2_ishpy")
 
-[node name="PalmTree2Item" type="MultiMeshInstance3D" parent="." unique_id=69509691]
+[node name="PalmTree2Item" type="MultiMeshInstance3D" parent="." unique_id=64392950]
 gi_mode = 0
 visibility_range_end = 180.0
-multimesh = SubResource("MultiMesh_cfvbw")
+multimesh = SubResource("MultiMesh_yuhty")
 script = ExtResource("4_vcxr0")
 percentage = 18.181818181818183
 
-[node name="DropOnGround" type="Node3D" parent="PalmTree2Item" unique_id=23887467]
+[node name="DropOnGround" type="Node3D" parent="PalmTree2Item" unique_id=420025588]
 script = ExtResource("5_glbrs")
 normal_influence = 0.0
 random_scale_type = 1
@@ -67,14 +67,14 @@ min_random_scale = 0.8
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="PalmTree3Item" type="MultiMeshInstance3D" parent="." unique_id=215628909]
+[node name="PalmTree3Item" type="MultiMeshInstance3D" parent="." unique_id=381850133]
 gi_mode = 0
 visibility_range_end = 180.0
-multimesh = SubResource("MultiMesh_12h7m")
+multimesh = SubResource("MultiMesh_vcxr0")
 script = ExtResource("4_vcxr0")
 percentage = 16.883116883116884
 
-[node name="DropOnGround" type="Node3D" parent="PalmTree3Item" unique_id=1888992249]
+[node name="DropOnGround" type="Node3D" parent="PalmTree3Item" unique_id=959038412]
 script = ExtResource("5_glbrs")
 normal_influence = 0.0
 random_scale_type = 1
@@ -83,14 +83,14 @@ min_random_scale = 0.8
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Plant2Item" type="MultiMeshInstance3D" parent="." unique_id=1688173639]
+[node name="Plant2Item" type="MultiMeshInstance3D" parent="." unique_id=1912260518]
 gi_mode = 0
 visibility_range_end = 180.0
-multimesh = SubResource("MultiMesh_b0aka")
+multimesh = SubResource("MultiMesh_glbrs")
 script = ExtResource("4_vcxr0")
 percentage = 32.467532467532465
 
-[node name="DropOnGround" type="Node3D" parent="Plant2Item" unique_id=970650964]
+[node name="DropOnGround" type="Node3D" parent="Plant2Item" unique_id=1440132551]
 script = ExtResource("5_glbrs")
 normal_influence = 0.0
 random_scale_type = 1
@@ -99,14 +99,14 @@ min_random_scale = 0.7
 randomize_rotation = true
 max_random_rotation = Vector3(0, 360, 0)
 
-[node name="Plant5Item" type="MultiMeshInstance3D" parent="." unique_id=1628960682]
+[node name="Plant5Item" type="MultiMeshInstance3D" parent="." unique_id=1777461706]
 gi_mode = 0
 visibility_range_end = 180.0
-multimesh = SubResource("MultiMesh_yxtgt")
+multimesh = SubResource("MultiMesh_fm14h")
 script = ExtResource("4_vcxr0")
 percentage = 32.467532467532465
 
-[node name="DropOnGround" type="Node3D" parent="Plant5Item" unique_id=1393787341]
+[node name="DropOnGround" type="Node3D" parent="Plant5Item" unique_id=1724264429]
 script = ExtResource("5_glbrs")
 normal_influence = 0.0
 random_scale_type = 1
