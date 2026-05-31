@@ -25,6 +25,7 @@ const DeliveryTruckScene := preload("res://Entities/Transport/Truck_NormalTraill
 @export var crop_growth_days: int = 2
 @export var harvest_duration_minutes: int = 45
 @export var storage_capacity: int = 300
+@export var initial_stored_food: int = 0
 @export var product_commodity: String = "food"
 @export var product_display_name: String = "food"
 @export var supermarket_delivery_item: String = "grocery_bundle"
@@ -66,6 +67,7 @@ func _ready() -> void:
 	crop_growth_days = maxi(int(settings.get("crop_growth_days", crop_growth_days)), 1)
 	harvest_duration_minutes = maxi(int(settings.get("harvest_duration_minutes", harvest_duration_minutes)), 1)
 	storage_capacity = maxi(int(settings.get("storage_capacity", storage_capacity)), 1)
+	initial_stored_food = clampi(int(settings.get("initial_stored_food", initial_stored_food)), 0, storage_capacity)
 	product_commodity = str(settings.get("product_commodity", product_commodity)).strip_edges()
 	product_display_name = str(settings.get("product_display_name", product_display_name)).strip_edges()
 	supermarket_delivery_item = str(settings.get("supermarket_delivery_item", supermarket_delivery_item)).strip_edges()
@@ -76,6 +78,8 @@ func _ready() -> void:
 	market_export_enabled = bool(settings.get("market_export_enabled", market_export_enabled))
 	market_export_limit_per_day = maxi(int(settings.get("market_export_limit_per_day", market_export_limit_per_day)), 0)
 	restock_enabled = false
+	if initial_stored_food > 0 and stored_food <= 0:
+		stored_food = initial_stored_food
 	_ensure_product_inventory_registered()
 	_collect_crop_visual_nodes()
 	_refresh_crop_visuals(true)

@@ -49,6 +49,7 @@ func _initialize() -> void:
 		_check_scene_contract(farm, scene_path, errors)
 		_check_crop_multimeshes(farm, scene_path, errors)
 		_check_variant_nodes(farm, scene_path, errors)
+		await _check_first_day_delivery_seed(farm, scene_path, errors)
 		if scene_path != "res://Scenes/Farm_AnimalRanch.tscn":
 			await _check_daily_production(farm, errors)
 		farm.free()
@@ -146,6 +147,31 @@ func _check_variant_nodes(farm: Node, scene_path: String, errors: Array[String])
 			errors.append("Farm_Windmill should produce bread, found %s." % windmill_farm.get_product_commodity())
 		if windmill_farm.get_supermarket_delivery_item() != "bread":
 			errors.append("Farm_Windmill should deliver bread, found %s." % windmill_farm.get_supermarket_delivery_item())
+
+
+func _check_first_day_delivery_seed(farm: Farm, scene_path: String, errors: Array[String]) -> void:
+	var market := Supermarket.new()
+	root.add_child(market)
+	await process_frame
+
+	var product_key := farm.get_product_commodity()
+	var delivery_item := farm.get_supermarket_delivery_item()
+	var farm_stock := farm.get_product_inventory_amount(product_key)
+	var market_need := market.get_restock_need(delivery_item)
+	var minimum_delivery := mini(farm.direct_delivery_batch_per_supermarket, market_need)
+	if farm.initial_stored_food <= 0:
+		errors.append("%s should configure initial_stored_food for first-day deliveries." % scene_path)
+	if farm_stock < minimum_delivery:
+		errors.append("%s should start with enough %s inventory for one first-day delivery; stock=%d need=%d." % [
+			scene_path,
+			product_key,
+			farm_stock,
+			minimum_delivery,
+		])
+	if market_need <= 0:
+		errors.append("Supermarket should start below %s restock target so first-day delivery has demand." % delivery_item)
+
+	market.free()
 
 
 func _check_daily_production(farm: Farm, errors: Array[String]) -> void:

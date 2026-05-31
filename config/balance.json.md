@@ -565,13 +565,13 @@ Keys sind unten genannt.
 | `restaurant` | capacity 20, jobs 5, 8–22 Uhr; `meal_price` 15; Stock 48, Restock-Ziel 70, Batch 30. |
 | `cafe` | capacity 18, jobs 3, 7–20 Uhr; `drink_price` 8; Drink-Stock 45, Ziel 70, Batch 26; `snack_price` 9; Snack-Stock 36, Ziel 60, Batch 22. |
 | `shop` | capacity 25, jobs 4, 9–20 Uhr; `item_price` 18; `fun_gain` 5.0; Kleidung-Stock 34, Ziel 56, Batch 20. |
-| `supermarket` | capacity 30, jobs 6, 7–22 Uhr; `grocery_price` 10, `groceries_per_purchase` 3, `clothing_price` 24, `bread_price` 7; Lebensmittel-Stock 60, Ziel 90, Batch 35; Brot-Stock 12, Ziel 36, Batch 18. |
+| `supermarket` | capacity 30, jobs 6, 7–22 Uhr; `grocery_price` 10, `groceries_per_purchase` 3, `clothing_price` 24, `bread_price` 7; Lebensmittel-Stock 12, Ziel 90, Batch 35; Brot-Stock 12, Ziel 36, Batch 18. |
 | `cinema` | capacity 35, jobs 5, 12–23 Uhr; `ticket_price` 14. |
 | `city_hall` | capacity 15, jobs 5, 6–19 Uhr. |
 | `hospital` | capacity 20, jobs 5, 0–24 Uhr; `patient_capacity` 20; `treatment_capacity_per_hour` 6; `service_quality` 1.0; `treatment_price` 25; `emergency_treatment_price` 60; `daily_operating_cost` 250; `patient_wait_timeout_minutes` 180; `charity_care_city_subsidy_ratio` 1.0; `citizen_payment_reserve` 35. |
 | `university` | capacity 40, jobs 8, 7–21 Uhr; `base_operating_cost` 110; **`education_gain` 1** (Bildungsstufen pro Studien-Session). |
 | `park` | capacity 40, jobs 2, 6–23 Uhr; `base_operating_cost` 32. Navigations-Tuning: `navigation_blocker_margin` 1.35, `entrance_clearance_width` 2.6, `entrance_clearance_depth` 1.9, `entrance_trigger_radius` 0.9, `entrance_trigger_outset` 0.8. |
-| `farm` | capacity 8, jobs 6, 5–19 Uhr; `base_food_output_per_day` 60, `production_cost_per_unit` 1; Crops grow for 2 days, then workers harvest into 300 product inventory. `Fahrer` workers deliver stored products directly to supermarkets (`direct_delivery_batch_per_supermarket` 35, unload 10 min, price multiplier 0.85); remaining product stock can fall back to market export. |
+| `farm` | capacity 8, jobs 6, 5–19 Uhr; `base_food_output_per_day` 60, `production_cost_per_unit` 1; Crops grow for 2 days, then workers harvest into 300 product inventory. New farms start with `initial_stored_food` 80 so first-day supermarket deliveries can happen before the first harvest. `Fahrer` workers deliver stored products directly to supermarkets (`direct_delivery_batch_per_supermarket` 35, unload 10 min, price multiplier 0.85); remaining product stock can fall back to market export. |
 | `factory` | capacity 10, jobs 8, 6–21 Uhr; `clothes_output_per_day` 25, `entertainment_output_per_day` 40, `production_cost_per_unit` 2. |
 | `gas_station` | capacity 14, jobs 4, 6–23 Uhr; `fuel_price` 7; Stock 90, Ziel 140, Batch 50; `base_vehicle_sales_per_day` 18, `citizen_vehicle_demand_factor` 0.35, `fuel_units_per_vehicle` 2, `base_operating_cost` 36. |
 
