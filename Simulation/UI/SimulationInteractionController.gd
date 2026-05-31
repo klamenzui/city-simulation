@@ -24,6 +24,7 @@ var _player_home_marker: Label3D = null
 var _player_home_marker_building: Building = null
 var _last_network_toast_signature: String = ""
 var _player_inventory_mode: String = ""
+var _last_player_context_building: Building = null
 
 func setup(owner_ref: Node, world_ref: World, multiplayer_session_ref = null) -> void:
 	owner_node = owner_ref
@@ -60,6 +61,7 @@ func get_debug_panel() -> DebugPanel:
 
 func update(delta: float) -> void:
 	_refresh_player_home_marker()
+	_sync_player_building_context_from_location()
 	_poll_network_interaction_toast()
 	# The inventory window has its own visibility and survives the debug panel
 	# being hidden, so refresh it independently before the early-out below.
@@ -943,6 +945,7 @@ func _try_player_exit_building() -> bool:
 func _show_player_building_context(player: Citizen, building: Building) -> void:
 	if player == null:
 		return
+	_last_player_context_building = building
 	if selection_state_controller != null:
 		var selected_player: Citizen = null
 		if selection_state_controller.has_method("get_selected_citizen"):
@@ -960,12 +963,34 @@ func _show_player_building_context(player: Citizen, building: Building) -> void:
 	_refresh_player_inventory_ui()
 
 func _hide_building_specific_player_context(player: Citizen) -> void:
+	_last_player_context_building = null
 	if _player_inventory_mode == "shop":
 		_player_inventory_mode = ""
 	if player != null:
 		_refresh_selected_player_details(player)
 	_refresh_player_action_ui()
 	_refresh_player_inventory_ui()
+
+func _sync_player_building_context_from_location() -> void:
+	var player := _get_player_citizen()
+	if player == null:
+		_last_player_context_building = null
+		return
+	var building: Building = null
+	if player.has_method("_get_player_current_building"):
+		building = player._get_player_current_building()
+	elif player.current_location != null and player.current_location is Building:
+		building = player.current_location as Building
+	if building != null and not is_instance_valid(building):
+		building = null
+	var last_valid := _last_player_context_building != null and is_instance_valid(_last_player_context_building)
+	if building == null:
+		if last_valid or _player_inventory_mode == "shop":
+			_hide_building_specific_player_context(player)
+		return
+	if last_valid and _last_player_context_building == building:
+		return
+	_show_player_building_context(player, building)
 
 func _find_nearest_enterable_vehicle(origin: Vector3, max_distance: float) -> Node:
 	var best_vehicle: Node = null

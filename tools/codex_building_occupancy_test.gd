@@ -1889,7 +1889,9 @@ func _test_player_home_move_quit_and_info() -> String:
 func _test_multiplayer_controller_routes_player_actions_as_commands() -> String:
 	var world: World = _new_world()
 	var home: ResidentialBuilding = _new_residential("NetworkCommandHome", Vector3.ZERO, 1)
+	var shop: Shop = _new_shop("NetworkCommandShop", Vector3(6.0, 0.0, 0.0))
 	world.register_building(home)
+	world.register_building(shop)
 
 	var player: Citizen = _new_citizen("Network Command Player")
 	world.register_citizen(player)
@@ -1932,6 +1934,18 @@ func _test_multiplayer_controller_routes_player_actions_as_commands() -> String:
 	var exit_action := session.requested_player_actions[1] if session.requested_player_actions.size() > 1 else ""
 	_expect_eq(exit_action, "exit_building",
 			"network T-exit should request an authoritative exit action")
+
+	world.time.minutes_total = 10 * 60
+	_expect(player.player_enter_building(shop, world), "network snapshot should be able to put the local player in a shop")
+	interaction.update(0.1)
+	_expect_eq(selection.get_selected_citizen(), player,
+			"network/snapshot shop entry should select the player for context details")
+	_expect_eq(interaction._player_inventory_mode, "shop",
+			"network/snapshot shop entry should open the shop inventory mode")
+	interaction._handle_player_inventory_panel_action("inventory_close", player)
+	interaction.update(0.1)
+	_expect_eq(interaction._player_inventory_mode, "",
+			"closing shop inventory should stay closed while the player remains in the same shop")
 
 	_free_world(world)
 	return _current_error
