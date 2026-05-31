@@ -1,0 +1,14 @@
+{
+	"food": {
+		"name": "Food supplies",
+		"category": "food",
+		"stack_size": 1,
+		"max_stack_size": 999
+	},
+	"clothing": {
+		"name": "Clothing",
+		"category": "clothing",
+		"stack_size": 1,
+		"max_stack_size": 99
+	}
+}

@@ -274,6 +274,14 @@ func _build_player_slot_card(slot: Dictionary) -> Control:
 	var count_color := UiThemeScript.TEXT_PRIMARY if count > 0 else UiThemeScript.TEXT_MUTED
 	count_label.add_theme_color_override("font_color", count_color)
 	vbox.add_child(count_label)
+	if slot.has("home_count"):
+		var home_count := int(slot.get("home_count", 0))
+		var home_label := Label.new()
+		home_label.text = LocaleServiceScript.t("inventory.home") % home_count
+		home_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		home_label.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+		home_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+		vbox.add_child(home_label)
 	return card
 
 

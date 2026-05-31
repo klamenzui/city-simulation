@@ -570,7 +570,7 @@ func _offline_player_action_toast_message(action_id: String, accepted: bool, pla
 	if not notice.is_empty():
 		return notice
 	match action_id:
-		"work", "eat", "sleep", "study", "relax", "socialize", "watch_cinema", "treat":
+		"work", "eat", "eat_inventory", "sleep", "study", "relax", "socialize", "watch_cinema", "treat":
 			return LocaleServiceScript.t("interaction.action_started") % label
 		"buy_shop_item", "buy_groceries":
 			return LocaleServiceScript.t("interaction.action_bought") % label
@@ -649,6 +649,8 @@ func handle_debug_panel_player_action_pressed(action_id: String) -> void:
 			accepted = player.player_work(world)
 		"eat":
 			accepted = player.player_eat(world)
+		"eat_inventory":
+			accepted = player.player_eat_from_inventory(world)
 		"sleep":
 			accepted = player.player_sleep(world)
 		"study":
@@ -665,6 +667,8 @@ func handle_debug_panel_player_action_pressed(action_id: String) -> void:
 			accepted = player.player_buy_shop_item(world)
 		"buy_groceries":
 			accepted = player.player_buy_groceries(world)
+		"deposit_home_inventory":
+			accepted = player.player_deposit_inventory_to_home(world)
 		"buy_building":
 			accepted = player.player_buy_current_building(world)
 		"quit_job":
@@ -894,6 +898,7 @@ func _try_player_enter_building() -> bool:
 	var enter_message := LocaleServiceScript.t("interaction.enter_failed")
 	if entered:
 		enter_message = LocaleServiceScript.t("interaction.enter_ok") % nearest.get_display_name()
+		_show_player_building_context(player, nearest)
 	_show_toast(enter_message, "success" if entered else "warning")
 	return entered
 
@@ -930,8 +935,37 @@ func _try_player_exit_building() -> bool:
 			_show_toast(LocaleServiceScript.t("interaction.request_exit"), "info", 1.8)
 		return requested
 	var exited := player.player_exit_building(world)
+	if exited:
+		_hide_building_specific_player_context(player)
 	_show_toast(LocaleServiceScript.t("interaction.building_left") if exited else LocaleServiceScript.t("interaction.exit_failed"), "success" if exited else "warning")
 	return exited
+
+func _show_player_building_context(player: Citizen, building: Building) -> void:
+	if player == null:
+		return
+	if selection_state_controller != null:
+		var selected_player: Citizen = null
+		if selection_state_controller.has_method("get_selected_citizen"):
+			selected_player = selection_state_controller.get_selected_citizen()
+		if selected_player != player and selection_state_controller.has_method("handle_citizen_clicked"):
+			selection_state_controller.handle_citizen_clicked(player)
+		elif debug_panel != null:
+			debug_panel.visible = true
+	if building is Shop:
+		_player_inventory_mode = "shop"
+	elif _player_inventory_mode == "shop":
+		_player_inventory_mode = ""
+	_refresh_selected_player_details(player)
+	_refresh_player_action_ui()
+	_refresh_player_inventory_ui()
+
+func _hide_building_specific_player_context(player: Citizen) -> void:
+	if _player_inventory_mode == "shop":
+		_player_inventory_mode = ""
+	if player != null:
+		_refresh_selected_player_details(player)
+	_refresh_player_action_ui()
+	_refresh_player_inventory_ui()
 
 func _find_nearest_enterable_vehicle(origin: Vector3, max_distance: float) -> Node:
 	var best_vehicle: Node = null

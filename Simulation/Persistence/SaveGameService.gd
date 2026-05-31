@@ -403,6 +403,8 @@ static func _apply_citizen_state(citizen: Citizen, data: Dictionary, building_lo
 		needs.health = float(data.get("health", needs.health))
 	if data.has("home_food_stock"):
 		citizen.home_food_stock = int(data.get("home_food_stock", citizen.home_food_stock))
+	if data.get("carried_inventory", null) is Dictionary:
+		citizen.apply_carried_inventory_snapshot(data.get("carried_inventory", {}) as Dictionary)
 	if data.has("clothing_items"):
 		citizen.clothing_items = int(data.get("clothing_items", citizen.clothing_items))
 	if data.has("education_level"):

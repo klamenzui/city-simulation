@@ -165,6 +165,7 @@
 		"apply_work": "Подати заявку",
 		"work": "Працювати",
 		"eat": "Їсти",
+		"eat_inventory": "Їсти з інвентарю",
 		"sleep": "Спати",
 		"study": "Навчатися",
 		"relax": "Відпочити",
@@ -176,6 +177,7 @@
 		"inventory_close": "Закрити інвентар",
 		"buy_shop_item": "Купити одяг",
 		"buy_groceries": "Купити продукти",
+		"deposit_home_inventory": "Покласти вдома",
 		"buy_building": "Купити будівлю",
 		"quit_job": "Звільнитися",
 		"training": "До університету",
@@ -244,7 +246,9 @@
 		"purchase_not_possible": "Покупка неможлива.",
 		"no_shop_active": "Немає активного магазину.",
 		"shop_closed": "Магазин закритий.",
-		"sold_out": "Розпродано."
+		"sold_out": "Розпродано.",
+		"no_carried_inventory": "Ваш інвентар порожній.",
+		"no_carried_food": "В інвентарі немає запасів."
 	},
 
 	"player_notice": {
@@ -283,6 +287,10 @@
 		"groceries_sold_out": "Продукти розпродано.",
 		"groceries_failed_at": "Купівля продуктів у %s не вдалася.",
 		"bought_groceries": "Куплено продуктів: %d за %d EUR.",
+		"no_carried_food": "В інвентарі немає запасів.",
+		"deposit_not_home": "Ви не вдома.",
+		"deposit_empty": "Ваш інвентар порожній.",
+		"deposited_inventory": "Покладено вдома предметів: %d.",
 		"building_not_buyable": "%s не можна купити.",
 		"building_owned_already": "%s вже належить вам.",
 		"building_owned_by": "%s вже належить %s.",
@@ -300,6 +308,7 @@
 		"empty": "Немає записів.",
 		"stock": "Склад %d",
 		"owned": "У вас: %d",
+		"home": "Вдома: %d",
 		"buy": "Купити"
 	},
 
@@ -311,7 +320,8 @@
 			"maintenance": "Обслуговування і витрати",
 			"healthcare": "Охорона здоров'я",
 			"needs": "Потреби",
-			"activity": "Активність"
+			"activity": "Активність",
+			"current_building": "Поточна будівля"
 		},
 		"label": {
 			"name": "Ім'я",
@@ -353,6 +363,8 @@
 			"company": "Компанія",
 			"owned": "Власність",
 			"food_stock": "Запаси",
+			"stock": "Склад",
+			"prices": "Ціни",
 			"clothing": "Одяг",
 			"patients": "Пацієнти",
 			"queue": "Черга",

@@ -165,6 +165,7 @@
 		"apply_work": "Bewerben",
 		"work": "Arbeiten",
 		"eat": "Essen",
+		"eat_inventory": "Aus Inventar essen",
 		"sleep": "Schlafen",
 		"study": "Studieren",
 		"relax": "Entspannen",
@@ -176,6 +177,7 @@
 		"inventory_close": "Inventar schließen",
 		"buy_shop_item": "Kleidung kaufen",
 		"buy_groceries": "Vorräte kaufen",
+		"deposit_home_inventory": "Zuhause einlagern",
 		"buy_building": "Gebäude kaufen",
 		"quit_job": "Job kündigen",
 		"training": "Zur Uni",
@@ -244,7 +246,9 @@
 		"purchase_not_possible": "Kauf nicht möglich.",
 		"no_shop_active": "Kein Shop aktiv.",
 		"shop_closed": "Shop geschlossen.",
-		"sold_out": "Ausverkauft."
+		"sold_out": "Ausverkauft.",
+		"no_carried_inventory": "Dein Inventar ist leer.",
+		"no_carried_food": "Keine Vorräte im Inventar."
 	},
 
 	"player_notice": {
@@ -283,6 +287,10 @@
 		"groceries_sold_out": "Vorräte ausverkauft.",
 		"groceries_failed_at": "Vorratskauf bei %s fehlgeschlagen.",
 		"bought_groceries": "%d Vorräte für %d EUR gekauft.",
+		"no_carried_food": "Keine Vorräte im Inventar.",
+		"deposit_not_home": "Du bist nicht zuhause.",
+		"deposit_empty": "Dein Inventar ist leer.",
+		"deposited_inventory": "%d Gegenstände zuhause eingelagert.",
 		"building_not_buyable": "%s ist nicht kaufbar.",
 		"building_owned_already": "%s gehört dir bereits.",
 		"building_owned_by": "%s gehört bereits %s.",
@@ -300,6 +308,7 @@
 		"empty": "Keine Einträge.",
 		"stock": "Lager %d",
 		"owned": "Du: %d",
+		"home": "Zuhause: %d",
 		"buy": "Kaufen"
 	},
 
@@ -311,7 +320,8 @@
 			"maintenance": "Wartung & Kosten",
 			"healthcare": "Gesundheitsversorgung",
 			"needs": "Bedürfnisse",
-			"activity": "Aktivität"
+			"activity": "Aktivität",
+			"current_building": "Aktuelles Gebäude"
 		},
 		"label": {
 			"name": "Name",
@@ -353,6 +363,8 @@
 			"company": "Firma",
 			"owned": "Besitz",
 			"food_stock": "Vorräte",
+			"stock": "Lager",
+			"prices": "Preise",
 			"clothing": "Kleidung",
 			"patients": "Patienten",
 			"queue": "Warteschlange",

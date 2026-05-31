@@ -22,6 +22,13 @@ static func build(citizen: Citizen, world: Node = null) -> Dictionary:
 	if owned_count > 0:
 		status_lines.append(LocaleServiceScript.t("player.status_owned_buildings") % owned_count)
 	buttons.append(_make_button("inventory", LocaleServiceScript.t("action.inventory"), true))
+	if citizen.get_carried_inventory_count("food") > 0:
+		buttons.append(_make_button(
+			"eat_inventory",
+			LocaleServiceScript.t("action.eat_inventory"),
+			not action_running,
+			LocaleServiceScript.t("player_disabled.action_running")
+		))
 	if action_running:
 		status_lines.append(LocaleServiceScript.t("player.status_active") % citizen._active_player_action_label())
 		buttons.append(_make_button("stop", LocaleServiceScript.t("action.stop"), true))
@@ -69,7 +76,10 @@ static func _append_location_actions(
 				_buy_building_disabled_reason(citizen, location, world, action_running)
 			))
 	if citizen._is_player_home_location(location):
-		buttons.append(_make_button("eat", LocaleServiceScript.t("action.eat"), citizen.home_food_stock > 0, LocaleServiceScript.t("player_disabled.no_home_food")))
+		var has_home_food := citizen.get_home_inventory_count("food") > 0
+		var has_carried_items := citizen.get_carried_inventory_total() > 0
+		buttons.append(_make_button("deposit_home_inventory", LocaleServiceScript.t("action.deposit_home_inventory"), has_carried_items, LocaleServiceScript.t("player_disabled.no_carried_inventory")))
+		buttons.append(_make_button("eat", LocaleServiceScript.t("action.eat"), has_home_food, LocaleServiceScript.t("player_disabled.no_home_food")))
 		buttons.append(_make_button("sleep", LocaleServiceScript.t("action.sleep"), true))
 		buttons.append(_make_button("relax", LocaleServiceScript.t("action.relax"), true))
 		buttons.append(_make_button("quit_home", LocaleServiceScript.t("action.quit_home"), not action_running, LocaleServiceScript.t("player_disabled.action_running")))

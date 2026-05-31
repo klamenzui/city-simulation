@@ -18,6 +18,7 @@ const ActionScript = preload("res://Actions/Action.gd")
 const WorkActionScript = preload("res://Actions/WorkAction.gd")
 const EatAtRestaurantActionScript = preload("res://Actions/EatAtRestaurantAction.gd")
 const EatAtCafeActionScript = preload("res://Actions/EatAtCafeAction.gd")
+const EatFromInventoryActionScript = preload("res://Actions/EatFromInventoryAction.gd")
 const StudyAtUniversityActionScript = preload("res://Actions/StudyAtUniversityAction.gd")
 const RelaxAtHomeActionScript = preload("res://Actions/RelaxAtHomeAction.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
@@ -41,6 +42,7 @@ class MockSelectionStateController:
 	var player_avatar: Citizen = null
 	var controlled_citizen: Citizen = null
 	var camera_player_target: Citizen = null
+	var selected_citizen: Citizen = null
 	var player_control_active: bool = false
 
 	func get_player_avatar() -> Citizen:
@@ -51,6 +53,12 @@ class MockSelectionStateController:
 
 	func get_camera_player_target() -> Citizen:
 		return camera_player_target if camera_player_target != null and is_instance_valid(camera_player_target) else null
+
+	func get_selected_citizen() -> Citizen:
+		return selected_citizen if selected_citizen != null and is_instance_valid(selected_citizen) else null
+
+	func handle_citizen_clicked(citizen: Citizen) -> void:
+		selected_citizen = citizen
 
 	func is_player_control_active() -> bool:
 		return player_control_active
@@ -1464,7 +1472,9 @@ func _test_pause_uses_explicit_action_not_ui_accept() -> String:
 func _test_offline_keyboard_player_building_input_uses_camera_target() -> String:
 	var world: World = _new_world()
 	var home: ResidentialBuilding = _new_residential("OfflineInputHome", Vector3.ZERO, 1)
+	var shop: Shop = _new_shop("OfflineInputShop", Vector3(8.0, 0.0, 0.0))
 	world.register_building(home)
+	world.register_building(shop)
 
 	var player: Citizen = _new_citizen("Offline Keyboard Player")
 	player.keyboard_control_enabled = true
@@ -1498,6 +1508,19 @@ func _test_offline_keyboard_player_building_input_uses_camera_target() -> String
 	_expect(interaction.handle_input(exit_event), "T-exit should be handled for the offline keyboard camera target")
 	_expect(not player.is_inside_building(), "offline keyboard player should exit the building")
 	_expect(home.tenants.has(player), "offline keyboard player should keep their home slot on exit")
+	_expect_eq(interaction._player_inventory_mode, "", "leaving a building should close building-specific shop inventory mode")
+
+	world.time.minutes_total = 10 * 60
+	player.global_position = shop.get_entrance_pos()
+	_expect(interaction.handle_input(enter_event), "R-enter should be handled for a nearby shop")
+	_expect(player.is_inside_building(), "offline keyboard player should enter the shop")
+	_expect_eq(selection.get_selected_citizen(), player, "entering a building should select the player for context details")
+	_expect_eq(interaction._player_inventory_mode, "shop", "entering a shop should open the shop inventory mode")
+	var shop_state := player.get_player_inventory_ui_state(world, "shop")
+	_expect(_player_ui_button_enabled(shop_state, "buy_shop_item"), "shop entry should expose shop inventory buy actions")
+	var detail_text := JSON.stringify(player.get_info_sections(world))
+	_expect(detail_text.contains("OfflineInputShop"), "player details should include the current building after entry")
+	_expect(detail_text.contains(LocaleServiceScript.t("details.label.stock")), "player details should show current shop stock")
 
 	_free_world(world)
 	return _current_error
@@ -1748,12 +1771,40 @@ func _test_player_action_buttons_and_manual_actions() -> String:
 	var grocery_price := market.get_grocery_price(world)
 	var grocery_stock_before := market.get_stock("grocery_bundle")
 	var wallet_before_grocery := player.wallet.balance
-	var food_before := player.home_food_stock
+	var carried_food_before := player.get_carried_inventory_count("food")
 	_expect(player.player_buy_groceries(world), "player should buy groceries from the supermarket")
-	_expect_eq(player.home_food_stock, food_before + market.groceries_per_purchase, "grocery purchase should add home food stock")
+	_expect_eq(player.get_carried_inventory_count("food"), carried_food_before + market.groceries_per_purchase,
+			"grocery purchase should add food to carried player inventory")
 	_expect_eq(player.wallet.balance, wallet_before_grocery - grocery_price, "grocery purchase should charge the player")
 	_expect_eq(market.get_stock("grocery_bundle"), grocery_stock_before - 1, "supermarket grocery stock should decrease")
+	var carried_food_after_purchase := player.get_carried_inventory_count("food")
+	player.needs.hunger = 85.0
+	var hunger_before_inventory_food := player.needs.hunger
+	var inventory_action_state := player.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(inventory_action_state, "eat_inventory"),
+			"player UI should expose eating carried food when inventory has supplies")
+	_expect(player.player_eat_from_inventory(world), "player should eat directly from carried inventory")
+	_expect(player.current_action is EatFromInventoryActionScript, "inventory eating should use EatFromInventoryAction")
+	_expect_eq(player.get_carried_inventory_count("food"), carried_food_after_purchase - 1,
+			"eating from inventory should consume one carried food item")
+	player._agent.sim_tick(player, world)
+	_expect(player.needs.hunger < hunger_before_inventory_food,
+			"eating from inventory should reduce player hunger")
+	player.cancel_player_action(world)
 	_expect(player.player_exit_building(world), "player should leave the market before park actions")
+
+	_expect(player.player_enter_building(home, world), "player should enter home to store carried inventory")
+	var carried_before_deposit := player.get_carried_inventory_count("food")
+	var home_food_before_deposit := home.get_inventory_count("food")
+	var home_action_state := player.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(home_action_state, "deposit_home_inventory"),
+			"home UI should expose depositing carried inventory")
+	_expect(player.player_deposit_inventory_to_home(world), "player should deposit carried inventory at home")
+	_expect_eq(player.get_carried_inventory_count("food"), 0,
+			"depositing at home should clear carried food")
+	_expect_eq(home.get_inventory_count("food"), home_food_before_deposit + carried_before_deposit,
+			"depositing at home should add food to home building inventory")
+	_expect(player.player_exit_building(world), "player should leave home before park actions")
 
 	var park: Park = _new_park("Player Social Park")
 	world.register_building(park)
@@ -1966,6 +2017,8 @@ func _test_network_snapshot_rebuilds_player_work_and_home_ui() -> String:
 	_expect(player.player_work(world), "snapshot player should start work")
 	player.work_minutes_today = 45
 	player.clothing_items = 2
+	player.add_carried_inventory_item("food", 4)
+	home.add_inventory_item("food", 5)
 	workplace.citizen_owner = player
 	workplace.owner_display_name = player.citizen_name
 
@@ -1981,6 +2034,8 @@ func _test_network_snapshot_rebuilds_player_work_and_home_ui() -> String:
 	WorldSnapshotSerializerScript.apply_snapshot_to_world(world, _harness_root, snapshot, building_lookup)
 	_expect_eq(workplace.citizen_owner, player,
 			"world snapshot should restore commercial building ownership")
+	_expect_eq(home.get_inventory_count("food"), 5,
+			"world snapshot should restore residential building inventory")
 
 	var replica: Citizen = _new_citizen("Snapshot Replica")
 	replica.apply_network_snapshot(player_entry, building_lookup)
@@ -1992,6 +2047,8 @@ func _test_network_snapshot_rebuilds_player_work_and_home_ui() -> String:
 			"replica snapshot should restore worked minutes")
 	_expect_eq(replica.clothing_items, 2,
 			"replica snapshot should restore player clothing inventory")
+	_expect_eq(replica.get_carried_inventory_count("food"), 4,
+			"replica snapshot should restore carried player food inventory")
 	_expect(_player_ui_button_present(ui_state, "work"),
 			"replica UI should show Arbeiten after accepted job snapshot")
 	_expect(not _player_ui_button_present(ui_state, "apply_work"),

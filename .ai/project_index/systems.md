@@ -16,6 +16,7 @@ Legacy/resource-style action classes for citizen behaviors.
 | Actions/EatAtCafeAction.gd | EatAtCafeAction | Action |
 | Actions/EatAtHomeAction.gd | EatAtHomeAction | Action |
 | Actions/EatAtRestaurantAction.gd | EatAtRestaurantAction | Action |
+| Actions/EatFromInventoryAction.gd | EatFromInventoryAction | Action |
 | Actions/GoToBenchAction.gd | GoToBenchAction | Action |
 | Actions/GoToBuildingAction.gd | GoToBuildingAction | Action |
 | Actions/Needs.gd | Needs | Resource |
@@ -187,7 +188,9 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_forest_multimesh_scene_probe.gd | - | SceneTree |
 | tools/codex_game_smoke_test.gd | - | SceneTree |
 | tools/codex_generate_forest_scene.gd | - | SceneTree |
+| tools/codex_generate_forest_yamms.gd | - | SceneTree |
 | tools/codex_goal_cooldown_test.gd | - | SceneTree |
+| tools/codex_inventory_adapter_test.gd | - | SceneTree |
 | tools/codex_live_economy_food_test.gd | - | SceneTree |
 | tools/codex_live_sim_probe.gd | - | SceneTree |
 | tools/codex_local_grid_topology_test.gd | - | SceneTree |
@@ -204,5 +207,3 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_runtime_lod_conversation_test.gd | - | SceneTree, RefCounted, RefCounted |
 | tools/codex_savegame_roundtrip_probe.gd | - | SceneTree |
 | tools/codex_scan_diagnose_test.gd | - | SceneTree |
-| tools/codex_scene_warning_probe.gd | - | SceneTree |
-| tools/codex_selection_hit_test.gd | - | SceneTree |

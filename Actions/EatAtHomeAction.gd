@@ -25,10 +25,15 @@ func start(world, citizen) -> void:
 	super.start(world, citizen)
 	_ate_meal = false
 	remaining_minutes = _max_meal_min
-	if citizen.home_food_stock <= 0:
+	var consumed := 0
+	if citizen.has_method("remove_home_inventory_item"):
+		consumed = int(citizen.remove_home_inventory_item("food", 1))
+	elif citizen.home_food_stock > 0:
+		citizen.home_food_stock -= 1
+		consumed = 1
+	if consumed <= 0:
 		finished = true
 		return
-	citizen.home_food_stock -= 1
 	_ate_meal = true
 
 func get_needs_modifier(world, citizen) -> Dictionary:

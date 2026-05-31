@@ -1,8 +1,11 @@
 ﻿extends Building
 class_name ResidentialBuilding
 
+const CityInventoryAdapterScript = preload("res://Simulation/Inventory/CityInventoryAdapter.gd")
+
 @export var rent_per_day: int = 50
 var tenants: Array[Citizen] = []
+var inventory: Dictionary = {}
 
 func _ready() -> void:
 	super._ready()
@@ -31,6 +34,23 @@ func remove_tenant(c: Citizen) -> void:
 		return
 	tenants.erase(c)
 
+func get_inventory_count(item_id: String) -> int:
+	return CityInventoryAdapterScript.get_count(inventory, item_id)
+
+func add_inventory_item(item_id: String, amount: int) -> int:
+	return CityInventoryAdapterScript.add_count(inventory, item_id, amount)
+
+func remove_inventory_item(item_id: String, amount: int) -> int:
+	return CityInventoryAdapterScript.remove_count(inventory, item_id, amount)
+
+func get_inventory_snapshot() -> Dictionary:
+	return CityInventoryAdapterScript.duplicate_counts(inventory)
+
+func apply_inventory_snapshot(data: Dictionary) -> void:
+	inventory.clear()
+	for key in data.keys():
+		CityInventoryAdapterScript.set_count(inventory, str(key), int(data.get(key, 0)))
+
 func charge_rent(world: World) -> void:
 	for c in tenants:
 		if c == null:
@@ -42,7 +62,16 @@ func charge_rent(world: World) -> void:
 			record_income(collected)
 
 func _get_extra_info(_world = null) -> Dictionary:
-	return {
+	var info := {
 		"Tenants": "%d / %d" % [tenants.size(), max(capacity, 0)],
 		"Rent/day": "%d €" % rent_per_day,
 	}
+	var inventory_parts: PackedStringArray = []
+	for key in inventory.keys():
+		var item_id := str(key)
+		var amount := get_inventory_count(item_id)
+		if amount > 0:
+			inventory_parts.append("%s:%d" % [item_id, amount])
+	if not inventory_parts.is_empty():
+		info["Inventory"] = ", ".join(inventory_parts)
+	return info

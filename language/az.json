@@ -165,6 +165,7 @@
 		"apply_work": "Müraciət et",
 		"work": "İşlə",
 		"eat": "Ye",
+		"eat_inventory": "İnventardan ye",
 		"sleep": "Yat",
 		"study": "Oxu",
 		"relax": "Dincəl",
@@ -176,6 +177,7 @@
 		"inventory_close": "İnventarı bağla",
 		"buy_shop_item": "Geyim al",
 		"buy_groceries": "Ərzaq al",
+		"deposit_home_inventory": "Evdə saxla",
 		"buy_building": "Bina al",
 		"quit_job": "İşdən çıx",
 		"training": "Universitetə",
@@ -244,7 +246,9 @@
 		"purchase_not_possible": "Alış mümkün deyil.",
 		"no_shop_active": "Aktiv mağaza yoxdur.",
 		"shop_closed": "Mağaza bağlıdır.",
-		"sold_out": "Satılıb qurtarıb."
+		"sold_out": "Satılıb qurtarıb.",
+		"no_carried_inventory": "İnventarın boşdur.",
+		"no_carried_food": "İnventarında ərzaq yoxdur."
 	},
 
 	"player_notice": {
@@ -283,6 +287,10 @@
 		"groceries_sold_out": "Ərzaq satılıb qurtarıb.",
 		"groceries_failed_at": "%s yerində ərzaq alışı alınmadı.",
 		"bought_groceries": "%d ərzaq %d EUR-a alındı.",
+		"no_carried_food": "İnventarında ərzaq yoxdur.",
+		"deposit_not_home": "Evdə deyilsən.",
+		"deposit_empty": "İnventarın boşdur.",
+		"deposited_inventory": "%d əşya evdə saxlandı.",
 		"building_not_buyable": "%s almaq mümkün deyil.",
 		"building_owned_already": "%s artıq sənə məxsusdur.",
 		"building_owned_by": "%s artıq %s sahibindədir.",
@@ -300,6 +308,7 @@
 		"empty": "Qeyd yoxdur.",
 		"stock": "Anbar %d",
 		"owned": "Səndə: %d",
+		"home": "Evdə: %d",
 		"buy": "Al"
 	},
 
@@ -311,7 +320,8 @@
 			"maintenance": "Baxım və xərclər",
 			"healthcare": "Səhiyyə",
 			"needs": "Ehtiyaclar",
-			"activity": "Fəaliyyət"
+			"activity": "Fəaliyyət",
+			"current_building": "Cari bina"
 		},
 		"label": {
 			"name": "Ad",
@@ -353,6 +363,8 @@
 			"company": "Şirkət",
 			"owned": "Mülkiyyət",
 			"food_stock": "Ehtiyatlar",
+			"stock": "Anbar",
+			"prices": "Qiymətlər",
 			"clothing": "Geyim",
 			"patients": "Pasiyentlər",
 			"queue": "Növbə",

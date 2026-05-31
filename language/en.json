@@ -165,6 +165,7 @@
 		"apply_work": "Apply",
 		"work": "Work",
 		"eat": "Eat",
+		"eat_inventory": "Eat from inventory",
 		"sleep": "Sleep",
 		"study": "Study",
 		"relax": "Relax",
@@ -176,6 +177,7 @@
 		"inventory_close": "Close inventory",
 		"buy_shop_item": "Buy clothing",
 		"buy_groceries": "Buy groceries",
+		"deposit_home_inventory": "Store at home",
 		"buy_building": "Buy building",
 		"quit_job": "Quit job",
 		"training": "To university",
@@ -244,7 +246,9 @@
 		"purchase_not_possible": "Purchase not possible.",
 		"no_shop_active": "No shop active.",
 		"shop_closed": "Shop closed.",
-		"sold_out": "Sold out."
+		"sold_out": "Sold out.",
+		"no_carried_inventory": "Your inventory is empty.",
+		"no_carried_food": "No supplies in your inventory."
 	},
 
 	"player_notice": {
@@ -283,6 +287,10 @@
 		"groceries_sold_out": "Groceries sold out.",
 		"groceries_failed_at": "Groceries purchase failed at %s.",
 		"bought_groceries": "Bought %d groceries for %d EUR.",
+		"no_carried_food": "No supplies in your inventory.",
+		"deposit_not_home": "You are not at home.",
+		"deposit_empty": "Your inventory is empty.",
+		"deposited_inventory": "Stored %d items at home.",
 		"building_not_buyable": "%s cannot be bought.",
 		"building_owned_already": "%s already belongs to you.",
 		"building_owned_by": "%s already belongs to %s.",
@@ -300,6 +308,7 @@
 		"empty": "No entries.",
 		"stock": "Stock %d",
 		"owned": "You: %d",
+		"home": "Home: %d",
 		"buy": "Buy"
 	},
 
@@ -311,7 +320,8 @@
 			"maintenance": "Maintenance & Costs",
 			"healthcare": "Healthcare",
 			"needs": "Needs",
-			"activity": "Activity"
+			"activity": "Activity",
+			"current_building": "Current building"
 		},
 		"label": {
 			"name": "Name",
@@ -353,6 +363,8 @@
 			"company": "Company",
 			"owned": "Owned",
 			"food_stock": "Supplies",
+			"stock": "Stock",
+			"prices": "Prices",
 			"clothing": "Clothing",
 			"patients": "Patients",
 			"queue": "Queue",
