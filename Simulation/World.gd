@@ -859,10 +859,16 @@ func get_road_path(start_pos: Vector3, end_pos: Vector3) -> PackedVector3Array:
 func get_vehicle_road_path(start_pos: Vector3, end_pos: Vector3) -> PackedVector3Array:
 	var lane_offset := BalanceConfig.get_float("transport.vehicle_lane_offset", 0.45)
 	if road_graph == null:
-		return PackedVector3Array([start_pos, end_pos])
+		return PackedVector3Array()
 	if road_graph.has_method("find_vehicle_path_points"):
 		return road_graph.find_vehicle_path_points(start_pos, end_pos, lane_offset)
 	return road_graph.find_path_points(start_pos, end_pos)
+
+func get_vehicle_road_access_point(pos: Vector3) -> Vector3:
+	var lane_offset := BalanceConfig.get_float("transport.vehicle_lane_offset", 0.45)
+	if road_graph != null and road_graph.has_method("get_vehicle_access_point"):
+		return road_graph.get_vehicle_access_point(pos, lane_offset)
+	return pos
 
 func register_vehicle(vehicle: Node3D) -> void:
 	if vehicle == null or vehicles.has(vehicle):

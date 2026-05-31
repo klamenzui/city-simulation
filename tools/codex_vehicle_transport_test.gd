@@ -14,6 +14,7 @@ var _errors: Array[String] = []
 
 func _initialize() -> void:
 	_check_vehicle_lane_path()
+	_check_vehicle_route_contract()
 	await _check_vehicle_scene_catalog()
 	await _check_vehicle_snaps_to_ground()
 	await _check_truck_board_drive_exit()
@@ -48,6 +49,58 @@ func _check_vehicle_lane_path() -> void:
 			break
 	if not has_lane_offset:
 		_errors.append("Vehicle road path should offset center road points onto the right lane.")
+
+
+func _check_vehicle_route_contract() -> void:
+	var empty_graph := RoadGraph.new()
+	var missing_route := empty_graph.find_vehicle_path_points(Vector3.ZERO, Vector3(10.0, 0.0, 0.0), 0.5)
+	if not missing_route.is_empty():
+		_errors.append("Vehicle road path should be empty when the RoadGraph has no usable road graph.")
+
+	var graph := RoadGraph.new()
+	graph.nodes = [Vector3(0.0, 0.0, 0.0), Vector3(10.0, 0.0, 0.0)]
+	graph.neighbors = {0: [1], 1: [0]}
+	graph._is_ready = true
+	var offroad_start := Vector3(0.0, 0.0, 3.0)
+	var offroad_end := Vector3(10.0, 0.0, 3.0)
+	var road_only_route := graph.find_vehicle_path_points(offroad_start, offroad_end, 0.5)
+	if road_only_route.size() < 2:
+		_errors.append("Vehicle road path should route between nearest road nodes when a graph exists.")
+	elif _planar_distance(road_only_route[0], offroad_start) <= 0.1 \
+			or _planar_distance(road_only_route[road_only_route.size() - 1], offroad_end) <= 0.1:
+		_errors.append("Vehicle road path should not include off-road start/end points as drive waypoints.")
+
+	var diagonal_graph := RoadGraph.new()
+	diagonal_graph.nodes = [Vector3(0.0, 0.0, 0.0), Vector3(8.0, 0.0, 8.0)]
+	diagonal_graph._build_links()
+	var first_neighbors := diagonal_graph.neighbors.get(0, []) as Array
+	if first_neighbors.has(1):
+		_errors.append("Vehicle RoadGraph should not connect diagonal road nodes as a driveable shortcut.")
+
+	var unsupported_gap_graph := RoadGraph.new()
+	unsupported_gap_graph.nodes = [Vector3(0.0, 0.0, 0.0), Vector3(10.0, 0.0, 0.0)]
+	unsupported_gap_graph._build_links()
+	var gap_neighbors := unsupported_gap_graph.neighbors.get(0, []) as Array
+	if gap_neighbors.has(1):
+		_errors.append("Vehicle RoadGraph should not connect same-axis road nodes across unsupported gaps.")
+
+	var adjacent_tile_graph := RoadGraph.new()
+	adjacent_tile_graph.nodes = [Vector3(0.0, 0.0, 0.0), Vector3(4.0, 0.0, 0.0)]
+	adjacent_tile_graph._build_links()
+	var adjacent_neighbors := adjacent_tile_graph.neighbors.get(0, []) as Array
+	if not adjacent_neighbors.has(1):
+		_errors.append("Vehicle RoadGraph should connect adjacent road tiles whose mesh support covers the sampled edge.")
+
+	var supported_road_graph := RoadGraph.new()
+	supported_road_graph.nodes = [
+		Vector3(0.0, 0.0, 0.0),
+		Vector3(2.0, 0.0, 0.0),
+		Vector3(4.0, 0.0, 0.0),
+	]
+	supported_road_graph._build_links()
+	var supported_neighbors := supported_road_graph.neighbors.get(0, []) as Array
+	if not supported_neighbors.has(1):
+		_errors.append("Vehicle RoadGraph should connect road nodes when intermediate samples stay on road support.")
 
 
 func _check_vehicle_scene_catalog() -> void:
@@ -464,3 +517,9 @@ func _advance_vehicle_until_stopped(vehicle: Node, max_steps: int = 240) -> void
 		if not bool(vehicle.call("is_driving")):
 			return
 		vehicle.call("advance_vehicle_simulation", 0.2)
+
+
+func _planar_distance(a: Vector3, b: Vector3) -> float:
+	var delta := a - b
+	delta.y = 0.0
+	return delta.length()

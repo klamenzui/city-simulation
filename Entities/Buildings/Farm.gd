@@ -500,7 +500,10 @@ func _ensure_delivery_vehicle(world: World) -> bool:
 	if parent == null:
 		parent = self
 	parent.add_child(_delivery_vehicle)
-	_delivery_vehicle.global_position = get_storage_point_global()
+	var spawn_pos := get_storage_point_global()
+	if world != null and world.has_method("get_vehicle_road_access_point"):
+		spawn_pos = world.get_vehicle_road_access_point(spawn_pos)
+	_delivery_vehicle.global_position = spawn_pos
 	if world != null and world.has_method("register_vehicle"):
 		world.register_vehicle(_delivery_vehicle)
 	return true
