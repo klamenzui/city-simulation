@@ -1751,6 +1751,10 @@ func _test_player_action_buttons_and_manual_actions() -> String:
 	_expect(_player_ui_button_enabled(shop_action_state, "inventory"), "player UI should expose the inventory button")
 	_expect(_player_ui_button_enabled(shop_action_state, "shop"), "shop UI should expose the shopping window button")
 	var shop_inventory_state := player.get_player_inventory_ui_state(world, "shop")
+	_expect_eq(_inventory_container_count(shop_inventory_state), 3,
+			"shop inventory should visibly separate building, player, and home containers")
+	_expect(_inventory_container_has_slot(shop_inventory_state, "building", "clothing"),
+			"shop inventory should show the shop's clothing stock as building inventory")
 	_expect(_player_ui_button_enabled(shop_inventory_state, "buy_shop_item"), "shop inventory should expose clothing purchase")
 	var clothing_price := shop.get_item_price_quote(1.0)
 	var shop_stock_before := shop.get_stock("clothing")
@@ -1767,6 +1771,8 @@ func _test_player_action_buttons_and_manual_actions() -> String:
 
 	_expect(player.player_enter_building(market, world), "player should enter a supermarket as a visitor")
 	var grocery_inventory_state := player.get_player_inventory_ui_state(world, "shop")
+	_expect(_inventory_container_has_slot(grocery_inventory_state, "building", "grocery_bundle"),
+			"supermarket inventory should show grocery stock as building inventory")
 	_expect(_player_ui_button_enabled(grocery_inventory_state, "buy_groceries"), "supermarket inventory should expose grocery purchase")
 	var grocery_price := market.get_grocery_price(world)
 	var grocery_stock_before := market.get_stock("grocery_bundle")
@@ -2616,6 +2622,15 @@ func _player_ui_button_enabled(ui_state: Dictionary, action_id: String) -> bool:
 			var item := item_var as Dictionary
 			if str(item.get("action_id", "")) == action_id:
 				return bool(item.get("enabled", false))
+	for container_var in ui_state.get("containers", []):
+		if container_var is not Dictionary:
+			continue
+		for slot_var in (container_var as Dictionary).get("slots", []):
+			if slot_var is not Dictionary:
+				continue
+			var slot := slot_var as Dictionary
+			if str(slot.get("action_id", "")) == action_id:
+				return bool(slot.get("enabled", false))
 	return false
 
 func _player_ui_button_present(ui_state: Dictionary, action_id: String) -> bool:
@@ -2630,6 +2645,31 @@ func _player_ui_button_present(ui_state: Dictionary, action_id: String) -> bool:
 			continue
 		for item_var in (cat_var as Dictionary).get("items", []):
 			if item_var is Dictionary and str((item_var as Dictionary).get("action_id", "")) == action_id:
+				return true
+	for container_var in ui_state.get("containers", []):
+		if container_var is not Dictionary:
+			continue
+		for slot_var in (container_var as Dictionary).get("slots", []):
+			if slot_var is Dictionary and str((slot_var as Dictionary).get("action_id", "")) == action_id:
+				return true
+	return false
+
+func _inventory_container_count(ui_state: Dictionary) -> int:
+	var count := 0
+	for container_var in ui_state.get("containers", []):
+		if container_var is Dictionary:
+			count += 1
+	return count
+
+func _inventory_container_has_slot(ui_state: Dictionary, container_id: String, slot_id: String) -> bool:
+	for container_var in ui_state.get("containers", []):
+		if container_var is not Dictionary:
+			continue
+		var container := container_var as Dictionary
+		if str(container.get("id", "")) != container_id:
+			continue
+		for slot_var in container.get("slots", []):
+			if slot_var is Dictionary and str((slot_var as Dictionary).get("id", "")) == slot_id:
 				return true
 	return false
 

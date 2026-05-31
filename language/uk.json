@@ -301,6 +301,9 @@
 
 	"inventory": {
 		"fallback_title": "Інвентар",
+		"container_building": "Інвентар будівлі",
+		"container_player": "Інвентар гравця",
+		"container_home": "Домашній інвентар",
 		"item_food": "Запаси",
 		"item_clothing": "Одяг",
 		"tab_food": "Їжа",
