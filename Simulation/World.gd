@@ -788,7 +788,7 @@ func _estimate_citizen_living_reserve(citizen: Citizen) -> int:
 	if citizen != null:
 		if citizen.job == null:
 			reserve += 200
-		if citizen.home_food_stock <= 1:
+		if citizen.get_home_inventory_count("food") <= 1:
 			reserve += grocery_price * 2
 	return reserve
 

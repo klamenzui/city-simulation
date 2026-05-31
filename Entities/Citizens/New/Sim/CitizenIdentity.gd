@@ -30,6 +30,7 @@ var favorite_park: Building = null
 # Inventory + progression.
 var home_food_stock: int = 2
 var clothing_items: int = 0
+var carried_inventory: Dictionary = {}
 var education_level: int = 0
 # Consecutive days employed at the current workplace. Shown in the UI as
 # tenure; reset to 0 on hire/fire so it tracks the current job, not lifetime.

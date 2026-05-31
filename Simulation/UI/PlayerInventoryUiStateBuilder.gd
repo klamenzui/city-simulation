@@ -51,6 +51,7 @@ static func _build_player_inventory_slots(citizen: Citizen) -> Array:
 			"label": PlayerInventoryCatalogScript.get_label(id),
 			"icon": PlayerInventoryCatalogScript.get_icon(id),
 			"count": citizen.get_inventory_count(id),
+			"home_count": citizen.get_home_inventory_count(id),
 		})
 	return slots
 
@@ -83,7 +84,7 @@ static func _build_shop_food_category(citizen: Citizen, market: Supermarket, res
 				"icon": PlayerInventoryCatalogScript.get_icon("food"),
 				"price": price,
 				"stock": market.get_stock("grocery_bundle"),
-				"owned": citizen.get_inventory_count("food"),
+				"owned": citizen.get_carried_inventory_count("food"),
 				"enabled": enabled,
 				"tooltip": tooltip,
 				"button_text": LocaleServiceScript.t("inventory.buy"),
@@ -109,7 +110,7 @@ static func _build_shop_clothing_category(citizen: Citizen, shop: Shop, resolved
 				"icon": PlayerInventoryCatalogScript.get_icon("clothing"),
 				"price": price,
 				"stock": shop.get_stock("clothing"),
-				"owned": citizen.get_inventory_count("clothing"),
+				"owned": citizen.get_carried_inventory_count("clothing"),
 				"enabled": enabled,
 				"tooltip": tooltip,
 				"button_text": LocaleServiceScript.t("inventory.buy"),

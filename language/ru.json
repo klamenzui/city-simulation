@@ -165,6 +165,7 @@
 		"apply_work": "Подать заявку",
 		"work": "Работать",
 		"eat": "Есть",
+		"eat_inventory": "Есть из инвентаря",
 		"sleep": "Спать",
 		"study": "Учиться",
 		"relax": "Отдыхать",
@@ -176,6 +177,7 @@
 		"inventory_close": "Закрыть инвентарь",
 		"buy_shop_item": "Купить одежду",
 		"buy_groceries": "Купить продукты",
+		"deposit_home_inventory": "Сложить дома",
 		"buy_building": "Купить здание",
 		"quit_job": "Уволиться",
 		"training": "В университет",
@@ -244,7 +246,9 @@
 		"purchase_not_possible": "Покупка невозможна.",
 		"no_shop_active": "Нет активного магазина.",
 		"shop_closed": "Магазин закрыт.",
-		"sold_out": "Распродано."
+		"sold_out": "Распродано.",
+		"no_carried_inventory": "Ваш инвентарь пуст.",
+		"no_carried_food": "В инвентаре нет запасов."
 	},
 
 	"player_notice": {
@@ -283,6 +287,10 @@
 		"groceries_sold_out": "Продукты распроданы.",
 		"groceries_failed_at": "Покупка продуктов в %s не удалась.",
 		"bought_groceries": "Куплено продуктов: %d за %d EUR.",
+		"no_carried_food": "В инвентаре нет запасов.",
+		"deposit_not_home": "Вы не дома.",
+		"deposit_empty": "Ваш инвентарь пуст.",
+		"deposited_inventory": "Сложено дома предметов: %d.",
 		"building_not_buyable": "%s нельзя купить.",
 		"building_owned_already": "%s уже принадлежит вам.",
 		"building_owned_by": "%s уже принадлежит %s.",
@@ -300,6 +308,7 @@
 		"empty": "Нет записей.",
 		"stock": "Склад %d",
 		"owned": "У вас: %d",
+		"home": "Дома: %d",
 		"buy": "Купить"
 	},
 
@@ -311,7 +320,8 @@
 			"maintenance": "Обслуживание и затраты",
 			"healthcare": "Здравоохранение",
 			"needs": "Потребности",
-			"activity": "Активность"
+			"activity": "Активность",
+			"current_building": "Текущее здание"
 		},
 		"label": {
 			"name": "Имя",
@@ -353,6 +363,8 @@
 			"company": "Компания",
 			"owned": "Собственность",
 			"food_stock": "Запасы",
+			"stock": "Склад",
+			"prices": "Цены",
 			"clothing": "Одежда",
 			"patients": "Пациенты",
 			"queue": "Очередь",

@@ -63,7 +63,7 @@ func _build_state(world, citizen, target_restaurant: Restaurant, target_cafe: Ca
 	state["can_afford_restaurant"] = citizen.can_afford_restaurant_at(target_restaurant, world)
 	state["can_afford_cafe"] = citizen.can_afford_cafe_at(target_cafe, world)
 	state["can_afford_groceries"] = citizen.can_afford_groceries_at(target_supermarket, world)
-	state["has_home_food"] = citizen.home_food_stock > 0
+	state["has_home_food"] = citizen.get_home_inventory_count("food") > 0
 	state["hunger_satisfied"] = citizen.needs.hunger <= citizen.needs.TARGET_HUNGER_MAX
 	state["is_night"] = _is_night(world.time.get_hour())
 	return state

@@ -259,11 +259,11 @@ func _try_survival_override(world, citizen) -> bool:
 		return true
 
 	if critical_hunger:
-		if citizen.current_location == citizen.home and citizen.home_food_stock > 0:
+		if citizen.current_location == citizen.home and citizen.get_home_inventory_count("food") > 0:
 			citizen.start_action(EatAtHomeActionScript.new(), world)
 			return true
 
-		if citizen.home_food_stock > 0 and citizen.home != null and citizen.current_location != citizen.home:
+		if citizen.get_home_inventory_count("food") > 0 and citizen.home != null and citizen.current_location != citizen.home:
 			citizen.start_action(GoToBuildingActionScript.new(citizen.home, _survival_home_travel_minutes), world)
 			return true
 

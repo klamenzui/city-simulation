@@ -106,6 +106,8 @@ static func _build_building_snapshots(world: World, root: Node, include_static: 
 			var commercial := building as CommercialBuilding
 			data["inventory"] = commercial.inventory.duplicate(true)
 			data["base_prices"] = commercial.base_prices.duplicate(true)
+		elif building is ResidentialBuilding:
+			data["inventory"] = (building as ResidentialBuilding).get_inventory_snapshot()
 		if building.has_method("get_farm_state_snapshot"):
 			data["farm_state"] = building.call("get_farm_state_snapshot")
 		snapshots.append(data)
@@ -161,6 +163,7 @@ static func _build_citizen_snapshots(world: World, include_static: bool) -> Arra
 			data["home_tenant"] = citizen.home != null and citizen.home.tenants.has(citizen)
 			data["employed"] = job_workplace != null and job_workplace.workers.has(citizen)
 			data["visitor"] = citizen.current_location != null and citizen.current_location.visitors.has(citizen)
+			data["carried_inventory"] = citizen.get_carried_inventory_snapshot()
 			data["home_food_stock"] = citizen.home_food_stock
 			data["clothing_items"] = citizen.clothing_items
 			data["education_level"] = citizen.education_level
@@ -274,6 +277,8 @@ static func _apply_building_snapshots(world: World, root: Node, entries: Variant
 		building.citizen_owner = citizen_lookup.get(owner_id, null) as Citizen if not owner_id.is_empty() else null
 		if building is CommercialBuilding:
 			_apply_commercial_snapshot(building as CommercialBuilding, data)
+		elif building is ResidentialBuilding:
+			_apply_residential_snapshot(building as ResidentialBuilding, data)
 		if building.has_method("apply_farm_state_snapshot") and data.get("farm_state", null) is Dictionary:
 			building.call("apply_farm_state_snapshot", data.get("farm_state", {}))
 
@@ -300,6 +305,12 @@ static func _apply_commercial_snapshot(commercial: CommercialBuilding, data: Dic
 		var price_data := data.get("base_prices", {}) as Dictionary
 		for key in price_data.keys():
 			commercial.base_prices[str(key)] = maxi(int(price_data.get(key, 1)), 1)
+
+static func _apply_residential_snapshot(residential: ResidentialBuilding, data: Dictionary) -> void:
+	if residential == null:
+		return
+	if data.get("inventory", null) is Dictionary:
+		residential.apply_inventory_snapshot(data.get("inventory", {}) as Dictionary)
 
 static func _node_path(root: Node, node: Node) -> String:
 	if root == null or node == null:

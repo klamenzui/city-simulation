@@ -351,6 +351,8 @@ func _apply_player_action_command(peer_id: int, action_id: String) -> Dictionary
 			accepted = player.player_work(world)
 		"eat":
 			accepted = player.player_eat(world)
+		"eat_inventory":
+			accepted = player.player_eat_from_inventory(world)
 		"sleep":
 			accepted = player.player_sleep(world)
 		"study":
@@ -367,6 +369,8 @@ func _apply_player_action_command(peer_id: int, action_id: String) -> Dictionary
 			accepted = player.player_buy_shop_item(world)
 		"buy_groceries":
 			accepted = player.player_buy_groceries(world)
+		"deposit_home_inventory":
+			accepted = player.player_deposit_inventory_to_home(world)
 		"buy_building":
 			accepted = player.player_buy_current_building(world)
 		"quit_job":
@@ -1023,6 +1027,8 @@ func _player_action_label(action_id: String) -> String:
 			return "Arbeiten"
 		"eat":
 			return "Essen"
+		"eat_inventory":
+			return "Aus Inventar essen"
 		"sleep":
 			return "Schlafen"
 		"study":
@@ -1039,6 +1045,8 @@ func _player_action_label(action_id: String) -> String:
 			return "Kleidung kaufen"
 		"buy_groceries":
 			return "Vorraete kaufen"
+		"deposit_home_inventory":
+			return "Zuhause einlagern"
 		"buy_building":
 			return "Gebaeude kaufen"
 		"quit_job":

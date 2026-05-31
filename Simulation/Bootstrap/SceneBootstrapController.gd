@@ -21,6 +21,12 @@ const OCEAN_NODE_NAME := "Ocean"
 const MATTE_ROUGHNESS_FLOOR := 0.9
 const MATTE_METALLIC_CAP := 0.02
 const MATTE_SPECULAR_CAP := 0.18
+# Brightness normalization for flat (untextured) albedo only. Lifts near-black import
+# artifacts (e.g. OBJ Kd ~0.05 palms) and tames over-bright flats. Luma = Rec.709.
+const DARK_LUMA_FLOOR := 0.12
+const DARK_LUMA_TARGET := 0.22
+const BRIGHT_LUMA_CEIL := 0.82
+const BRIGHT_LUMA_TARGET := 0.70
 
 static func setup_scene(root: Node3D, world: World) -> void:
 	if root == null or world == null:
@@ -39,6 +45,7 @@ static func setup_scene(root: Node3D, world: World) -> void:
 		RoadBuilderScript.build_simple_roads(root, world)
 	if not is_headless:
 		_apply_matte_city_materials(root)
+		_polish_plant_materials(root)
 	else:
 		_disable_headless_visual_nodes(root)
 
@@ -154,22 +161,22 @@ static func _apply_matte_city_materials(root: Node3D) -> void:
 			continue
 		_apply_matte_materials_recursive(building_node, matte_cache)
 
-static func _apply_matte_materials_recursive(node: Node, matte_cache: Dictionary) -> void:
+static func _apply_matte_materials_recursive(node: Node, material_cache: Dictionary) -> void:
 	if node is MeshInstance3D:
-		_apply_matte_materials_to_mesh(node as MeshInstance3D, matte_cache)
+		_polish_mesh_instance(node as MeshInstance3D, material_cache)
 	for child in node.get_children():
-		_apply_matte_materials_recursive(child, matte_cache)
+		_apply_matte_materials_recursive(child, material_cache)
 
-static func _apply_matte_materials_to_mesh(mesh_instance: MeshInstance3D, matte_cache: Dictionary) -> void:
+static func _polish_mesh_instance(mesh_instance: MeshInstance3D, material_cache: Dictionary) -> void:
 	if mesh_instance == null or mesh_instance.mesh == null:
 		return
 	if mesh_instance.name == OCEAN_NODE_NAME:
 		return
 
 	if mesh_instance.material_override is StandardMaterial3D:
-		mesh_instance.material_override = _get_or_create_matte_material(
+		mesh_instance.material_override = _get_or_create_polished_material(
 			mesh_instance.material_override as StandardMaterial3D,
-			matte_cache
+			material_cache
 		)
 
 	for surface_idx in range(mesh_instance.mesh.get_surface_count()):
@@ -177,7 +184,7 @@ static func _apply_matte_materials_to_mesh(mesh_instance: MeshInstance3D, matte_
 		if override_material is StandardMaterial3D:
 			mesh_instance.set_surface_override_material(
 				surface_idx,
-				_get_or_create_matte_material(override_material as StandardMaterial3D, matte_cache)
+				_get_or_create_polished_material(override_material as StandardMaterial3D, material_cache)
 			)
 			continue
 
@@ -185,30 +192,105 @@ static func _apply_matte_materials_to_mesh(mesh_instance: MeshInstance3D, matte_
 		if surface_material is StandardMaterial3D:
 			mesh_instance.set_surface_override_material(
 				surface_idx,
-				_get_or_create_matte_material(surface_material as StandardMaterial3D, matte_cache)
+				_get_or_create_polished_material(surface_material as StandardMaterial3D, material_cache)
 			)
+		elif surface_material == null and override_material == null:
+			# Surface ships with no material (e.g. Farm fields) -> give it a neutral matte
+			# material so it stops rendering as the raw white engine default.
+			mesh_instance.set_surface_override_material(surface_idx, _neutral_fallback_material(material_cache))
 
-static func _get_or_create_matte_material(material: StandardMaterial3D, matte_cache: Dictionary) -> StandardMaterial3D:
+# Polishes the live plant scatters (MultiMeshInstance3D under World). Separate from the
+# city pass because scatter meshes carry their materials per surface on the shared mesh,
+# not as node overrides.
+static func _polish_plant_materials(root: Node3D) -> void:
+	if root == null:
+		return
+	var search_root: Node = root.get_node_or_null("World")
+	if search_root == null:
+		search_root = root
+	var material_cache: Dictionary = {}
+	var processed_meshes: Dictionary = {}
+	_polish_multimesh_recursive(search_root, material_cache, processed_meshes)
+
+static func _polish_multimesh_recursive(node: Node, material_cache: Dictionary, processed_meshes: Dictionary) -> void:
+	if node is MultiMeshInstance3D:
+		_polish_multimesh(node as MultiMeshInstance3D, material_cache, processed_meshes)
+	for child in node.get_children():
+		_polish_multimesh_recursive(child, material_cache, processed_meshes)
+
+static func _polish_multimesh(instance: MultiMeshInstance3D, material_cache: Dictionary, processed_meshes: Dictionary) -> void:
+	if instance.material_override is StandardMaterial3D:
+		instance.material_override = _get_or_create_polished_material(instance.material_override as StandardMaterial3D, material_cache)
+		return
+	if instance.multimesh == null or instance.multimesh.mesh is not ArrayMesh:
+		return
+	var mesh := instance.multimesh.mesh as ArrayMesh
+	var mesh_id := mesh.get_instance_id()
+	if processed_meshes.has(mesh_id):
+		return
+	processed_meshes[mesh_id] = true
+	for surface_idx in range(mesh.get_surface_count()):
+		var surface_material := mesh.surface_get_material(surface_idx)
+		if surface_material is StandardMaterial3D:
+			mesh.surface_set_material(surface_idx, _get_or_create_polished_material(surface_material as StandardMaterial3D, material_cache))
+
+static func _get_or_create_polished_material(material: StandardMaterial3D, material_cache: Dictionary) -> StandardMaterial3D:
 	if material == null:
 		return null
 
 	var material_id := material.get_instance_id()
-	if matte_cache.has(material_id):
-		return matte_cache[material_id] as StandardMaterial3D
+	if material_cache.has(material_id):
+		return material_cache[material_id] as StandardMaterial3D
 
+	# Leave transparent and unshaded materials untouched (glass, billboards, decals).
 	if material.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
-		matte_cache[material_id] = material
+		material_cache[material_id] = material
 		return material
 	if material.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED:
-		matte_cache[material_id] = material
+		material_cache[material_id] = material
 		return material
 
-	var matte := material.duplicate() as StandardMaterial3D
-	matte.roughness = maxf(matte.roughness, MATTE_ROUGHNESS_FLOOR)
-	matte.metallic = minf(matte.metallic, MATTE_METALLIC_CAP)
-	matte.metallic_specular = minf(matte.metallic_specular, MATTE_SPECULAR_CAP)
-	matte_cache[material_id] = matte
-	return matte
+	var polished := material.duplicate() as StandardMaterial3D
+	# Matte pass: drop plastic specular so nothing reads as glossy under the stylized sun.
+	polished.roughness = maxf(polished.roughness, MATTE_ROUGHNESS_FLOOR)
+	polished.metallic = minf(polished.metallic, MATTE_METALLIC_CAP)
+	polished.metallic_specular = minf(polished.metallic_specular, MATTE_SPECULAR_CAP)
+
+	# Brightness pass: only for flat (untextured) albedo. Textured models (GLTF foliage)
+	# carry authored color in their texture and must not be tinted.
+	if polished.albedo_texture == null:
+		var luma := _relative_luminance(polished.albedo_color)
+		if luma > 0.0001 and luma < DARK_LUMA_FLOOR:
+			# Near-black import artifact (e.g. OBJ Kd ~0.05) -> lift toward a visible floor, keep hue.
+			polished.albedo_color = _scale_rgb(polished.albedo_color, DARK_LUMA_TARGET / luma)
+		elif luma > BRIGHT_LUMA_CEIL:
+			# Over-bright flat color -> pull it down so it stops blowing out next to textured assets.
+			polished.albedo_color = _scale_rgb(polished.albedo_color, BRIGHT_LUMA_TARGET / luma)
+
+	material_cache[material_id] = polished
+	return polished
+
+static func _relative_luminance(color: Color) -> float:
+	return color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722
+
+static func _scale_rgb(color: Color, factor: float) -> Color:
+	return Color(
+		clampf(color.r * factor, 0.0, 1.0),
+		clampf(color.g * factor, 0.0, 1.0),
+		clampf(color.b * factor, 0.0, 1.0),
+		color.a
+	)
+
+static func _neutral_fallback_material(material_cache: Dictionary) -> StandardMaterial3D:
+	if material_cache.has("fallback"):
+		return material_cache["fallback"] as StandardMaterial3D
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(0.52, 0.50, 0.45)
+	material.roughness = 0.95
+	material.metallic = 0.0
+	material.metallic_specular = MATTE_SPECULAR_CAP
+	material_cache["fallback"] = material
+	return material
 
 static func _ensure_ocean(world: World) -> void:
 	if world == null or not world.has_method("get_world_bounds"):

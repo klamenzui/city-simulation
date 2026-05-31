@@ -116,7 +116,9 @@ transform = Transform3D(-0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, 0.75
 light_specular = 0.0
 shadow_enabled = true
 shadow_bias = 1.0
+shadow_blur = 0.155
 directional_shadow_mode = 0
+directional_shadow_max_distance = 200.0
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=763824754]
 libraries/ = SubResource("AnimationLibrary_7o7p5")

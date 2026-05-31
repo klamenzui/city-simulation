@@ -25,10 +25,12 @@ const CitizenAgentScript = preload("res://Simulation/Citizens/CitizenAgent.gd")
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const WorldSnapshotSerializerScript = preload("res://Simulation/Multiplayer/shared/WorldSnapshotSerializer.gd")
 const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
+const CityInventoryAdapterScript = preload("res://Simulation/Inventory/CityInventoryAdapter.gd")
 const WorkActionScript = preload("res://Actions/WorkAction.gd")
 const EatAtHomeActionScript = preload("res://Actions/EatAtHomeAction.gd")
 const EatAtRestaurantActionScript = preload("res://Actions/EatAtRestaurantAction.gd")
 const EatAtCafeActionScript = preload("res://Actions/EatAtCafeAction.gd")
+const EatFromInventoryActionScript = preload("res://Actions/EatFromInventoryAction.gd")
 const SleepActionScript = preload("res://Actions/SleepAction.gd")
 const StudyAtUniversityActionScript = preload("res://Actions/StudyAtUniversityAction.gd")
 const RelaxAtHomeActionScript = preload("res://Actions/RelaxAtHomeAction.gd")
@@ -39,6 +41,7 @@ const SocialVisitActionScript = preload("res://Actions/SocialVisitAction.gd")
 const TreatAtHospitalActionScript = preload("res://Actions/TreatAtHospitalAction.gd")
 const PlayerActionUiStateBuilderScript = preload("res://Simulation/UI/PlayerActionUiStateBuilder.gd")
 const PlayerInventoryUiStateBuilderScript = preload("res://Simulation/UI/PlayerInventoryUiStateBuilder.gd")
+const PlayerInventoryCatalogScript = preload("res://Simulation/UI/PlayerInventoryCatalog.gd")
 const FALL_RESPAWN_DEPTH_METERS := 8.0
 const FALL_RESPAWN_COOLDOWN_SEC := 1.0
 const FALL_RESPAWN_GROUND_OFFSET := 0.12
@@ -413,6 +416,8 @@ func apply_network_snapshot(data: Dictionary, building_lookup: Dictionary) -> vo
 		collision_mask = 0
 	if wallet != null:
 		wallet.balance = int(data.get("wallet", wallet.balance))
+	if data.get("carried_inventory", null) is Dictionary:
+		apply_carried_inventory_snapshot(data.get("carried_inventory", {}) as Dictionary)
 	home_food_stock = int(data.get("home_food_stock", home_food_stock))
 	clothing_items = int(data.get("clothing_items", clothing_items))
 	education_level = int(data.get("education_level", education_level))
@@ -1056,12 +1061,26 @@ func player_eat(world: Node = null) -> bool:
 	if location is Cafe:
 		return _start_player_action(EatAtCafeActionScript.new(location as Cafe), resolved_world)
 	if _is_player_home_location(location):
-		if home_food_stock <= 0:
+		if get_home_inventory_count("food") <= 0:
 			debug_log("Player eat failed: no food stock at home.")
 			return false
 		return _start_player_action(EatAtHomeActionScript.new(), resolved_world)
 	debug_log("Player eat failed: not at home or in a food service building.")
 	return false
+
+
+func player_eat_from_inventory(world: Node = null) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	if resolved_world == null:
+		return false
+	if current_action != null:
+		_player_action_notice = LocaleServiceScript.t("player_notice.action_running")
+		return false
+	if get_carried_inventory_count("food") <= 0:
+		_player_action_notice = LocaleServiceScript.t("player_notice.no_carried_food")
+		return false
+	_player_action_notice = ""
+	return _start_player_action(EatFromInventoryActionScript.new(), resolved_world)
 
 
 func player_sleep(world: Node = null) -> bool:
@@ -1206,7 +1225,7 @@ func player_buy_shop_item(world: Node = null) -> bool:
 	if not shop.buy_item(resolved_world, self, 1.0):
 		_player_action_notice = LocaleServiceScript.t("player_notice.purchase_failed_at") % _building_label(shop)
 		return false
-	clothing_items += 1
+	add_carried_inventory_item("clothing", 1)
 	_player_action_notice = LocaleServiceScript.t("player_notice.bought_clothing") % price
 	return true
 
@@ -1241,8 +1260,29 @@ func player_buy_groceries(world: Node = null) -> bool:
 	if purchased_units <= 0:
 		_player_action_notice = LocaleServiceScript.t("player_notice.groceries_failed_at") % _building_label(market)
 		return false
-	home_food_stock += purchased_units
+	add_carried_inventory_item("food", purchased_units)
 	_player_action_notice = LocaleServiceScript.t("player_notice.bought_groceries") % [purchased_units, price]
+	return true
+
+
+func player_deposit_inventory_to_home(world: Node = null) -> bool:
+	var resolved_world := _resolve_world_arg(world)
+	var location := _get_player_current_building()
+	if resolved_world == null:
+		_player_action_notice = LocaleServiceScript.t("player_notice.purchase_world_missing")
+		return false
+	if home == null or location != home:
+		_player_action_notice = LocaleServiceScript.t("player_notice.deposit_not_home")
+		return false
+	if current_action != null:
+		_player_action_notice = LocaleServiceScript.t("player_notice.action_running")
+		return false
+	var moved := deposit_carried_inventory_to_home()
+	var moved_total := CityInventoryAdapterScript.total_count(moved)
+	if moved_total <= 0:
+		_player_action_notice = LocaleServiceScript.t("player_notice.deposit_empty")
+		return false
+	_player_action_notice = LocaleServiceScript.t("player_notice.deposited_inventory") % moved_total
 	return true
 
 
@@ -1320,15 +1360,112 @@ func get_player_inventory_ui_state(world: Node = null, mode: String = "player") 
 	return PlayerInventoryUiStateBuilderScript.build(self, world, mode)
 
 
+func get_carried_inventory_count(item_id: String) -> int:
+	var clean := CityInventoryAdapterScript.normalize_item_id(item_id)
+	if clean == "clothing":
+		return clothing_items
+	if _sim == null or _sim.identity == null:
+		return 0
+	return CityInventoryAdapterScript.get_count(_sim.identity.carried_inventory, clean)
+
+
+func set_carried_inventory_count(item_id: String, amount: int) -> void:
+	var clean := CityInventoryAdapterScript.normalize_item_id(item_id)
+	if clean == "clothing":
+		clothing_items = amount
+		return
+	if _sim == null or _sim.identity == null:
+		return
+	CityInventoryAdapterScript.set_count(_sim.identity.carried_inventory, clean, amount)
+
+
+func add_carried_inventory_item(item_id: String, amount: int) -> int:
+	var clean := CityInventoryAdapterScript.normalize_item_id(item_id)
+	if clean.is_empty() or amount <= 0:
+		return 0
+	var next_count := get_carried_inventory_count(clean) + amount
+	set_carried_inventory_count(clean, next_count)
+	return amount
+
+
+func remove_carried_inventory_item(item_id: String, amount: int) -> int:
+	var clean := CityInventoryAdapterScript.normalize_item_id(item_id)
+	if clean.is_empty() or amount <= 0:
+		return 0
+	var current := get_carried_inventory_count(clean)
+	var removed := mini(current, amount)
+	set_carried_inventory_count(clean, current - removed)
+	return removed
+
+
+func get_carried_inventory_snapshot() -> Dictionary:
+	var snapshot: Dictionary = {}
+	if _sim != null and _sim.identity != null:
+		snapshot = CityInventoryAdapterScript.duplicate_counts(_sim.identity.carried_inventory)
+	if clothing_items > 0:
+		snapshot["clothing"] = clothing_items
+	return snapshot
+
+
+func apply_carried_inventory_snapshot(data: Dictionary) -> void:
+	if _sim == null or _sim.identity == null:
+		return
+	_sim.identity.carried_inventory.clear()
+	clothing_items = 0
+	for key in data.keys():
+		set_carried_inventory_count(str(key), int(data.get(key, 0)))
+
+
+func get_carried_inventory_total() -> int:
+	return CityInventoryAdapterScript.total_count(get_carried_inventory_snapshot())
+
+
+func get_home_inventory_count(item_id: String) -> int:
+	var clean := CityInventoryAdapterScript.normalize_item_id(item_id)
+	var total := 0
+	if home != null and home.has_method("get_inventory_count"):
+		total += int(home.get_inventory_count(clean))
+	if clean == "food":
+		total += home_food_stock
+	return total
+
+
+func remove_home_inventory_item(item_id: String, amount: int) -> int:
+	var clean := CityInventoryAdapterScript.normalize_item_id(item_id)
+	if clean.is_empty() or amount <= 0:
+		return 0
+	var remaining := amount
+	var removed := 0
+	if home != null and home.has_method("remove_inventory_item"):
+		var from_home := int(home.remove_inventory_item(clean, remaining))
+		removed += from_home
+		remaining -= from_home
+	if clean == "food" and remaining > 0:
+		var from_legacy := mini(home_food_stock, remaining)
+		home_food_stock -= from_legacy
+		removed += from_legacy
+	return removed
+
+
+func deposit_carried_inventory_to_home() -> Dictionary:
+	var moved: Dictionary = {}
+	if home == null or not home.has_method("add_inventory_item"):
+		return moved
+	for key in get_carried_inventory_snapshot().keys():
+		var item_id := str(key)
+		var available := get_carried_inventory_count(item_id)
+		if available <= 0:
+			continue
+		var accepted := int(home.add_inventory_item(item_id, available))
+		if accepted <= 0:
+			continue
+		remove_carried_inventory_item(item_id, accepted)
+		CityInventoryAdapterScript.add_count(moved, item_id, accepted)
+	return moved
+
+
 func get_inventory_count(item_id: String) -> int:
-	# Single point that translates inventory item ids to concrete citizen slots.
-	# Extend here when a new item id is added to PlayerInventoryCatalog.
-	match item_id:
-		"food":
-			return home_food_stock
-		"clothing":
-			return clothing_items
-	return 0
+	return get_carried_inventory_count(item_id)
 
 
 ## Maps the running action back to its UI button id so the panel can show
@@ -1344,6 +1481,8 @@ func _active_player_action_id() -> String:
 		or current_action is EatAtRestaurantActionScript \
 		or current_action is EatAtCafeActionScript:
 		return "eat"
+	if current_action is EatFromInventoryActionScript:
+		return "eat_inventory"
 	if current_action is SleepActionScript:
 		return "sleep"
 	if current_action is StudyAtUniversityActionScript:
@@ -2962,6 +3101,7 @@ func get_info_sections(_world = null) -> Array:
 		_build_identity_section(),
 		_build_needs_section(),
 		_build_activity_section(),
+		_build_current_building_section(_world),
 		_build_finance_section(_world),
 	]
 
@@ -3067,6 +3207,92 @@ func _build_activity_section() -> Dictionary:
 	return {"title": LocaleServiceScript.t("details.section.activity"), "rows": rows}
 
 
+func _build_current_building_section(world = null) -> Dictionary:
+	var location := _get_player_current_building()
+	if location == null:
+		return {"title": LocaleServiceScript.t("details.section.current_building"), "rows": []}
+	var rows: Array = [
+		{"label": LocaleServiceScript.t("details.label.name"), "value": location.get_display_name()},
+		{"label": LocaleServiceScript.t("details.label.type"), "value": location.get_building_type_display_label()},
+	]
+	var service := location.get_service_type()
+	if not service.is_empty() and service != "housing":
+		rows.append({"label": LocaleServiceScript.t("details.label.service"), "value": location.get_service_type_display_label()})
+	if location.is_citizen_ownable() or location.has_citizen_owner():
+		rows.append({"label": LocaleServiceScript.t("details.label.owner"), "value": location.get_owner_display_name()})
+	var hour := -1
+	if world != null and world.time != null:
+		hour = world.time.get_hour()
+	if location.open_hour != location.close_hour:
+		rows.append({
+			"label": LocaleServiceScript.t("details.label.opening_hours"),
+			"value": "%02d:00 - %02d:00 (%s)" % [
+				location.open_hour,
+				location.close_hour,
+				location.get_open_status_display_label(hour),
+			],
+		})
+	if location is CommercialBuilding:
+		var stock_text := _format_commercial_building_stock(location as CommercialBuilding)
+		if not stock_text.is_empty():
+			rows.append({"label": LocaleServiceScript.t("details.label.stock"), "value": stock_text})
+		var price_text := _format_commercial_building_prices(location as CommercialBuilding)
+		if not price_text.is_empty():
+			rows.append({"label": LocaleServiceScript.t("details.label.prices"), "value": price_text})
+	elif location is ResidentialBuilding:
+		var home_stock_text := _format_residential_building_inventory(location as ResidentialBuilding)
+		if not home_stock_text.is_empty():
+			rows.append({"label": LocaleServiceScript.t("details.label.stock"), "value": home_stock_text})
+	return {"title": LocaleServiceScript.t("details.section.current_building"), "rows": rows}
+
+
+func _format_commercial_building_stock(building: CommercialBuilding) -> String:
+	if building == null:
+		return ""
+	var parts: PackedStringArray = []
+	for key in building.inventory.keys():
+		var stock_key := str(key)
+		parts.append("%s:%d" % [_inventory_label_for_stock_key(stock_key), building.get_stock(stock_key)])
+	return ", ".join(parts)
+
+
+func _format_commercial_building_prices(building: CommercialBuilding) -> String:
+	if building == null:
+		return ""
+	var parts: PackedStringArray = []
+	for key in building.inventory.keys():
+		var stock_key := str(key)
+		parts.append("%s:%d EUR" % [_inventory_label_for_stock_key(stock_key), building.get_item_price(stock_key, 1)])
+	return ", ".join(parts)
+
+
+func _format_residential_building_inventory(building: ResidentialBuilding) -> String:
+	if building == null or not building.has_method("get_inventory_snapshot"):
+		return ""
+	var snapshot: Dictionary = building.get_inventory_snapshot()
+	var parts: PackedStringArray = []
+	for key in snapshot.keys():
+		var item_id := str(key)
+		var amount := int(snapshot.get(key, 0))
+		if amount > 0:
+			parts.append("%s:%d" % [_inventory_label_for_item_id(item_id), amount])
+	return ", ".join(parts)
+
+
+func _inventory_label_for_stock_key(stock_key: String) -> String:
+	var item_id := PlayerInventoryCatalogScript.get_shop_item_id_for_stock(stock_key)
+	if not item_id.is_empty():
+		return PlayerInventoryCatalogScript.get_label(item_id)
+	return stock_key.replace("_", " ").capitalize()
+
+
+func _inventory_label_for_item_id(item_id: String) -> String:
+	var clean := CityInventoryAdapterScript.normalize_item_id(item_id)
+	if not clean.is_empty():
+		return PlayerInventoryCatalogScript.get_label(clean)
+	return item_id.replace("_", " ").capitalize()
+
+
 func _format_location_text() -> String:
 	if current_location == null:
 		return LocaleServiceScript.t("player.location_travelling")
@@ -3123,8 +3349,9 @@ func _build_finance_section(world = null) -> Dictionary:
 		rows.append({"label": LocaleServiceScript.t("details.label.owned"), "value": LocaleServiceScript.t("details.value.owned_buildings") % owned_count})
 	if home != null:
 		rows.append({"label": LocaleServiceScript.t("details.label.rent_per_day"), "value": "%d EUR" % home.rent_per_day})
-	if home_food_stock > 0:
-		rows.append({"label": LocaleServiceScript.t("details.label.food_stock"), "value": str(home_food_stock)})
+	var home_food := get_home_inventory_count("food")
+	if home_food > 0:
+		rows.append({"label": LocaleServiceScript.t("details.label.food_stock"), "value": str(home_food)})
 	if clothing_items > 0:
 		rows.append({"label": LocaleServiceScript.t("details.label.clothing"), "value": str(clothing_items)})
 	return {"title": LocaleServiceScript.t("details.section.finance"), "rows": rows}
@@ -3142,7 +3369,8 @@ func _get_flat_info_fallback() -> Dictionary:
 		"Health": "%.1f / 100" % (needs.health if needs != null else 0.0),
 		"Money": "%d EUR" % (wallet.balance if wallet != null else 0),
 		"Home": _building_label(home) if home != null else "none",
-		"Groceries": str(home_food_stock),
+		"Carried groceries": str(get_carried_inventory_count("food")),
+		"Home groceries": str(get_home_inventory_count("food")),
 		"Clothing": str(clothing_items),
 		"Education": "%d" % education_level,
 		"Workplace": _building_label(job.workplace) if (job != null and job.workplace != null) else "unemployed",
