@@ -62,6 +62,7 @@ func show_for_state(state: Dictionary) -> void:
 	var mode := str(state.get("mode", "player"))
 	var categories: Array = state.get("categories", [])
 	var player_slots: Array = state.get("player_slots", [])
+	var containers: Array = state.get("containers", [])
 	var active_category := _resolve_active_category(categories) if mode == "shop" else ""
 	var signature := _inventory_state_signature(state, active_category)
 	if _window_panel.visible and signature == _last_state_signature:
@@ -76,10 +77,13 @@ func show_for_state(state: Dictionary) -> void:
 	_status_label.append_text(str(state.get("status_text", "")))
 
 	_last_categories = categories
-	_tab_row.visible = mode == "shop" and categories.size() > 1
+	_tab_row.visible = containers.is_empty() and mode == "shop" and categories.size() > 1
 	_rebuild_tabs(categories)
 
-	if mode == "shop":
+	if not containers.is_empty():
+		_current_category = ""
+		_render_inventory_containers(containers)
+	elif mode == "shop":
 		_current_category = active_category
 		_apply_tab_active_state(active_category)
 		_render_category_items(categories, active_category)
@@ -108,18 +112,18 @@ func _build_ui() -> void:
 
 	_window_panel = PanelContainer.new()
 	_window_panel.theme = UiThemeScript.get_or_build()
-	_window_panel.custom_minimum_size = Vector2(560, 420)
+	_window_panel.custom_minimum_size = Vector2(780, 500)
 	_window_panel.set_anchors_preset(Control.PRESET_CENTER)
 	_window_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_window_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_window_panel.pivot_offset = Vector2(280, 210)
+	_window_panel.pivot_offset = Vector2(390, 250)
 	# Centering: PRESET_CENTER aligns to the center anchor; we offset back by
 	# half the minimum size so the panel renders centered before children
 	# stretch it further.
-	_window_panel.offset_left = -280
-	_window_panel.offset_top = -210
-	_window_panel.offset_right = 280
-	_window_panel.offset_bottom = 210
+	_window_panel.offset_left = -390
+	_window_panel.offset_top = -250
+	_window_panel.offset_right = 390
+	_window_panel.offset_bottom = 250
 	_window_panel.gui_input.connect(_on_inventory_gui_input)
 	add_child(_window_panel)
 
@@ -151,7 +155,7 @@ func _build_ui() -> void:
 	_status_label.fit_content = true
 	_status_label.scroll_active = false
 	_status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_status_label.custom_minimum_size = Vector2(520, 48)
+	_status_label.custom_minimum_size = Vector2(720, 48)
 	_status_label.add_theme_color_override("default_color", UiThemeScript.TEXT_SECONDARY)
 	_status_label.add_theme_font_size_override("normal_font_size", UiThemeScript.FONT_SIZE_BODY)
 	root_vbox.add_child(_status_label)
@@ -164,7 +168,7 @@ func _build_ui() -> void:
 	var content_scroll := ScrollContainer.new()
 	content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content_scroll.custom_minimum_size = Vector2(520, 260)
+	content_scroll.custom_minimum_size = Vector2(720, 320)
 	root_vbox.add_child(content_scroll)
 
 	_item_grid = GridContainer.new()
@@ -228,6 +232,7 @@ func _apply_tab_active_state(active_id: String) -> void:
 
 func _render_category_items(categories: Array, active_id: String) -> void:
 	_clear_item_grid()
+	_item_grid.columns = 3
 	var items: Array = []
 	for cat_var in categories:
 		if cat_var is not Dictionary:
@@ -245,11 +250,125 @@ func _render_category_items(categories: Array, active_id: String) -> void:
 
 func _render_player_slots(slots: Array) -> void:
 	_clear_item_grid()
+	_item_grid.columns = 3
 	_empty_label.visible = slots.is_empty()
 	for slot_var in slots:
 		if slot_var is not Dictionary:
 			continue
 		_item_grid.add_child(_build_player_slot_card(slot_var as Dictionary))
+
+
+func _render_inventory_containers(containers: Array) -> void:
+	_clear_item_grid()
+	_item_grid.columns = clampi(containers.size(), 1, 3)
+	_empty_label.visible = containers.is_empty()
+	for container_var in containers:
+		if container_var is not Dictionary:
+			continue
+		_item_grid.add_child(_build_inventory_container(container_var as Dictionary))
+
+
+func _build_inventory_container(container: Dictionary) -> Control:
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(220, 300)
+	var box := StyleBoxFlat.new()
+	box.bg_color = UiThemeScript.BG_800
+	box.border_color = UiThemeScript.BORDER
+	box.border_width_left = UiThemeScript.BORDER_WIDTH
+	box.border_width_top = UiThemeScript.BORDER_WIDTH
+	box.border_width_right = UiThemeScript.BORDER_WIDTH
+	box.border_width_bottom = UiThemeScript.BORDER_WIDTH
+	box.corner_radius_top_left = UiThemeScript.RADIUS_PANEL
+	box.corner_radius_top_right = UiThemeScript.RADIUS_PANEL
+	box.corner_radius_bottom_left = UiThemeScript.RADIUS_PANEL
+	box.corner_radius_bottom_right = UiThemeScript.RADIUS_PANEL
+	box.content_margin_left = 10
+	box.content_margin_right = 10
+	box.content_margin_top = 10
+	box.content_margin_bottom = 10
+	panel.add_theme_stylebox_override("panel", box)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
+	panel.add_child(vbox)
+
+	var title := Label.new()
+	title.text = str(container.get("title", "Inventory"))
+	title.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_BODY)
+	title.add_theme_color_override("font_color", UiThemeScript.TEXT_PRIMARY)
+	vbox.add_child(title)
+
+	var subtitle := str(container.get("subtitle", ""))
+	if not subtitle.is_empty():
+		var subtitle_label := Label.new()
+		subtitle_label.text = subtitle
+		subtitle_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+		subtitle_label.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+		vbox.add_child(subtitle_label)
+
+	var slots: Array = container.get("slots", [])
+	if slots.is_empty():
+		var empty := Label.new()
+		empty.text = LocaleServiceScript.t("inventory.empty")
+		empty.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+		empty.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+		vbox.add_child(empty)
+		return panel
+
+	for slot_var in slots:
+		if slot_var is not Dictionary:
+			continue
+		vbox.add_child(_build_container_slot_row(slot_var as Dictionary))
+	return panel
+
+
+func _build_container_slot_row(slot: Dictionary) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
+	row.custom_minimum_size = Vector2(0, 42)
+
+	var icon_label := Label.new()
+	icon_label.text = str(slot.get("icon", "[]"))
+	icon_label.custom_minimum_size = Vector2(34, 34)
+	icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	icon_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	icon_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_BODY)
+	row.add_child(icon_label)
+
+	var text_box := VBoxContainer.new()
+	text_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(text_box)
+
+	var name_label := Label.new()
+	name_label.text = str(slot.get("label", ""))
+	name_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+	name_label.add_theme_color_override("font_color", UiThemeScript.TEXT_PRIMARY)
+	text_box.add_child(name_label)
+
+	var meta_parts: PackedStringArray = []
+	meta_parts.append("x %d" % int(slot.get("count", 0)))
+	if slot.has("price"):
+		meta_parts.append("%d EUR" % int(slot.get("price", 0)))
+	if slot.has("owned"):
+		meta_parts.append(LocaleServiceScript.t("inventory.owned") % int(slot.get("owned", 0)))
+	var meta_label := Label.new()
+	meta_label.text = " / ".join(meta_parts)
+	meta_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_SMALL)
+	meta_label.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
+	text_box.add_child(meta_label)
+
+	var action_id := str(slot.get("action_id", ""))
+	if not action_id.is_empty():
+		var button := Button.new()
+		button.text = str(slot.get("button_text", LocaleServiceScript.t("inventory.buy")))
+		button.disabled = not bool(slot.get("enabled", true))
+		button.tooltip_text = str(slot.get("tooltip", ""))
+		button.focus_mode = Control.FOCUS_NONE
+		button.custom_minimum_size = Vector2(74, 32)
+		button.gui_input.connect(_on_inventory_gui_input)
+		button.pressed.connect(_on_action_button_pressed.bind(action_id))
+		row.add_child(button)
+	return row
 
 
 func _build_player_slot_card(slot: Dictionary) -> Control:

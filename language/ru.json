@@ -301,6 +301,9 @@
 
 	"inventory": {
 		"fallback_title": "Инвентарь",
+		"container_building": "Инвентарь здания",
+		"container_player": "Инвентарь игрока",
+		"container_home": "Домашний инвентарь",
 		"item_food": "Запасы",
 		"item_clothing": "Одежда",
 		"tab_food": "Еда",

@@ -301,6 +301,9 @@
 
 	"inventory": {
 		"fallback_title": "Inventar",
+		"container_building": "Gebäude-Inventar",
+		"container_player": "Player-Inventar",
+		"container_home": "Zuhause-Inventar",
 		"item_food": "Vorräte",
 		"item_clothing": "Kleidung",
 		"tab_food": "Essen",

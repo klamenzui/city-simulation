@@ -301,6 +301,9 @@
 
 	"inventory": {
 		"fallback_title": "İnventar",
+		"container_building": "Bina inventarı",
+		"container_player": "Oyunçu inventarı",
+		"container_home": "Ev inventarı",
 		"item_food": "Ehtiyatlar",
 		"item_clothing": "Geyim",
 		"tab_food": "Yemək",
