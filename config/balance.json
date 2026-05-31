@@ -69,7 +69,9 @@
       "engine_audio_drive_volume_db": -11.0,
       "engine_audio_lerp_speed": 8.0,
       "impact_speed_delta_threshold": 1.8,
-      "impact_min_interval": 0.35
+      "impact_min_interval": 0.35,
+      "impact_contact_linger_sec": 0.18,
+      "impact_side_normal_max_y": 0.45
     }
   },
   "economy": {

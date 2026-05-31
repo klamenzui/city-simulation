@@ -61,6 +61,8 @@ const DEFAULT_IMPACT_AUDIO_PATH := "res://environment/audio/vehicles/impact_1.wa
 @export var engine_audio_lerp_speed: float = 8.0
 @export var impact_speed_delta_threshold: float = 1.8
 @export var impact_min_interval: float = 0.35
+@export var impact_contact_linger_sec: float = 0.18
+@export var impact_side_normal_max_y: float = 0.45
 
 var current_driver: Citizen = null
 var target_building: Building = null
@@ -78,6 +80,7 @@ var _engine_sound_player: AudioStreamPlayer3D = null
 var _impact_sound_player: AudioStreamPlayer3D = null
 var _previous_audio_speed: float = 0.0
 var _impact_audio_cooldown: float = 0.0
+var _impact_contact_linger: float = 0.0
 var _registered_world: World = null
 
 
@@ -117,6 +120,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
+	_record_impact_contacts(state)
 	_pin_current_driver_to_vehicle_transform(state.transform)
 
 
@@ -456,6 +460,8 @@ func _apply_balance_settings() -> void:
 	engine_audio_lerp_speed = BalanceConfig.get_float("transport.vehicle.engine_audio_lerp_speed", engine_audio_lerp_speed)
 	impact_speed_delta_threshold = BalanceConfig.get_float("transport.vehicle.impact_speed_delta_threshold", impact_speed_delta_threshold)
 	impact_min_interval = BalanceConfig.get_float("transport.vehicle.impact_min_interval", impact_min_interval)
+	impact_contact_linger_sec = BalanceConfig.get_float("transport.vehicle.impact_contact_linger_sec", impact_contact_linger_sec)
+	impact_side_normal_max_y = BalanceConfig.get_float("transport.vehicle.impact_side_normal_max_y", impact_side_normal_max_y)
 
 
 func _should_process_manual_driver_input() -> bool:
@@ -644,12 +650,32 @@ func _update_impact_audio(delta: float, speed: float) -> void:
 	if _impact_sound_player == null or _impact_sound_player.stream == null:
 		return
 	_impact_audio_cooldown = maxf(_impact_audio_cooldown - delta, 0.0)
-	if _impact_audio_cooldown > 0.0:
-		return
-	if absf(speed - _previous_audio_speed) < impact_speed_delta_threshold:
+	_impact_contact_linger = maxf(_impact_contact_linger - delta, 0.0)
+	if not _should_play_impact_audio(speed):
 		return
 	_impact_audio_cooldown = impact_min_interval
 	_impact_sound_player.play()
+
+
+func _should_play_impact_audio(speed: float) -> bool:
+	if _impact_audio_cooldown > 0.0:
+		return false
+	if _impact_contact_linger <= 0.0:
+		return false
+	return absf(speed - _previous_audio_speed) >= impact_speed_delta_threshold
+
+
+func _record_impact_contacts(state: PhysicsDirectBodyState3D) -> void:
+	if not _manual_physics_active:
+		return
+	for contact_index in range(state.get_contact_count()):
+		var local_normal := state.get_contact_local_normal(contact_index)
+		if local_normal.length_squared() <= 0.0001:
+			continue
+		var world_normal := (state.transform.basis * local_normal).normalized()
+		if absf(world_normal.y) <= impact_side_normal_max_y:
+			_impact_contact_linger = maxf(_impact_contact_linger, impact_contact_linger_sec)
+			return
 
 
 func _set_manual_physics_active(active: bool) -> void:
@@ -668,6 +694,7 @@ func _set_manual_physics_active(active: bool) -> void:
 	steering = 0.0
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
+	_impact_contact_linger = 0.0
 	freeze = true
 	can_sleep = true
 	sleeping = true

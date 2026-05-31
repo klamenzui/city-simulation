@@ -5,7 +5,8 @@
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_o30cl"]
 resource_name = "material_0"
 albedo_texture = ExtResource("1_tplos")
-metallic = 1.0
+metallic = 0.0
+roughness = 0.95
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_ytier"]
 _surfaces = [{

@@ -15,6 +15,7 @@ var _errors: Array[String] = []
 func _initialize() -> void:
 	_check_vehicle_lane_path()
 	_check_vehicle_route_contract()
+	_check_vehicle_impact_audio_contract()
 	await _check_vehicle_scene_catalog()
 	await _check_vehicle_snaps_to_ground()
 	await _check_truck_board_drive_exit()
@@ -101,6 +102,26 @@ func _check_vehicle_route_contract() -> void:
 	var supported_neighbors := supported_road_graph.neighbors.get(0, []) as Array
 	if not supported_neighbors.has(1):
 		_errors.append("Vehicle RoadGraph should connect road nodes when intermediate samples stay on road support.")
+
+
+func _check_vehicle_impact_audio_contract() -> void:
+	var vehicle := VehicleAgent.new()
+	vehicle.impact_speed_delta_threshold = 1.8
+	vehicle.impact_min_interval = 0.35
+	vehicle._previous_audio_speed = 4.0
+	vehicle._impact_audio_cooldown = 0.0
+	vehicle._impact_contact_linger = 0.0
+	if vehicle._should_play_impact_audio(0.0):
+		_errors.append("Vehicle impact audio should not play from speed drop alone without a confirmed collision contact.")
+
+	vehicle._impact_contact_linger = 0.1
+	if not vehicle._should_play_impact_audio(0.0):
+		_errors.append("Vehicle impact audio should play when a large speed drop has a recent collision contact.")
+
+	vehicle._impact_audio_cooldown = 0.2
+	if vehicle._should_play_impact_audio(0.0):
+		_errors.append("Vehicle impact audio should respect the impact cooldown.")
+	vehicle.free()
 
 
 func _check_vehicle_scene_catalog() -> void:
