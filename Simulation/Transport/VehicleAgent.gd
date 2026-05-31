@@ -191,8 +191,15 @@ func start_drive_to(destination: Vector3, world: World = null) -> bool:
 	last_path_failed = false
 	last_vehicle_route = _build_vehicle_route(destination, world)
 	if last_vehicle_route.size() < 2:
-		last_vehicle_route = PackedVector3Array([global_position, destination])
 		last_path_failed = true
+		_route_index = -1
+		_current_speed = 0.0
+		_is_driving = false
+		_set_manual_physics_active(false)
+		if current_driver != null:
+			unboard_driver(world, get_entry_point_global())
+		return false
+	_snap_to_route_start_if_needed(last_vehicle_route)
 	_route_index = 1
 	_current_speed = 0.0
 	_is_driving = last_vehicle_route.size() >= 2
@@ -335,9 +342,23 @@ func _build_vehicle_route(destination: Vector3, world: World = null) -> PackedVe
 		var route: PackedVector3Array = world.get_vehicle_road_path(global_position, destination)
 		if route.size() >= 2:
 			return route
-		push_warning("VehicleAgent: RoadGraph returned no vehicle path; using direct fallback.")
+		push_warning("VehicleAgent: RoadGraph returned no vehicle path; refusing direct vehicle fallback.")
+		last_path_failed = true
+		return PackedVector3Array()
+	if world == null:
+		return PackedVector3Array([global_position, destination])
 	last_path_failed = true
-	return PackedVector3Array([global_position, destination])
+	return PackedVector3Array()
+
+func _snap_to_route_start_if_needed(route: PackedVector3Array) -> void:
+	if route.is_empty():
+		return
+	var route_start := route[0]
+	if _planar_distance(global_position, route_start) <= waypoint_reach_distance:
+		return
+	global_position = Vector3(route_start.x, global_position.y, route_start.z)
+	_snap_to_ground_now()
+	_pin_current_driver_to_seat()
 
 
 func _remaining_route_distance(current_segment_distance: float) -> float:

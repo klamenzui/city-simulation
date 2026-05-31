@@ -2,15 +2,20 @@ extends RefCounted
 class_name RoadGraph
 
 const LINK_MAX_DISTANCE := 12.5
+const LINK_AXIS_TOLERANCE := 0.75
 const DEDUPE_STEP := 0.5
+const ROAD_SUPPORT_SAMPLE_STEP := 1.0
+const ROAD_SUPPORT_RADIUS := 2.1
 
 var nodes: Array[Vector3] = []
 var neighbors: Dictionary = {}
 var _is_ready: bool = false
+var _road_support_keys: Dictionary = {}
 
 func rebuild_from_scene(root: Node3D) -> void:
 	nodes.clear()
 	neighbors.clear()
+	_road_support_keys.clear()
 	_is_ready = false
 
 	if root == null:
@@ -69,10 +74,39 @@ func find_path_points(start_pos: Vector3, end_pos: Vector3) -> PackedVector3Arra
 	return _remove_close_duplicates(route)
 
 func find_vehicle_path_points(start_pos: Vector3, end_pos: Vector3, lane_offset: float = 0.45) -> PackedVector3Array:
-	var center_path := find_path_points(start_pos, end_pos)
-	if center_path.size() < 2:
-		return center_path
+	var route := PackedVector3Array()
+	if not has_graph():
+		return route
+
+	var start_idx: int = get_nearest_node_index(start_pos)
+	var end_idx: int = get_nearest_node_index(end_pos)
+	if start_idx < 0 or end_idx < 0:
+		return route
+
+	var index_path: Array = _a_star(start_idx, end_idx)
+	if index_path.is_empty():
+		return route
+
+	var center_path := PackedVector3Array()
+	for idx in index_path:
+		var p: Vector3 = nodes[int(idx)]
+		center_path.append(Vector3(p.x, start_pos.y, p.z))
 	return _center_path_to_right_lane(center_path, lane_offset)
+
+func get_vehicle_access_point(pos: Vector3, lane_offset: float = 0.45) -> Vector3:
+	if not has_graph():
+		return pos
+	var idx := get_nearest_node_index(pos)
+	if idx < 0:
+		return pos
+	var center_path := PackedVector3Array([Vector3(nodes[idx].x, pos.y, nodes[idx].z)])
+	var neighbor_idx := _get_best_neighbor_for_access(idx, pos)
+	if neighbor_idx >= 0:
+		center_path.append(Vector3(nodes[neighbor_idx].x, pos.y, nodes[neighbor_idx].z))
+	var lane_path := _center_path_to_right_lane(center_path, lane_offset)
+	if lane_path.is_empty():
+		return center_path[0]
+	return lane_path[0]
 
 func get_nearest_node_index(pos: Vector3) -> int:
 	if nodes.is_empty():
@@ -122,6 +156,7 @@ func _append_transport_segments(transport_root: Node3D, out: Array[Node3D]) -> v
 				out.append(segment as Node3D)
 
 func _build_links() -> void:
+	_rebuild_road_support_keys()
 	neighbors.clear()
 	for i in range(nodes.size()):
 		neighbors[i] = []
@@ -131,8 +166,65 @@ func _build_links() -> void:
 			var d: float = _xz_distance(nodes[i], nodes[j])
 			if d < 1.0 or d > LINK_MAX_DISTANCE:
 				continue
+			if not _is_axis_aligned_road_link(nodes[i], nodes[j]):
+				continue
+			if not _is_road_supported_link(nodes[i], nodes[j]):
+				continue
 			(neighbors[i] as Array).append(j)
 			(neighbors[j] as Array).append(i)
+
+func _is_axis_aligned_road_link(a: Vector3, b: Vector3) -> bool:
+	var dx := absf(a.x - b.x)
+	var dz := absf(a.z - b.z)
+	return dx <= LINK_AXIS_TOLERANCE or dz <= LINK_AXIS_TOLERANCE
+
+func _is_road_supported_link(a: Vector3, b: Vector3) -> bool:
+	var delta := b - a
+	delta.y = 0.0
+	var distance := delta.length()
+	if distance <= 0.001:
+		return false
+	var sample_distance := ROAD_SUPPORT_SAMPLE_STEP
+	while sample_distance < distance - 0.001:
+		var sample := a + delta * (sample_distance / distance)
+		if not _has_road_node_near(sample):
+			return false
+		sample_distance += ROAD_SUPPORT_SAMPLE_STEP
+	return true
+
+func _rebuild_road_support_keys() -> void:
+	_road_support_keys.clear()
+	for point in nodes:
+		var cell := _support_cell(point)
+		_road_support_keys[_support_key(cell.x, cell.y)] = true
+
+func _has_road_node_near(pos: Vector3) -> bool:
+	if _road_support_keys.is_empty():
+		_rebuild_road_support_keys()
+	var cell := _support_cell(pos)
+	var radius_cells := int(ceil(ROAD_SUPPORT_RADIUS / DEDUPE_STEP))
+	for x in range(cell.x - radius_cells, cell.x + radius_cells + 1):
+		for z in range(cell.y - radius_cells, cell.y + radius_cells + 1):
+			if not _road_support_keys.has(_support_key(x, z)):
+				continue
+			var candidate := Vector3(float(x) * DEDUPE_STEP, 0.0, float(z) * DEDUPE_STEP)
+			if _xz_distance(candidate, pos) <= ROAD_SUPPORT_RADIUS:
+				return true
+	return false
+
+func _get_best_neighbor_for_access(idx: int, reference_pos: Vector3) -> int:
+	var candidates := neighbors.get(idx, []) as Array
+	if candidates.is_empty():
+		return -1
+	var best_idx := int(candidates[0])
+	var best_score := INF
+	for candidate in candidates:
+		var candidate_idx := int(candidate)
+		var score := _xz_distance(nodes[candidate_idx], reference_pos)
+		if score < best_score:
+			best_score = score
+			best_idx = candidate_idx
+	return best_idx
 
 func _a_star(start_idx: int, end_idx: int) -> Array:
 	if start_idx == end_idx:
@@ -227,6 +319,15 @@ func _grid_key(pos: Vector3) -> String:
 	var x: float = round(pos.x / DEDUPE_STEP) * DEDUPE_STEP
 	var z: float = round(pos.z / DEDUPE_STEP) * DEDUPE_STEP
 	return "%0.2f|%0.2f" % [x, z]
+
+func _support_cell(pos: Vector3) -> Vector2i:
+	return Vector2i(
+		int(round(pos.x / DEDUPE_STEP)),
+		int(round(pos.z / DEDUPE_STEP))
+	)
+
+func _support_key(x: int, z: int) -> String:
+	return "%d|%d" % [x, z]
 
 func _xz_distance(a: Vector3, b: Vector3) -> float:
 	var dx: float = a.x - b.x

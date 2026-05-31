@@ -83,14 +83,16 @@ func _initialize() -> void:
 	var outbound_route := truck.get("last_vehicle_route") as PackedVector3Array
 	if outbound_route.size() <= 2:
 		_errors.append("Live Farm delivery should use the Main road graph, not a direct two-point fallback route.")
+	elif _route_uses_building_endpoint(outbound_route, farm.get_storage_point_global(), supermarket.get_entrance_pos()):
+		_errors.append("Live Farm delivery route should stay on road waypoints instead of driving from storage directly to the supermarket entrance.")
 
 	var reached_supermarket := await _advance_vehicle_until_stopped(truck)
 	if not reached_supermarket:
 		_errors.append("Live Farm delivery truck did not reach the Supermarket within the test step budget.")
 	else:
-		var target_distance := _planar_distance((truck as Node3D).global_position, supermarket.get_entrance_pos())
+		var target_distance := _planar_distance((truck as Node3D).global_position, _get_vehicle_road_access_point(world, supermarket.get_entrance_pos()))
 		if target_distance > 1.75:
-			_errors.append("Live Farm delivery truck stopped %.2f units from the Supermarket entrance." % target_distance)
+			_errors.append("Live Farm delivery truck stopped %.2f units from the Supermarket road access point." % target_distance)
 
 	action.tick(world, driver, DELIVERY_TICK_MINUTES)
 	for _i in range(6):
@@ -118,13 +120,15 @@ func _initialize() -> void:
 		var return_route := truck.get("last_vehicle_route") as PackedVector3Array
 		if return_route.size() <= 2:
 			_errors.append("Live Farm return trip should use the Main road graph, not a direct fallback route.")
+		elif _route_uses_building_endpoint(return_route, supermarket.get_entrance_pos(), farm.get_storage_point_global()):
+			_errors.append("Live Farm return route should stay on road waypoints instead of driving directly to building endpoints.")
 		var returned_to_farm := await _advance_vehicle_until_stopped(truck)
 		if not returned_to_farm:
 			_errors.append("Live Farm delivery truck did not return to the Farm within the test step budget.")
 		else:
-			var farm_distance := _planar_distance((truck as Node3D).global_position, farm.get_storage_point_global())
+			var farm_distance := _planar_distance((truck as Node3D).global_position, _get_vehicle_road_access_point(world, farm.get_storage_point_global()))
 			if farm_distance > 1.75:
-				_errors.append("Live Farm delivery truck stopped %.2f units from the Farm storage point after return." % farm_distance)
+				_errors.append("Live Farm delivery truck stopped %.2f units from the Farm road access point after return." % farm_distance)
 		action.tick(world, driver, DELIVERY_TICK_MINUTES)
 
 	if driver.has_method("is_inside_vehicle") and driver.is_inside_vehicle():
@@ -307,6 +311,19 @@ func _planar_distance(a: Vector3, b: Vector3) -> float:
 	var delta := a - b
 	delta.y = 0.0
 	return delta.length()
+
+
+func _route_uses_building_endpoint(route: PackedVector3Array, start_endpoint: Vector3, end_endpoint: Vector3) -> bool:
+	if route.is_empty():
+		return false
+	return _planar_distance(route[0], start_endpoint) <= 0.05 \
+		or _planar_distance(route[route.size() - 1], end_endpoint) <= 0.05
+
+
+func _get_vehicle_road_access_point(world: World, pos: Vector3) -> Vector3:
+	if world != null and world.has_method("get_vehicle_road_access_point"):
+		return world.get_vehicle_road_access_point(pos)
+	return pos
 
 
 func _finish(main: Node = null, action: WorkAction = null, world: World = null, driver: Citizen = null) -> void:

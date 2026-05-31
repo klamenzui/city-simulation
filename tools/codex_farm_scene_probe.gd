@@ -266,6 +266,7 @@ func _check_daily_production(farm: Farm, errors: Array[String]) -> void:
 	root.add_child(supermarket)
 	await process_frame
 	world.buildings.append(supermarket)
+	_configure_probe_vehicle_road_graph(world, farm, supermarket)
 	supermarket.inventory[delivery_item] = 0
 	supermarket.account.balance = 1000
 	var partial_target := int(supermarket.restock_targets.get(delivery_item, 0))
@@ -386,6 +387,24 @@ func _clear_delivery_vehicles() -> void:
 	for node in get_nodes_in_group("delivery_vehicles"):
 		if node != null and is_instance_valid(node):
 			node.free()
+
+
+func _configure_probe_vehicle_road_graph(world: World, farm: Farm, supermarket: Supermarket) -> void:
+	if world == null or farm == null or supermarket == null:
+		return
+	var start := farm.get_storage_point_global()
+	var end := supermarket.get_entrance_pos()
+	start.y = 0.0
+	end.y = 0.0
+	var corner := Vector3(end.x, 0.0, start.z)
+	var road_nodes: Array[Vector3] = [start, corner, end]
+	world.road_graph.nodes = road_nodes
+	world.road_graph.neighbors = {
+		0: [1],
+		1: [0, 2],
+		2: [1],
+	}
+	world.road_graph._is_ready = true
 
 
 func _advance_vehicle_until_stopped(vehicle: Node, max_steps: int = 160) -> void:
