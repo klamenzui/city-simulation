@@ -75,6 +75,7 @@ Beispiele:
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only parse,economy
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only farm_live_delivery
+powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only first_day_delivery
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only route,crosswalk
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only mp2process
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -IncludeSky
@@ -112,6 +113,7 @@ Wenn ein Check fehlschlaegt, beendet sich der Runner mit Exit-Code `1`.
 - `tools/codex_parse_check.gd`: Ressourcen/Script-Load
 - `tools/codex_economy_test.gd`: Economy-Regressionen
 - `tools/codex_farm_live_delivery_test.gd`: Main.tscn Farm-Fahrer-Lieferung per Truck zum Supermarkt
+- `tools/codex_first_day_delivery_seed_test.gd`: Startwelt hat Farm-Lagerbestand, Fahrer, Supermarkt-Bedarf und erreichbare LKW-Route
 - `tools/codex_building_occupancy_test.gd`: Besucher-/Worker-Zaehlung in Gebaeuden
 - `tools/codex_multiplayer_two_process_test.gd`: echter Host/Client-Zwei-Prozess-Smoke
 - `tools/codex_route_probe.gd`: Pfad-/Crosswalk-Probes
