@@ -149,6 +149,14 @@ func _prepare_citizen_for_instant_economy(
 	citizen.set_simulation_lod_state("focus", true, true, 1)
 	if citizen.is_inside_building():
 		citizen.exit_current_building(world)
+	if citizen.job != null:
+		var previous_job = citizen.job
+		var previous_workplace = previous_job.workplace
+		if previous_workplace != null and previous_workplace.has_method("fire"):
+			previous_workplace.fire(citizen)
+		if world != null and world.has_method("unregister_job"):
+			world.unregister_job(previous_job)
+		citizen.job = null
 	citizen.favorite_restaurant = restaurant
 	citizen.favorite_supermarket = supermarket
 	if citizen.home == null:
@@ -158,6 +166,7 @@ func _prepare_citizen_for_instant_economy(
 	citizen.needs.hunger = 92.0
 	citizen.needs.energy = 90.0
 	citizen.needs.fun = 70.0
+	citizen.needs.social = 100.0
 	citizen.needs.health = 100.0
 	citizen.decision_cooldown_left = 0
 
@@ -169,6 +178,10 @@ func _test_restaurant_meal_flow(citizen: Citizen, world: World, restaurant: Rest
 	citizen.current_location = restaurant
 	citizen.home_food_stock = 0
 	citizen.needs.hunger = 92.0
+	citizen.needs.energy = 90.0
+	citizen.needs.fun = 70.0
+	citizen.needs.social = 100.0
+	citizen.needs.health = 100.0
 	var hunger_before := citizen.needs.hunger
 	var wallet_before := citizen.wallet.balance
 	var stock_before := restaurant.get_stock("meal")
@@ -194,6 +207,10 @@ func _test_cafe_snack_flow(citizen: Citizen, world: World, cafe: Cafe) -> void:
 	citizen.home_food_stock = 0
 	citizen.wallet.balance = 200
 	citizen.needs.hunger = 70.0
+	citizen.needs.energy = 90.0
+	citizen.needs.fun = 70.0
+	citizen.needs.social = 100.0
+	citizen.needs.health = 100.0
 	var hunger_before := citizen.needs.hunger
 	var wallet_before := citizen.wallet.balance
 	var snack_price := cafe.get_snack_price(world)
@@ -260,6 +277,8 @@ func _test_work_flow_without_travel_delay(citizen: Citizen, world: World, workpl
 	citizen.work_minutes_today = 0
 	citizen.needs.hunger = 20.0
 	citizen.needs.energy = 90.0
+	citizen.needs.fun = 70.0
+	citizen.needs.social = 100.0
 	citizen.needs.health = 100.0
 
 	citizen.plan_next_action(world)

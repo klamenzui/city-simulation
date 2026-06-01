@@ -4,7 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://c2a3s8fh0u5je" path="res://Entities/Transport/d3b09381-6383-4621-ad2e-4ddac7db6438.png" id="2_truck_texture"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_vehicle_body"]
-size = Vector3(0.63, 0.42, 1.74)
+size = Vector3(0.63, 0.19486327, 2.0296655)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kk7fc"]
 resource_name = "Rough"
@@ -826,7 +826,7 @@ center_of_mass = Vector3(0, 0.12, -0.45)
 script = ExtResource("1_vehicle_agent")
 
 [node name="VehicleCollisionShape" type="CollisionShape3D" parent="." unique_id=1752759976]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.43135858, -0.735)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.31879023, -0.7714392)
 shape = SubResource("BoxShape3D_vehicle_body")
 
 [node name="FrontLeftWheel" type="VehicleWheel3D" parent="." unique_id=252282987]

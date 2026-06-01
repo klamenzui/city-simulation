@@ -8,6 +8,9 @@ signal driver_exited(vehicle: VehicleAgent, driver: Citizen)
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const DEFAULT_ENGINE_AUDIO_PATH := "res://environment/audio/vehicles/engine.wav"
 const DEFAULT_IMPACT_AUDIO_PATH := "res://environment/audio/vehicles/impact_1.wav"
+const TRAFFIC_LIGHT_GROUP := "traffic_lights"
+const VEHICLE_COLLISION_LAYER := 4
+const VEHICLE_WORLD_AND_VEHICLE_MASK := 5
 
 @export var delivery_vehicle: bool = true
 @export var max_speed: float = 5.0
@@ -51,6 +54,18 @@ const DEFAULT_IMPACT_AUDIO_PATH := "res://environment/audio/vehicles/impact_1.wa
 @export var ground_snap_speed: float = 30.0
 @export var ground_min_normal_y: float = 0.45
 @export_flags_3d_physics var ground_collision_mask: int = 1
+@export_flags_3d_physics var vehicle_collision_layer: int = VEHICLE_COLLISION_LAYER
+@export_flags_3d_physics var vehicle_collision_mask: int = VEHICLE_WORLD_AND_VEHICLE_MASK
+@export var route_vehicle_avoidance_enabled: bool = true
+@export var route_vehicle_detection_distance: float = 4.5
+@export var route_vehicle_lateral_tolerance: float = 0.9
+@export var route_vehicle_stop_distance: float = 1.7
+@export var route_vehicle_slowdown_distance: float = 3.2
+@export var obey_traffic_lights: bool = true
+@export var traffic_light_detection_distance: float = 6.0
+@export var traffic_light_lateral_tolerance: float = 0.85
+@export var traffic_light_stop_distance: float = 0.95
+@export var traffic_light_slowdown_distance: float = 3.0
 @export var vehicle_audio_enabled: bool = true
 @export var engine_audio_path: String = DEFAULT_ENGINE_AUDIO_PATH
 @export var impact_audio_path: String = DEFAULT_IMPACT_AUDIO_PATH
@@ -82,6 +97,8 @@ var _previous_audio_speed: float = 0.0
 var _impact_audio_cooldown: float = 0.0
 var _impact_contact_linger: float = 0.0
 var _registered_world: World = null
+var _waiting_for_traffic_light: bool = false
+var _waiting_for_vehicle: bool = false
 
 
 func _ready() -> void:
@@ -199,6 +216,8 @@ func start_drive_to(destination: Vector3, world: World = null) -> bool:
 		_route_index = -1
 		_current_speed = 0.0
 		_is_driving = false
+		_waiting_for_traffic_light = false
+		_waiting_for_vehicle = false
 		_set_manual_physics_active(false)
 		if current_driver != null:
 			unboard_driver(world, get_entry_point_global())
@@ -207,6 +226,8 @@ func start_drive_to(destination: Vector3, world: World = null) -> bool:
 	_route_index = 1
 	_current_speed = 0.0
 	_is_driving = last_vehicle_route.size() >= 2
+	_waiting_for_traffic_light = false
+	_waiting_for_vehicle = false
 	_set_manual_physics_active(false)
 	if not _is_driving:
 		_finish_trip(world)
@@ -217,6 +238,8 @@ func stop_vehicle() -> void:
 	_current_speed = 0.0
 	_is_driving = false
 	_route_index = -1
+	_waiting_for_traffic_light = false
+	_waiting_for_vehicle = false
 	engine_force = 0.0
 	brake = manual_parking_brake
 
@@ -231,6 +254,14 @@ func is_manual_driving() -> bool:
 
 func has_arrived() -> bool:
 	return not _is_driving
+
+
+func is_waiting_at_traffic_light() -> bool:
+	return _waiting_for_traffic_light
+
+
+func is_waiting_for_vehicle() -> bool:
+	return _waiting_for_vehicle
 
 
 func get_entry_point_global() -> Vector3:
@@ -270,6 +301,8 @@ func _advance_route_drive(delta: float) -> void:
 	if _route_index < 0 or _route_index >= last_vehicle_route.size():
 		_finish_trip(_resolve_world_from_tree())
 		return
+	_waiting_for_traffic_light = false
+	_waiting_for_vehicle = false
 
 	var waypoint := last_vehicle_route[_route_index]
 	var to_waypoint := waypoint - global_position
@@ -298,9 +331,34 @@ func _advance_route_drive(delta: float) -> void:
 	var desired_speed := max_speed
 	if remaining <= braking_distance:
 		desired_speed = max_speed * clampf(remaining / maxf(braking_distance, 0.01), 0.18, 1.0)
+	var blocking_light := _find_blocking_traffic_light(direction)
+	var stop_line_distance := INF
+	if blocking_light != null:
+		stop_line_distance = _get_traffic_light_stop_line_distance(blocking_light, direction)
+		desired_speed = minf(desired_speed, _get_traffic_light_speed_cap(stop_line_distance))
+		if stop_line_distance <= 0.02:
+			_current_speed = 0.0
+			_waiting_for_traffic_light = true
+			_pin_current_driver_to_seat()
+			return
+	var blocking_vehicle := _find_blocking_vehicle(direction)
+	var vehicle_stop_distance := INF
+	if blocking_vehicle != null:
+		vehicle_stop_distance = _get_vehicle_stop_line_distance(blocking_vehicle, direction)
+		desired_speed = minf(desired_speed, _get_vehicle_speed_cap(vehicle_stop_distance))
+		if vehicle_stop_distance <= 0.02:
+			_current_speed = 0.0
+			_waiting_for_vehicle = true
+			_pin_current_driver_to_seat()
+			return
 	var accel := acceleration if desired_speed >= _current_speed else braking_acceleration
 	_current_speed = move_toward(_current_speed, desired_speed, accel * delta)
-	var step := minf(_current_speed * delta, distance)
+	var max_step := distance
+	if blocking_light != null:
+		max_step = minf(max_step, maxf(stop_line_distance, 0.0))
+	if blocking_vehicle != null:
+		max_step = minf(max_step, maxf(vehicle_stop_distance, 0.0))
+	var step := minf(_current_speed * delta, max_step)
 	_move_vehicle_kinematic(direction * step)
 	_pin_current_driver_to_seat()
 
@@ -397,6 +455,8 @@ func _ensure_marker(marker_name: String, local_position: Vector3) -> void:
 
 
 func _configure_rigid_body() -> void:
+	collision_layer = vehicle_collision_layer
+	collision_mask = vehicle_collision_mask
 	mass = maxf(vehicle_mass, 0.01)
 	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
 	center_of_mass = center_of_mass_offset
@@ -450,6 +510,13 @@ func _apply_balance_settings() -> void:
 	ground_snap_speed = BalanceConfig.get_float("transport.vehicle.ground_snap_speed", ground_snap_speed)
 	ground_min_normal_y = BalanceConfig.get_float("transport.vehicle.ground_min_normal_y", ground_min_normal_y)
 	ground_collision_mask = BalanceConfig.get_int("transport.vehicle.ground_collision_mask", ground_collision_mask)
+	vehicle_collision_layer = BalanceConfig.get_int("transport.vehicle.physics_collision_layer", vehicle_collision_layer)
+	vehicle_collision_mask = BalanceConfig.get_int("transport.vehicle.physics_collision_mask", vehicle_collision_mask)
+	route_vehicle_avoidance_enabled = BalanceConfig.get_bool("transport.vehicle.route_vehicle_avoidance_enabled", route_vehicle_avoidance_enabled)
+	route_vehicle_detection_distance = BalanceConfig.get_float("transport.vehicle.route_vehicle_detection_distance", route_vehicle_detection_distance)
+	route_vehicle_lateral_tolerance = BalanceConfig.get_float("transport.vehicle.route_vehicle_lateral_tolerance", route_vehicle_lateral_tolerance)
+	route_vehicle_stop_distance = BalanceConfig.get_float("transport.vehicle.route_vehicle_stop_distance", route_vehicle_stop_distance)
+	route_vehicle_slowdown_distance = BalanceConfig.get_float("transport.vehicle.route_vehicle_slowdown_distance", route_vehicle_slowdown_distance)
 	vehicle_audio_enabled = BalanceConfig.get_bool("transport.vehicle.audio_enabled", vehicle_audio_enabled)
 	engine_audio_path = BalanceConfig.get_string("transport.vehicle.engine_audio_path", engine_audio_path)
 	impact_audio_path = BalanceConfig.get_string("transport.vehicle.impact_audio_path", impact_audio_path)
@@ -462,6 +529,153 @@ func _apply_balance_settings() -> void:
 	impact_min_interval = BalanceConfig.get_float("transport.vehicle.impact_min_interval", impact_min_interval)
 	impact_contact_linger_sec = BalanceConfig.get_float("transport.vehicle.impact_contact_linger_sec", impact_contact_linger_sec)
 	impact_side_normal_max_y = BalanceConfig.get_float("transport.vehicle.impact_side_normal_max_y", impact_side_normal_max_y)
+	obey_traffic_lights = BalanceConfig.get_bool("transport.vehicle.obey_traffic_lights", obey_traffic_lights)
+	traffic_light_detection_distance = BalanceConfig.get_float("transport.vehicle.traffic_light_detection_distance", traffic_light_detection_distance)
+	traffic_light_lateral_tolerance = BalanceConfig.get_float("transport.vehicle.traffic_light_lateral_tolerance", traffic_light_lateral_tolerance)
+	traffic_light_stop_distance = BalanceConfig.get_float("transport.vehicle.traffic_light_stop_distance", traffic_light_stop_distance)
+	traffic_light_slowdown_distance = BalanceConfig.get_float("transport.vehicle.traffic_light_slowdown_distance", traffic_light_slowdown_distance)
+
+
+func _find_blocking_traffic_light(direction: Vector3) -> Node3D:
+	if not obey_traffic_lights or not is_inside_tree():
+		return null
+	var tree := get_tree()
+	if tree == null:
+		return null
+	var planar_direction := _normalize_planar(direction)
+	if planar_direction == Vector3.ZERO:
+		return null
+
+	var best_light: Node3D = null
+	var best_forward_distance := INF
+	var max_forward := maxf(traffic_light_detection_distance, traffic_light_stop_distance)
+	var max_lateral := maxf(traffic_light_lateral_tolerance, 0.01)
+	for candidate in tree.get_nodes_in_group(TRAFFIC_LIGHT_GROUP):
+		if candidate is not Node3D:
+			continue
+		var traffic_light := candidate as Node3D
+		if not is_instance_valid(traffic_light):
+			continue
+		if _is_traffic_light_passable(traffic_light):
+			continue
+
+		var to_signal := traffic_light.global_position - global_position
+		to_signal.y = 0.0
+		var forward_distance := to_signal.dot(planar_direction)
+		if forward_distance <= 0.05 or forward_distance > max_forward:
+			continue
+		var lateral_offset := to_signal - planar_direction * forward_distance
+		if lateral_offset.length() > max_lateral:
+			continue
+		if forward_distance < best_forward_distance:
+			best_forward_distance = forward_distance
+			best_light = traffic_light
+	return best_light
+
+
+func _is_traffic_light_passable(traffic_light: Node3D) -> bool:
+	if traffic_light == null:
+		return true
+	if traffic_light.has_method("is_vehicle_passage_allowed"):
+		return bool(traffic_light.call("is_vehicle_passage_allowed"))
+	if traffic_light.has_method("get_current_light_name"):
+		return str(traffic_light.call("get_current_light_name")) == "green"
+	if traffic_light.has_method("get_current_light_color"):
+		return int(traffic_light.call("get_current_light_color")) == 0
+	return true
+
+
+func _get_traffic_light_stop_line_distance(traffic_light: Node3D, direction: Vector3) -> float:
+	if traffic_light == null:
+		return INF
+	var planar_direction := _normalize_planar(direction)
+	if planar_direction == Vector3.ZERO:
+		return INF
+	var to_signal := traffic_light.global_position - global_position
+	to_signal.y = 0.0
+	return to_signal.dot(planar_direction) - maxf(traffic_light_stop_distance, 0.0)
+
+
+func _get_traffic_light_speed_cap(stop_line_distance: float) -> float:
+	if stop_line_distance <= 0.02:
+		return 0.0
+	var slowdown_distance := maxf(traffic_light_slowdown_distance, 0.05)
+	return max_speed * clampf(stop_line_distance / slowdown_distance, 0.0, 1.0)
+
+
+func _find_blocking_vehicle(direction: Vector3) -> Node3D:
+	if not route_vehicle_avoidance_enabled or not is_inside_tree():
+		return null
+	var tree := get_tree()
+	if tree == null:
+		return null
+	var planar_direction := _normalize_planar(direction)
+	if planar_direction == Vector3.ZERO:
+		return null
+
+	var best_vehicle: Node3D = null
+	var best_forward_distance := INF
+	var max_forward := maxf(route_vehicle_detection_distance, route_vehicle_stop_distance)
+	var max_lateral := maxf(route_vehicle_lateral_tolerance, 0.01)
+	for candidate in tree.get_nodes_in_group("vehicles"):
+		if candidate == self or candidate is not Node3D:
+			continue
+		var other_vehicle := candidate as Node3D
+		if not is_instance_valid(other_vehicle):
+			continue
+		if _should_ignore_vehicle_for_route_spacing(other_vehicle):
+			continue
+
+		var to_vehicle := other_vehicle.global_position - global_position
+		to_vehicle.y = 0.0
+		var forward_distance := to_vehicle.dot(planar_direction)
+		if forward_distance <= 0.05 or forward_distance > max_forward:
+			continue
+		var lateral_offset := to_vehicle - planar_direction * forward_distance
+		if lateral_offset.length() > max_lateral:
+			continue
+		if forward_distance < best_forward_distance:
+			best_forward_distance = forward_distance
+			best_vehicle = other_vehicle
+	return best_vehicle
+
+
+func _should_ignore_vehicle_for_route_spacing(other_vehicle: Node3D) -> bool:
+	if other_vehicle == null:
+		return true
+	if other_vehicle is VehicleAgent:
+		var vehicle_agent := other_vehicle as VehicleAgent
+		if vehicle_agent._is_driving or vehicle_agent.current_driver != null:
+			return false
+	if other_vehicle.has_method("is_driving") and bool(other_vehicle.call("is_driving")):
+		return false
+	if other_vehicle.has_method("is_manual_driving") and bool(other_vehicle.call("is_manual_driving")):
+		return false
+	if other_vehicle is VehicleBody3D:
+		var body := other_vehicle as VehicleBody3D
+		var planar_velocity := body.linear_velocity
+		planar_velocity.y = 0.0
+		if planar_velocity.length_squared() > 0.0025:
+			return false
+	return true
+
+
+func _get_vehicle_stop_line_distance(other_vehicle: Node3D, direction: Vector3) -> float:
+	if other_vehicle == null:
+		return INF
+	var planar_direction := _normalize_planar(direction)
+	if planar_direction == Vector3.ZERO:
+		return INF
+	var to_vehicle := other_vehicle.global_position - global_position
+	to_vehicle.y = 0.0
+	return to_vehicle.dot(planar_direction) - maxf(route_vehicle_stop_distance, 0.0)
+
+
+func _get_vehicle_speed_cap(stop_line_distance: float) -> float:
+	if stop_line_distance <= 0.02:
+		return 0.0
+	var slowdown_distance := maxf(route_vehicle_slowdown_distance, 0.05)
+	return max_speed * clampf(stop_line_distance / slowdown_distance, 0.0, 1.0)
 
 
 func _should_process_manual_driver_input() -> bool:
@@ -815,3 +1029,11 @@ func _planar_distance(a: Vector3, b: Vector3) -> float:
 	var delta := a - b
 	delta.y = 0.0
 	return delta.length()
+
+
+func _normalize_planar(direction: Vector3) -> Vector3:
+	var planar := direction
+	planar.y = 0.0
+	if planar.length_squared() <= 0.0001:
+		return Vector3.ZERO
+	return planar.normalized()

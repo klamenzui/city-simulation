@@ -2581,52 +2581,52 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28, 0, 28)
 [node name="Park" type="Node3D" parent="World/City/only_people_nav/only_people" unique_id=1011288149]
 
 [node name="Park001_01" parent="World/City/only_people_nav/only_people/Park" unique_id=106124899 instance=ExtResource("127_eesqs")]
-transform = Transform3D(-4.37114e-08, 0, -0.504324, 0, 1, 0, 1, 0, -2.20447e-08, 16.4971, 2.38419e-07, 17.999)
+transform = Transform3D(-4.37114e-08, 0, -0.504324, 0, 1, 0, 1, 0, -2.20447e-08, 16.4971, 0, 17.999)
 
 [node name="Park002_01" parent="World/City/only_people_nav/only_people/Park" unique_id=1860855633 instance=ExtResource("130_uttc6")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.9964, 0, 18.0011)
 
 [node name="Park001_02" parent="World/City/only_people_nav/only_people/Park" unique_id=718042706 instance=ExtResource("127_eesqs")]
-transform = Transform3D(-4.37114e-08, 0, -0.504324, 0, 1, 0, 1, 0, -2.20447e-08, 13.4996, 2.38419e-07, 18.0002)
+transform = Transform3D(-4.37114e-08, 0, -0.504324, 0, 1, 0, 1, 0, -2.20447e-08, 13.4996, 0, 18.0002)
 
 [node name="Park002_02" parent="World/City/only_people_nav/only_people/Park" unique_id=1324047161 instance=ExtResource("130_uttc6")]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 11.9969, 0, 17.9985)
 
 [node name="Park003_01" parent="World/City/only_people_nav/only_people/Park" unique_id=1560242545 instance=ExtResource("131_2tdob")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.9984, 0.00166467, 18.0014)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.9984, 0, 18.0014)
 
 [node name="Park001_03" parent="World/City/only_people_nav/only_people/Park" unique_id=48791279 instance=ExtResource("127_eesqs")]
-transform = Transform3D(-4.37114e-08, 0, 0.504324, 0, 1, 0, -1, 0, -2.20447e-08, 16.499, -0.005266987, 12)
+transform = Transform3D(-4.37114e-08, 0, 0.504324, 0, 1, 0, -1, 0, -2.20447e-08, 16.499, 0, 12)
 
 [node name="Park002_03" parent="World/City/only_people_nav/only_people/Park" unique_id=1689238352 instance=ExtResource("130_uttc6")]
-transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 17.996, 0.016094118, 12)
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 17.996, 0, 12)
 
 [node name="Park001_04" parent="World/City/only_people_nav/only_people/Park" unique_id=1453934446 instance=ExtResource("127_eesqs")]
-transform = Transform3D(-4.37114e-08, 0, 0.504324, 0, 1, 0, -1, 0, -2.20447e-08, 13.501, 0.0028397962, 12)
+transform = Transform3D(-4.37114e-08, 0, 0.504324, 0, 1, 0, -1, 0, -2.20447e-08, 13.501, 0, 12)
 
 [node name="Park002_04" parent="World/City/only_people_nav/only_people/Park" unique_id=1549796944 instance=ExtResource("130_uttc6")]
-transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 11.997, -0.00095612556, 12)
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 11.997, 0, 12)
 
 [node name="Park003_02" parent="World/City/only_people_nav/only_people/Park" unique_id=703254536 instance=ExtResource("131_2tdob")]
-transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 14.996, 0.0048635304, 12)
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 14.996, 0, 12)
 
 [node name="Park004_01" parent="World/City/only_people_nav/only_people/Park" unique_id=2040095192 instance=ExtResource("132_mwwwv")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 0.513944, 14.9977, 0.0086146, 16.4988)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 0.513944, 14.9977, 0, 16.4988)
 
 [node name="Park004_02" parent="World/City/only_people_nav/only_people/Park" unique_id=621425533 instance=ExtResource("132_mwwwv")]
-transform = Transform3D(-4.37114e-08, 0, 0.508951, 0, 1, 0, -1, 0, -2.2247e-08, 13.499, 0.024230242, 14.9995)
+transform = Transform3D(-4.37114e-08, 0, 0.508951, 0, 1, 0, -1, 0, -2.2247e-08, 13.499, 0, 14.9995)
 
 [node name="Park004_03" parent="World/City/only_people_nav/only_people/Park" unique_id=725701228 instance=ExtResource("132_mwwwv")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 0.509993, 14.9967, 0.008329153, 13.4983)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 0.509993, 14.9967, 0, 13.4983)
 
 [node name="Park004_04" parent="World/City/only_people_nav/only_people/Park" unique_id=1610110912 instance=ExtResource("132_mwwwv")]
-transform = Transform3D(-4.37114e-08, 0, 0.5147, 0, 1, 0, -1, 0, -2.24983e-08, 16.4949, 0.01122427, 14.9958)
+transform = Transform3D(-4.37114e-08, 0, 0.5147, 0, 1, 0, -1, 0, -2.24983e-08, 16.4949, 0, 14.9958)
 
 [node name="Park005_01" parent="World/City/only_people_nav/only_people/Park" unique_id=1073410834 instance=ExtResource("133_6qefh")]
-transform = Transform3D(0.535136, 0, 0, 0, 1, 0, 0, 0, 0.512234, 16.4861, 0.0068905354, 13.4963)
+transform = Transform3D(0.535136, 0, 0, 0, 1, 0, 0, 0, 0.512234, 16.4861, 0, 13.4963)
 
 [node name="Park005_02" parent="World/City/only_people_nav/only_people/Park" unique_id=1496800844 instance=ExtResource("133_6qefh")]
-transform = Transform3D(0.501625, 0, 0, 0, 1, 0, 0, 0, 0.509046, 13.4965, 0.013350964, 13.4949)
+transform = Transform3D(0.501625, 0, 0, 0, 1, 0, 0, 0, 0.509046, 13.4965, 0, 13.4949)
 
 [node name="Park005_03" parent="World/City/only_people_nav/only_people/Park" unique_id=2052336643 instance=ExtResource("133_6qefh")]
 transform = Transform3D(0.510466, 0, 0, 0, 1, 0, 0, 0, 0.51568, 13.4995, 0, 16.4991)
@@ -2635,25 +2635,25 @@ transform = Transform3D(0.510466, 0, 0, 0, 1, 0, 0, 0, 0.51568, 13.4995, 0, 16.4
 transform = Transform3D(0.504138, 0, 0, 0, 1, 0, 0, 0, 0.504737, 16.4959, 0, 16.4991)
 
 [node name="Park001_05" parent="World/City/only_people_nav/only_people/Park" unique_id=835100527 instance=ExtResource("127_eesqs")]
-transform = Transform3D(1.01085, 0, 0, 0, 1, 0, 0, 0, 0.50197, 17.9904, 0.006860256, 13.4919)
+transform = Transform3D(1.01085, 0, 0, 0, 1, 0, 0, 0, 0.50197, 17.9904, 0, 13.4919)
 
 [node name="Park001_06" parent="World/City/only_people_nav/only_people/Park" unique_id=320436834 instance=ExtResource("127_eesqs")]
-transform = Transform3D(-1.00205, 0, -9.09265e-08, 0, 1, 0, 4.35013e-08, 0, -0.516483, 11.9992, -0.003148146, 13.4935)
+transform = Transform3D(-1.00205, 0, -9.09265e-08, 0, 1, 0, 4.35013e-08, 0, -0.516483, 11.9992, 0, 13.4935)
 
 [node name="Park001_07" parent="World/City/only_people_nav/only_people/Park" unique_id=2013011756 instance=ExtResource("127_eesqs")]
-transform = Transform3D(-1.01635, 0, 8.80733e-08, 0, 1, 0, -4.41223e-08, 0, -0.500276, 12.012, 0.00196892, 16.5013)
+transform = Transform3D(-1.01635, 0, 8.80733e-08, 0, 1, 0, -4.41223e-08, 0, -0.500276, 12.012, 0, 16.5013)
 
 [node name="Park003_03" parent="World/City/only_people_nav/only_people/Park" unique_id=1462333595 instance=ExtResource("131_2tdob")]
-transform = Transform3D(-8.83564e-08, 0, -0.998381, 0, 1, 0, 1.00377, 0, -2.16711e-08, 11.9969, -0.005913377, 15.0001)
+transform = Transform3D(-8.83564e-08, 0, -0.998381, 0, 1, 0, 1.00377, 0, -2.16711e-08, 11.9969, 0, 15.0001)
 
 [node name="Park001_08" parent="World/City/only_people_nav/only_people/Park" unique_id=2097454569 instance=ExtResource("127_eesqs")]
 transform = Transform3D(1.01353, 0, 0, 0, 1, 0, 0, 0, 0.504117, 17.9861, 0, 16.497)
 
 [node name="Park003_04" parent="World/City/only_people_nav/only_people/Park" unique_id=1720579865 instance=ExtResource("131_2tdob")]
-transform = Transform3D(-4.40025e-08, 0, 1.01264, 0, 1, 0, -1.00666, 0, -4.42638e-08, 17.9865, 0.008413792, 14.9963)
+transform = Transform3D(-4.40025e-08, 0, 1.01264, 0, 1, 0, -1.00666, 0, -4.42638e-08, 17.9865, 0, 14.9963)
 
 [node name="_Node3D_187" parent="World/City/only_people_nav/only_people/Park" unique_id=25334077 instance=ExtResource("134_ahqe7")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.9996, 0.020442486, 14.9951)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.9996, 0, 14.9951)
 
 [node name="Center" type="Path3D" parent="World/City/only_people_nav/only_people/Park" unique_id=1849630264]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.937109, 0, 11.070572)

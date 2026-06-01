@@ -19,6 +19,7 @@ Purpose: likely duplication areas to inspect before adding new code.
 | farm | 2 | Entities/Buildings/Farm.gd<br>Scenes/Farm.tscn |
 | hospital | 2 | Entities/Buildings/Hospital.gd<br>Scenes/CityBuildings/services/Hospital.tscn |
 | main | 2 | main.gd<br>Main.tscn |
+| new_array_mesh | 2 | Scenes/Plants/new_array_mesh.tres<br>Simulation/Bootstrap/new_array_mesh.tres |
 | park | 2 | Entities/Buildings/Park.gd<br>Scenes/Park.tscn |
 | plant | 2 | ImportedCitySource/Plant.tscn<br>ImportedCitySource/scripts/plant/plant.gd |
 | residentialbuilding | 2 | Entities/Buildings/ResidentialBuilding.gd<br>Scenes/ResidentialBuilding.tscn |
@@ -31,7 +32,7 @@ Purpose: likely duplication areas to inspect before adding new code.
 
 ## Navigation Graph Overlap
 
-- Shared `RoadGraph` / `PedestrianGraph` function names: _a_star, _append_transport_segments, _grid_key, _heuristic, _pop_best, _reconstruct_path, _remove_close_duplicates, _xz_distance, find_path_points, get_nearest_node_index, has_graph, rebuild_from_scene.
+- Shared `RoadGraph` / `PedestrianGraph` function names: _append_transport_segments, _find_index_path, _grid_key, _heuristic, _remove_close_duplicates, _xz_distance, find_path_points, get_nearest_node_index, has_graph, rebuild_from_scene.
 - Do not duplicate graph search logic between road and pedestrian routing without a deliberate ownership decision.
 
 ## Citizen Behavior Overlap
