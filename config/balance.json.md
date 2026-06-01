@@ -98,6 +98,18 @@ Vehicle pathing, delivery route-following, and first VehicleBody3D truck tuning.
 | `vehicle.ground_snap_speed` | `30.0` | Interpolation speed used when snapping vehicle height during simulation. |
 | `vehicle.ground_min_normal_y` | `0.45` | Minimum upward surface normal accepted as vehicle ground. |
 | `vehicle.ground_collision_mask` | `1` | Physics mask used by vehicle ground probes. |
+| `vehicle.physics_collision_layer` | `4` | Physics layer used by VehicleAgent bodies. |
+| `vehicle.physics_collision_mask` | `5` | Physics mask for VehicleAgent bodies; includes world/buildings and other vehicles. |
+| `vehicle.route_vehicle_avoidance_enabled` | `true` | Makes route-driven vehicles keep distance from vehicles ahead. |
+| `vehicle.route_vehicle_detection_distance` | `4.5` | Forward scan distance for route-driven vehicle spacing. |
+| `vehicle.route_vehicle_lateral_tolerance` | `0.9` | Maximum lateral distance from the route lane to a blocking vehicle. |
+| `vehicle.route_vehicle_stop_distance` | `1.7` | Minimum route-drive center-to-center spacing kept behind a vehicle ahead. |
+| `vehicle.route_vehicle_slowdown_distance` | `3.2` | Distance over which route-driven vehicles brake for vehicles ahead. |
+| `vehicle.obey_traffic_lights` | `true` | Makes route-driven vehicles stop at blocking traffic lights. |
+| `vehicle.traffic_light_detection_distance` | `6.0` | Forward scan distance for red/yellow traffic signals. |
+| `vehicle.traffic_light_lateral_tolerance` | `0.85` | Maximum lateral distance from the current vehicle lane to a relevant traffic light. |
+| `vehicle.traffic_light_stop_distance` | `0.95` | Distance kept before a red/yellow traffic light while waiting. |
+| `vehicle.traffic_light_slowdown_distance` | `3.0` | Distance over which vehicles brake smoothly for a red/yellow traffic light. |
 | `vehicle.audio_enabled` | `true` | Enables generated EngineSound/ImpactSound players on VehicleAgent scenes. |
 | `vehicle.engine_audio_path` | `res://environment/audio/vehicles/engine.wav` | Default looping engine sound used when a vehicle scene has no stream assigned. |
 | `vehicle.impact_audio_path` | `res://environment/audio/vehicles/impact_1.wav` | Default impact sound used for sudden speed changes. |
@@ -505,13 +517,16 @@ bevorzugt), `*_travel_minutes` = angenommene Reisezeit für die Planung,
 
 ### goap.work
 
+Arbeitsfaehigkeit, Krankheits-Skip, Schichtfenster und Arbeitsweg-Zeit werden
+zentral aus `planner.low_health`, `planner.work_fit_hunger_threshold`,
+`planner.work_commute_buffer_min`, `planner.work_travel_minutes` und
+`planner.health.sick_work_skip_*` gelesen. `goap.work` steuert nur noch die
+Kosten der GOAP-Schritte.
+
 | Key | Default | Wirkung |
 | --- | --- | --- |
-| `health_min` | `35.0` | Mindestgesundheit für Arbeit. |
-| `hunger_max` | `65.0` | Maximaler Hunger, um Arbeit zu planen. |
 | `go_work_cost` | `0.65` | Kosten „zur Arbeit gehen". |
 | `work_shift_cost` | `0.5` | Kosten „Schicht arbeiten". |
-| `travel_minutes` | `20` | Angenommene Arbeitsweg-Zeit. |
 
 ### goap.fun
 

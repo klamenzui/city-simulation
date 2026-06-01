@@ -1,6 +1,8 @@
 extends RefCounted
 class_name RoadGraph
 
+const GraphSearch = preload("res://Simulation/Navigation/GraphSearch.gd")
+
 const LINK_MAX_DISTANCE := 12.5
 const LINK_AXIS_TOLERANCE := 0.75
 const DEDUPE_STEP := 0.5
@@ -61,7 +63,7 @@ func find_path_points(start_pos: Vector3, end_pos: Vector3) -> PackedVector3Arra
 		route.append(end_pos)
 		return route
 
-	var index_path: Array = _a_star(start_idx, end_idx)
+	var index_path: Array = _find_index_path(start_idx, end_idx)
 	if index_path.is_empty():
 		route.append(end_pos)
 		return route
@@ -83,7 +85,7 @@ func find_vehicle_path_points(start_pos: Vector3, end_pos: Vector3, lane_offset:
 	if start_idx < 0 or end_idx < 0:
 		return route
 
-	var index_path: Array = _a_star(start_idx, end_idx)
+	var index_path: Array = _find_index_path(start_idx, end_idx)
 	if index_path.is_empty():
 		return route
 
@@ -226,57 +228,9 @@ func _get_best_neighbor_for_access(idx: int, reference_pos: Vector3) -> int:
 			best_idx = candidate_idx
 	return best_idx
 
-func _a_star(start_idx: int, end_idx: int) -> Array:
-	if start_idx == end_idx:
-		return [start_idx]
-
-	var open: Array = [start_idx]
-	var came_from: Dictionary = {}
-	var g_score: Dictionary = {start_idx: 0.0}
-	var f_score: Dictionary = {start_idx: _heuristic(start_idx, end_idx)}
-
-	while not open.is_empty():
-		var current = _pop_best(open, f_score)
-		if current == end_idx:
-			return _reconstruct_path(came_from, current)
-
-		for n in neighbors.get(current, []):
-			var neighbor_idx: int = int(n)
-			var tentative: float = float(g_score.get(current, INF)) + _heuristic(current, neighbor_idx)
-			if tentative >= float(g_score.get(neighbor_idx, INF)):
-				continue
-
-			came_from[neighbor_idx] = current
-			g_score[neighbor_idx] = tentative
-			f_score[neighbor_idx] = tentative + _heuristic(neighbor_idx, end_idx)
-			if not open.has(neighbor_idx):
-				open.append(neighbor_idx)
-
-	return []
-
-func _pop_best(open: Array, f_score: Dictionary):
-	var best_idx := 0
-	var best_node = open[0]
-	var best_val: float = float(f_score.get(best_node, INF))
-
-	for i in range(1, open.size()):
-		var candidate = open[i]
-		var candidate_val: float = float(f_score.get(candidate, INF))
-		if candidate_val < best_val:
-			best_val = candidate_val
-			best_node = candidate
-			best_idx = i
-
-	open.remove_at(best_idx)
-	return best_node
-
-func _reconstruct_path(came_from: Dictionary, current) -> Array:
-	var path: Array = [current]
-	var node = current
-	while came_from.has(node):
-		node = came_from[node]
-		path.push_front(node)
-	return path
+func _find_index_path(start_idx: int, end_idx: int) -> Array:
+	var heuristic := Callable(self, "_heuristic")
+	return GraphSearch.find_path(start_idx, end_idx, neighbors, heuristic, heuristic)
 
 func _heuristic(a_idx: int, b_idx: int) -> float:
 	return _xz_distance(nodes[a_idx], nodes[b_idx])

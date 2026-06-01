@@ -1,6 +1,7 @@
 extends SceneTree
 
 const TRUCK_SCENE_PATH := "res://Entities/Transport/Truck_NormalTrailler_001.tscn"
+const TRAFFIC_LIGHT_SCENE_PATH := "res://ImportedCitySource/scenes/trafficlight_c_active.tscn"
 const VEHICLE_SCENE_PATHS := [
 	TRUCK_SCENE_PATH,
 	"res://Entities/Transport/Vehicle_Minivan.tscn",
@@ -16,11 +17,14 @@ func _initialize() -> void:
 	_check_vehicle_lane_path()
 	_check_vehicle_route_contract()
 	_check_vehicle_impact_audio_contract()
+	await _check_vehicle_waits_at_red_traffic_light()
+	await _check_route_vehicle_keeps_vehicle_gap()
 	await _check_vehicle_scene_catalog()
 	await _check_vehicle_snaps_to_ground()
 	await _check_truck_board_drive_exit()
 	await _check_manual_player_drive()
 	await _check_manual_drive_blocks_static_collision()
+	await _check_manual_drive_blocks_parked_vehicle()
 
 	if not _errors.is_empty():
 		for error in _errors:
@@ -124,6 +128,123 @@ func _check_vehicle_impact_audio_contract() -> void:
 	vehicle.free()
 
 
+func _check_vehicle_waits_at_red_traffic_light() -> void:
+	var traffic_scene := load(TRAFFIC_LIGHT_SCENE_PATH) as PackedScene
+	if traffic_scene == null:
+		_errors.append("Could not load traffic light scene for vehicle signal check.")
+		return
+	var traffic_light := traffic_scene.instantiate() as Node3D
+	if traffic_light == null:
+		_errors.append("Could not instantiate traffic light scene for vehicle signal check.")
+		return
+	root.add_child(traffic_light)
+	await process_frame
+	traffic_light.global_position = Vector3(3.0, 0.0, 0.45)
+	traffic_light.set("auto_switch", false)
+	traffic_light.set("light_color", 2)
+	if not traffic_light.has_method("is_vehicle_passage_allowed"):
+		_errors.append("Traffic lights should expose vehicle passage state.")
+	elif bool(traffic_light.call("is_vehicle_passage_allowed")):
+		_errors.append("Red traffic lights should block vehicle passage.")
+
+	var vehicle := VehicleAgent.new()
+	root.add_child(vehicle)
+	await process_frame
+	vehicle.vehicle_audio_enabled = false
+	vehicle.max_speed = 5.0
+	vehicle.acceleration = 20.0
+	vehicle.braking_acceleration = 20.0
+	vehicle.traffic_light_detection_distance = 5.0
+	vehicle.traffic_light_lateral_tolerance = 0.75
+	vehicle.traffic_light_stop_distance = 0.8
+	vehicle.traffic_light_slowdown_distance = 2.0
+
+	vehicle.global_position = Vector3.ZERO
+	var started := vehicle.start_drive_to(Vector3(8.0, 0.0, 0.0), null)
+	if not started:
+		_errors.append("Vehicle should start a direct route for traffic-light regression.")
+		vehicle.free()
+		traffic_light.free()
+		return
+
+	for _i in range(60):
+		vehicle.advance_vehicle_simulation(0.1)
+	if vehicle.global_position.x > 2.35:
+		_errors.append("Vehicle should stop before a red traffic light instead of crossing the stop line.")
+	if not vehicle.is_waiting_at_traffic_light():
+		_errors.append("Vehicle should report that it is waiting at the red traffic light.")
+	if not vehicle.is_driving():
+		_errors.append("Vehicle should keep its route active while waiting at a red traffic light.")
+
+	traffic_light.set("light_color", 0)
+	if not bool(traffic_light.call("is_vehicle_passage_allowed")):
+		_errors.append("Green traffic lights should allow vehicle passage.")
+	for _i in range(90):
+		if not vehicle.is_driving():
+			break
+		vehicle.advance_vehicle_simulation(0.1)
+
+	if vehicle.is_driving():
+		_errors.append("Vehicle should resume and complete its route once the traffic light turns green.")
+	if vehicle.global_position.x < 7.5:
+		_errors.append("Vehicle should pass the traffic light after it turns green.")
+
+	vehicle.free()
+	traffic_light.free()
+
+
+func _check_route_vehicle_keeps_vehicle_gap() -> void:
+	var blocker := VehicleAgent.new()
+	var follower := VehicleAgent.new()
+	root.add_child(blocker)
+	root.add_child(follower)
+	await process_frame
+
+	blocker.global_position = Vector3(3.0, 0.0, 0.0)
+	follower.global_position = Vector3.ZERO
+	follower.max_speed = 5.0
+	follower.acceleration = 20.0
+	follower.braking_acceleration = 20.0
+	follower.route_vehicle_detection_distance = 5.0
+	follower.route_vehicle_lateral_tolerance = 0.75
+	follower.route_vehicle_stop_distance = 1.8
+	follower.route_vehicle_slowdown_distance = 2.2
+
+	if ((follower as CollisionObject3D).collision_mask & 4) == 0:
+		_errors.append("Vehicle physics mask should include the vehicle collision layer.")
+	blocker.start_drive_to(Vector3(6.0, 0.0, 0.0), null)
+
+	var started := follower.start_drive_to(Vector3(8.0, 0.0, 0.0), null)
+	if not started:
+		_errors.append("Follower vehicle should start a direct route for vehicle-spacing regression.")
+		blocker.free()
+		follower.free()
+		return
+
+	for _i in range(70):
+		follower.advance_vehicle_simulation(0.1)
+	if follower.global_position.x > 1.35:
+		_errors.append("Route-driven vehicle should stop behind another vehicle instead of overlapping it.")
+	if not follower.is_waiting_for_vehicle():
+		_errors.append("Route-driven vehicle should report that it is waiting behind another vehicle.")
+	if not follower.is_driving():
+		_errors.append("Route-driven vehicle should keep its route active while waiting behind another vehicle.")
+
+	blocker.global_position = Vector3(8.0, 0.0, 4.0)
+	for _i in range(90):
+		if not follower.is_driving():
+			break
+		follower.advance_vehicle_simulation(0.1)
+
+	if follower.is_driving():
+		_errors.append("Route-driven vehicle should resume once the vehicle ahead clears the lane.")
+	if follower.global_position.x < 7.5:
+		_errors.append("Route-driven vehicle should pass the cleared vehicle obstruction.")
+
+	blocker.free()
+	follower.free()
+
+
 func _check_vehicle_scene_catalog() -> void:
 	for scene_path in VEHICLE_SCENE_PATHS:
 		var scene := _load_vehicle_scene(scene_path)
@@ -141,6 +262,12 @@ func _check_vehicle_scene_catalog() -> void:
 			_errors.append("Vehicle scene %s should have a VehicleBody3D root." % scene_path)
 		if not vehicle.is_in_group("vehicles"):
 			_errors.append("Vehicle scene %s should join the vehicles group." % scene_path)
+		if vehicle is CollisionObject3D:
+			var collision_object := vehicle as CollisionObject3D
+			if (collision_object.collision_layer & 4) == 0:
+				_errors.append("Vehicle scene %s should live on the vehicle collision layer." % scene_path)
+			if (collision_object.collision_mask & 4) == 0:
+				_errors.append("Vehicle scene %s should collide with other vehicles." % scene_path)
 		if _count_vehicle_wheels(vehicle) < 4:
 			_errors.append("Vehicle scene %s should expose at least four VehicleWheel3D nodes." % scene_path)
 		if vehicle.get_node_or_null("EntryPoint") == null:
@@ -385,6 +512,71 @@ func _check_manual_drive_blocks_static_collision() -> void:
 	truck.free()
 	citizen.free()
 	blocker.free()
+	ground.free()
+	await process_frame
+
+
+func _check_manual_drive_blocks_parked_vehicle() -> void:
+	var scene := _load_vehicle_scene(TRUCK_SCENE_PATH)
+	if scene == null:
+		_errors.append("Could not load %s for vehicle collision check." % TRUCK_SCENE_PATH)
+		return
+	var truck := scene.instantiate()
+	var parked := scene.instantiate()
+	if truck == null or parked == null:
+		_errors.append("Could not instantiate trucks for vehicle collision check.")
+		if truck != null:
+			truck.free()
+		if parked != null:
+			parked.free()
+		return
+	var ground := _add_vehicle_test_ground("VehicleParkedCollisionProbeGround")
+	root.add_child(ground)
+	root.add_child(truck)
+	root.add_child(parked)
+	await process_frame
+	await physics_frame
+
+	(truck as Node3D).global_position = Vector3.ZERO
+	(parked as Node3D).global_position = Vector3(0.0, 0.0, 1.25)
+	await physics_frame
+
+	var truck_collision := truck as CollisionObject3D
+	var parked_collision := parked as CollisionObject3D
+	if truck_collision != null and (truck_collision.collision_mask & 4) == 0:
+		_errors.append("Player-driven truck should include parked vehicles in its collision mask.")
+	if parked_collision != null and (parked_collision.collision_layer & 4) == 0:
+		_errors.append("Parked truck should expose the vehicle collision layer.")
+
+	var citizen := CitizenScene.instantiate() as Citizen
+	root.add_child(citizen)
+	await process_frame
+	if citizen.has_method("enter_keyboard_control_mode"):
+		citizen.enter_keyboard_control_mode(false)
+	else:
+		citizen.keyboard_control_enabled = true
+	if not bool(truck.call("board_driver", citizen)):
+		_errors.append("Manual parked-vehicle collision check should be able to board the truck.")
+		truck.free()
+		parked.free()
+		citizen.free()
+		ground.free()
+		return
+
+	Input.action_press("accelerate")
+	for _i in range(120):
+		await physics_frame
+	Input.action_release("accelerate")
+
+	if (truck as Node3D).global_position.z > 0.75:
+		_errors.append("Player-driven truck should be blocked by parked vehicle collisions.")
+
+	if truck.has_method("unboard_driver"):
+		truck.call("unboard_driver", null, truck.call("get_entry_point_global"))
+	_release_vehicle_inputs()
+	truck.free()
+	parked.free()
+	citizen.free()
 	ground.free()
 	await process_frame
 

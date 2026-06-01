@@ -283,6 +283,11 @@ $availableTests = @(
 		Script = "res://tools/codex_goal_cooldown_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "workrules"
+		Label = "Work Rules"
+		Script = "res://tools/codex_work_rules_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "socialneed"
 		Label = "Social Need"
 		Script = "res://tools/codex_social_need_test.gd"

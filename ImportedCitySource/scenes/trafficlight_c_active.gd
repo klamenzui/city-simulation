@@ -103,3 +103,7 @@ func get_current_light_name() -> String:
 
 func is_pedestrian_crossing_allowed() -> bool:
 	return light_color == LightColors.GREEN
+
+
+func is_vehicle_passage_allowed() -> bool:
+	return light_color == LightColors.GREEN

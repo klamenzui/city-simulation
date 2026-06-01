@@ -136,6 +136,7 @@ World orchestration, economy, time, bootstrap, navigation, GOAP, UI, debug, logg
 | Simulation/Citizens/CitizenPlanner.gd | CitizenPlanner | RefCounted |
 | Simulation/Citizens/CitizenQueryResolver.gd | CitizenQueryResolver | RefCounted |
 | Simulation/Citizens/CitizenSimulationLodController.gd | CitizenSimulationLodController | RefCounted |
+| Simulation/Citizens/CitizenWorkRules.gd | CitizenWorkRules | RefCounted |
 | Simulation/Config/BalanceConfig.gd | BalanceConfig | RefCounted |
 | Simulation/Conversation/CitizenConversationManager.gd | CitizenConversationManager | RefCounted |
 | Simulation/Debug/RuntimeDebugLogger.gd | RuntimeDebugLogger | RefCounted |
@@ -149,7 +150,6 @@ World orchestration, economy, time, bootstrap, navigation, GOAP, UI, debug, logg
 | Simulation/GOAP/CitizenHealthGoap.gd | CitizenHealthGoap | RefCounted |
 | Simulation/GOAP/CitizenHungerGoap.gd | CitizenHungerGoap | RefCounted |
 | Simulation/GOAP/CitizenSocialGoap.gd | CitizenSocialGoap | RefCounted |
-| Simulation/GOAP/CitizenWorkGoap.gd | CitizenWorkGoap | RefCounted |
 
 ## config
 

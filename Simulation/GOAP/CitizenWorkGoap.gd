@@ -2,28 +2,23 @@ extends RefCounted
 class_name CitizenWorkGoap
 
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
+const CitizenWorkRulesScript = preload("res://Simulation/Citizens/CitizenWorkRules.gd")
 const GoapActionScript = preload("res://Simulation/GOAP/GoapAction.gd")
 const GoapPlannerScript = preload("res://Simulation/GOAP/GoapPlanner.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
 const WorkActionScript = preload("res://Actions/WorkAction.gd")
 
-var _health_min: float = BalanceConfig.get_float("goap.work.health_min", 35.0)
-var _hunger_max: float = BalanceConfig.get_float("goap.work.hunger_max", 75.0)
 var _go_work_cost: float = BalanceConfig.get_float("goap.work.go_work_cost", 0.65)
 var _work_shift_cost: float = BalanceConfig.get_float("goap.work.work_shift_cost", 0.5)
-var _travel_minutes: int = BalanceConfig.get_int("goap.work.travel_minutes", 20)
 
 func try_plan(world, citizen) -> bool:
 	if world == null or citizen == null:
 		return false
-	if citizen.job == null:
-		return false
-	if citizen.job.workplace == null:
-		return false
-	if not citizen.job.meets_requirements(citizen):
+	var context := CitizenWorkRulesScript.build_context(world, citizen)
+	if not bool(context.get("valid_job", false)):
 		return false
 
-	var state = _build_state(world, citizen)
+	var state = _build_state(context)
 	var goal = {"work_progress": true}
 	var actions = _build_actions()
 	var plan = GoapPlannerScript.plan(state, goal, actions, 5)
@@ -32,23 +27,12 @@ func try_plan(world, citizen) -> bool:
 
 	return _execute_first_action(plan[0], world, citizen)
 
-func _build_state(world, citizen) -> Dictionary:
+func _build_state(context: Dictionary) -> Dictionary:
 	var state = {}
-	var hour: int = world.time.get_hour()
-	var minute: int = world.time.get_minute()
-	var now_total: int = hour * 60 + minute
-	var weekend: bool = world.time.is_weekend()
-
-	var shift_minutes: int = int(citizen.job.shift_hours * 60)
-	var work_start: int = citizen.job.start_hour * 60 + citizen.schedule_offset
-	var work_end: int = work_start + shift_minutes
-	var in_work_window: bool = not weekend and now_total >= work_start and now_total < work_end
-	var remaining_work: int = maxi(0, shift_minutes - citizen.work_minutes_today)
-
-	state["at_workplace"] = citizen.current_location == citizen.job.workplace
-	state["in_work_window"] = in_work_window
-	state["work_remaining"] = remaining_work > 0
-	state["work_fit"] = citizen.needs.health > _health_min and citizen.needs.energy > citizen.low_energy_threshold and citizen.needs.hunger < _hunger_max
+	state["at_workplace"] = bool(context.get("at_workplace", false))
+	state["in_work_window"] = bool(context.get("in_work_window", false)) and not bool(context.get("weekend", false))
+	state["work_remaining"] = int(context.get("remaining_work", 0)) > 0
+	state["work_fit"] = bool(context.get("work_fit", false))
 	state["work_progress"] = false
 	return state
 
@@ -74,7 +58,7 @@ func _execute_first_action(action, world, citizen) -> bool:
 
 	match action.action_id:
 		"go_work":
-			citizen.start_action(GoToBuildingActionScript.new(citizen.job.workplace, _travel_minutes), world)
+			citizen.start_action(GoToBuildingActionScript.new(citizen.job.workplace, CitizenWorkRulesScript.get_travel_minutes()), world)
 			return true
 		"work_shift":
 			citizen.start_action(WorkActionScript.new(citizen.job), world)
