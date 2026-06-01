@@ -1,6 +1,8 @@
 class_name CitizenController
 extends CharacterBody3D
 
+const BalanceConfigScript = preload("res://Simulation/Config/BalanceConfig.gd")
+
 ## Root of the 4-layer citizen navigation stack (Navigation.md).
 ##
 ## Orchestrates:
@@ -21,7 +23,7 @@ extends CharacterBody3D
 
 # ---------------------------------------------------------- Exports: Movement
 @export_group("Movement")
-@export var move_speed: float = 0.5
+@export var move_speed: float = 1.0
 @export var waypoint_reach_distance: float = 0.35
 @export var final_waypoint_reach_distance: float = 0.18
 @export var waypoint_pass_distance: float = 0.55
@@ -2046,6 +2048,7 @@ func _build_config() -> CitizenConfig:
 	# caught at startup by `tools/codex_citizen_config_drift_test.gd`.
 	var c := CitizenConfig.new()
 	c.populate_from(self)
+	c.move_speed = maxf(BalanceConfigScript.get_float("citizen.movement.move_speed", c.move_speed), 0.01)
 	return c
 
 

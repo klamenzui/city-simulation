@@ -10,6 +10,11 @@ const EatAtRestaurantActionScript = preload("res://Actions/EatAtRestaurantAction
 const EatAtCafeActionScript = preload("res://Actions/EatAtCafeAction.gd")
 const BuyGroceriesActionScript = preload("res://Actions/BuyGroceriesAction.gd")
 
+const FOOD_ROUTE_HOME := "home"
+const FOOD_ROUTE_RESTAURANT := "restaurant"
+const FOOD_ROUTE_CAFE := "cafe"
+const FOOD_ROUTE_SUPERMARKET := "supermarket"
+
 var _go_home_cost: float = BalanceConfig.get_float("goap.hunger.go_home_cost", 1.3)
 var _go_restaurant_cost: float = BalanceConfig.get_float("goap.hunger.go_restaurant_cost", 1.0)
 var _go_cafe_cost: float = BalanceConfig.get_float("goap.hunger.go_cafe_cost", 1.15)
@@ -32,7 +37,11 @@ func try_plan(world, citizen) -> bool:
 	var target_restaurant := _select_restaurant(world, citizen)
 	var target_cafe := _select_cafe(world, citizen)
 	var target_supermarket := _select_supermarket(world, citizen)
-	var state: Dictionary = _build_state(world, citizen, target_restaurant, target_cafe, target_supermarket)
+	var preferred_food_route := _select_preferred_food_route(world, citizen, target_restaurant, target_cafe, target_supermarket)
+	if preferred_food_route.is_empty():
+		return false
+
+	var state: Dictionary = _build_state(world, citizen, target_restaurant, target_cafe, target_supermarket, preferred_food_route)
 	var goal: Dictionary = {"hunger_satisfied": true}
 	var actions: Array = _build_actions()
 	var plan: Array = GoapPlannerScript.plan(state, goal, actions, 6)
@@ -41,11 +50,19 @@ func try_plan(world, citizen) -> bool:
 
 	return _execute_first_action(plan[0], world, citizen, target_restaurant, target_cafe, target_supermarket)
 
-func _build_state(world, citizen, target_restaurant: Restaurant, target_cafe: Cafe, target_supermarket: Supermarket) -> Dictionary:
+func _build_state(
+	world,
+	citizen,
+	target_restaurant: Restaurant,
+	target_cafe: Cafe,
+	target_supermarket: Supermarket,
+	preferred_food_route: String
+) -> Dictionary:
 	var state: Dictionary = {}
 	var restaurant_open: bool = target_restaurant != null and target_restaurant.is_open(world.time.get_hour())
 	var cafe_open: bool = target_cafe != null and target_cafe.is_open(world.time.get_hour())
 	var supermarket_open: bool = target_supermarket != null and target_supermarket.is_open(world.time.get_hour())
+	state["preferred_food_route"] = preferred_food_route
 	state["at_home"] = citizen.current_location == citizen.home
 	state["at_restaurant"] = citizen.current_location == target_restaurant
 	state["at_cafe"] = citizen.current_location == target_cafe
@@ -73,25 +90,31 @@ func _build_actions() -> Array:
 	actions.append(GoapActionScript.new(
 		"go_home",
 		_go_home_cost,
-		{"has_home": true, "at_home": false},
+		{"has_home": true, "at_home": false, "preferred_food_route": FOOD_ROUTE_HOME},
+		{"at_home": true, "at_restaurant": false, "at_cafe": false, "at_supermarket": false}
+	))
+	actions.append(GoapActionScript.new(
+		"go_home_after_groceries",
+		_go_home_cost,
+		{"has_home": true, "has_home_food": true, "at_home": false, "preferred_food_route": FOOD_ROUTE_SUPERMARKET},
 		{"at_home": true, "at_restaurant": false, "at_cafe": false, "at_supermarket": false}
 	))
 	actions.append(GoapActionScript.new(
 		"go_restaurant",
 		_go_restaurant_cost,
-		{"has_restaurant": true, "restaurant_open": true, "restaurant_has_meal": true, "can_afford_restaurant": true, "at_restaurant": false, "is_night": false},
+		{"has_restaurant": true, "restaurant_open": true, "restaurant_has_meal": true, "can_afford_restaurant": true, "at_restaurant": false, "is_night": false, "preferred_food_route": FOOD_ROUTE_RESTAURANT},
 		{"at_restaurant": true, "at_home": false, "at_cafe": false, "at_supermarket": false}
 	))
 	actions.append(GoapActionScript.new(
 		"go_cafe",
 		_go_cafe_cost,
-		{"has_cafe": true, "cafe_open": true, "cafe_has_snack": true, "can_afford_cafe": true, "at_cafe": false, "is_night": false},
+		{"has_cafe": true, "cafe_open": true, "cafe_has_snack": true, "can_afford_cafe": true, "at_cafe": false, "is_night": false, "preferred_food_route": FOOD_ROUTE_CAFE},
 		{"at_cafe": true, "at_home": false, "at_restaurant": false, "at_supermarket": false}
 	))
 	actions.append(GoapActionScript.new(
 		"go_supermarket",
 		_go_supermarket_cost,
-		{"has_supermarket": true, "supermarket_open": true, "supermarket_has_groceries": true, "can_afford_groceries": true, "at_supermarket": false},
+		{"has_supermarket": true, "supermarket_open": true, "supermarket_has_groceries": true, "can_afford_groceries": true, "at_supermarket": false, "preferred_food_route": FOOD_ROUTE_SUPERMARKET},
 		{"at_supermarket": true, "at_home": false, "at_restaurant": false, "at_cafe": false}
 	))
 	actions.append(GoapActionScript.new(
@@ -126,6 +149,11 @@ func _execute_first_action(action, world, citizen, target_restaurant: Restaurant
 
 	match action.action_id:
 		"go_home":
+			if citizen.home == null:
+				return false
+			citizen.start_action(GoToBuildingActionScript.new(citizen.home, _home_travel_minutes), world)
+			return true
+		"go_home_after_groceries":
 			if citizen.home == null:
 				return false
 			citizen.start_action(GoToBuildingActionScript.new(citizen.home, _home_travel_minutes), world)
@@ -209,6 +237,41 @@ func _select_supermarket(world, citizen) -> Supermarket:
 	if _supermarket_can_feed_home(world, citizen, citizen.favorite_supermarket):
 		return citizen.favorite_supermarket
 	return null
+
+func _select_preferred_food_route(
+	world,
+	citizen,
+	target_restaurant: Restaurant,
+	target_cafe: Cafe,
+	target_supermarket: Supermarket
+) -> String:
+	var best: Dictionary = {"route": "", "distance": INF}
+	var from_pos: Vector3 = citizen.global_position
+	if citizen.home != null and citizen.get_home_inventory_count("food") > 0:
+		_consider_food_route(best, FOOD_ROUTE_HOME, from_pos, citizen.home)
+	if target_restaurant != null:
+		_consider_food_route(best, FOOD_ROUTE_RESTAURANT, from_pos, target_restaurant)
+	if target_cafe != null:
+		_consider_food_route(best, FOOD_ROUTE_CAFE, from_pos, target_cafe)
+	if target_supermarket != null and citizen.home != null and citizen.get_home_inventory_count("food") <= 0:
+		_consider_food_route(best, FOOD_ROUTE_SUPERMARKET, from_pos, target_supermarket)
+	return str(best.get("route", ""))
+
+
+func _consider_food_route(best: Dictionary, route_id: String, from_pos: Vector3, building: Building) -> void:
+	if building == null:
+		return
+	var distance := _distance_to_food_target(from_pos, building)
+	if distance < float(best.get("distance", INF)):
+		best["route"] = route_id
+		best["distance"] = distance
+
+
+func _distance_to_food_target(from_pos: Vector3, building: Building) -> float:
+	var target_pos := building.get_entrance_pos() if building.has_method("get_entrance_pos") else building.global_position
+	var delta := target_pos - from_pos
+	delta.y = 0.0
+	return delta.length()
 
 
 func _restaurant_can_feed(world, citizen, restaurant: Restaurant) -> bool:

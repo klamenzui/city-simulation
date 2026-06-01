@@ -20,6 +20,11 @@ const RelaxAtHomeActionScript = preload("res://Actions/RelaxAtHomeAction.gd")
 const SleepActionScript = preload("res://Actions/SleepAction.gd")
 const WorkActionScript = preload("res://Actions/WorkAction.gd")
 
+const FOOD_ROUTE_HOME := "home"
+const FOOD_ROUTE_RESTAURANT := "restaurant"
+const FOOD_ROUTE_CAFE := "cafe"
+const FOOD_ROUTE_SUPERMARKET := "supermarket"
+
 var _hunger_goap = CitizenHungerGoapScript.new()
 var _fun_goap = CitizenFunGoapScript.new()
 var _energy_goap = CitizenEnergyGoapScript.new()
@@ -270,37 +275,10 @@ func _try_survival_override(world, citizen) -> bool:
 		return true
 
 	if critical_hunger:
-		if citizen.current_location == citizen.home and citizen.get_home_inventory_count("food") > 0:
-			citizen.start_action(EatAtHomeActionScript.new(), world)
-			return true
-
-		if citizen.get_home_inventory_count("food") > 0 and citizen.home != null and citizen.current_location != citizen.home:
-			citizen.start_action(GoToBuildingActionScript.new(citizen.home, _survival_home_travel_minutes), world)
-			return true
-
-		var survival_restaurant := _select_survival_restaurant(world, citizen)
-		if survival_restaurant != null:
-			if citizen.current_location == survival_restaurant:
-				citizen.start_action(EatAtRestaurantActionScript.new(survival_restaurant), world)
-			else:
-				citizen.start_action(GoToBuildingActionScript.new(survival_restaurant, _survival_restaurant_travel_minutes), world)
-			return true
-
-		var survival_cafe := _select_survival_cafe(world, citizen)
-		if survival_cafe != null:
-			if citizen.current_location == survival_cafe:
-				citizen.start_action(EatAtCafeActionScript.new(survival_cafe), world)
-			else:
-				citizen.start_action(GoToBuildingActionScript.new(survival_cafe, _survival_cafe_travel_minutes), world)
-			return true
-
-		var survival_supermarket := _select_survival_supermarket(world, citizen)
-		if survival_supermarket != null:
-			if citizen.current_location == survival_supermarket:
-				citizen.start_action(BuyGroceriesActionScript.new(survival_supermarket), world)
-			else:
-				citizen.start_action(GoToBuildingActionScript.new(survival_supermarket, _survival_supermarket_travel_minutes), world)
-			return true
+		var food_route := _select_nearest_survival_food_route(world, citizen)
+		if not food_route.is_empty():
+			if _start_survival_food_route(world, citizen, food_route):
+				return true
 
 	if citizen.home == null:
 		return false
@@ -321,6 +299,83 @@ func _try_survival_override(world, citizen) -> bool:
 
 	citizen.start_action(RelaxAtHomeActionScript.new(), world)
 	return true
+
+func _select_nearest_survival_food_route(world, citizen) -> Dictionary:
+	var best: Dictionary = {"route": "", "target": null, "distance": INF}
+	var from_pos: Vector3 = citizen.global_position
+	if citizen.home != null and citizen.get_home_inventory_count("food") > 0:
+		_consider_survival_food_route(best, FOOD_ROUTE_HOME, citizen.home, from_pos)
+
+	var survival_restaurant := _select_survival_restaurant(world, citizen)
+	if survival_restaurant != null:
+		_consider_survival_food_route(best, FOOD_ROUTE_RESTAURANT, survival_restaurant, from_pos)
+
+	var survival_cafe := _select_survival_cafe(world, citizen)
+	if survival_cafe != null:
+		_consider_survival_food_route(best, FOOD_ROUTE_CAFE, survival_cafe, from_pos)
+
+	var survival_supermarket := _select_survival_supermarket(world, citizen)
+	if survival_supermarket != null and citizen.home != null and citizen.get_home_inventory_count("food") <= 0:
+		_consider_survival_food_route(best, FOOD_ROUTE_SUPERMARKET, survival_supermarket, from_pos)
+
+	return best if not str(best.get("route", "")).is_empty() else {}
+
+
+func _start_survival_food_route(world, citizen, food_route: Dictionary) -> bool:
+	var route_id := str(food_route.get("route", ""))
+	var target = food_route.get("target", null)
+	match route_id:
+		FOOD_ROUTE_HOME:
+			if citizen.current_location == citizen.home:
+				citizen.start_action(EatAtHomeActionScript.new(), world)
+			else:
+				citizen.start_action(GoToBuildingActionScript.new(citizen.home, _survival_home_travel_minutes), world)
+			return true
+		FOOD_ROUTE_RESTAURANT:
+			var restaurant := target as Restaurant
+			if restaurant == null:
+				return false
+			if citizen.current_location == restaurant:
+				citizen.start_action(EatAtRestaurantActionScript.new(restaurant), world)
+			else:
+				citizen.start_action(GoToBuildingActionScript.new(restaurant, _survival_restaurant_travel_minutes), world)
+			return true
+		FOOD_ROUTE_CAFE:
+			var cafe := target as Cafe
+			if cafe == null:
+				return false
+			if citizen.current_location == cafe:
+				citizen.start_action(EatAtCafeActionScript.new(cafe), world)
+			else:
+				citizen.start_action(GoToBuildingActionScript.new(cafe, _survival_cafe_travel_minutes), world)
+			return true
+		FOOD_ROUTE_SUPERMARKET:
+			var supermarket := target as Supermarket
+			if supermarket == null:
+				return false
+			if citizen.current_location == supermarket:
+				citizen.start_action(BuyGroceriesActionScript.new(supermarket), world)
+			else:
+				citizen.start_action(GoToBuildingActionScript.new(supermarket, _survival_supermarket_travel_minutes), world)
+			return true
+	return false
+
+
+func _consider_survival_food_route(best: Dictionary, route_id: String, target: Building, from_pos: Vector3) -> void:
+	if target == null:
+		return
+	var distance := _distance_to_food_target(from_pos, target)
+	if distance < float(best.get("distance", INF)):
+		best["route"] = route_id
+		best["target"] = target
+		best["distance"] = distance
+
+
+func _distance_to_food_target(from_pos: Vector3, building: Building) -> float:
+	var target_pos := building.get_entrance_pos() if building.has_method("get_entrance_pos") else building.global_position
+	var delta := target_pos - from_pos
+	delta.y = 0.0
+	return delta.length()
 
 func _try_work_schedule(world, citizen) -> bool:
 	var work_context := CitizenWorkRulesScript.build_context(world, citizen)

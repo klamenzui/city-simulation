@@ -14,7 +14,7 @@ extends RefCounted
 ## `tools/codex_citizen_config_drift_test.gd` enforces the matching set.
 
 # Movement
-var move_speed: float = 0.5
+var move_speed: float = 1.0
 var waypoint_reach_distance: float = 0.35
 var final_waypoint_reach_distance: float = 0.18
 var waypoint_pass_distance: float = 0.55

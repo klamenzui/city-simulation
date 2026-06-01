@@ -35,6 +35,7 @@ const MultiplayerHostAuthorityScript = preload("res://Simulation/Multiplayer/ser
 const NetworkEntityRegistryScript = preload("res://Simulation/Multiplayer/shared/NetworkEntityRegistry.gd")
 const WorldSnapshotSerializerScript = preload("res://Simulation/Multiplayer/shared/WorldSnapshotSerializer.gd")
 const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
+const BalanceConfigScript = preload("res://Simulation/Config/BalanceConfig.gd")
 
 class MockSelectionStateController:
 	extends RefCounted
@@ -162,6 +163,7 @@ func _run_all_tests() -> void:
 		"population_refill_spawns_after_delay",
 		"citizen_crowd_push_separates_close_neighbors",
 		"citizen_auto_resolves_world_for_queries",
+		"citizen_move_speed_uses_balance_config",
 		"hungry_citizen_uses_nearest_food_target",
 		"action_default_needs_modifier_is_isolated",
 		"relax_bench_uses_energy_bonus",
@@ -299,6 +301,8 @@ func _run_test(test_name: String) -> String:
 			return _test_citizen_crowd_push_separates_close_neighbors()
 		"citizen_auto_resolves_world_for_queries":
 			return _test_citizen_auto_resolves_world_for_queries()
+		"citizen_move_speed_uses_balance_config":
+			return _test_citizen_move_speed_uses_balance_config()
 		"hungry_citizen_uses_nearest_food_target":
 			return _test_hungry_citizen_uses_nearest_food_target()
 		"action_default_needs_modifier_is_isolated":
@@ -1296,6 +1300,15 @@ func _test_citizen_auto_resolves_world_for_queries() -> String:
 	_free_world(world)
 	return _current_error
 
+func _test_citizen_move_speed_uses_balance_config() -> String:
+	var citizen: Citizen = _new_citizen("Speed Config Citizen")
+	var nav_config: CitizenConfig = citizen._build_config()
+	var expected_speed := BalanceConfigScript.get_float("citizen.movement.move_speed", 1.0)
+
+	_expect(is_equal_approx(nav_config.move_speed, expected_speed), "citizen movement speed should be loaded from balance.json")
+	_expect(nav_config.move_speed > 0.5, "configured citizen movement speed should be above the old 0.5 default")
+	return _current_error
+
 func _test_hungry_citizen_uses_nearest_food_target() -> String:
 	var world: World = _new_world()
 	world.time.minutes_total = 12 * 60
@@ -1344,6 +1357,37 @@ func _test_hungry_citizen_uses_nearest_food_target() -> String:
 	_expect(survival_action != null, "critical hunger should choose a restaurant travel action")
 	if survival_action != null:
 		_expect_eq(survival_action.target, near_restaurant, "survival hunger target should prefer nearby stocked food over a far favorite")
+
+	var home := _new_residential("Hungry Citizen Home", Vector3(12.0, 0.0, 0.0), 2)
+	var near_supermarket: Supermarket = _new_supermarket("Nearest Food Market", Vector3(0.5, 0.0, 0.0))
+	world.register_building(home)
+	world.register_building(near_supermarket)
+
+	citizen.stop_travel()
+	citizen.current_action = null
+	citizen.current_location = null
+	citizen.decision_cooldown_left = 0
+	citizen.home = home
+	citizen.home_food_stock = 0
+	citizen.favorite_supermarket = near_supermarket
+	citizen.needs.hunger = 72.0
+	citizen.plan_next_action(world)
+	var nearest_food_action := citizen.current_action as GoToBuildingAction
+	_expect(nearest_food_action != null, "hungry citizen should choose a nearest food travel action across food categories")
+	if nearest_food_action != null:
+		_expect_eq(nearest_food_action.target, near_supermarket, "GOAP hunger target should prefer the closest valid food source by straight-line distance")
+
+	citizen.stop_travel()
+	citizen.current_action = null
+	citizen.current_location = null
+	citizen.decision_cooldown_left = 0
+	citizen.home_food_stock = 0
+	citizen.needs.hunger = 85.0
+	citizen.plan_next_action(world)
+	var nearest_survival_action := citizen.current_action as GoToBuildingAction
+	_expect(nearest_survival_action != null, "critical hunger should choose a nearest food travel action across food categories")
+	if nearest_survival_action != null:
+		_expect_eq(nearest_survival_action.target, near_supermarket, "survival hunger target should prefer the closest valid food source by straight-line distance")
 
 	_free_world(world)
 	return _current_error
