@@ -5,6 +5,7 @@ const PROJECT_LOG_PATH := "res://logs.log"
 const FALLBACK_LOG_PATH := "user://logs.log"
 const PROJECT_AI_LOG_PATH := "res://ai.log"
 const FALLBACK_AI_LOG_PATH := "user://ai.log"
+const LOG_SUFFIX_ENV := "CITY_SIM_LOG_SUFFIX"
 
 static var _log_path: String = PROJECT_LOG_PATH
 static var _ai_log_path: String = PROJECT_AI_LOG_PATH
@@ -17,8 +18,8 @@ static var _ai_log_file: FileAccess = null
 static func start_new_session(mirror_to_stdout: bool = false) -> void:
 	_close_open_files()
 	_mirror_to_stdout = mirror_to_stdout
-	_log_path = _resolve_log_path(PROJECT_LOG_PATH, FALLBACK_LOG_PATH)
-	_ai_log_path = _resolve_log_path(PROJECT_AI_LOG_PATH, FALLBACK_AI_LOG_PATH)
+	_log_path = _resolve_log_path(_with_log_suffix(PROJECT_LOG_PATH), _with_log_suffix(FALLBACK_LOG_PATH))
+	_ai_log_path = _resolve_log_path(_with_log_suffix(PROJECT_AI_LOG_PATH), _with_log_suffix(FALLBACK_AI_LOG_PATH))
 	_session_started = true
 	_session_tag = _build_session_tag()
 	_log_file = _initialize_log_file(_log_path, "Simulation Log", get_log_path())
@@ -48,6 +49,29 @@ static func _resolve_log_path(preferred_path: String, fallback_path: String) -> 
 		project_file.close()
 		return preferred_path
 	return fallback_path
+
+static func _with_log_suffix(path: String) -> String:
+	var suffix := _sanitize_log_suffix(OS.get_environment(LOG_SUFFIX_ENV))
+	if suffix.is_empty():
+		return path
+
+	var extension_index := path.rfind(".")
+	var slash_index := maxi(path.rfind("/"), path.rfind("\\"))
+	if extension_index <= slash_index:
+		return "%s_%s" % [path, suffix]
+	return "%s_%s%s" % [
+		path.substr(0, extension_index),
+		suffix,
+		path.substr(extension_index)
+	]
+
+static func _sanitize_log_suffix(raw_suffix: String) -> String:
+	var suffix := raw_suffix.strip_edges()
+	if suffix.is_empty():
+		return ""
+	for blocked in ["\\", "/", ":", "*", "?", "\"", "<", ">", "|", ".", " "]:
+		suffix = suffix.replace(blocked, "_")
+	return suffix.left(64)
 
 static func _initialize_log_file(path: String, title: String, absolute_path: String) -> FileAccess:
 	var file := FileAccess.open(path, FileAccess.WRITE)

@@ -43,6 +43,8 @@ var _goal_priority_work_weight: float = BalanceConfig.get_float("planner.goal_pr
 var _goal_priority_fun_weight: float = BalanceConfig.get_float("planner.goal_priority_fun_weight", 0.65)
 var _goal_priority_social_weight: float = BalanceConfig.get_float("planner.goal_priority_social_weight", 0.6)
 var _goal_priority_health_weight: float = BalanceConfig.get_float("planner.goal_priority_health_weight", 1.6)
+var _goal_priority_food_reserve_weight: float = BalanceConfig.get_float("planner.goal_priority_food_reserve_weight", 0.72)
+var _min_home_food_reserve: int = BalanceConfig.get_int("planner.min_home_food_reserve", 2)
 var _health_priority_scale: float = BalanceConfig.get_float("planner.health.priority_scale", 20.0)
 var _health_visit_threshold: float = BalanceConfig.get_float("planner.health.visit_threshold", 20.0)
 var _health_emergency_threshold: float = BalanceConfig.get_float("planner.health.emergency_threshold", 5.0)
@@ -159,6 +161,12 @@ func _build_goal_candidates(world, citizen) -> Array:
 	if citizen.job != null and not citizen.job.meets_requirements(citizen) and not is_night and not low_health:
 		education_need = 1.0
 
+	var food_reserve_need: float = 0.0
+	if not is_night and not low_health \
+			and citizen.needs.hunger < citizen.hunger_threshold \
+			and _should_build_food_reserve(world, citizen):
+		food_reserve_need = 1.0
+
 	var work_need: float = 0.0
 	if not low_health:
 		var work_context := CitizenWorkRulesScript.build_context(world, citizen)
@@ -194,6 +202,7 @@ func _build_goal_candidates(world, citizen) -> Array:
 		{"id": "energy", "priority": energy_deficit * _goal_priority_energy_weight},
 		{"id": "education", "priority": education_need * _goal_priority_education_weight},
 		{"id": "work", "priority": work_need * _goal_priority_work_weight * work_pers},
+		{"id": "food_reserve", "priority": food_reserve_need * _goal_priority_food_reserve_weight},
 		{"id": "fun", "priority": fun_deficit * _goal_priority_fun_weight * fun_pers},
 		{"id": "social", "priority": social_deficit * _goal_priority_social_weight * social_emo_mult * social_pers},
 	]
@@ -213,6 +222,8 @@ func _try_goal(goal_id: String, world, citizen) -> bool:
 			return _education_goap.try_plan(world, citizen)
 		"work":
 			return _work_goap.try_plan(world, citizen)
+		"food_reserve":
+			return _try_food_reserve(world, citizen)
 		"fun":
 			return _fun_goap.try_plan(world, citizen)
 		"social":
@@ -235,6 +246,16 @@ func _fallback_idle(world, citizen, is_night: bool) -> bool:
 		citizen.start_action(GoToBuildingActionScript.new(citizen.home, _fallback_home_travel_minutes), world)
 		return true
 	citizen.start_action(RelaxAtHomeActionScript.new(), world)
+	return true
+
+func _try_food_reserve(world, citizen) -> bool:
+	var supermarket := _select_food_reserve_supermarket(world, citizen)
+	if supermarket == null:
+		return false
+	if citizen.current_location == supermarket:
+		citizen.start_action(BuyGroceriesActionScript.new(supermarket), world)
+	else:
+		citizen.start_action(GoToBuildingActionScript.new(supermarket, _survival_supermarket_travel_minutes), world)
 	return true
 
 func _try_survival_override(world, citizen) -> bool:
@@ -379,6 +400,27 @@ func _select_survival_supermarket(world, citizen) -> Supermarket:
 	if _can_buy_groceries(world, citizen, citizen.favorite_supermarket):
 		return citizen.favorite_supermarket
 	return null
+
+func _should_build_food_reserve(world, citizen) -> bool:
+	if _min_home_food_reserve <= 0:
+		return false
+	if citizen == null or not ("home" in citizen) or citizen.home == null:
+		return false
+	if _get_home_food_count(citizen) >= _min_home_food_reserve:
+		return false
+	return _select_food_reserve_supermarket(world, citizen) != null
+
+func _select_food_reserve_supermarket(world, citizen) -> Supermarket:
+	return _select_survival_supermarket(world, citizen)
+
+func _get_home_food_count(citizen) -> int:
+	if citizen == null:
+		return 0
+	if citizen.has_method("get_home_inventory_count"):
+		return int(citizen.get_home_inventory_count("food"))
+	if "home_food_stock" in citizen:
+		return int(citizen.home_food_stock)
+	return 0
 
 func _can_eat_at_restaurant(world, citizen, restaurant: Restaurant) -> bool:
 	if restaurant == null:

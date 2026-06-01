@@ -59,8 +59,8 @@ func _build_state(world, citizen) -> Dictionary:
 	state["has_shop"] = citizen.favorite_shop != null
 	state["has_cinema"] = citizen.favorite_cinema != null
 
-	state["can_afford_shop"] = citizen.can_afford_shop_item(world)
-	state["can_afford_cinema"] = citizen.can_afford_cinema(world)
+	state["can_afford_shop"] = citizen.can_afford_discretionary_shop_item(world)
+	state["can_afford_cinema"] = citizen.can_afford_discretionary_cinema(world)
 	state["shop_open"] = shop_open
 	state["shop_has_stock"] = shop_open and citizen.favorite_shop.can_sell_item("clothing", 1)
 	state["cinema_open"] = cinema_open

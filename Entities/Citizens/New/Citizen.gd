@@ -2781,6 +2781,28 @@ func can_afford_groceries(world: World) -> bool:
 	return can_afford_groceries_at(favorite_supermarket, world)
 
 
+func get_daily_food_rent_reserve(world: World) -> int:
+	var rent_per_day := BalanceConfig.get_int(
+		"world_setup.default_rent_per_day",
+		BalanceConfig.get_int("economy.default_rent_per_day", 15)
+	)
+	if home != null:
+		rent_per_day = home.rent_per_day
+
+	var grocery_price := BalanceConfig.get_int("buildings.supermarket.grocery_price", 10)
+	if favorite_supermarket != null:
+		grocery_price = favorite_supermarket.get_grocery_price(world)
+	return maxi(rent_per_day + grocery_price, 0)
+
+
+func can_afford_discretionary_purchase(price: int, world: World) -> bool:
+	if wallet == null:
+		return false
+	if price <= 0:
+		return true
+	return wallet.balance - price >= get_daily_food_rent_reserve(world)
+
+
 func can_afford_shop_item_at(shop: Shop, _world: World) -> bool:
 	if shop == null or wallet == null:
 		return false
@@ -2789,6 +2811,16 @@ func can_afford_shop_item_at(shop: Shop, _world: World) -> bool:
 
 func can_afford_shop_item(world: World) -> bool:
 	return can_afford_shop_item_at(favorite_shop, world)
+
+
+func can_afford_discretionary_shop_item_at(shop: Shop, world: World) -> bool:
+	if shop == null:
+		return false
+	return can_afford_discretionary_purchase(_get_shop_item_price(shop), world)
+
+
+func can_afford_discretionary_shop_item(world: World) -> bool:
+	return can_afford_discretionary_shop_item_at(favorite_shop, world)
 
 
 func can_buy_shop_item_at(shop: Shop, world: World) -> bool:
@@ -2833,6 +2865,12 @@ func can_afford_cinema(_world: World) -> bool:
 	if favorite_cinema == null or wallet == null:
 		return false
 	return wallet.balance >= favorite_cinema.ticket_price
+
+
+func can_afford_discretionary_cinema(world: World) -> bool:
+	if favorite_cinema == null:
+		return false
+	return can_afford_discretionary_purchase(favorite_cinema.ticket_price, world)
 
 
 func set_position_grounded(pos: Vector3) -> void:

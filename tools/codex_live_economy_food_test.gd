@@ -40,6 +40,7 @@ func _run() -> void:
 	var restaurants := _collect_buildings(world, Building.BuildingType.RESTAURANT)
 	var cafes := _collect_buildings(world, Building.BuildingType.CAFE)
 	var supermarkets := _collect_buildings(world, Building.BuildingType.SUPERMARKET)
+	var cinemas := _collect_buildings(world, Building.BuildingType.CINEMA)
 	_expect(restaurants.size() > 0, "Main scene should have restaurants")
 	_expect(cafes.size() > 0, "Main scene should have cafes")
 	_expect(supermarkets.size() > 0, "Main scene should have supermarkets")
@@ -49,6 +50,7 @@ func _run() -> void:
 	var restaurant := _first_open_restaurant_with_stock(restaurants, world)
 	var cafe := _first_open_cafe_with_stock(cafes, world)
 	var supermarket := _first_open_supermarket_with_stock(supermarkets, world)
+	var cinema := _first_open_cinema(cinemas, world)
 	_expect(cafe != null, "At least one open cafe should have snack stock")
 	_expect(supermarket != null, "At least one open supermarket should have grocery stock")
 
@@ -60,6 +62,8 @@ func _run() -> void:
 			_test_restaurant_meal_flow(citizen, world, restaurant)
 		_test_cafe_snack_flow(citizen, world, cafe)
 		_test_supermarket_grocery_flow(citizen, world, supermarket)
+		_test_planner_builds_home_food_reserve(citizen, world, supermarket)
+		_test_discretionary_budget_reserve(citizen, world, supermarket, cinema)
 		_test_work_flow_without_travel_delay(citizen, world, supermarket)
 
 	_finish(main_instance)
@@ -114,6 +118,14 @@ func _first_open_supermarket_with_stock(buildings: Array[Building], world: World
 		var supermarket := building as Supermarket
 		if supermarket != null and supermarket.is_open(world.time.get_hour()) and supermarket.can_sell_item("grocery_bundle", 1):
 			return supermarket
+	return null
+
+
+func _first_open_cinema(buildings: Array[Building], world: World) -> Cinema:
+	for building in buildings:
+		var cinema := building as Cinema
+		if cinema != null and cinema.is_open(world.time.get_hour()):
+			return cinema
 	return null
 
 
@@ -260,6 +272,51 @@ func _test_supermarket_grocery_flow(citizen: Citizen, world: World, supermarket:
 	_expect(supermarket.get_stock("grocery_bundle") == stock_before - 1, "Buying groceries should consume one grocery bundle")
 
 
+func _test_planner_builds_home_food_reserve(citizen: Citizen, world: World, supermarket: Supermarket) -> void:
+	_set_time(world, 12, 0)
+	_clear_action(citizen, world)
+	citizen.current_location = supermarket
+	citizen.favorite_supermarket = supermarket
+	_clear_home_food(citizen)
+	citizen.wallet.balance = 200
+	citizen.needs.hunger = 15.0
+	citizen.needs.energy = 90.0
+	citizen.needs.fun = 100.0
+	citizen.needs.social = 100.0
+	citizen.needs.health = 100.0
+	var stock_before := supermarket.get_stock("grocery_bundle")
+
+	citizen.plan_next_action(world)
+	_expect(citizen.current_action is BuyGroceriesActionScript, "Fed citizen with empty pantry should buy groceries for home reserve")
+	_finish_done_action(citizen, world)
+
+	_expect(citizen.get_home_inventory_count("food") >= 2, "Food reserve purchase should restore at least the configured pantry reserve")
+	_expect(supermarket.get_stock("grocery_bundle") == stock_before - 1, "Food reserve purchase should consume one grocery bundle")
+
+
+func _test_discretionary_budget_reserve(citizen: Citizen, world: World, shop: Shop, cinema: Cinema) -> void:
+	_set_time(world, 12, 0)
+	_clear_action(citizen, world)
+	citizen.favorite_shop = shop
+	var reserve := citizen.get_daily_food_rent_reserve(world)
+	var shop_price := citizen._get_shop_item_price(shop)
+	citizen.wallet.balance = reserve + shop_price - 1
+	_expect(citizen.can_afford_shop_item_at(shop, world), "Raw shop affordability should still see enough money for the item")
+	_expect(not citizen.can_afford_discretionary_shop_item_at(shop, world), "AI shop purchase should protect rent plus groceries reserve")
+	citizen.wallet.balance = reserve + shop_price
+	_expect(citizen.can_afford_discretionary_shop_item_at(shop, world), "AI shop purchase should be allowed when reserve remains")
+
+	if cinema == null:
+		return
+	citizen.favorite_cinema = cinema
+	var ticket_price := cinema.ticket_price
+	citizen.wallet.balance = reserve + ticket_price - 1
+	_expect(citizen.wallet.balance >= ticket_price, "Raw cinema affordability should have enough for a ticket")
+	_expect(not citizen.can_afford_discretionary_cinema(world), "AI cinema purchase should protect rent plus groceries reserve")
+	citizen.wallet.balance = reserve + ticket_price
+	_expect(citizen.can_afford_discretionary_cinema(world), "AI cinema purchase should be allowed when reserve remains")
+
+
 func _test_work_flow_without_travel_delay(citizen: Citizen, world: World, workplace: Building) -> void:
 	_set_time(world, 10, 0)
 	_clear_action(citizen, world)
@@ -302,6 +359,16 @@ func _finish_done_action(citizen: Citizen, world: World) -> void:
 		return
 	citizen.current_action.finish(world, citizen)
 	citizen.current_action = null
+
+
+func _clear_home_food(citizen: Citizen) -> void:
+	citizen.home_food_stock = 0
+	if citizen.home == null:
+		return
+	if citizen.home.has_method("get_inventory_count") and citizen.home.has_method("remove_inventory_item"):
+		var existing := int(citizen.home.get_inventory_count("food"))
+		if existing > 0:
+			citizen.home.remove_inventory_item("food", existing)
 
 
 func _set_time(world: World, hour: int, minute: int) -> void:
