@@ -489,6 +489,8 @@ static func _default_data() -> Dictionary:
 			"goal_priority_fun_weight": 0.65,
 			"goal_priority_social_weight": 0.6,
 			"goal_priority_health_weight": 1.6,
+			"goal_priority_food_reserve_weight": 0.72,
+			"min_home_food_reserve": 2,
 			"work_need_base_priority": 0.45,
 			"work_need_remaining_weight": 0.55,
 			"low_health_hunger_alert_threshold": 65.0,

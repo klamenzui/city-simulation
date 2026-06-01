@@ -81,6 +81,7 @@ powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\r
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only mp2process
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -IncludeSky
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -VerboseGodot
+powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only liveeconomy -TestTimeoutSec 300
 ```
 
 Optionale Parameter:
@@ -88,9 +89,14 @@ Optionale Parameter:
 - `-GodotExe "C:\path\to\Godot_v4.6.1-stable_win64_console.exe"`
 - `-Only parse,economy,route,crosswalk,sky`
 - `-Only parse,economy,occupancy,route,crosswalk,sky`
+- `-TestTimeoutSec 180` setzt den Standard-Timeout pro Godot-Test; `0` deaktiviert den Timeout
 - `-Only mp2process` fuer den optionalen echten Host/Client-Zwei-Prozess-Test
 - `-IncludeSky`
 - `-VerboseGodot`
+
+`run_tests.ps1` beendet haengende Godot-Prozesse nach dem Timeout und markiert den Test als `FAIL`.
+Einige laengere Tests haben einen eigenen hoeheren Timeout im Runner.
+Headless-Tests schreiben ihre Session-Logs in `logs_test_*.log` und `ai_test_*.log`, damit eine laufende Editor-Session nicht ueberschrieben wird.
 
 ## Erwartete Ausgabe
 

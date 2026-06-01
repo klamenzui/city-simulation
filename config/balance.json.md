@@ -414,6 +414,8 @@ GOAP-Zielauswahl: Schwellen, Prioritäts-Skalen und Gewichte.
 | `goal_priority_fun_weight` | `0.65` | Gewicht des Fun-Ziels. |
 | `goal_priority_social_weight` | `0.6` | Gewicht des Social-Ziels. |
 | `goal_priority_health_weight` | `1.6` | Gewicht des Health-/Hospital-Ziels. |
+| `goal_priority_food_reserve_weight` | `0.72` | Gewicht fuer proactive Home-Food-Reserve. |
+| `min_home_food_reserve` | `2` | Mindestvorrat zuhause, ab dem der Planner Supermarkt-Nachkauf plant. |
 | `work_need_base_priority` | `0.45` | Grund-Priorität für Arbeit. |
 | `work_need_remaining_weight` | `0.55` | Zusatzgewicht nach verbleibender Schichtzeit. |
 | `low_health_hunger_alert_threshold` | `65.0` | Hunger-Alarmschwelle bei niedriger Gesundheit. |

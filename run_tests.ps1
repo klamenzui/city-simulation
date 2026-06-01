@@ -1,6 +1,7 @@
 param(
 	[string]$GodotExe = "",
 	[string[]]$Only = @(),
+	[int]$TestTimeoutSec = 180,
 	[switch]$IncludeSky,
 	[switch]$VerboseGodot
 )
@@ -44,51 +45,103 @@ function Resolve-GodotConsoleExe {
 	throw "Godot console executable not found. Pass -GodotExe or set GODOT_CONSOLE_EXE."
 }
 
+function ConvertTo-ProcessArgument {
+	param([string]$Value)
+
+	if ($null -eq $Value -or $Value.Length -eq 0) {
+		return '""'
+	}
+
+	if ($Value -notmatch '[\s"]') {
+		return $Value
+	}
+
+	$escaped = $Value -replace '(\\*)"', '$1$1\"'
+	$escaped = $escaped -replace '(\\+)$', '$1$1'
+	return '"' + $escaped + '"'
+}
+
 function Invoke-GodotScript {
 	param(
 		[string]$Executable,
 		[string]$ProjectPath,
 		[string]$ScriptPath,
+		[int]$TimeoutSec,
 		[bool]$UseVerbose
 	)
 
-	$args = @("--headless")
+	$arguments = @("--headless")
 	if ($UseVerbose) {
-		$args += "--verbose"
+		$arguments += "--verbose"
 	}
-	$args += @("--path", $ProjectPath, "--script", $ScriptPath)
+	$arguments += @("--path", $ProjectPath, "--script", $ScriptPath)
 
-	$stdoutPath = [System.IO.Path]::GetTempFileName()
-	$stderrPath = [System.IO.Path]::GetTempFileName()
+	$processInfo = New-Object System.Diagnostics.ProcessStartInfo
+	$processInfo.FileName = $Executable
+	$processInfo.Arguments = ($arguments | ForEach-Object { ConvertTo-ProcessArgument $_ }) -join " "
+	$processInfo.UseShellExecute = $false
+	$processInfo.CreateNoWindow = $true
+	$processInfo.RedirectStandardOutput = $true
+	$processInfo.RedirectStandardError = $true
+	$scriptLogKey = ($ScriptPath -replace "^.*[\\/]", "") -replace "\.gd$", ""
+	$processInfo.EnvironmentVariables["CITY_SIM_LOG_SUFFIX"] = (
+		"test_{0}_{1}" -f $PID, $scriptLogKey
+	) -replace "[^A-Za-z0-9_-]", "_"
+
+	$process = New-Object System.Diagnostics.Process
+	$process.StartInfo = $processInfo
+	$timedOut = $false
+	$output = @()
+	$exitCode = -1
 	try {
-		$process = Start-Process -FilePath $Executable `
-			-ArgumentList $args `
-			-NoNewWindow `
-			-Wait `
-			-PassThru `
-			-RedirectStandardOutput $stdoutPath `
-			-RedirectStandardError $stderrPath
+		if (-not $process.Start()) {
+			throw "Failed to start Godot process."
+		}
 
-		$output = @()
-		if (Test-Path $stdoutPath) {
-			$output += Get-Content -Path $stdoutPath
+		$stdoutTask = $process.StandardOutput.ReadToEndAsync()
+		$stderrTask = $process.StandardError.ReadToEndAsync()
+
+		if ($TimeoutSec -gt 0) {
+			$completed = $process.WaitForExit($TimeoutSec * 1000)
 		}
-		if (Test-Path $stderrPath) {
-			$output += Get-Content -Path $stderrPath
+		else {
+			$process.WaitForExit()
+			$completed = $true
 		}
-		$exitCode = $process.ExitCode
+
+		if (-not $completed) {
+			$timedOut = $true
+			Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+			$process.WaitForExit(5000) | Out-Null
+		}
+		else {
+			# Ensure redirected streams are drained and ExitCode is current.
+			$process.WaitForExit()
+			$process.Refresh()
+		}
+
+		$stdout = $stdoutTask.Result
+		$stderr = $stderrTask.Result
+		if (-not [string]::IsNullOrEmpty($stdout)) {
+			$output += $stdout -split "\r?\n"
+		}
+		if (-not [string]::IsNullOrEmpty($stderr)) {
+			$output += $stderr -split "\r?\n"
+		}
+		if ($timedOut) {
+			$output += "TEST_TIMEOUT: Godot script exceeded ${TimeoutSec}s and was killed."
+		}
+		$exitCode = if ($timedOut) { -1 } else { $process.ExitCode }
 	}
 	finally {
-		if (Test-Path $stdoutPath) {
-			Remove-Item -Path $stdoutPath -Force -ErrorAction SilentlyContinue
-		}
-		if (Test-Path $stderrPath) {
-			Remove-Item -Path $stderrPath -Force -ErrorAction SilentlyContinue
+		if ($null -ne $process) {
+			$process.Dispose()
 		}
 	}
 	return [pscustomobject]@{
 		Output = @($output)
 		ExitCode = $exitCode
+		TimedOut = $timedOut
 	}
 }
 
@@ -200,6 +253,7 @@ $availableTests = @(
 		Key = "runtime"
 		Label = "Runtime LOD/Conversation Test"
 		Script = "res://tools/codex_runtime_lod_conversation_test.gd"
+		TimeoutSec = 240
 	}
 	[pscustomobject]@{
 		Key = "gamesmoke"
@@ -226,6 +280,7 @@ $availableTests = @(
 		Label = "Multiplayer Two-Process"
 		Script = "res://tools/codex_multiplayer_two_process_test.gd"
 		Optional = $true
+		TimeoutSec = 300
 	}
 	[pscustomobject]@{
 		Key = "liveeconomy"
@@ -311,6 +366,7 @@ $availableTests = @(
 		Key = "navroute"
 		Label = "Citizen Navigation Route"
 		Script = "res://tools/codex_navigation_route_test.gd"
+		TimeoutSec = 240
 	}
 	[pscustomobject]@{
 		Key = "navedge"
@@ -357,12 +413,17 @@ $results = New-Object System.Collections.Generic.List[object]
 
 foreach ($test in $selectedTests) {
 	Write-Host "==> $($test.Label) [$($test.Key)]"
-	$result = Invoke-GodotScript -Executable $godotConsole -ProjectPath $projectPath -ScriptPath $test.Script -UseVerbose:$VerboseGodot.IsPresent
-	$ok = ($result.ExitCode -eq 0) -and (Test-GodotOutputHealthy -OutputLines $result.Output)
+	$timeoutSec = $TestTimeoutSec
+	if ($TestTimeoutSec -gt 0 -and $null -ne $test.PSObject.Properties["TimeoutSec"]) {
+		$timeoutSec = [Math]::Max($TestTimeoutSec, [int]$test.TimeoutSec)
+	}
+	$result = Invoke-GodotScript -Executable $godotConsole -ProjectPath $projectPath -ScriptPath $test.Script -TimeoutSec $timeoutSec -UseVerbose:$VerboseGodot.IsPresent
+	$ok = (-not $result.TimedOut) -and ($result.ExitCode -eq 0) -and (Test-GodotOutputHealthy -OutputLines $result.Output)
 	$results.Add([pscustomobject]@{
 		Key = $test.Key
 		Label = $test.Label
 		ExitCode = $result.ExitCode
+		TimedOut = $result.TimedOut
 		Passed = $ok
 		Output = $result.Output
 	})
