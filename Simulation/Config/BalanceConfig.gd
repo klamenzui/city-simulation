@@ -304,6 +304,9 @@ static func _default_data() -> Dictionary:
 			"wallet_start_balance": 200,
 			"home_food_stock_start": 2,
 			"education_level_start": 0,
+			"movement": {
+				"move_speed": 1.0,
+			},
 			"thresholds": {
 				"hunger_threshold_base": 60.0,
 				"hunger_threshold_jitter": 12.0,

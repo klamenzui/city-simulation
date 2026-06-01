@@ -308,6 +308,7 @@ Startwerte und Persönlichkeits-Streuung der Bürger.
 | `wallet_start_balance` | `200` | Startguthaben je Bürger (EUR). |
 | `home_food_stock_start` | `2` | Vorräte zu Hause beim Start. |
 | `education_level_start` | `0` | Start-Bildungsstufe. |
+| `movement.move_speed` | `1.0` | Sichtbare Laufgeschwindigkeit der fokussierten/gerenderten Citizens in World Units pro Sekunde. |
 
 ### citizen.thresholds
 
