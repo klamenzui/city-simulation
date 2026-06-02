@@ -49,7 +49,7 @@ data = PackedVector3Array(-1, 0, -0.9, -1, 0.099999994, -1, -1, 0.099999994, -0.
 script = ExtResource("1_7k3bq")
 building_name = "Residential 01 (Multi-building)"
 building_type = 1
-entrance = NodePath("Entrance")
+entrance = NodePath("")
 
 [node name="building_H2" parent="." unique_id=2081136272 instance=ExtResource("2_ygv14")]
 
@@ -62,7 +62,7 @@ skeleton = NodePath("")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="building_H2/building_H2_mesh/StaticBody3D" unique_id=1721520420]
 shape = SubResource("ConcavePolygonShape3D_7k3bq")
 
-[node name="Entrance" type="Node3D" parent="." unique_id=1771406062]
+[node name="Entrance" type="Marker3D" parent="." unique_id=342472591]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.40409493, 0.06, 0.62338555)
 
 [node name="Bench" parent="." unique_id=2036566530 instance=ExtResource("4_ygv14")]

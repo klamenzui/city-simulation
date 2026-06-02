@@ -308,7 +308,9 @@ Startwerte und Persönlichkeits-Streuung der Bürger.
 | `wallet_start_balance` | `200` | Startguthaben je Bürger (EUR). |
 | `home_food_stock_start` | `2` | Vorräte zu Hause beim Start. |
 | `education_level_start` | `0` | Start-Bildungsstufe. |
-| `movement.move_speed` | `1.0` | Sichtbare Laufgeschwindigkeit der fokussierten/gerenderten Citizens in World Units pro Sekunde. |
+| `movement.move_speed` | `1.0` | Basis-Laufgeschwindigkeit der fokussierten/gerenderten Citizens in World Units pro Sekunde. |
+| `movement.personal_speed_multiplier_min` | `0.85` | Untere Grenze des einmalig pro Citizen gerollten Speed-Multipliers. |
+| `movement.personal_speed_multiplier_max` | `1.1` | Obere Grenze des einmalig pro Citizen gerollten Speed-Multipliers. |
 
 ### citizen.thresholds
 
@@ -431,6 +433,7 @@ GOAP-Zielauswahl: Schwellen, Prioritäts-Skalen und Gewichte.
 | `survival_restaurant_travel_minutes` | `15` | Restaurant-Reisezeit (Überleben). |
 | `survival_cafe_travel_minutes` | `12` | Cafe-Reisezeit (Snack-Fallback im Überleben). |
 | `survival_supermarket_travel_minutes` | `18` | Supermarkt-Reisezeit (Überleben). |
+| `service_arrival_buffer_minutes` | `5` | Zusatzpuffer nach Service-Reisezeit; Citizens starten Shop/Food/Fun-Ziele nur, wenn das Ziel dann noch offen ist. |
 | `work_travel_minutes` | `20` | Angenommene Arbeitsweg-Zeit. |
 
 ### planner.health

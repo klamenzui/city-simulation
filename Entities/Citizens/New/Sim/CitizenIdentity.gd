@@ -32,6 +32,8 @@ var home_food_stock: int = 2
 var clothing_items: int = 0
 var carried_inventory: Dictionary = {}
 var education_level: int = 0
+# Rolled once when the Citizen is initialized, then persisted with save/snapshot data.
+var personal_speed_multiplier: float = -1.0
 # Consecutive days employed at the current workplace. Shown in the UI as
 # tenure; reset to 0 on hire/fire so it tracks the current job, not lifetime.
 var job_tenure_days: int = 0

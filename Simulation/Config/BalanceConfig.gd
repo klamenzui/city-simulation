@@ -306,6 +306,8 @@ static func _default_data() -> Dictionary:
 			"education_level_start": 0,
 			"movement": {
 				"move_speed": 1.0,
+				"personal_speed_multiplier_min": 0.85,
+				"personal_speed_multiplier_max": 1.1,
 			},
 			"thresholds": {
 				"hunger_threshold_base": 60.0,
@@ -508,6 +510,7 @@ static func _default_data() -> Dictionary:
 			"survival_restaurant_travel_minutes": 15,
 			"survival_cafe_travel_minutes": 12,
 			"survival_supermarket_travel_minutes": 18,
+			"service_arrival_buffer_minutes": 5,
 			"work_travel_minutes": 20,
 			"health": {
 				"visit_threshold": 20.0,

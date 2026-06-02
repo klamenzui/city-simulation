@@ -1168,13 +1168,17 @@ func get_active_worker_count() -> int:
 	return count
 
 func get_open_status_label(hour: int = -1) -> String:
+	var minute: int = hour * 60 if hour >= 0 else -1
+	return get_open_status_label_at_minute(minute)
+
+func get_open_status_label_at_minute(day_minute: int = -1) -> String:
 	if is_financially_closed():
 		return "NO_FUNDS"
 
 	if not has_required_staff():
 		return "UNSTAFFED"
 
-	if not _is_within_open_hours(hour):
+	if not _is_within_open_minutes(day_minute):
 		return "CLOSED"
 
 	if is_underfunded():
@@ -1184,13 +1188,20 @@ func get_open_status_label(hour: int = -1) -> String:
 	return "OPEN"
 
 func _is_within_open_hours(hour: int) -> bool:
-	if hour < 0:
+	var minute: int = hour * 60 if hour >= 0 else -1
+	return _is_within_open_minutes(minute)
+
+func _is_within_open_minutes(day_minute: int) -> bool:
+	if day_minute < 0:
 		return true
 	if open_hour == close_hour:
 		return true
-	if close_hour > open_hour:
-		return hour >= open_hour and hour < close_hour
-	return hour >= open_hour or hour < close_hour
+	var open_minute := clampi(open_hour, 0, 23) * 60
+	var close_minute := clampi(close_hour, 0, 24) * 60
+	var minute := posmod(day_minute, 24 * 60)
+	if close_minute > open_minute:
+		return minute >= open_minute and minute < close_minute
+	return minute >= open_minute or minute < close_minute
 
 func get_open_status_display_label(hour: int = -1) -> String:
 	match get_open_status_label(hour):
@@ -1212,6 +1223,16 @@ func get_open_status_display_label(hour: int = -1) -> String:
 func is_open(hour: int = -1) -> bool:
 	var status := get_open_status_label(hour)
 	return status == "OPEN" or status == "UNDERFUNDED" or status == "STRUGGLING"
+
+func is_open_at_minute(day_minute: int = -1) -> bool:
+	var status := get_open_status_label_at_minute(day_minute)
+	return status == "OPEN" or status == "UNDERFUNDED" or status == "STRUGGLING"
+
+func is_open_for_arrival(current_day_minute: int, travel_minutes: int, buffer_minutes: int = 0) -> bool:
+	if current_day_minute < 0:
+		return is_open(-1)
+	var check_minute := current_day_minute + maxi(travel_minutes, 0) + maxi(buffer_minutes, 0)
+	return is_open_at_minute(check_minute)
 
 func get_service_type() -> String:
 	return "generic"

@@ -96,6 +96,15 @@ class MockToastController:
 		messages.append(message)
 		kinds.append(kind)
 
+class MockUnavailablePedestrianGraph:
+	extends RefCounted
+
+	func has_graph() -> bool:
+		return true
+
+	func has_path_between(_start_pos: Vector3, _end_pos: Vector3, _start_building = null, _end_building = null) -> bool:
+		return false
+
 var _checks_run: int = 0
 var _current_error: String = ""
 var _harness_root: Node3D
@@ -129,6 +138,7 @@ func _run_all_tests() -> void:
 		"wage_progression_payroll_estimate",
 		"wage_progression_tenure_lifecycle",
 		"job_absence_fires_after_three_days",
+		"job_absence_skips_weekend_paydays",
 		"university_requires_worker_for_study",
 		"restaurant_requires_worker_for_meals",
 		"cafe_snack_reduces_hunger_without_staff",
@@ -150,6 +160,7 @@ func _run_all_tests() -> void:
 		"world_city_bench_excludes_park_benches",
 		"world_city_bench_cache_refreshes_on_scene_change",
 		"world_auto_registers_runtime_park_queries",
+		"world_park_query_falls_back_while_navigation_initializes",
 		"world_unregisters_removed_park_from_queries",
 		"world_registers_scene_park_cluster_once",
 		"citizen_factory_spawns_at_home_entrance",
@@ -164,6 +175,7 @@ func _run_all_tests() -> void:
 		"citizen_crowd_push_separates_close_neighbors",
 		"citizen_auto_resolves_world_for_queries",
 		"citizen_move_speed_uses_balance_config",
+		"citizen_personal_speed_multiplier_applies_once",
 		"hungry_citizen_uses_nearest_food_target",
 		"action_default_needs_modifier_is_isolated",
 		"relax_bench_uses_energy_bonus",
@@ -233,6 +245,8 @@ func _run_test(test_name: String) -> String:
 			return _test_wage_progression_tenure_lifecycle()
 		"job_absence_fires_after_three_days":
 			return _test_job_absence_fires_after_three_days()
+		"job_absence_skips_weekend_paydays":
+			return _test_job_absence_skips_weekend_paydays()
 		"university_requires_worker_for_study":
 			return _test_university_requires_worker_for_study()
 		"restaurant_requires_worker_for_meals":
@@ -275,6 +289,8 @@ func _run_test(test_name: String) -> String:
 			return _test_world_city_bench_cache_refreshes_on_scene_change()
 		"world_auto_registers_runtime_park_queries":
 			return _test_world_auto_registers_runtime_park_queries()
+		"world_park_query_falls_back_while_navigation_initializes":
+			return _test_world_park_query_falls_back_while_navigation_initializes()
 		"world_unregisters_removed_park_from_queries":
 			return _test_world_unregisters_removed_park_from_queries()
 		"world_registers_scene_park_cluster_once":
@@ -303,6 +319,8 @@ func _run_test(test_name: String) -> String:
 			return _test_citizen_auto_resolves_world_for_queries()
 		"citizen_move_speed_uses_balance_config":
 			return _test_citizen_move_speed_uses_balance_config()
+		"citizen_personal_speed_multiplier_applies_once":
+			return _test_citizen_personal_speed_multiplier_applies_once()
 		"hungry_citizen_uses_nearest_food_target":
 			return _test_hungry_citizen_uses_nearest_food_target()
 		"action_default_needs_modifier_is_isolated":
@@ -952,6 +970,20 @@ func _test_world_auto_registers_runtime_park_queries() -> String:
 	_free_world(world)
 	return _current_error
 
+func _test_world_park_query_falls_back_while_navigation_initializes() -> String:
+	var world: World = _new_world()
+	var park: Park = _new_park("Startup Park")
+	world.pedestrian_graph = MockUnavailablePedestrianGraph.new()
+
+	_expect_eq(
+		world.find_nearest_park(Vector3.ZERO),
+		park,
+		"park favorite lookup should not stay null while the navigation map is still initializing"
+	)
+
+	_free_world(world)
+	return _current_error
+
 func _test_world_unregisters_removed_park_from_queries() -> String:
 	var world: World = _new_world()
 	var park: Park = _new_park("Removed Park")
@@ -1307,6 +1339,23 @@ func _test_citizen_move_speed_uses_balance_config() -> String:
 
 	_expect(is_equal_approx(nav_config.move_speed, expected_speed), "citizen movement speed should be loaded from balance.json")
 	_expect(nav_config.move_speed > 0.5, "configured citizen movement speed should be above the old 0.5 default")
+	return _current_error
+
+func _test_citizen_personal_speed_multiplier_applies_once() -> String:
+	var citizen: Citizen = _new_citizen("Personal Speed Citizen")
+	citizen._config = citizen._build_config()
+	var base_speed := BalanceConfigScript.get_float("citizen.movement.move_speed", 1.0)
+	var multiplier := 0.9
+	var expected_speed := base_speed * multiplier
+
+	citizen.personal_speed_multiplier = multiplier
+	citizen._apply_personal_movement_speed()
+	citizen._apply_personal_movement_speed()
+
+	_expect(is_equal_approx(citizen.personal_speed_multiplier, multiplier), "personal speed multiplier should preserve sub-1.0 values")
+	_expect(is_equal_approx(citizen.move_speed, expected_speed), "citizen export speed should expose the effective personal speed")
+	_expect(is_equal_approx(citizen._config.move_speed, expected_speed), "movement config should use base speed times personal multiplier")
+	_expect(is_equal_approx(citizen._walk_speed, expected_speed), "coarse travel estimation should use the effective personal speed")
 	return _current_error
 
 func _test_hungry_citizen_uses_nearest_food_target() -> String:
@@ -2431,6 +2480,42 @@ func _test_job_absence_fires_after_three_days() -> String:
 	_expect_eq(worker.job_absence_days, 0, "firing should reset absence tracking")
 	_expect_eq(worker.job_tenure_days, 0, "absence firing should not add tenure")
 	_expect_eq(worker.experience_wage_bonus, 0.0, "absence firing should reset experience bonus")
+
+	_free_world(world)
+	return _current_error
+
+func _test_job_absence_skips_weekend_paydays() -> String:
+	var world: World = _new_world()
+	var shop: Building = _new_building("Weekend Absence Shop", 1)
+	shop.building_type = BuildingScript.BuildingType.SHOP
+	shop.account.balance = 1000
+	world.register_building(shop)
+
+	var worker: Citizen = _new_citizen("Weekend Worker")
+	world.register_citizen(worker)
+	var job := Job.new()
+	job.title = "Tester"
+	job.wage_per_hour = 20
+	job.shift_hours = 8
+	job.workplace = shop
+	job.preferred_workplace = shop
+	worker.job = job
+	world.register_job(job)
+	_expect(shop.try_hire(worker), "worker should be hired before weekend absence tracking")
+
+	world.time.day = 7 # Payday day 7 settles day 6 (Saturday).
+	world._on_payday()
+	_expect_eq(worker.job_absence_days, 0, "Saturday settlement should not count work absence")
+	_expect(shop.workers.has(worker), "worker should keep the job after Saturday settlement")
+
+	world.time.day = 8 # Payday day 8 settles day 7 (Sunday).
+	world._on_payday()
+	_expect_eq(worker.job_absence_days, 0, "Sunday settlement should not count work absence")
+	_expect(shop.workers.has(worker), "worker should keep the job after Sunday settlement")
+
+	world.time.day = 2 # Payday day 2 settles day 1 (Monday).
+	world._on_payday()
+	_expect_eq(worker.job_absence_days, 1, "weekday settlement should still count zero-work absence")
 
 	_free_world(world)
 	return _current_error

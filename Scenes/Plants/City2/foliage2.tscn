@@ -1,0 +1,54 @@
+[gd_scene format=4]
+
+[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city2/Foliage2_FoliageColor2.png" id="1_saixw"]
+[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city2/Foliage2_FoliageNormal2.png" id="2_e21mf"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5hfao"]
+resource_name = "Foliage2"
+transparency = 2
+alpha_scissor_threshold = 0.4
+alpha_antialiasing_mode = 0
+cull_mode = 2
+albedo_texture = ExtResource("1_saixw")
+roughness = 0.5
+normal_enabled = true
+normal_texture = ExtResource("2_e21mf")
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_cl4md"]
+_surfaces = [{
+"aabb": AABB(-1.552977, -0.1276482, -0.37256682, 3.105954, 0.2423915, 0.8366423),
+"format": 34896613377,
+"index_count": 36,
+"index_data": PackedByteArray("AAAJAAIACQADAAIABAADAAkACQAFAAQAAQAJAAAAAQAFAAkAAAAKAAEACgAFAAEABwAKAAAABgAFAAoABwAIAAoACgAIAAYA"),
+"lods": [0.8202058, PackedByteArray("AAABAAIAAQADAAIABAADAAEAAQAFAAQABgAFAAEAAAAGAAEABwAGAAAABwAIAAYA")],
+"name": "Foliage2",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 11,
+"vertex_data": PackedByteArray("/38VW///AAD/f///z0sAACP2FVv//wAA//8AAEeBAAAR+zyTAAAAAP9/PJMAAAAA7QQ8kwAAAADbCRVb//8AAAAAAABHgQAAyPH//89LAAA2Dv//z0sAAA==")
+}]
+blend_shape_mode = 0
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_7fflg"]
+resource_name = "Foliage2_Plane_002"
+_surfaces = [{
+"aabb": AABB(-1.552977, -0.1276482, -0.37256682, 3.105954, 0.2423915, 0.8366423),
+"attribute_data": PackedByteArray("vgVBfL4FqSaC5kF8RvkQQOXvpgK+BaYC5QqWgaf4loGn+DKmp/g0/W8UNP1bAQPAN96pJogFqSbdHDKm"),
+"format": 34896613399,
+"index_count": 36,
+"index_data": PackedByteArray("AAAMAAIADQAMAAAADAADAAIABAADAAwADAAFAAQAAQAFAAwADgALAAYACgALAA4ABgAHAA4ACgAOAAkADgAHAAgACQAOAAgA"),
+"lods": [0.8202058, PackedByteArray("AAABAAIAAQADAAIABAADAAEAAQAFAAQABgAHAAgACQAGAAgACgAGAAkACgALAAYA")],
+"material": SubResource("StandardMaterial3D_5hfao"),
+"name": "Foliage2",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 15,
+"vertex_data": PackedByteArray("/38VW///b7X/f///z0u9wiP2FVv//123//8AAEeBgsQR+zyTAACsyf9/PJMAAAvQ7QQ8kwAArMn/fzyTAAAL0P9////PS73C/38VW///b7XbCRVb//9dtwAAAABHgYLEyPH//89LGsL/f///z0u9wjYO///PSxrC////f////3/e43tzr79gYd/dZG3///9/ZO0fov///3////9/////f3vzH5xf4U7ASd72bv///3/27rSh")
+}]
+blend_shape_mode = 0
+shadow_mesh = SubResource("ArrayMesh_cl4md")
+
+[node name="Foliage2" type="MeshInstance3D" unique_id=300613551]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
+mesh = SubResource("ArrayMesh_7fflg")
+skeleton = NodePath("")

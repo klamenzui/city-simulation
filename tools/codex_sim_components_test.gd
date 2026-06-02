@@ -64,6 +64,7 @@ func _test_identity_defaults() -> void:
 	_assert_null("favorite_park default null", identity.favorite_park)
 	_assert_eq("home_food_stock default", identity.home_food_stock, 2)
 	_assert_eq("education_level default", identity.education_level, 0)
+	_assert_eq("personal_speed_multiplier pending default", identity.personal_speed_multiplier, -1.0)
 
 
 func _test_identity_writes() -> void:
@@ -72,9 +73,11 @@ func _test_identity_writes() -> void:
 	identity.citizen_name = "Marie"
 	identity.home_food_stock = 7
 	identity.education_level = 3
+	identity.personal_speed_multiplier = 0.95
 	_assert_eq("citizen_name set", identity.citizen_name, "Marie")
 	_assert_eq("home_food_stock set", identity.home_food_stock, 7)
 	_assert_eq("education_level set", identity.education_level, 3)
+	_assert_eq("personal_speed_multiplier set", identity.personal_speed_multiplier, 0.95)
 
 
 func _test_rest_pose_lifecycle() -> void:

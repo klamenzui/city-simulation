@@ -64,6 +64,7 @@ func _run() -> void:
 	citizen.job_tenure_days = 8
 	citizen.job_absence_days = 2
 	citizen.experience_wage_bonus = 0.075
+	citizen.personal_speed_multiplier = 0.93
 	expected_workplace.profit_average = 325.0
 	expected_workplace._profit_average_seeded = true
 	var owner_citizen := _find_non_player_citizen(world, citizen)
@@ -116,6 +117,7 @@ func _run() -> void:
 	citizen.job_tenure_days = 0
 	citizen.job_absence_days = 0
 	citizen.experience_wage_bonus = 0.0
+	citizen.personal_speed_multiplier = 1.2
 	expected_workplace.profit_average = -999.0
 	expected_workplace._profit_average_seeded = false
 	owned_building.citizen_owner = null
@@ -157,6 +159,8 @@ func _run() -> void:
 		_fail("job absence days not restored: expected 2 got %d" % citizen.job_absence_days)
 	if not is_equal_approx(citizen.experience_wage_bonus, 0.075):
 		_fail("experience bonus not restored: expected 0.075 got %.4f" % citizen.experience_wage_bonus)
+	if not is_equal_approx(citizen.personal_speed_multiplier, 0.93):
+		_fail("personal speed multiplier not restored: expected 0.93 got %.4f" % citizen.personal_speed_multiplier)
 	if not is_equal_approx(expected_workplace.profit_average, 325.0):
 		_fail("building profit average not restored: expected 325 got %.2f" % expected_workplace.profit_average)
 	if not expected_workplace._profit_average_seeded:

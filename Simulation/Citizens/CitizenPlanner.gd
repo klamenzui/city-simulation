@@ -66,6 +66,7 @@ var _survival_home_travel_minutes: int = BalanceConfig.get_int("planner.survival
 var _survival_restaurant_travel_minutes: int = BalanceConfig.get_int("planner.survival_restaurant_travel_minutes", 15)
 var _survival_cafe_travel_minutes: int = BalanceConfig.get_int("planner.survival_cafe_travel_minutes", 12)
 var _survival_supermarket_travel_minutes: int = BalanceConfig.get_int("planner.survival_supermarket_travel_minutes", 18)
+var _service_arrival_buffer_minutes: int = BalanceConfig.get_int("planner.service_arrival_buffer_minutes", 5)
 var _night_start_hour: int = BalanceConfig.get_int("schedule.night_start_hour", 22)
 var _day_start_hour: int = BalanceConfig.get_int("schedule.day_start_hour", 6)
 var _personality_enabled: bool = BalanceConfig.get_bool("planner.personality.enabled", true)
@@ -480,7 +481,7 @@ func _get_home_food_count(citizen) -> int:
 func _can_eat_at_restaurant(world, citizen, restaurant: Restaurant) -> bool:
 	if restaurant == null:
 		return false
-	if not restaurant.is_open(world.time.get_hour()):
+	if not _service_open_for_plan(world, citizen, restaurant, _survival_restaurant_travel_minutes):
 		return false
 	if not restaurant.can_sell_item("meal", 1):
 		return false
@@ -489,7 +490,7 @@ func _can_eat_at_restaurant(world, citizen, restaurant: Restaurant) -> bool:
 func _can_eat_at_cafe(world, citizen, cafe: Cafe) -> bool:
 	if cafe == null:
 		return false
-	if not cafe.is_open(world.time.get_hour()):
+	if not _service_open_for_plan(world, citizen, cafe, _survival_cafe_travel_minutes):
 		return false
 	if not cafe.can_sell_snack():
 		return false
@@ -498,11 +499,30 @@ func _can_eat_at_cafe(world, citizen, cafe: Cafe) -> bool:
 func _can_buy_groceries(world, citizen, supermarket: Supermarket) -> bool:
 	if supermarket == null:
 		return false
-	if not supermarket.is_open(world.time.get_hour()):
+	if not _service_open_for_plan(world, citizen, supermarket, _survival_supermarket_travel_minutes):
 		return false
 	if not supermarket.can_sell_item("grocery_bundle", 1):
 		return false
 	return citizen.can_afford_groceries_at(supermarket, world)
+
+func _service_open_for_plan(world, citizen, building: Building, travel_minutes: int) -> bool:
+	if world == null or building == null:
+		return false
+	if citizen != null and "current_location" in citizen and citizen.current_location == building:
+		return building.is_open_at_minute(_current_day_minute(world))
+	return building.is_open_for_arrival(_current_day_minute(world), travel_minutes, _service_arrival_buffer_minutes)
+
+func _current_day_minute(world) -> int:
+	if world == null or not "time" in world or world.time == null:
+		return -1
+	var t = world.time
+	if "minutes_total" in t:
+		return int(t.minutes_total)
+	if t.has_method("get_hour") and t.has_method("get_minute"):
+		return int(t.get_hour()) * 60 + int(t.get_minute())
+	if t.has_method("get_hour"):
+		return int(t.get_hour()) * 60
+	return -1
 
 func _log_sick_work_skip(citizen) -> void:
 	citizen.debug_log_once_per_day(

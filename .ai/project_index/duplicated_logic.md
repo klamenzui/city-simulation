@@ -8,6 +8,7 @@ Purpose: likely duplication areas to inspect before adding new code.
 
 | Stem | Count | Examples |
 | --- | --- | --- |
+| bench | 2 | Entities/Bench.tscn<br>Scenes/Environment/CityProps/bench.tscn |
 | building | 3 | Entities/Buildings/Building.gd<br>ImportedCitySource/scripts/building/building.gd<br>Scenes/Building.tscn |
 | character_body_3d | 2 | ImportedCitySource/scenes/units/character_body_3d.tscn<br>ImportedCitySource/scripts/character_body_3d.gd |
 | character_body_3d_new | 2 | ImportedCitySource/scenes/units/character_body_3d_new.gd<br>ImportedCitySource/scenes/units/character_body_3d_new.tscn |
