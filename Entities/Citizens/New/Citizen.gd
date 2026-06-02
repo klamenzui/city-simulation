@@ -140,7 +140,7 @@ func _ready() -> void:
 	# Snapshot collision layers so building entry/exit can toggle them.
 	_saved_collision_layer = collision_layer
 	_saved_collision_mask = collision_mask
-	_walk_speed = maxf(move_speed, 0.01)
+	_apply_personal_movement_speed()
 	_setup_clickable()
 	_setup_selection_visual()
 	if network_replica_mode:
@@ -421,6 +421,8 @@ func apply_network_snapshot(data: Dictionary, building_lookup: Dictionary) -> vo
 	home_food_stock = int(data.get("home_food_stock", home_food_stock))
 	clothing_items = int(data.get("clothing_items", clothing_items))
 	education_level = int(data.get("education_level", education_level))
+	if data.has("personal_speed_multiplier"):
+		personal_speed_multiplier = float(data.get("personal_speed_multiplier", personal_speed_multiplier))
 	job_tenure_days = int(data.get("job_tenure_days", job_tenure_days))
 	job_absence_days = int(data.get("job_absence_days", job_absence_days))
 	experience_wage_bonus = float(data.get("experience_wage_bonus", experience_wage_bonus))
@@ -458,6 +460,7 @@ func apply_network_snapshot(data: Dictionary, building_lookup: Dictionary) -> vo
 					converted_types.append(int(allowed_type))
 				job.allowed_building_types = converted_types
 	work_minutes_today = int(data.get("work_minutes_today", work_minutes_today))
+	_apply_personal_movement_speed()
 	_network_action_label = str(data.get("action", _network_action_label))
 	_network_player_action_id = str(data.get("player_action_id", _network_player_action_id))
 	_player_action_notice = str(data.get("player_action_notice", _player_action_notice))
@@ -490,6 +493,42 @@ func _apply_identity_balance_config() -> void:
 		wallet.balance = BalanceConfig.get_int("citizen.wallet_start_balance", wallet.balance)
 	home_food_stock = BalanceConfig.get_int("citizen.home_food_stock_start", home_food_stock)
 	education_level = BalanceConfig.get_int("citizen.education_level_start", education_level)
+	_ensure_personal_speed_multiplier()
+	_apply_personal_movement_speed()
+
+
+func _ensure_personal_speed_multiplier() -> void:
+	if _sim == null or _sim.identity == null:
+		return
+	if _sim.identity.personal_speed_multiplier > 0.0:
+		return
+	personal_speed_multiplier = _roll_personal_speed_multiplier()
+
+
+func _roll_personal_speed_multiplier() -> float:
+	var min_multiplier := maxf(
+		BalanceConfig.get_float("citizen.movement.personal_speed_multiplier_min", 0.85),
+		0.01
+	)
+	var max_multiplier := maxf(
+		BalanceConfig.get_float("citizen.movement.personal_speed_multiplier_max", 1.1),
+		0.01
+	)
+	if max_multiplier < min_multiplier:
+		var previous_min := min_multiplier
+		min_multiplier = max_multiplier
+		max_multiplier = previous_min
+	return randf_range(min_multiplier, max_multiplier)
+
+
+func _apply_personal_movement_speed() -> void:
+	_ensure_personal_speed_multiplier()
+	var base_speed := maxf(BalanceConfig.get_float("citizen.movement.move_speed", move_speed), 0.01)
+	var effective_speed := maxf(base_speed * personal_speed_multiplier, 0.01)
+	move_speed = effective_speed
+	if _config != null:
+		_config.move_speed = effective_speed
+	_walk_speed = effective_speed
 
 
 func _setup_clickable() -> void:
@@ -637,6 +676,17 @@ var education_level: int:
 	set(value):
 		if _sim != null and _sim.identity != null:
 			_sim.identity.education_level = value
+
+var personal_speed_multiplier: float:
+	get:
+		if _sim != null and _sim.identity != null:
+			var multiplier := _sim.identity.personal_speed_multiplier
+			return multiplier if multiplier > 0.0 else 1.0
+		return 1.0
+	set(value):
+		if _sim != null and _sim.identity != null:
+			_sim.identity.personal_speed_multiplier = maxf(value, 0.01)
+			_apply_personal_movement_speed()
 
 var job_tenure_days: int:
 	get:

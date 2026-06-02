@@ -47,7 +47,7 @@ data = PackedVector3Array(-1, 0, -0.9, -1, 0.099999994, -1, -1, 0.099999994, -0.
 script = ExtResource("1_py6gf")
 building_name = "Residential 01 (Foundation)"
 building_type = 1
-entrance = NodePath("Entrance")
+entrance = NodePath("")
 
 [node name="base" type="MeshInstance3D" parent="." unique_id=991871287]
 mesh = SubResource("ArrayMesh_rw05s")
@@ -58,5 +58,5 @@ skeleton = NodePath("")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="base/StaticBody3D" unique_id=1259019671]
 shape = SubResource("ConcavePolygonShape3D_py6gf")
 
-[node name="Entrance" type="Node3D" parent="." unique_id=1391854425]
+[node name="Entrance" type="Marker3D" parent="." unique_id=1980518834]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)

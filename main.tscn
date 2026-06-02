@@ -10,7 +10,6 @@
 [ext_resource type="PackedScene" uid="uid://bfeifu0c35w8k" path="res://Scenes/Roads/RoadTSplit.tscn" id="7_dfq0k"]
 [ext_resource type="PackedScene" uid="uid://bj5iflrv1q80d" path="res://Scenes/CityBuildings/services/services_001_bf24cdee.tscn" id="9_elw4l"]
 [ext_resource type="PackedScene" uid="uid://c6aq6481iy1ul" path="res://Scenes/CityBuildings/services/services_002_16fa335f.tscn" id="12_05tku"]
-[ext_resource type="PackedScene" uid="uid://d1w6v6f36ay88" path="res://Scenes/CityBuildings/services/services_003_bb6f7293.tscn" id="15_6ibml"]
 [ext_resource type="PackedScene" uid="uid://clc4gmqsftxix" path="res://Scenes/Farm.tscn" id="15_b1va2"]
 [ext_resource type="PackedScene" path="res://Scenes/CityHall.tscn" id="15_sx4hl"]
 [ext_resource type="PackedScene" path="res://Scenes/Farm_Windmill.tscn" id="16_farmw"]
@@ -18,7 +17,6 @@
 [ext_resource type="PackedScene" uid="uid://bby4h5xvcfpkj" path="res://Scenes/CityBuildings/services/services_004_b6d7b717.tscn" id="17_xnuy3"]
 [ext_resource type="PackedScene" path="res://Entities/Transport/Vehicle_Minivan.tscn" id="18_6nglk"]
 [ext_resource type="PackedScene" path="res://Entities/Transport/Vehicle_TowTruck.tscn" id="19_dsf7v"]
-[ext_resource type="PackedScene" uid="uid://tmijvs5i73a8" path="res://Scenes/CityBuildings/garages/garages_001_59117338.tscn" id="19_hoo0a"]
 [ext_resource type="PackedScene" path="res://Entities/Transport/Vehicle_TrailerTruck.tscn" id="20_xbxht"]
 [ext_resource type="PackedScene" uid="uid://cu4dqnf76c0g0" path="res://Scenes/CityBuildings/garages/garages_002_1d40ed03.tscn" id="21_6qke2"]
 [ext_resource type="PackedScene" uid="uid://cvxa1q31crm40" path="res://Scenes/CityBuildings/garages/garages_003_4e747945.tscn" id="23_8um1n"]
@@ -44,7 +42,11 @@
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_016_ac59b627.tscn" id="62_6fuh2"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_017_749175fb.tscn" id="64_i1nx7"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_018_e9415629.tscn" id="65_5eeth"]
+[ext_resource type="PackedScene" uid="uid://d3qwo4qxbifqx" path="res://Scenes/CityBuildings/multi_building/house_1_4.tscn" id="66_xk7tw"]
+[ext_resource type="PackedScene" uid="uid://3ifhob31oowf" path="res://Scenes/CityBuildings/multi_building/house_1_1.tscn" id="67_gi3ub"]
+[ext_resource type="PackedScene" uid="uid://6jac1n2mxuhj" path="res://Scenes/CityBuildings/multi_building/house_1_3.tscn" id="67_qyhqv"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_019_5b84ea4d.tscn" id="67_w43oh"]
+[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/multi_building/house_2_1.tscn" id="68_jdtyp"]
 [ext_resource type="PackedScene" uid="uid://du7bu54t11pac" path="res://ImportedCitySource/assets/plants/tree05.gltf" id="70_0tmpl"]
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/stores/stores_021_5cbf4bc0.tscn" id="71_g5l3n"]
 [ext_resource type="PackedScene" uid="uid://hbpstctsg4ab" path="res://ImportedCitySource/assets/plants/tree02.gltf" id="71_mixfv"]
@@ -1953,9 +1955,6 @@ transform = Transform3D(-3.22583e-08, 0, -0.5, 0, 0.456362, 0, 0.737983, 0, -2.1
 [node name="Services002_01" parent="World/City/only_people_nav/only_people/Services" unique_id=884430434 instance=ExtResource("12_05tku")]
 transform = Transform3D(-0.649959, 0, -9.21369e-08, 0, 0.750805, 0, 9.81411e-08, 0, -0.610195, 2.46187, 0.109083, 4.06591)
 
-[node name="Services003_01" parent="World/City/only_people_nav/only_people/Services" unique_id=1079406817 instance=ExtResource("15_6ibml")]
-transform = Transform3D(-0.4, 0, -6.03983e-08, 0, 0.4, 0, 6.03983e-08, 0, -0.4, 2.0836, 0.0204489, 7.9743)
-
 [node name="Services004_01" parent="World/City/only_people_nav/only_people/Services" unique_id=1535520016 instance=ExtResource("17_xnuy3")]
 transform = Transform3D(0.23, 0, 0, 0, 0.23, 0, 0, 0, 0.23, 7.64447, 0.113774, 35.1673)
 
@@ -1980,9 +1979,6 @@ transform = Transform3D(-4.371139e-08, 0, 1, 0, 0.9999999, 0, -1, 0, -4.371139e-
 building_type = 10
 
 [node name="Garages" type="Node3D" parent="World/City/only_people_nav/only_people" unique_id=726476429]
-
-[node name="Garages001_01" parent="World/City/only_people_nav/only_people/Garages" unique_id=1546167784 instance=ExtResource("19_hoo0a")]
-transform = Transform3D(-0.4, 0, -6.03983e-08, 0, 0.4, 0, 6.03983e-08, 0, -0.4, 2.37921, 0.0825385, 6.03962)
 
 [node name="Garages002_01" parent="World/City/only_people_nav/only_people/Garages" unique_id=710255544 instance=ExtResource("21_6qke2")]
 transform = Transform3D(0.4, 0, 0, 0, 0.4, 0, 0, 0, 0.4, -2.26052, 0.0925204, 27.9975)
@@ -2528,6 +2524,18 @@ transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 30, 0,
 [node name="MultiBuilding002_10" parent="World/City/only_people_nav/only_people/Multi-building" unique_id=1022942661 instance=ExtResource("110_vm52a")]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 32, 0, 30)
 
+[node name="House-1-4" parent="World/City/only_people_nav/only_people/Multi-building" unique_id=141179228 instance=ExtResource("66_xk7tw")]
+transform = Transform3D(-8.742278e-09, 0, -0.2, 0, 0.2, 0, 0.2, 0, -8.742278e-09, 2.0014489, 0, 8.003183)
+
+[node name="House-1-3" parent="World/City/only_people_nav/only_people/Multi-building" unique_id=1681237411 instance=ExtResource("67_qyhqv")]
+transform = Transform3D(-0.19999997, 0, -1.7484552e-08, 0, 0.2, 0, 1.7484552e-08, 0, -0.19999997, 2.386814, 0, 5.999)
+
+[node name="House-2-1" parent="World/City/only_people_nav/only_people/Multi-building" unique_id=1109111569 instance=ExtResource("68_jdtyp")]
+transform = Transform3D(-0.19986974, 0, 0.00721711, 0, 0.2, 0, -0.00721711, 0, -0.19986974, 2.3138032, 0, 12.225422)
+
+[node name="House-1-1" parent="World/City/only_people_nav/only_people/Multi-building" unique_id=114824195 instance=ExtResource("67_gi3ub")]
+transform = Transform3D(4.1881405e-05, 0, -0.2, 0, 0.2, 0, 0.2, 0, 4.1881405e-05, 3.9913716, 0, 28.002663)
+
 [node name="Commercial building" type="Node3D" parent="World/City/only_people_nav/only_people" unique_id=249907734]
 
 [node name="MultiBuilding005_02" parent="World/City/only_people_nav/only_people/Commercial building" unique_id=132323942 instance=ExtResource("116_wed7b")]
@@ -2565,9 +2573,6 @@ transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 22, 0,
 
 [node name="MultiBuilding005_07" parent="World/City/only_people_nav/only_people/Commercial building" unique_id=1907531318 instance=ExtResource("116_wed7b")]
 transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 24, 0, 22)
-
-[node name="MultiBuilding005_08" parent="World/City/only_people_nav/only_people/Commercial building" unique_id=810208207 instance=ExtResource("116_wed7b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 28)
 
 [node name="MultiBuilding005_09" parent="World/City/only_people_nav/only_people/Commercial building" unique_id=752169282 instance=ExtResource("116_wed7b")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 28)

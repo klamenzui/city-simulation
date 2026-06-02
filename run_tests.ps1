@@ -338,6 +338,11 @@ $availableTests = @(
 		Script = "res://tools/codex_goal_cooldown_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "servicewindow"
+		Label = "Service Arrival Window"
+		Script = "res://tools/codex_service_arrival_window_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "workrules"
 		Label = "Work Rules"
 		Script = "res://tools/codex_work_rules_test.gd"

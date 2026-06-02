@@ -26,6 +26,7 @@ var _home_travel_minutes: int = BalanceConfig.get_int("goap.fun.home_travel_minu
 var _park_travel_minutes: int = BalanceConfig.get_int("goap.fun.park_travel_minutes", 22)
 var _shop_travel_minutes: int = BalanceConfig.get_int("goap.fun.shop_travel_minutes", 20)
 var _cinema_travel_minutes: int = BalanceConfig.get_int("goap.fun.cinema_travel_minutes", 24)
+var _service_arrival_buffer_minutes: int = BalanceConfig.get_int("planner.service_arrival_buffer_minutes", 5)
 var _night_start_hour: int = BalanceConfig.get_int("schedule.night_start_hour", 22)
 var _day_start_hour: int = BalanceConfig.get_int("schedule.day_start_hour", 6)
 
@@ -44,20 +45,20 @@ func try_plan(world, citizen) -> bool:
 
 func _build_state(world, citizen) -> Dictionary:
 	var state: Dictionary = {}
-	var shop_open: bool = citizen.favorite_shop != null and citizen.favorite_shop.is_open(world.time.get_hour())
-	var cinema_open: bool = citizen.favorite_cinema != null and citizen.favorite_cinema.is_open(world.time.get_hour())
+	var shop_open: bool = _service_open_for_plan(world, citizen, citizen.favorite_shop, _shop_travel_minutes)
+	var cinema_open: bool = _service_open_for_plan(world, citizen, citizen.favorite_cinema, _cinema_travel_minutes)
 	var safe_for_fun: bool = citizen.needs.hunger < _safe_hunger_max \
 		and citizen.needs.energy >= _safe_energy_min \
 		and citizen.needs.health > _safe_health_min
-	state["at_home"] = citizen.current_location == citizen.home
-	state["at_park"] = citizen.current_location == citizen.favorite_park
-	state["at_shop"] = citizen.current_location == citizen.favorite_shop
-	state["at_cinema"] = citizen.current_location == citizen.favorite_cinema
 
 	state["has_home"] = citizen.home != null
 	state["has_park"] = citizen.favorite_park != null
 	state["has_shop"] = citizen.favorite_shop != null
 	state["has_cinema"] = citizen.favorite_cinema != null
+	state["at_home"] = state["has_home"] and citizen.current_location == citizen.home
+	state["at_park"] = state["has_park"] and citizen.current_location == citizen.favorite_park
+	state["at_shop"] = state["has_shop"] and citizen.current_location == citizen.favorite_shop
+	state["at_cinema"] = state["has_cinema"] and citizen.current_location == citizen.favorite_cinema
 
 	state["can_afford_shop"] = citizen.can_afford_discretionary_shop_item(world)
 	state["can_afford_cinema"] = citizen.can_afford_discretionary_cinema(world)
@@ -165,6 +166,25 @@ func _execute_first_action(action, world, citizen) -> bool:
 			return true
 		_:
 			return false
+
+func _service_open_for_plan(world, citizen, building: Building, travel_minutes: int) -> bool:
+	if world == null or building == null:
+		return false
+	if citizen != null and "current_location" in citizen and citizen.current_location == building:
+		return building.is_open_at_minute(_current_day_minute(world))
+	return building.is_open_for_arrival(_current_day_minute(world), travel_minutes, _service_arrival_buffer_minutes)
+
+func _current_day_minute(world) -> int:
+	if world == null or not "time" in world or world.time == null:
+		return -1
+	var t = world.time
+	if "minutes_total" in t:
+		return int(t.minutes_total)
+	if t.has_method("get_hour") and t.has_method("get_minute"):
+		return int(t.get_hour()) * 60 + int(t.get_minute())
+	if t.has_method("get_hour"):
+		return int(t.get_hour()) * 60
+	return -1
 
 func _is_night(hour: int) -> bool:
 	return hour >= _night_start_hour or hour < _day_start_hour

@@ -167,6 +167,7 @@ static func _build_citizen_snapshots(world: World, include_static: bool) -> Arra
 			data["home_food_stock"] = citizen.home_food_stock
 			data["clothing_items"] = citizen.clothing_items
 			data["education_level"] = citizen.education_level
+			data["personal_speed_multiplier"] = citizen.personal_speed_multiplier
 			data["job_tenure_days"] = citizen.job_tenure_days
 			data["job_absence_days"] = citizen.job_absence_days
 			data["experience_wage_bonus"] = citizen.experience_wage_bonus

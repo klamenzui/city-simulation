@@ -154,6 +154,10 @@ func _on_day_changed(_day: int) -> void:
 
 func _on_payday() -> void:
 	SimLogger.log("\n=== PAYDAY (Day %d) ===" % world_day())
+	var settled_day := _get_payday_settled_day()
+	var settles_workday := _is_workday(settled_day)
+	if not settles_workday:
+		SimLogger.log("  [WORKDAY] settling day %d: weekend/non-workday, absence tracking skipped" % settled_day)
 
 	var city_hall := find_city_hall()
 	if city_hall != null:
@@ -204,6 +208,8 @@ func _on_payday() -> void:
 
 		var hours_worked: float = citizen.work_minutes_today / 60.0
 		if hours_worked <= 0.0:
+			if not settles_workday:
+				continue
 			if _record_work_absence_or_fire(citizen, absence_limit):
 				fired_absence_total += 1
 			else:
@@ -841,6 +847,15 @@ func _refresh_timer_wait_time() -> void:
 func world_day() -> int:
 	return time.day
 
+func _get_payday_settled_day() -> int:
+	# Payday is emitted after TimeSystem increments the day, so it settles the
+	# previous simulation day.
+	return maxi(world_day() - 1, 1)
+
+func _is_workday(day: int) -> bool:
+	var weekday_index := int((maxi(day, 1) - 1) % 7)
+	return weekday_index < 5
+
 func rebuild_road_graph(root: Node3D) -> void:
 	if road_graph == null:
 		road_graph = RoadGraphScript.new()
@@ -1419,6 +1434,24 @@ func find_nearest_park(from_pos: Vector3, seeker: Citizen = null) -> Building:
 		if _is_building_temporarily_blocked_for(park, seeker):
 			continue
 		if not _is_building_pedestrian_reachable(from_pos, park):
+			continue
+		var dist := from_pos.distance_to(park.global_position)
+		if dist < best_dist:
+			best_dist = dist
+			best = park
+	if best != null:
+		return best
+	if not _is_navigation_map_ready():
+		return _find_nearest_registered_park(from_pos, seeker)
+	return null
+
+func _find_nearest_registered_park(from_pos: Vector3, seeker: Citizen = null) -> Building:
+	var best: Building = null
+	var best_dist := INF
+	for park in _parks:
+		if park == null or not is_instance_valid(park):
+			continue
+		if _is_building_temporarily_blocked_for(park, seeker):
 			continue
 		var dist := from_pos.distance_to(park.global_position)
 		if dist < best_dist:

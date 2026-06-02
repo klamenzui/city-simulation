@@ -27,6 +27,7 @@ var _home_travel_minutes: int = BalanceConfig.get_int("goap.hunger.home_travel_m
 var _restaurant_travel_minutes: int = BalanceConfig.get_int("goap.hunger.restaurant_travel_minutes", 15)
 var _cafe_travel_minutes: int = BalanceConfig.get_int("goap.hunger.cafe_travel_minutes", 12)
 var _supermarket_travel_minutes: int = BalanceConfig.get_int("goap.hunger.supermarket_travel_minutes", 18)
+var _service_arrival_buffer_minutes: int = BalanceConfig.get_int("planner.service_arrival_buffer_minutes", 5)
 var _night_start_hour: int = BalanceConfig.get_int("schedule.night_start_hour", 22)
 var _day_start_hour: int = BalanceConfig.get_int("schedule.day_start_hour", 6)
 
@@ -59,9 +60,9 @@ func _build_state(
 	preferred_food_route: String
 ) -> Dictionary:
 	var state: Dictionary = {}
-	var restaurant_open: bool = target_restaurant != null and target_restaurant.is_open(world.time.get_hour())
-	var cafe_open: bool = target_cafe != null and target_cafe.is_open(world.time.get_hour())
-	var supermarket_open: bool = target_supermarket != null and target_supermarket.is_open(world.time.get_hour())
+	var restaurant_open: bool = _service_open_for_plan(world, citizen, target_restaurant, _restaurant_travel_minutes)
+	var cafe_open: bool = _service_open_for_plan(world, citizen, target_cafe, _cafe_travel_minutes)
+	var supermarket_open: bool = _service_open_for_plan(world, citizen, target_supermarket, _supermarket_travel_minutes)
 	state["preferred_food_route"] = preferred_food_route
 	state["at_home"] = citizen.current_location == citizen.home
 	state["at_restaurant"] = citizen.current_location == target_restaurant
@@ -277,7 +278,7 @@ func _distance_to_food_target(from_pos: Vector3, building: Building) -> float:
 func _restaurant_can_feed(world, citizen, restaurant: Restaurant) -> bool:
 	if restaurant == null:
 		return false
-	if not restaurant.is_open(world.time.get_hour()):
+	if not _service_open_for_plan(world, citizen, restaurant, _restaurant_travel_minutes):
 		return false
 	if not restaurant.can_sell_item("meal", 1):
 		return false
@@ -287,7 +288,7 @@ func _restaurant_can_feed(world, citizen, restaurant: Restaurant) -> bool:
 func _cafe_can_feed(world, citizen, cafe: Cafe) -> bool:
 	if cafe == null:
 		return false
-	if not cafe.is_open(world.time.get_hour()):
+	if not _service_open_for_plan(world, citizen, cafe, _cafe_travel_minutes):
 		return false
 	if not cafe.can_sell_snack():
 		return false
@@ -297,11 +298,30 @@ func _cafe_can_feed(world, citizen, cafe: Cafe) -> bool:
 func _supermarket_can_feed_home(world, citizen, supermarket: Supermarket) -> bool:
 	if supermarket == null:
 		return false
-	if not supermarket.is_open(world.time.get_hour()):
+	if not _service_open_for_plan(world, citizen, supermarket, _supermarket_travel_minutes):
 		return false
 	if not supermarket.can_sell_item("grocery_bundle", 1):
 		return false
 	return citizen.can_afford_groceries_at(supermarket, world)
+
+func _service_open_for_plan(world, citizen, building: Building, travel_minutes: int) -> bool:
+	if world == null or building == null:
+		return false
+	if citizen != null and "current_location" in citizen and citizen.current_location == building:
+		return building.is_open_at_minute(_current_day_minute(world))
+	return building.is_open_for_arrival(_current_day_minute(world), travel_minutes, _service_arrival_buffer_minutes)
+
+func _current_day_minute(world) -> int:
+	if world == null or not "time" in world or world.time == null:
+		return -1
+	var t = world.time
+	if "minutes_total" in t:
+		return int(t.minutes_total)
+	if t.has_method("get_hour") and t.has_method("get_minute"):
+		return int(t.get_hour()) * 60 + int(t.get_minute())
+	if t.has_method("get_hour"):
+		return int(t.get_hour()) * 60
+	return -1
 
 func _is_night(hour: int) -> bool:
 	return hour >= _night_start_hour or hour < _day_start_hour

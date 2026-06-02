@@ -40,8 +40,8 @@ func _build_state(world, citizen) -> Dictionary:
 	var safe_for_social: bool = citizen.needs.hunger < _safe_hunger_max \
 		and citizen.needs.energy >= _safe_energy_min \
 		and citizen.needs.health > _safe_health_min
-	state["at_park"] = citizen.current_location == citizen.favorite_park
 	state["has_park"] = citizen.favorite_park != null
+	state["at_park"] = state["has_park"] and citizen.current_location == citizen.favorite_park
 	state["energy_ok"] = citizen.needs.energy >= _energy_ok_min
 	state["safe_for_social"] = safe_for_social
 	state["is_night"] = _is_night(world.time.get_hour())

@@ -1,0 +1,52 @@
+[gd_scene format=4]
+
+[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city2/Foliage_FoliageColor.png" id="1_tyv30"]
+[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city2/Foliage_FoliageNormal.png" id="2_y752w"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gi22m"]
+resource_name = "Foliage"
+transparency = 2
+alpha_scissor_threshold = 0.4
+alpha_antialiasing_mode = 0
+cull_mode = 2
+albedo_texture = ExtResource("1_tyv30")
+roughness = 0.5
+normal_enabled = true
+normal_texture = ExtResource("2_y752w")
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_gam1r"]
+_surfaces = [{
+"aabb": AABB(-0.3182015, -0.103256, -0.32922, 0.636403, 0.23158011, 0.8383232),
+"format": 34896613377,
+"index_count": 24,
+"index_data": PackedByteArray("AAABAAIAAQADAAIABAADAAEAAQAFAAQABgABAAAABgAFAAEAAAAHAAYABgAHAAUA"),
+"name": "Foliage",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 8,
+"vertex_data": PackedByteArray("GzBeev//AACiuv//qEkAAOPPXnr//wAA//8AAFKDAADy5xV+AAAAAAwYFX4AAAAAXEX//6hJAAAAAAAAUoMAAA==")
+}]
+blend_shape_mode = 0
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_avcft"]
+resource_name = "Foliage_Plane"
+_surfaces = [{
+"aabb": AABB(-0.3182015, -0.103256, -0.32922, 0.636403, 0.23158011, 0.8383232),
+"attribute_data": PackedByteArray("GzD//6K6Pjzjz/7///8JkPLnAAAMGAAAXEU+PAAACZA="),
+"format": 34896613399,
+"index_count": 24,
+"index_data": PackedByteArray("AAABAAIAAQADAAIABAADAAEAAQAFAAQABgABAAAABgAFAAEAAAAHAAYABgAHAAUA"),
+"material": SubResource("StandardMaterial3D_gi22m"),
+"name": "Foliage",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 8,
+"vertex_data": PackedByteArray("GzBeev//P7miuv//qEmlw+PPXnr//z+5//8AAFKDk8Hy5xV+AABFywwYFX4AAEXLXEX//6hJpcMAAAAAUoOTwQ/voJpO3vpoXuUQb4G+i1b+3O5n7uf/ovrosKGL1nzB")
+}]
+blend_shape_mode = 0
+shadow_mesh = SubResource("ArrayMesh_gam1r")
+
+[node name="Foliage" type="MeshInstance3D" unique_id=2124531102]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
+mesh = SubResource("ArrayMesh_avcft")
+skeleton = NodePath("")

@@ -8,6 +8,7 @@ extends SceneTree
 ## no action instantiation.
 
 const CitizenPlannerScript = preload("res://Simulation/Citizens/CitizenPlanner.gd")
+const CitizenFunGoapScript = preload("res://Simulation/GOAP/CitizenFunGoap.gd")
 const CitizenSocialGoapScript = preload("res://Simulation/GOAP/CitizenSocialGoap.gd")
 const GoapPlannerScript = preload("res://Simulation/GOAP/GoapPlanner.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
@@ -18,9 +19,10 @@ var failures: int = 0
 
 class StubTime:
 	var hour: int = 12
+	var weekend: bool = false
 	func get_hour() -> int: return hour
 	func get_minute() -> int: return 0
-	func is_weekend() -> bool: return false
+	func is_weekend() -> bool: return weekend
 
 
 class StubWorld:
@@ -46,18 +48,28 @@ class StubCitizen:
 	var work_minutes_today: int = 0
 	var work_motivation: float = 1.0
 	var fun_interest: float = 0.35
+	var home = null
 	var favorite_park = null
+	var favorite_shop = null
+	var favorite_cinema = null
 	var current_location = null
 	var started_action = null
 
 	func start_action(action, _world) -> void:
 		started_action = action
 
+	func can_afford_discretionary_shop_item(_world) -> bool:
+		return false
 
-func _make_world(h: int = 12) -> StubWorld:
+	func can_afford_discretionary_cinema(_world) -> bool:
+		return false
+
+
+func _make_world(h: int = 12, weekend: bool = false) -> StubWorld:
 	var w := StubWorld.new()
 	var t := StubTime.new()
 	t.hour = h
+	t.weekend = weekend
 	w.time = t
 	return w
 
@@ -103,6 +115,15 @@ func _init() -> void:
 	var goap = CitizenSocialGoapScript.new()
 	var park := RefCounted.new()
 
+	var c_no_park := _make_citizen()
+	c_no_park.favorite_park = null
+	c_no_park.current_location = null
+	var no_park_state: Dictionary = goap._build_state(world, c_no_park)
+	_assert_eq("no favorite park is not at park", no_park_state.get("at_park"), false)
+	var no_park_plan: Array = GoapPlannerScript.plan(no_park_state, {"social_recovered": true}, goap._build_actions(), 6)
+	_assert_true("no favorite park has no social plan", no_park_plan.is_empty())
+	_assert_eq("social GOAP refuses no-park citizen", goap.try_plan(world, c_no_park), false)
+
 	var c := _make_citizen()
 	c.favorite_park = park
 	c.current_location = null
@@ -130,6 +151,19 @@ func _init() -> void:
 		default_trip = null
 		default_park.free()
 
+	var weekend_world := _make_world(14, true)
+	var c_weekend := _make_citizen()
+	c_weekend.favorite_park = park
+	c_weekend.current_location = null
+	c_weekend.needs.social = 0.0
+	var weekend_priority := _priority_of(planner._build_goal_candidates(weekend_world, c_weekend), "social")
+	_assert_true("weekend social remains a positive candidate", weekend_priority > 0.0)
+	var weekend_state: Dictionary = goap._build_state(weekend_world, c_weekend)
+	var weekend_plan: Array = GoapPlannerScript.plan(weekend_state, {"social_recovered": true}, goap._build_actions(), 6)
+	_assert_true("weekend plan found from away", not weekend_plan.is_empty())
+	if not weekend_plan.is_empty():
+		_assert_eq("weekend first step go_park", weekend_plan[0].action_id, "go_park")
+
 	c.current_location = park
 	var state_at: Dictionary = goap._build_state(world, c)
 	var plan_at: Array = GoapPlannerScript.plan(state_at, {"social_recovered": true}, goap._build_actions(), 6)
@@ -146,6 +180,18 @@ func _init() -> void:
 	_assert_eq("state is_night", night_state.get("is_night"), true)
 	var night_plan: Array = GoapPlannerScript.plan(night_state, {"social_recovered": true}, goap._build_actions(), 6)
 	_assert_true("no plan at night when away", night_plan.is_empty())
+
+	var fun_goap = CitizenFunGoapScript.new()
+	var c_no_fun_targets := _make_citizen()
+	c_no_fun_targets.needs.fun = 0.0
+	c_no_fun_targets.current_location = null
+	var no_fun_state: Dictionary = fun_goap._build_state(world, c_no_fun_targets)
+	_assert_eq("no home is not at home", no_fun_state.get("at_home"), false)
+	_assert_eq("no park is not at park for fun", no_fun_state.get("at_park"), false)
+	_assert_eq("no shop is not at shop", no_fun_state.get("at_shop"), false)
+	_assert_eq("no cinema is not at cinema", no_fun_state.get("at_cinema"), false)
+	var no_fun_plan: Array = GoapPlannerScript.plan(no_fun_state, {"fun_recovered": true}, fun_goap._build_actions(), 6)
+	_assert_true("no fun destinations has no fun plan", no_fun_plan.is_empty())
 
 	print()
 	if failures == 0:

@@ -409,6 +409,8 @@ static func _apply_citizen_state(citizen: Citizen, data: Dictionary, building_lo
 		citizen.clothing_items = int(data.get("clothing_items", citizen.clothing_items))
 	if data.has("education_level"):
 		citizen.education_level = int(data.get("education_level", citizen.education_level))
+	if data.has("personal_speed_multiplier"):
+		citizen.personal_speed_multiplier = float(data.get("personal_speed_multiplier", citizen.personal_speed_multiplier))
 	if data.has("job_tenure_days"):
 		citizen.job_tenure_days = int(data.get("job_tenure_days", citizen.job_tenure_days))
 	if data.has("job_absence_days"):
@@ -444,6 +446,8 @@ static func _apply_citizen_state(citizen: Citizen, data: Dictionary, building_lo
 			citizen.job = restored_job
 	if data.has("work_minutes_today"):
 		citizen.work_minutes_today = int(data.get("work_minutes_today", citizen.work_minutes_today))
+	if citizen.has_method("_apply_personal_movement_speed"):
+		citizen._apply_personal_movement_speed()
 
 static func _apply_player_state(player: Node3D, player_entity_id: String, citizens_data: Variant, building_lookup: Dictionary) -> void:
 	if player == null or not is_instance_valid(player):
