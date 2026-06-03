@@ -210,6 +210,36 @@ $availableTests = @(
 		Script = "res://tools/codex_inventory_adapter_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "retailgame"
+		Label = "Retail Work Sort Minigame"
+		Script = "res://tools/codex_retail_work_sort_minigame_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "teachergame"
+		Label = "Teacher Lesson Minigame"
+		Script = "res://tools/codex_teacher_lesson_minigame_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "cookinggame"
+		Label = "Cooking Ingredient Catch Minigame"
+		Script = "res://tools/codex_cooking_ingredient_catch_minigame_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "warehousegame"
+		Label = "Warehouse Stack Minigame"
+		Script = "res://tools/codex_warehouse_stack_minigame_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "serviceflow"
+		Label = "Service Flow Minigame"
+		Script = "res://tools/codex_service_flow_minigame_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "farmwork"
+		Label = "Farm Work Scene"
+		Script = "res://tools/codex_farm_work_scene_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "farm"
 		Label = "Farm Scene/Production"
 		Script = "res://tools/codex_farm_scene_probe.gd"

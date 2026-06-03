@@ -536,7 +536,7 @@ mesh = SubResource("ArrayMesh_ao6np")
 skeleton = NodePath("")
 
 [node name="base" type="MeshInstance3D" parent="." unique_id=991871287]
-transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0)
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 2, 0, 0)
 mesh = SubResource("ArrayMesh_rw05s")
 skeleton = NodePath("")
 

@@ -108,6 +108,12 @@ Runtime and debug scenes/resources.
 | --- | --- | --- |
 | Scenes/DebugPanel.gd | DebugPanel | CanvasLayer |
 | Scenes/Environment/ExteriorGrassDecorator.gd | ExteriorGrassDecorator | Node3D |
+| Scenes/Minigames/CookingIngredientCatch/CookingIngredientCatchMinigame.gd | CookingIngredientCatchMinigame | Control |
+| Scenes/Minigames/RetailWorkSort/RetailWorkSortMinigame.gd | RetailWorkSortMinigame | Control |
+| Scenes/Minigames/ServiceFlow/ServiceFlowMinigame.gd | ServiceFlowMinigame | Control |
+| Scenes/Minigames/TeacherLesson/TeacherLessonMinigame.gd | TeacherLessonMinigame | Control |
+| Scenes/Minigames/WarehouseStack/WarehouseStackMinigame.gd | WarehouseStackMinigame | Control |
+| Scenes/WorkScenes/Farm/FarmWorkScene.gd | FarmWorkScene | Control |
 
 ## Simulation
 
@@ -173,10 +179,11 @@ Headless probes, parse checks, audits, and regression tests.
 | Path | class_name | extends |
 | --- | --- | --- |
 | tools/codex_building_entry_travel_test.gd | - | SceneTree |
-| tools/codex_building_occupancy_test.gd | - | SceneTree, RefCounted, RefCounted, RefCounted |
+| tools/codex_building_occupancy_test.gd | - | SceneTree, RefCounted, RefCounted, RefCounted, RefCounted |
 | tools/codex_citizen_config_drift_test.gd | - | SceneTree |
 | tools/codex_citizen_fall_respawn_test.gd | - | SceneTree |
 | tools/codex_citizen_stuck_escape_test.gd | - | SceneTree |
+| tools/codex_cooking_ingredient_catch_minigame_test.gd | - | SceneTree |
 | tools/codex_crosswalk_audit.gd | - | SceneTree |
 | tools/codex_dialogue_probe.gd | - | SceneTree, RefCounted |
 | tools/codex_economy_test.gd | - | SceneTree |
@@ -185,6 +192,7 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_facade_caller_drift_test.gd | - | SceneTree |
 | tools/codex_farm_live_delivery_test.gd | - | SceneTree |
 | tools/codex_farm_scene_probe.gd | - | SceneTree |
+| tools/codex_farm_work_scene_test.gd | - | SceneTree |
 | tools/codex_first_day_delivery_seed_test.gd | - | SceneTree |
 | tools/codex_forest_multimesh_scene_probe.gd | - | SceneTree |
 | tools/codex_game_smoke_test.gd | - | SceneTree |
@@ -204,6 +212,4 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_null_material_audit.gd | - | SceneTree |
 | tools/codex_parse_check.gd | - | SceneTree |
 | tools/codex_personality_scoring_test.gd | - | SceneTree |
-| tools/codex_route_probe.gd | - | SceneTree |
-| tools/codex_runtime_lod_conversation_test.gd | - | SceneTree, RefCounted, RefCounted |
-| tools/codex_savegame_roundtrip_probe.gd | - | SceneTree |
+| tools/codex_retail_work_sort_minigame_test.gd | - | SceneTree |

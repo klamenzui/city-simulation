@@ -1,6 +1,6 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://nig5426logmi"]
 
-[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city2/House-2-2_Houses Colorscheme 2.png" id="1_cu3qr"]
+[ext_resource type="Texture2D" uid="uid://c57xlpoagb3up" path="res://ImportedCitySource/assets/city2/House-2-2_Houses Colorscheme 2.png" id="1_cu3qr"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_l8dux"]
 resource_name = "HouseWindow"

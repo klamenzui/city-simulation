@@ -14,10 +14,12 @@ Purpose: likely duplication areas to inspect before adding new code.
 | character_body_3d_new | 2 | ImportedCitySource/scenes/units/character_body_3d_new.gd<br>ImportedCitySource/scenes/units/character_body_3d_new.tscn |
 | cinema | 2 | Entities/Buildings/Cinema.gd<br>Scenes/Cinema.tscn |
 | cityhall | 2 | Entities/Buildings/CityHall.gd<br>Scenes/CityHall.tscn |
+| cookingingredientcatchminigame | 2 | Scenes/Minigames/CookingIngredientCatch/CookingIngredientCatchMinigame.gd<br>Scenes/Minigames/CookingIngredientCatch/CookingIngredientCatchMinigame.tscn |
 | day | 2 | environment/sky/Day.tres<br>environment/sky/Day.tscn |
 | debugpanel | 2 | Scenes/DebugPanel.gd<br>Scenes/DebugPanel.tscn |
 | factory | 2 | Entities/Buildings/Factory.gd<br>Scenes/Factory.tscn |
 | farm | 2 | Entities/Buildings/Farm.gd<br>Scenes/Farm.tscn |
+| farmworkscene | 2 | Scenes/WorkScenes/Farm/FarmWorkScene.gd<br>Scenes/WorkScenes/Farm/FarmWorkScene.tscn |
 | hospital | 2 | Entities/Buildings/Hospital.gd<br>Scenes/CityBuildings/services/Hospital.tscn |
 | main | 2 | main.gd<br>Main.tscn |
 | new_array_mesh | 2 | Scenes/Plants/new_array_mesh.tres<br>Simulation/Bootstrap/new_array_mesh.tres |
@@ -25,10 +27,14 @@ Purpose: likely duplication areas to inspect before adding new code.
 | plant | 2 | ImportedCitySource/Plant.tscn<br>ImportedCitySource/scripts/plant/plant.gd |
 | residentialbuilding | 2 | Entities/Buildings/ResidentialBuilding.gd<br>Scenes/ResidentialBuilding.tscn |
 | restaurant | 2 | Entities/Buildings/Restaurant.gd<br>Scenes/Restaurant.tscn |
+| retailworksortminigame | 2 | Scenes/Minigames/RetailWorkSort/RetailWorkSortMinigame.gd<br>Scenes/Minigames/RetailWorkSort/RetailWorkSortMinigame.tscn |
+| serviceflowminigame | 2 | Scenes/Minigames/ServiceFlow/ServiceFlowMinigame.gd<br>Scenes/Minigames/ServiceFlow/ServiceFlowMinigame.tscn |
 | shop | 2 | Entities/Buildings/Shop.gd<br>Scenes/Shop.tscn |
 | supermarket | 2 | Entities/Buildings/Supermarket.gd<br>Scenes/Supermarket.tscn |
+| teacherlessonminigame | 2 | Scenes/Minigames/TeacherLesson/TeacherLessonMinigame.gd<br>Scenes/Minigames/TeacherLesson/TeacherLessonMinigame.tscn |
 | trafficlight_c_active | 2 | ImportedCitySource/scenes/trafficlight_c_active.gd<br>ImportedCitySource/scenes/trafficlight_c_active.tscn |
 | university | 2 | Entities/Buildings/University.gd<br>Scenes/University.tscn |
+| warehousestackminigame | 2 | Scenes/Minigames/WarehouseStack/WarehouseStackMinigame.gd<br>Scenes/Minigames/WarehouseStack/WarehouseStackMinigame.tscn |
 | world | 2 | ImportedCitySource/scripts/world.gd<br>Simulation/World.gd |
 
 ## Navigation Graph Overlap

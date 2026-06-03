@@ -57,6 +57,7 @@ var _delivery_phase: String = DELIVERY_PHASE_NONE
 var _delivery_quantity: int = 0
 var _delivery_minutes_left: int = 0
 var _delivery_vehicle = null
+var _player_work_session_citizen_ids: Dictionary = {}
 
 func _ready() -> void:
 	super._ready()
@@ -188,8 +189,11 @@ func on_work_tick(world: World, citizen: Citizen, tick_minutes: int) -> void:
 		return
 	_prune_invalid_harvest_worker()
 	_prune_invalid_delivery_worker()
+	_prune_player_work_sessions()
 	if _is_delivery_worker(citizen):
 		_tick_delivery_activity(world, citizen, maxi(tick_minutes, 1))
+		return
+	if has_player_work_session_in_progress():
 		return
 	if _harvest_worker != null and _harvest_worker != citizen:
 		return
@@ -246,6 +250,91 @@ func get_farm_state_snapshot() -> Dictionary:
 		"delivered_food_today": delivered_food_today,
 		"market_exported_food_today": market_exported_food_today,
 	}
+
+func get_player_work_context() -> Dictionary:
+	_sync_active_product_from_legacy()
+	var storage_space := _get_available_storage()
+	var suggested_harvest := mini(_compute_harvest_yield(), storage_space) if is_crop_ready() else 0
+	return {
+		"farm_label": get_display_name(),
+		"product_commodity": get_product_commodity(),
+		"product_display_name": get_product_display_name(),
+		"crop_ready": is_crop_ready(),
+		"available_storage": storage_space,
+		"stored_food": stored_food,
+		"storage_capacity": storage_capacity,
+		"suggested_harvest_units": suggested_harvest,
+		"work_minutes": mini(harvest_duration_minutes + 30, 120),
+	}
+
+func begin_player_work_session(citizen: Citizen) -> bool:
+	if citizen == null or not is_instance_valid(citizen):
+		return false
+	if citizen.job == null or citizen.job.workplace != self:
+		return false
+	_prune_player_work_sessions()
+	_player_work_session_citizen_ids[int(citizen.get_instance_id())] = weakref(citizen)
+	return true
+
+func finish_player_work_session(citizen: Citizen) -> void:
+	if citizen == null:
+		return
+	_player_work_session_citizen_ids.erase(int(citizen.get_instance_id()))
+
+func has_player_work_session_in_progress() -> bool:
+	_prune_player_work_sessions()
+	return not _player_work_session_citizen_ids.is_empty()
+
+func apply_player_work_result(world: World, citizen: Citizen, result: Dictionary) -> Dictionary:
+	var applied := {
+		"accepted": false,
+		"reason": "",
+		"harvested_amount": 0,
+		"growth_minutes_added": 0,
+		"work_minutes": 0,
+		"quality_score": 0.0,
+		"delivered_crates": 0,
+	}
+	if world == null:
+		applied["reason"] = "missing_world"
+		finish_player_work_session(citizen)
+		return applied
+	if citizen == null or not is_instance_valid(citizen):
+		applied["reason"] = "missing_citizen"
+		finish_player_work_session(citizen)
+		return applied
+	if citizen.job == null or citizen.job.workplace != self:
+		applied["reason"] = "wrong_workplace"
+		finish_player_work_session(citizen)
+		return applied
+
+	var quality := clampf(float(result.get("quality_score", 0.0)), 0.0, 1.0)
+	var worked_minutes := clampi(int(result.get("work_minutes", 0)), 0, int(citizen.job.shift_hours * 60))
+	if worked_minutes > 0:
+		var remaining_minutes := maxi(int(citizen.job.shift_hours * 60) - citizen.work_minutes_today, 0)
+		var applied_minutes := mini(worked_minutes, remaining_minutes)
+		citizen.work_minutes_today += applied_minutes
+		_apply_player_work_needs_cost(citizen, applied_minutes)
+		applied["work_minutes"] = applied_minutes
+
+	var requested_growth := maxi(int(result.get("growth_minutes_added", 0)), 0)
+	if requested_growth > 0 and crop_state != CropState.READY:
+		var before_growth := crop_growth_minutes
+		advance_crop_growth(requested_growth)
+		applied["growth_minutes_added"] = maxi(crop_growth_minutes - before_growth, 0)
+
+	var accepted_harvest := 0
+	var requested_harvest := maxi(int(result.get("harvested_amount", 0)), 0)
+	if requested_harvest > 0 and crop_state == CropState.READY:
+		accepted_harvest = _apply_player_harvest(world, requested_harvest)
+
+	applied["accepted"] = true
+	applied["reason"] = "ok"
+	applied["harvested_amount"] = accepted_harvest
+	applied["quality_score"] = quality
+	applied["delivered_crates"] = maxi(int(result.get("delivered_crates", 0)), 0)
+	finish_player_work_session(citizen)
+	return applied
 
 func apply_farm_state_snapshot(data: Dictionary) -> void:
 	if data.is_empty():
@@ -598,6 +687,46 @@ func _prune_invalid_delivery_worker() -> void:
 		return
 	if _delivery_worker.job == null or _delivery_worker.job.workplace != self:
 		_release_delivery_worker()
+
+func _prune_player_work_sessions() -> void:
+	for session_key in _player_work_session_citizen_ids.keys():
+		var ref = _player_work_session_citizen_ids.get(session_key, null)
+		var citizen = ref.get_ref() if ref is WeakRef else null
+		if citizen == null or not is_instance_valid(citizen):
+			_player_work_session_citizen_ids.erase(session_key)
+			continue
+		if citizen.job == null or citizen.job.workplace != self:
+			_player_work_session_citizen_ids.erase(session_key)
+
+func _apply_player_harvest(world: World, requested_harvest: int) -> int:
+	if world == null or requested_harvest <= 0:
+		return 0
+	var accepted := mini(requested_harvest, _get_available_storage())
+	if accepted <= 0:
+		return 0
+
+	var production_cost: int = accepted * maxi(production_cost_per_unit, 0)
+	if production_cost > 0:
+		if not world.economy.pay_production_cost(account, production_cost):
+			close_due_to_finance(world, "unpaid player farm work production costs")
+			return 0
+		record_production_expense(production_cost)
+
+	var stored := _add_product_to_inventory(get_product_commodity(), accepted)
+	if stored <= 0:
+		return 0
+	output_today += stored
+	crop_growth_minutes = 0
+	crop_state = CropState.GROWING
+	_refresh_crop_visuals(true)
+	return stored
+
+func _apply_player_work_needs_cost(citizen: Citizen, worked_minutes: int) -> void:
+	if citizen == null or citizen.needs == null or worked_minutes <= 0:
+		return
+	citizen.needs.hunger = clampf(citizen.needs.hunger + 0.18 * float(worked_minutes), 0.0, 100.0)
+	citizen.needs.energy = clampf(citizen.needs.energy - 0.12 * float(worked_minutes), 0.0, 100.0)
+	citizen.needs.fun = clampf(citizen.needs.fun - 0.08 * float(worked_minutes), 0.0, 100.0)
 
 func _release_harvest_worker() -> void:
 	_harvest_worker = null

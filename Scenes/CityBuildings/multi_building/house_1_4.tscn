@@ -444,15 +444,14 @@ transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846344, 0, 0, 0)
 mesh = SubResource("ArrayMesh_nkxql")
 skeleton = NodePath("")
 
-[node name="foundation_residential_01" type="Node3D" parent="." unique_id=1487054142 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_foundation", "residential"]]
+[node name="foundation_residential_01" type="Node3D" parent="." unique_id=1487054142 groups=["buildings", "city_buildings", "city_foundation", "residential"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1.2399958, 2, 0, 1)
 script = ExtResource("2_vdhl1")
 building_name = "Residential 01 (Foundation)"
 building_type = 1
-entrance = NodePath("")
 
 [node name="base" type="MeshInstance3D" parent="foundation_residential_01" unique_id=991871287]
-transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0)
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 6.0000005, 0, 0, 0.5096099)
 mesh = SubResource("ArrayMesh_rw05s")
 skeleton = NodePath("")
 
