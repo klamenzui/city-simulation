@@ -4,6 +4,7 @@ class_name SimulationInteractionController
 const NetworkRoleScript = preload("res://Simulation/Multiplayer/shared/NetworkRole.gd")
 const PlayerInventoryWindowScript = preload("res://Simulation/UI/PlayerInventoryWindow.gd")
 const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
+const FarmWorkSceneScene = preload("res://Scenes/WorkScenes/Farm/FarmWorkScene.tscn")
 
 var owner_node: Node = null
 var world: World = null
@@ -25,6 +26,9 @@ var _player_home_marker_building: Building = null
 var _last_network_toast_signature: String = ""
 var _player_inventory_mode: String = ""
 var _last_player_context_building: Building = null
+var _farm_work_scene: Node = null
+var _farm_work_player: Citizen = null
+var _farm_work_farm: Farm = null
 
 func setup(owner_ref: Node, world_ref: World, multiplayer_session_ref = null) -> void:
 	owner_node = owner_ref
@@ -639,6 +643,12 @@ func handle_debug_panel_player_action_pressed(action_id: String) -> void:
 			_refresh_player_action_ui()
 			_refresh_player_inventory_ui()
 		return
+	if action_id == "work" and _try_start_farm_work_scene(player):
+		_show_toast("Farm-Schicht gestartet", "success", 1.8)
+		_refresh_selected_player_details(player)
+		_refresh_player_action_ui()
+		_refresh_player_inventory_ui()
+		return
 	var accepted := false
 	match action_id:
 		"rent_home":
@@ -689,6 +699,72 @@ func handle_debug_panel_player_action_pressed(action_id: String) -> void:
 	_refresh_selected_player_details(player)
 	_refresh_player_action_ui()
 	_refresh_player_inventory_ui()
+
+func _try_start_farm_work_scene(player: Citizen) -> bool:
+	if player == null or owner_node == null:
+		return false
+	if _farm_work_scene != null and is_instance_valid(_farm_work_scene):
+		return true
+	var farm := player._get_player_current_building() as Farm
+	if farm == null:
+		return false
+	if not player._player_has_accepted_job_at(farm):
+		return false
+	if player.current_action != null:
+		return false
+	if not farm.begin_player_work_session(player):
+		return false
+	var scene := FarmWorkSceneScene.instantiate()
+	if scene == null:
+		farm.finish_player_work_session(player)
+		return false
+	if not scene.has_method("configure_for_farm") or not bool(scene.call("configure_for_farm", farm, player.education_level)):
+		farm.finish_player_work_session(player)
+		scene.queue_free()
+		return false
+	_farm_work_scene = scene
+	_farm_work_player = player
+	_farm_work_farm = farm
+	scene.connect("session_finished", Callable(self, "_on_farm_work_scene_finished").bind(scene))
+	owner_node.add_child(scene)
+	return true
+
+func _on_farm_work_scene_finished(result: Dictionary, scene: Node) -> void:
+	if scene != _farm_work_scene:
+		if scene != null and is_instance_valid(scene):
+			scene.queue_free()
+		return
+	var player := _farm_work_player
+	var farm := _farm_work_farm
+	var applied: Dictionary = {}
+	if farm != null and is_instance_valid(farm) and player != null and is_instance_valid(player):
+		applied = farm.apply_player_work_result(world, player, result)
+	elif farm != null and is_instance_valid(farm):
+		farm.finish_player_work_session(player)
+	if scene != null and is_instance_valid(scene):
+		scene.queue_free()
+	_farm_work_scene = null
+	_farm_work_player = null
+	_farm_work_farm = null
+	_show_farm_work_result_toast(result, applied)
+	if player != null and is_instance_valid(player):
+		_refresh_selected_player_details(player)
+	_refresh_player_action_ui()
+	_refresh_player_inventory_ui()
+
+func _show_farm_work_result_toast(result: Dictionary, applied: Dictionary) -> void:
+	var accepted := bool(applied.get("accepted", false))
+	if not accepted:
+		_show_toast("Farm-Schicht konnte nicht uebernommen werden", "warning", 2.4)
+		return
+	var harvest := int(applied.get("harvested_amount", 0))
+	var minutes := int(applied.get("work_minutes", 0))
+	var quality := int(round(float(applied.get("quality_score", result.get("quality_score", 0.0))) * 100.0))
+	var growth := int(applied.get("growth_minutes_added", 0))
+	var main_part := "%d Waren, %d min, %d%% Qualitaet" % [harvest, minutes, quality]
+	if harvest <= 0 and growth > 0:
+		main_part = "Pflege +%d Wachstumsminuten, %d min, %d%% Qualitaet" % [growth, minutes, quality]
+	_show_toast("Farm-Schicht fertig: %s" % main_part, "success", 3.0)
 
 func _refresh_selected_player_details(player: Citizen) -> void:
 	if debug_panel == null or player == null:

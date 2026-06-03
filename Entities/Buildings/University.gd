@@ -2,6 +2,10 @@ extends Building
 class_name University
 
 @export var education_gain: int = 1
+@export var teacher_quality_extra_gain: int = 0
+@export var teacher_quality_study_sessions_remaining: int = 0
+
+var last_teacher_lesson_quality: float = 0.0
 
 const TEACHING_ROLE_TITLES: Array[String] = [
 	"Professor",
@@ -70,14 +74,54 @@ func study_session(_world: World, citizen: Citizen) -> bool:
 	if not can_study(citizen):
 		return false
 	var max_level: int = BalanceConfig.get_int("economy.jobs.wage_progression.education_max_level", 3)
-	var effective_gain := maxi(int(round(float(education_gain) * get_operating_efficiency_multiplier())), 1)
-	citizen.education_level = mini(citizen.education_level + effective_gain, max_level)
+	var base_gain := maxi(int(round(float(education_gain) * get_operating_efficiency_multiplier())), 1)
+	var bonus_gain := get_teacher_quality_extra_gain()
+	var before := citizen.education_level
+	var level_after_base := mini(before + base_gain, max_level)
+	var level_after_bonus := mini(before + base_gain + bonus_gain, max_level)
+	citizen.education_level = level_after_bonus
+	if level_after_bonus > level_after_base:
+		_consume_teacher_quality_session()
 	return true
+
+func apply_teacher_lesson_result(result: Dictionary) -> int:
+	last_teacher_lesson_quality = clampf(float(result.get("teaching_quality", 0.0)), 0.0, 1.0)
+	var extra_gain := clampi(int(result.get("education_progress_bonus", 0)), 0, 1)
+	var sessions := maxi(int(result.get("city_effect_sessions", 0)), 0)
+	if extra_gain <= 0 or sessions <= 0:
+		return 0
+	teacher_quality_extra_gain = maxi(teacher_quality_extra_gain, extra_gain)
+	teacher_quality_study_sessions_remaining = maxi(teacher_quality_study_sessions_remaining, sessions)
+	return teacher_quality_extra_gain
+
+func get_teacher_quality_extra_gain() -> int:
+	if teacher_quality_study_sessions_remaining <= 0:
+		return 0
+	return maxi(teacher_quality_extra_gain, 0)
 
 func _get_extra_info(world = null) -> Dictionary:
 	return {
 		"Education gain": "+%d" % education_gain,
+		"Teaching quality": _format_teacher_quality_bonus(),
+		"Last lesson quality": "%d%%" % int(round(last_teacher_lesson_quality * 100.0)),
 		"Teaching staff": "%d" % get_teaching_staff().size(),
 		"Base operating cost": "%d EUR" % get_base_operating_cost_per_day(),
 		"Payroll due": "%d EUR" % get_payroll_due_today(world),
 	}
+
+func _consume_teacher_quality_session() -> void:
+	if teacher_quality_study_sessions_remaining <= 0:
+		teacher_quality_extra_gain = 0
+		return
+	teacher_quality_study_sessions_remaining -= 1
+	if teacher_quality_study_sessions_remaining <= 0:
+		teacher_quality_extra_gain = 0
+
+func _format_teacher_quality_bonus() -> String:
+	var extra_gain := get_teacher_quality_extra_gain()
+	if extra_gain <= 0:
+		return "normal"
+	return "+%d education for %d study sessions" % [
+		extra_gain,
+		teacher_quality_study_sessions_remaining,
+	]
