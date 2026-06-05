@@ -88,7 +88,7 @@ var last_path_failed: bool = false
 var _route_index: int = 0
 var _current_speed: float = 0.0
 var _is_driving: bool = false
-var _arrival_exit_position: Vector3 = Vector3.ZERO
+var _arrival_exit_position: Vector3 = Vector3.INF
 var _manual_physics_active: bool = false
 var _steer_target: float = 0.0
 var _engine_sound_player: AudioStreamPlayer3D = null
@@ -210,6 +210,8 @@ func unboard_driver(world: World = null, exit_pos: Vector3 = Vector3.INF) -> Cit
 func start_drive_to(destination: Vector3, world: World = null) -> bool:
 	target_position = destination
 	last_path_failed = false
+	if current_driver != null:
+		_arrival_exit_position = _resolve_arrival_exit_position(world, destination, target_building)
 	last_vehicle_route = _build_vehicle_route(destination, world)
 	if last_vehicle_route.size() < 2:
 		last_path_failed = true

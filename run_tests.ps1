@@ -250,6 +250,11 @@ $availableTests = @(
 		Script = "res://tools/codex_exterior_grass_scene_probe.gd"
 	}
 	[pscustomobject]@{
+		Key = "churchscene"
+		Label = "Church Scene"
+		Script = "res://tools/codex_church_scene_probe.gd"
+	}
+	[pscustomobject]@{
 		Key = "forest"
 		Label = "Biome Scatter Scenes"
 		Script = "res://tools/codex_forest_multimesh_scene_probe.gd"
@@ -268,6 +273,11 @@ $availableTests = @(
 		Key = "vehicle"
 		Label = "Vehicle Transport"
 		Script = "res://tools/codex_vehicle_transport_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "taxi"
+		Label = "Taxi Service"
+		Script = "res://tools/codex_taxi_service_test.gd"
 	}
 	[pscustomobject]@{
 		Key = "vehicle_main"

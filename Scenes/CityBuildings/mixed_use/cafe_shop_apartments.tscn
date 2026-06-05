@@ -1,0 +1,22 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/CityBuildings/commercial_building/cafe_shop.tscn" id="1_visual"]
+
+[node name="CafeShopApartments" type="Node3D" groups=["city_buildings", "mixed_use", "RESIDENTIAL", "CAFE", "SHOP"]]
+metadata/building_uses = "residential,cafe,shop"
+metadata/building_name = "Cafe-Shop Apartments"
+metadata/entrance = "Entrance"
+metadata/residential_capacity = 16
+metadata/cafe_capacity = 8
+metadata/cafe_open_hour = 7
+metadata/cafe_close_hour = 20
+metadata/cafe_job_capacity = 2
+metadata/shop_capacity = 6
+metadata/shop_open_hour = 9
+metadata/shop_close_hour = 20
+metadata/shop_job_capacity = 2
+
+[node name="Visual" parent="." instance=ExtResource("1_visual")]
+
+[node name="Entrance" type="Node3D" parent="."]
+position = Vector3(0.0, 0.05, 0.82)

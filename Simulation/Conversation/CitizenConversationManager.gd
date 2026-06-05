@@ -1715,6 +1715,8 @@ func _get_building_dialogue_kind(building: Building) -> String:
 			return "Supermarkt"
 		"shopping":
 			return "Laden"
+		"community":
+			return "Kirche"
 		"fun":
 			if building.is_in_group("parks"):
 				return "Park"
@@ -1738,6 +1740,8 @@ func _get_generic_building_dialogue_name(building: Building, nearby: bool) -> St
 			return "der Supermarkt%s" % suffix
 		"shopping":
 			return "der Laden%s" % suffix
+		"community":
+			return "die Kirche%s" % suffix
 		"fun":
 			if building.is_in_group("parks"):
 				return "der Park%s" % suffix

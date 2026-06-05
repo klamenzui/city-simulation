@@ -35,6 +35,7 @@ var player_overview_button: Button = null
 var economy_overview_button: Button = null
 var search_overview_button: Button = null
 var debug_tools_button: Button = null
+var taxi_button: Button = null
 
 var _theme: Theme = null
 var _pause_button: Button = null
@@ -91,6 +92,7 @@ func setup(
 	camera_mode_pressed: Callable,
 	ai_runtime_pressed: Callable,
 	player_overview_pressed: Callable,
+	taxi_pressed: Callable,
 	player_resolver: Callable,
 	multiplayer_session_ref = null,
 	camera_mode_manager_ref = null
@@ -105,7 +107,7 @@ func setup(
 	_build_hud(pause_pressed, speed_pressed, building_overview_pressed, citizen_overview_pressed,
 			economy_overview_pressed, search_pressed, debug_tools_pressed,
 			player_control_pressed, camera_mode_pressed, ai_runtime_pressed,
-			player_overview_pressed)
+			player_overview_pressed, taxi_pressed)
 	_bind_world_signals()
 	_bind_multiplayer_session()
 	_refresh_time_hud()
@@ -138,6 +140,9 @@ func get_search_overview_button() -> Button:
 
 func get_debug_tools_button() -> Button:
 	return debug_tools_button
+
+func get_taxi_button() -> Button:
+	return taxi_button
 
 func update(delta: float) -> void:
 	_hud_status_refresh_left -= delta
@@ -265,7 +270,8 @@ func _build_hud(
 	player_control_pressed: Callable,
 	camera_mode_pressed: Callable,
 	ai_runtime_pressed: Callable,
-	player_overview_pressed: Callable
+	player_overview_pressed: Callable,
+	taxi_pressed: Callable
 ) -> void:
 	if owner_node == null:
 		return
@@ -281,7 +287,7 @@ func _build_hud(
 	_build_bottom_action_bar(building_overview_pressed, citizen_overview_pressed,
 			economy_overview_pressed, search_pressed, debug_tools_pressed,
 			player_control_pressed, camera_mode_pressed, ai_runtime_pressed,
-			player_overview_pressed)
+			player_overview_pressed, taxi_pressed)
 	_build_control_mode_banner()
 
 
@@ -368,7 +374,8 @@ func _build_bottom_action_bar(
 	player_control_pressed: Callable,
 	camera_mode_pressed: Callable,
 	ai_runtime_pressed: Callable,
-	player_overview_pressed: Callable
+	player_overview_pressed: Callable,
+	taxi_pressed: Callable
 ) -> void:
 	# Full-width bottom bar, mirrors the top bar. The left details panel
 	# clears it (DebugPanel offset_bottom = -84 vs. this 72 px strip).
@@ -398,6 +405,7 @@ func _build_bottom_action_bar(
 	economy_overview_button = _make_bar_button(hbox, LocaleServiceScript.t("hud.btn_economy"), 132, economy_overview_pressed)
 	search_overview_button = _make_bar_button(hbox, LocaleServiceScript.t("hud.btn_search"), 112, search_pressed)
 	debug_tools_button = _make_bar_button(hbox, LocaleServiceScript.t("hud.btn_tools"), 90, debug_tools_pressed)
+	taxi_button = _make_bar_button(hbox, LocaleServiceScript.t("hud.btn_taxi"), 82, taxi_pressed)
 
 	hbox.add_child(_make_v_divider())
 	_build_player_status_widget(hbox)

@@ -38,6 +38,7 @@ Purpose: compact decisions that should be checked before architectural edits.
 
 - `EconomySystem` owns transfers and daily financial resolution.
 - Buildings store state, account, condition, jobs, and status.
+- Mixed-use structures use composition: a `ResidentialBuilding` owns housing only, while nested `Shop`, `Cafe`, or `Restaurant` nodes represent independent ground-floor businesses with their own entrance, occupancy, jobs, inventory, and finances. `BuildingUseBinder` may generate these units from plain scene tags/metadata such as `building_uses=residential,shop`, but generated units are still real `Building` nodes. Recursive click, mesh, physics, and navigation ownership must stop at nested `Building` boundaries.
 - Public buildings and commercial buildings have different funding/closure behavior.
 - World job offers must count assigned jobs as slot reservations, including trainee jobs that are not hired yet. Education completion promotes the reserved job into a real building worker.
 - Restaurants require at least one employed worker to operate. Supermarket and Cafe remain food-access fallbacks until supply chains and starvation balance are mature.

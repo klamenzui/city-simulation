@@ -40,6 +40,7 @@ Runtime domain objects: buildings, citizens, accounts, jobs, and benches.
 | Entities/Account.gd | Account | Resource |
 | Entities/Buildings/Building.gd | Building | Node3D |
 | Entities/Buildings/Cafe.gd | Cafe | CommercialBuilding |
+| Entities/Buildings/Church.gd | Church | Building |
 | Entities/Buildings/Cinema.gd | Cinema | - |
 | Entities/Buildings/CityHall.gd | CityHall | Building |
 | Entities/Buildings/CommercialBuilding.gd | CommercialBuilding | Building |
@@ -71,7 +72,6 @@ Runtime domain objects: buildings, citizens, accounts, jobs, and benches.
 | Entities/Citizens/New/Sim/CitizenIdentity.gd | CitizenIdentity | RefCounted |
 | Entities/Citizens/New/Sim/CitizenLocation.gd | CitizenLocation | RefCounted |
 | Entities/Citizens/New/Sim/CitizenLodComponent.gd | CitizenLodComponent | RefCounted |
-| Entities/Citizens/New/Sim/CitizenManualControl.gd | CitizenManualControl | RefCounted |
 
 ## ImportedCitySource
 
@@ -123,6 +123,7 @@ World orchestration, economy, time, bootstrap, navigation, GOAP, UI, debug, logg
 | --- | --- | --- |
 | Simulation/AI/LocalDialogueRuntimeService.gd | LocalDialogueRuntimeService | Node |
 | Simulation/Audio/MusicDirector.gd | MusicDirector | Node |
+| Simulation/Bootstrap/BuildingUseBinder.gd | BuildingUseBinder | RefCounted |
 | Simulation/Bootstrap/CitySceneRefactor.gd | - | SceneTree |
 | Simulation/Bootstrap/ImportedCitySetup.gd | ImportedCitySetup | - |
 | Simulation/Bootstrap/NavigationSetup.gd | NavigationSetup | RefCounted |
@@ -155,7 +156,6 @@ World orchestration, economy, time, bootstrap, navigation, GOAP, UI, debug, logg
 | Simulation/GOAP/CitizenFunGoap.gd | CitizenFunGoap | RefCounted |
 | Simulation/GOAP/CitizenHealthGoap.gd | CitizenHealthGoap | RefCounted |
 | Simulation/GOAP/CitizenHungerGoap.gd | CitizenHungerGoap | RefCounted |
-| Simulation/GOAP/CitizenSocialGoap.gd | CitizenSocialGoap | RefCounted |
 
 ## config
 
@@ -180,6 +180,7 @@ Headless probes, parse checks, audits, and regression tests.
 | --- | --- | --- |
 | tools/codex_building_entry_travel_test.gd | - | SceneTree |
 | tools/codex_building_occupancy_test.gd | - | SceneTree, RefCounted, RefCounted, RefCounted, RefCounted |
+| tools/codex_church_scene_probe.gd | - | SceneTree |
 | tools/codex_citizen_config_drift_test.gd | - | SceneTree |
 | tools/codex_citizen_fall_respawn_test.gd | - | SceneTree |
 | tools/codex_citizen_stuck_escape_test.gd | - | SceneTree |
@@ -212,4 +213,3 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_null_material_audit.gd | - | SceneTree |
 | tools/codex_parse_check.gd | - | SceneTree |
 | tools/codex_personality_scoring_test.gd | - | SceneTree |
-| tools/codex_retail_work_sort_minigame_test.gd | - | SceneTree |

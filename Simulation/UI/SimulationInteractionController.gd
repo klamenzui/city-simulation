@@ -5,6 +5,12 @@ const NetworkRoleScript = preload("res://Simulation/Multiplayer/shared/NetworkRo
 const PlayerInventoryWindowScript = preload("res://Simulation/UI/PlayerInventoryWindow.gd")
 const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 const FarmWorkSceneScene = preload("res://Scenes/WorkScenes/Farm/FarmWorkScene.tscn")
+const TaxiServiceScript = preload("res://Simulation/Transport/TaxiService.gd")
+const WorldMapOverlayScript = preload("res://Simulation/UI/WorldMapOverlay.gd")
+
+const PLAYER_BUILDING_ENTER_RANGE := 3.5
+const SHARED_BUILDING_ENTRANCE_TOLERANCE := 0.65
+const META_BUILDING_USE_SOURCE_INSTANCE_ID := "building_use_source_instance_id"
 
 var owner_node: Node = null
 var world: World = null
@@ -18,6 +24,8 @@ var multiplayer_session = null
 var camera_mode_manager = null
 var toast_controller = null
 var inventory_window: PlayerInventoryWindow = null
+var taxi_service = null
+var world_map_overlay = null
 
 var _entity_clicked_this_frame: bool = false
 var _panel_refresh_left: float = 0.0
@@ -29,6 +37,8 @@ var _last_player_context_building: Building = null
 var _farm_work_scene: Node = null
 var _farm_work_player: Citizen = null
 var _farm_work_farm: Farm = null
+var _building_entry_choice_layer: CanvasLayer = null
+var _building_entry_choice_panel: PanelContainer = null
 
 func setup(owner_ref: Node, world_ref: World, multiplayer_session_ref = null) -> void:
 	owner_node = owner_ref
@@ -40,6 +50,8 @@ func setup(owner_ref: Node, world_ref: World, multiplayer_session_ref = null) ->
 	_ensure_overview_input_actions()
 	_build_debug_panel()
 	_build_inventory_window()
+	_build_world_map_overlay()
+	_setup_taxi_service()
 
 func bind_selection_state(selection_state_controller_ref, hud_overlay_controller_ref) -> void:
 	selection_state_controller = selection_state_controller_ref
@@ -64,6 +76,8 @@ func get_debug_panel() -> DebugPanel:
 	return debug_panel
 
 func update(delta: float) -> void:
+	if taxi_service != null:
+		taxi_service.update(delta, _get_player_citizen())
 	_refresh_player_home_marker()
 	_sync_player_building_context_from_location()
 	_poll_network_interaction_toast()
@@ -98,6 +112,7 @@ func update(delta: float) -> void:
 
 func handle_citizen_clicked(citizen: Citizen) -> void:
 	_entity_clicked_this_frame = true
+	_clear_building_entry_choices()
 	if selection_state_controller != null:
 		selection_state_controller.handle_citizen_clicked(citizen)
 		# Single-window mutex: a fresh DETAILS selection closes the overviews
@@ -108,6 +123,7 @@ func handle_citizen_clicked(citizen: Citizen) -> void:
 
 func handle_building_clicked(building: Building) -> void:
 	_entity_clicked_this_frame = true
+	_clear_building_entry_choices()
 	if selection_state_controller == null:
 		return
 	if world != null and world.has_method("get_canonical_building"):
@@ -121,6 +137,7 @@ func handle_building_clicked(building: Building) -> void:
 		_panel_refresh_left = 0.0
 
 func deselect() -> void:
+	_clear_building_entry_choices()
 	if selection_state_controller != null:
 		selection_state_controller.deselect()
 
@@ -317,6 +334,23 @@ func on_ai_runtime_pressed() -> void:
 	if dialogue_runtime_service != null and dialogue_runtime_service.has_method("trigger_ui_runtime_action"):
 		dialogue_runtime_service.trigger_ui_runtime_action()
 
+func on_taxi_pressed() -> void:
+	mark_ui_interacted()
+	if _is_network_session_active():
+		_show_toast("Taxi ist im Multiplayer noch nicht verfuegbar.", "warning", 2.2)
+		return
+	var player := _get_player_citizen()
+	if player == null:
+		_show_toast("Kein Spieler fuer Taxi gefunden.", "warning", 2.2)
+		return
+	if taxi_service == null:
+		_setup_taxi_service()
+	if taxi_service == null:
+		_show_toast("Taxi-System ist nicht bereit.", "warning", 2.2)
+		return
+	var result: Dictionary = taxi_service.request_taxi(player)
+	_show_toast(str(result.get("message", "")), str(result.get("kind", "info")), 2.4)
+
 func _build_debug_panel() -> void:
 	if owner_node == null:
 		return
@@ -338,6 +372,28 @@ func _build_inventory_window() -> void:
 	inventory_window.ui_interacted.connect(mark_ui_interacted)
 	inventory_window.action_pressed.connect(_on_inventory_window_action_pressed)
 	inventory_window.closed.connect(_on_inventory_window_closed)
+
+func _build_world_map_overlay() -> void:
+	if owner_node == null or world_map_overlay != null:
+		return
+	var overlay := CanvasLayer.new()
+	overlay.set_script(WorldMapOverlayScript)
+	world_map_overlay = overlay
+	world_map_overlay.name = "WorldMapOverlay"
+	owner_node.add_child(world_map_overlay)
+	world_map_overlay.setup(world, _get_player_citizen())
+
+func _setup_taxi_service() -> void:
+	if taxi_service != null:
+		return
+	if world_map_overlay == null:
+		_build_world_map_overlay()
+	taxi_service = TaxiServiceScript.new()
+	taxi_service.setup(owner_node, world, world_map_overlay)
+	taxi_service.status_changed.connect(_on_taxi_status_changed)
+
+func _on_taxi_status_changed(message: String, kind: String, duration_sec: float) -> void:
+	_show_toast(message, kind, duration_sec)
 
 
 func _on_inventory_window_action_pressed(action_id: String) -> void:
@@ -952,33 +1008,177 @@ func _try_player_enter_building() -> bool:
 		return false
 	if _try_player_enter_vehicle(player):
 		return true
-	var nearest: Building = null
-	var best := 3.5  # max flat distance to a building entrance to allow R-enter
-	for b in world.buildings:
-		if b == null or not is_instance_valid(b):
-			continue
-		var entrance: Vector3 = b.get_entrance_pos() if b.has_method("get_entrance_pos") else b.global_position
-		var d := Vector2(player.global_position.x - entrance.x, player.global_position.z - entrance.z).length()
-		if d <= best:
-			best = d
-			nearest = b
-	if nearest == null:
+	var candidates := _get_player_entry_candidates(player, PLAYER_BUILDING_ENTER_RANGE)
+	if candidates.is_empty():
 		return false
+	if candidates.size() > 1:
+		return _show_building_entry_choices(player, candidates)
+	return _enter_player_building_target(player, candidates[0])
+
+func _enter_player_building_target(player: Citizen, building: Building) -> bool:
+	if player == null or building == null or world == null:
+		return false
+	if not is_instance_valid(building):
+		return false
+	_clear_building_entry_choices()
 	if _is_network_session_active():
 		if multiplayer_session == null or not multiplayer_session.has_method("request_entity_interaction"):
 			return false
-		var requested := bool(multiplayer_session.request_entity_interaction(nearest))
+		var requested := bool(multiplayer_session.request_entity_interaction(building))
 		if requested:
 			_last_network_toast_signature = ""
 			_show_toast(LocaleServiceScript.t("interaction.request_enter"), "info", 1.8)
 		return requested
-	var entered := player.player_enter_building(nearest, world)
+	var entered := player.player_enter_building(building, world)
 	var enter_message := LocaleServiceScript.t("interaction.enter_failed")
 	if entered:
-		enter_message = LocaleServiceScript.t("interaction.enter_ok") % nearest.get_display_name()
-		_show_player_building_context(player, nearest)
+		enter_message = LocaleServiceScript.t("interaction.enter_ok") % building.get_display_name()
+		_show_player_building_context(player, building)
 	_show_toast(enter_message, "success" if entered else "warning")
 	return entered
+
+func _get_player_entry_candidates(player: Citizen, max_distance: float) -> Array[Building]:
+	var candidates: Array[Dictionary] = []
+	if player == null or world == null:
+		return []
+	for b in world.buildings:
+		if b == null or not is_instance_valid(b):
+			continue
+		var entrance := _get_building_entry_position(b)
+		var distance := _flat_distance(player.global_position, entrance)
+		if distance > max_distance:
+			continue
+		candidates.append({
+			"building": b,
+			"distance": distance,
+			"entrance": entrance,
+			"source_id": _get_building_entry_source_id(b),
+		})
+	if candidates.is_empty():
+		return []
+	candidates.sort_custom(Callable(self, "_sort_entry_candidate_infos"))
+	return _filter_entry_candidates_for_shared_entrance(candidates, _get_preferred_entry_building(player, max_distance))
+
+func _sort_entry_candidate_infos(a: Dictionary, b: Dictionary) -> bool:
+	return float(a.get("distance", INF)) < float(b.get("distance", INF))
+
+func _filter_entry_candidates_for_shared_entrance(candidates: Array[Dictionary], preferred: Building) -> Array[Building]:
+	var base_info: Dictionary = candidates[0]
+	if preferred != null:
+		for info in candidates:
+			var info_building := info.get("building", null) as Building
+			if info_building == preferred:
+				base_info = info
+				break
+
+	var source_id := int(base_info.get("source_id", 0))
+	var base_distance := float(base_info.get("distance", 0.0))
+	var base_entrance: Vector3 = base_info.get("entrance", Vector3.ZERO)
+	var result: Array[Building] = []
+	for info in candidates:
+		var building := info.get("building", null) as Building
+		if building == null:
+			continue
+		var include := false
+		if source_id != 0 and int(info.get("source_id", 0)) == source_id:
+			include = true
+		else:
+			var entrance: Vector3 = info.get("entrance", Vector3.ZERO)
+			var entrance_gap := _flat_distance(base_entrance, entrance)
+			include = entrance_gap <= SHARED_BUILDING_ENTRANCE_TOLERANCE \
+				and float(info.get("distance", INF)) <= base_distance + SHARED_BUILDING_ENTRANCE_TOLERANCE
+		if include and not result.has(building):
+			result.append(building)
+	return result
+
+func _get_preferred_entry_building(player: Citizen, max_distance: float) -> Building:
+	if selection_state_controller == null or not selection_state_controller.has_method("get_selected_building"):
+		return null
+	var selected = selection_state_controller.get_selected_building()
+	if selected == null or selected is not Building:
+		return null
+	var building := selected as Building
+	if world != null and world.has_method("get_canonical_building"):
+		building = world.get_canonical_building(building)
+	if building == null or not is_instance_valid(building):
+		return null
+	if world == null or not world.buildings.has(building):
+		return null
+	if _flat_distance(player.global_position, _get_building_entry_position(building)) > max_distance:
+		return null
+	return building
+
+func _get_building_entry_position(building: Building) -> Vector3:
+	if building == null:
+		return Vector3.ZERO
+	return building.get_entrance_pos() if building.has_method("get_entrance_pos") else building.global_position
+
+func _get_building_entry_source_id(building: Building) -> int:
+	if building == null:
+		return 0
+	if building.has_meta(META_BUILDING_USE_SOURCE_INSTANCE_ID):
+		return int(building.get_meta(META_BUILDING_USE_SOURCE_INSTANCE_ID))
+	return 0
+
+func _flat_distance(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length()
+
+func _show_building_entry_choices(player: Citizen, candidates: Array[Building]) -> bool:
+	_clear_building_entry_choices()
+	if player == null or candidates.size() <= 1:
+		return false
+	if owner_node == null:
+		return _enter_player_building_target(player, candidates[0])
+
+	var layer := CanvasLayer.new()
+	layer.name = "BuildingEntryChoiceLayer"
+	var panel := PanelContainer.new()
+	panel.name = "BuildingEntryChoicePanel"
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.offset_left = -190.0
+	panel.offset_top = -90.0
+	panel.offset_right = 190.0
+	panel.offset_bottom = 90.0
+
+	var content := VBoxContainer.new()
+	content.name = "Content"
+	content.custom_minimum_size = Vector2(320.0, 0.0)
+	var title := Label.new()
+	title.text = LocaleServiceScript.t("interaction.entry_choice_title", "Choose building use")
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	content.add_child(title)
+
+	for building in candidates:
+		if building == null or not is_instance_valid(building):
+			continue
+		var button := Button.new()
+		button.text = building.get_display_name()
+		button.pressed.connect(Callable(self, "_on_building_entry_choice_selected").bind(player, building))
+		content.add_child(button)
+
+	var cancel := Button.new()
+	cancel.text = LocaleServiceScript.t("interaction.entry_choice_cancel", "Cancel")
+	cancel.pressed.connect(_clear_building_entry_choices)
+	content.add_child(cancel)
+
+	panel.add_child(content)
+	layer.add_child(panel)
+	owner_node.add_child(layer)
+	_building_entry_choice_layer = layer
+	_building_entry_choice_panel = panel
+	return true
+
+func _on_building_entry_choice_selected(player: Citizen, building: Building) -> void:
+	mark_ui_interacted()
+	_enter_player_building_target(player, building)
+
+func _clear_building_entry_choices() -> void:
+	_building_entry_choice_panel = null
+	if _building_entry_choice_layer == null:
+		return
+	if is_instance_valid(_building_entry_choice_layer):
+		_building_entry_choice_layer.queue_free()
+	_building_entry_choice_layer = null
 
 func _try_player_enter_vehicle(player: Citizen) -> bool:
 	if player == null:
@@ -996,6 +1196,7 @@ func _try_player_exit_building() -> bool:
 	var player: Citizen = _get_player_citizen()
 	if player == null:
 		return false
+	_clear_building_entry_choices()
 	if player.has_method("is_inside_vehicle") and player.is_inside_vehicle():
 		if _is_network_session_active():
 			return false

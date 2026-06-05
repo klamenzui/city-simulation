@@ -80,6 +80,7 @@
 		"btn_economy": "Finances (F3)",
 		"btn_search": "Search (F4)",
 		"btn_tools": "Tools",
+		"btn_taxi": "Taxi",
 		"control_player": "Control Player",
 		"exit_player": "Exit Player",
 		"player_control_client_disabled": "Clients can only control citizens in Phase 2.",
@@ -137,6 +138,8 @@
 		"request_exit": "Request sent: leave building.",
 		"enter_failed": "Cannot enter building.",
 		"enter_ok": "Entered building: %s.",
+		"entry_choice_title": "Choose building use",
+		"entry_choice_cancel": "Cancel",
 		"exit_failed": "Cannot leave building.",
 		"home_marker": "v\nHOME",
 		"hint_player_building": "R: enter building · T: leave · F: talk",
@@ -333,6 +336,7 @@
 			"category": "Category",
 			"owner": "Owner",
 			"purchase_price": "Purchase price",
+			"ground_floor_uses": "Ground-floor uses",
 			"residents": "Residents",
 			"staff": "Staff",
 			"working_now": "Currently working",
@@ -411,10 +415,12 @@
 			"farm": "Farm",
 			"factory": "Factory",
 			"gas_station": "Gas Station",
-			"hospital": "Hospital"
+			"hospital": "Hospital",
+			"church": "Church"
 		},
 		"service_type": {
 			"commerce": "Commerce",
+			"community": "Community",
 			"education": "Education",
 			"food": "Food",
 			"food_market": "Food market",

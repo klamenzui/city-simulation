@@ -80,6 +80,7 @@
 		"btn_economy": "Фінанси (F3)",
 		"btn_search": "Пошук (F4)",
 		"btn_tools": "Інструменти",
+		"btn_taxi": "Taxi",
 		"control_player": "Керувати гравцем",
 		"exit_player": "Вийти з керування",
 		"player_control_client_disabled": "Клієнти зможуть керувати жителями тільки у фазі 2.",
@@ -137,6 +138,8 @@
 		"request_exit": "Запит надіслано: залишити будівлю.",
 		"enter_failed": "Неможливо увійти до будівлі.",
 		"enter_ok": "Вхід до будівлі: %s.",
+		"entry_choice_title": "Куди увійти?",
+		"entry_choice_cancel": "Скасувати",
 		"exit_failed": "Неможливо залишити будівлю.",
 		"home_marker": "v\nДІМ",
 		"hint_player_building": "R: увійти до будівлі · T: вийти · F: говорити",
@@ -333,6 +336,7 @@
 			"category": "Категорія",
 			"owner": "Власник",
 			"purchase_price": "Ціна купівлі",
+			"ground_floor_uses": "Приміщення на першому поверсі",
 			"residents": "Мешканці",
 			"staff": "Персонал",
 			"working_now": "Зараз працюють",
@@ -411,10 +415,12 @@
 			"farm": "Ферма",
 			"factory": "Фабрика",
 			"gas_station": "Заправка",
-			"hospital": "Лікарня"
+			"hospital": "Лікарня",
+			"church": "Церква"
 		},
 		"service_type": {
 			"commerce": "Комерція",
+			"community": "Громада",
 			"education": "Освіта",
 			"food": "Харчування",
 			"food_market": "Продуктовий ринок",

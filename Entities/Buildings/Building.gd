@@ -22,6 +22,7 @@ enum BuildingType {
 	FACTORY,
 	GAS_STATION,
 	HOSPITAL,
+	CHURCH,
 }
 
 @export var building_name: String = "Building"
@@ -120,6 +121,8 @@ func _setup_clickable() -> void:
 
 func _collect_click_targets(node: Node, out: Array[CollisionObject3D]) -> void:
 	for child in node.get_children():
+		if child is Building and child != self:
+			continue
 		if child is CollisionObject3D:
 			var collision_object := child as CollisionObject3D
 			if _should_use_as_click_target(collision_object):
@@ -167,6 +170,8 @@ func _infer_click_bounds() -> AABB:
 
 func _collect_mesh_instances(node: Node, out: Array[MeshInstance3D]) -> void:
 	for child in node.get_children():
+		if child is Building and child != self:
+			continue
 		if child is MeshInstance3D:
 			var mesh := child as MeshInstance3D
 			if mesh.mesh != null:
@@ -436,6 +441,8 @@ func _setup_entrance_trigger() -> void:
 
 func _has_physics_body(node: Node) -> bool:
 	for child in node.get_children():
+		if child is Building and child != self:
+			continue
 		if child.name == "ClickArea" or child.name == "NavigationBlocker":
 			continue
 		if child is StaticBody3D or child is CharacterBody3D or child is RigidBody3D:
@@ -756,6 +763,8 @@ func get_building_type_name() -> String:
 			return "Gas Station"
 		BuildingType.HOSPITAL:
 			return "Hospital"
+		BuildingType.CHURCH:
+			return "Church"
 		_:
 			return "Generic"
 
@@ -787,6 +796,8 @@ func get_building_type_display_label() -> String:
 			return LocaleServiceScript.t("details.building_type.gas_station")
 		BuildingType.HOSPITAL:
 			return LocaleServiceScript.t("details.building_type.hospital")
+		BuildingType.CHURCH:
+			return LocaleServiceScript.t("details.building_type.church")
 		_:
 			return LocaleServiceScript.t("details.building_type.generic")
 
@@ -1242,6 +1253,8 @@ func get_service_type_display_label() -> String:
 	match service:
 		"commerce":
 			return LocaleServiceScript.t("details.service_type.commerce")
+		"community":
+			return LocaleServiceScript.t("details.service_type.community")
 		"education":
 			return LocaleServiceScript.t("details.service_type.education")
 		"food":
@@ -1819,6 +1832,8 @@ func owns_navigation_node(node: Node) -> bool:
 	while current != null:
 		if current == self:
 			return true
+		if current is Building:
+			return false
 		current = current.get_parent()
 	return false
 

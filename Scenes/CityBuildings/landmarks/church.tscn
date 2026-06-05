@@ -1,7 +1,7 @@
 [gd_scene format=4 uid="uid://deb2usi0ds57q"]
 
 [ext_resource type="Texture2D" uid="uid://pfolnimrqhfy" path="res://ImportedCitySource/assets/city2/Church_Houses Colorscheme 2.png" id="1_xshjp"]
-[ext_resource type="Script" uid="uid://bj48dr0vegu14" path="res://Entities/Buildings/ResidentialBuilding.gd" id="2_0ovu6"]
+[ext_resource type="Script" path="res://Entities/Buildings/Church.gd" id="2_church"]
 [ext_resource type="Texture2D" uid="uid://b3b5vu8lonkcv" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="3_isyaw"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_amt7o"]
@@ -117,7 +117,10 @@ shadow_mesh = SubResource("ArrayMesh_ht4oy")
 [sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_py6gf"]
 data = PackedVector3Array(-1, 0, -0.9, -1, 0.099999994, -1, -1, 0.099999994, -0.9, -1, 0, -0.9, -1, 0, -1, -1, 0.099999994, -1, 0.9, 0, -1, 1, 0.099999994, -1, 0.9, 0.099999994, -1, 0.9, 0, -1, 1, 0, -1, 1, 0.099999994, -1, 1, 0, 0.9, 1, 0.099999994, 1, 1, 0.099999994, 0.9, 1, 0, 0.9, 1, 0, 1, 1, 0.099999994, 1, -0.9, 0, 1, -1, 0.099999994, 1, -0.9, 0.099999994, 1, -0.9, 0, 1, -1, 0, 1, -1, 0.099999994, 1, 0.9, 0, 0.9, 1, 0, 1, 1, 0, 0.9, 0.9, 0, 0.9, 0.9, 0, 1, 1, 0, 1, 0.9, 0, 0.9, -0.9, 0, 1, 0.9, 0, 1, 0.9, 0, -0.9, 0.9, 0, 0.9, 1, 0, 0.9, 0.9, 0, -0.9, 1, 0, 0.9, 1, 0, -0.9, 0.9, 0, 0.9, -0.9, 0, 0.9, -0.9, 0, 1, 0.9, 0, -0.9, -0.9, 0, 0.9, 0.9, 0, 0.9, -1, 0, 0.9, -0.9, 0, 1, -0.9, 0, 0.9, -1, 0, 0.9, -1, 0, 1, -0.9, 0, 1, -0.9, 0, -0.9, -1, 0, 0.9, -0.9, 0, 0.9, 0.9, 0, -0.9, -0.9, 0, -0.9, -0.9, 0, 0.9, -0.9, 0, -0.9, -1, 0, -0.9, -1, 0, 0.9, -1, 0, -1, -1, 0, -0.9, -0.9, 0, -0.9, -1, 0, -1, -0.9, 0, -0.9, -0.9, 0, -1, 0.9, 0, -1, -0.9, 0, -1, -0.9, 0, -0.9, 0.9, 0, -1, -0.9, 0, -0.9, 0.9, 0, -0.9, 0.9, 0, -1, 0.9, 0, -0.9, 1, 0, -0.9, 0.9, 0, -1, 1, 0, -0.9, 1, 0, -1, -0.9, 0.099999994, 0.9, -1, 0.099999994, 1, -1, 0.099999994, 0.9, -0.9, 0.099999994, 0.9, -0.9, 0.099999994, 1, -1, 0.099999994, 1, 1, 0.099999994, 0.9, 0.9, 0.099999994, 1, 0.9, 0.099999994, 0.9, 1, 0.099999994, 0.9, 1, 0.099999994, 1, 0.9, 0.099999994, 1, 0.9, 0.099999994, 1, -0.9, 0, 1, -0.9, 0.099999994, 1, 0.9, 0.099999994, 1, 0.9, 0, 1, -0.9, 0, 1, 1, 0, 1, 0.9, 0.099999994, 1, 1, 0.099999994, 1, 1, 0, 1, 0.9, 0, 1, 0.9, 0.099999994, 1, -0.9, 0.099999994, -1, 0.9, 0, -1, 0.9, 0.099999994, -1, -0.9, 0.099999994, -1, -0.9, 0, -1, 0.9, 0, -1, 0.9, 0.099999994, -1, -0.9, 0.099999994, -0.9, -0.9, 0.099999994, -1, 0.9, 0.099999994, -1, 0.9, 0.099999994, -0.9, -0.9, 0.099999994, -0.9, 0.9, 0.099999994, -0.9, 1, 0.099999994, -0.9, 1, 0.099999994, 0.9, 0.9, 0.099999994, -0.9, 1, 0.099999994, 0.9, 0.9, 0.099999994, 0.9, -0.9, 0.099999994, -0.9, -1, 0.099999994, 0.9, -1, 0.099999994, -0.9, -0.9, 0.099999994, -0.9, -0.9, 0.099999994, 0.9, -1, 0.099999994, 0.9, 0.9, 0.099999994, 1, -0.9, 0.099999994, 0.9, 0.9, 0.099999994, 0.9, 0.9, 0.099999994, 1, -0.9, 0.099999994, 1, -0.9, 0.099999994, 0.9, -1, 0, -1, -0.9, 0.099999994, -1, -1, 0.099999994, -1, -1, 0, -1, -0.9, 0, -1, -0.9, 0.099999994, -1, -0.9, 0.099999994, -0.9, 0.9, 0.099999994, 0.9, -0.9, 0.099999994, 0.9, -0.9, 0.099999994, -0.9, 0.9, 0.099999994, -0.9, 0.9, 0.099999994, 0.9, 1, 0.099999994, -1, 0.9, 0.099999994, -0.9, 0.9, 0.099999994, -1, 1, 0.099999994, -1, 1, 0.099999994, -0.9, 0.9, 0.099999994, -0.9, -0.9, 0.099999994, -1, -1, 0.099999994, -0.9, -1, 0.099999994, -1, -0.9, 0.099999994, -1, -0.9, 0.099999994, -0.9, -1, 0.099999994, -0.9, 1, 0, -1, 1, 0.099999994, -0.9, 1, 0.099999994, -1, 1, 0, -1, 1, 0, -0.9, 1, 0.099999994, -0.9, 1, 0.099999994, -0.9, 1, 0, 0.9, 1, 0.099999994, 0.9, 1, 0.099999994, -0.9, 1, 0, -0.9, 1, 0, 0.9, -1, 0, 1, -1, 0.099999994, 0.9, -1, 0.099999994, 1, -1, 0, 1, -1, 0, 0.9, -1, 0.099999994, 0.9, -1, 0.099999994, 0.9, -1, 0, -0.9, -1, 0.099999994, -0.9, -1, 0.099999994, 0.9, -1, 0, 0.9, -1, 0, -0.9)
 
-[node name="Node3D" type="Node3D" unique_id=1231342404]
+[node name="Church" type="Node3D" unique_id=1231342404 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_landmark"]]
+script = ExtResource("2_church")
+building_name = "Church"
+entrance = NodePath("Entrance")
 
 [node name="Church" type="MeshInstance3D" parent="." unique_id=522202423]
 transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
@@ -129,21 +132,15 @@ skeleton = NodePath("")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Church/StaticBody3D" unique_id=146523148]
 shape = SubResource("ConcavePolygonShape3D_xshjp")
 
-[node name="foundation_residential_01" type="Node3D" parent="." unique_id=1487054142 groups=["buildings", "city_buildings", "city_foundation", "residential"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5593786, 0, 0)
-script = ExtResource("2_0ovu6")
-building_name = "Residential 01 (Foundation)"
-building_type = 1
+[node name="Entrance" type="Marker3D" parent="." unique_id=977134539]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.345294, 0, 0)
 
-[node name="base" type="MeshInstance3D" parent="foundation_residential_01" unique_id=991871287]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 0.5, 0, -0.1463809, 0)
+[node name="base" type="MeshInstance3D" parent="." unique_id=991871287]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 0.5, 2.5593786, -0.1463809, 0)
 mesh = SubResource("ArrayMesh_rw05s")
 skeleton = NodePath("")
 
-[node name="StaticBody3D" type="StaticBody3D" parent="foundation_residential_01/base" unique_id=1594214977]
+[node name="StaticBody3D" type="StaticBody3D" parent="base" unique_id=1594214977]
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="foundation_residential_01/base/StaticBody3D" unique_id=1259019671]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="base/StaticBody3D" unique_id=1259019671]
 shape = SubResource("ConcavePolygonShape3D_py6gf")
-
-[node name="Entrance" type="Marker3D" parent="." unique_id=977134539]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.345294, 0, 0)

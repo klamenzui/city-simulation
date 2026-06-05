@@ -44,6 +44,7 @@ class MockSelectionStateController:
 	var controlled_citizen: Citizen = null
 	var camera_player_target: Citizen = null
 	var selected_citizen: Citizen = null
+	var selected_building: Building = null
 	var player_control_active: bool = false
 
 	func get_player_avatar() -> Citizen:
@@ -58,8 +59,20 @@ class MockSelectionStateController:
 	func get_selected_citizen() -> Citizen:
 		return selected_citizen if selected_citizen != null and is_instance_valid(selected_citizen) else null
 
+	func get_selected_building() -> Building:
+		return selected_building if selected_building != null and is_instance_valid(selected_building) else null
+
 	func handle_citizen_clicked(citizen: Citizen) -> void:
 		selected_citizen = citizen
+		selected_building = null
+
+	func handle_building_clicked(building: Building) -> void:
+		selected_building = building
+		selected_citizen = null
+
+	func deselect() -> void:
+		selected_citizen = null
+		selected_building = null
 
 	func is_player_control_active() -> bool:
 		return player_control_active
@@ -123,6 +136,7 @@ func _run_all_tests() -> void:
 		"player_enter_takes_capacity_slot",
 		"pause_uses_explicit_action_not_ui_accept",
 		"offline_keyboard_player_building_input_uses_camera_target",
+		"player_entry_shared_entrance_shows_choice",
 		"keyboard_player_needs_tick_without_goap",
 		"toast_controller_lifecycle",
 		"inventory_window_keeps_shop_buttons_clickable",
@@ -180,6 +194,7 @@ func _run_all_tests() -> void:
 		"action_default_needs_modifier_is_isolated",
 		"relax_bench_uses_energy_bonus",
 		"worker_count_lifecycle",
+		"mixed_use_residential_indexes_ground_floor_businesses",
 		"player_buys_commercial_building",
 		"simple_citizen_buys_affordable_commercial_building",
 		"owner_profit_pays_to_wallet_on_payday",
@@ -215,6 +230,8 @@ func _run_test(test_name: String) -> String:
 			return _test_pause_uses_explicit_action_not_ui_accept()
 		"offline_keyboard_player_building_input_uses_camera_target":
 			return _test_offline_keyboard_player_building_input_uses_camera_target()
+		"player_entry_shared_entrance_shows_choice":
+			return _test_player_entry_shared_entrance_shows_choice()
 		"keyboard_player_needs_tick_without_goap":
 			return _test_keyboard_player_needs_tick_without_goap()
 		"toast_controller_lifecycle":
@@ -329,6 +346,8 @@ func _run_test(test_name: String) -> String:
 			return _test_relax_bench_uses_energy_bonus()
 		"worker_count_lifecycle":
 			return _test_worker_count_lifecycle()
+		"mixed_use_residential_indexes_ground_floor_businesses":
+			return _test_mixed_use_residential_indexes_ground_floor_businesses()
 		"player_buys_commercial_building":
 			return _test_player_buys_commercial_building()
 		"simple_citizen_buys_affordable_commercial_building":
@@ -496,6 +515,134 @@ func _test_worker_count_lifecycle() -> String:
 	var info := building.get_info(null)
 	_expect_eq(info.get("Workers", ""), "1 / 2", "building info should reflect live worker count")
 	_expect_eq(info.get("Workers at work", ""), "1 / 1", "building info should reflect workers currently at work")
+	return _current_error
+
+func _test_mixed_use_residential_indexes_ground_floor_businesses() -> String:
+	var scene := load("res://Scenes/CityBuildings/mixed_use/cafe_shop_apartments.tscn") as PackedScene
+	_expect(scene != null, "mixed-use cafe/shop apartment scene should load")
+	if scene == null:
+		return _current_error
+
+	var scene_root := scene.instantiate() as Node3D
+	_expect(scene_root != null, "mixed-use scene root should be a plain tagged Node3D")
+	if scene_root == null:
+		return _current_error
+	_expect(scene_root is not Building, "mixed-use scene root should not need a manually attached Building script")
+	_harness_root.add_child(scene_root)
+
+	var restaurant_source := Node3D.new()
+	restaurant_source.name = "RestaurantApartments"
+	restaurant_source.set_meta("building_uses", "residential,restaurant")
+	restaurant_source.set_meta("building_name", "Restaurant Apartments")
+	restaurant_source.set_meta("residential_capacity", 10)
+	restaurant_source.set_meta("restaurant_capacity", 6)
+	restaurant_source.set_meta("restaurant_job_capacity", 2)
+	var restaurant_entrance := Node3D.new()
+	restaurant_entrance.name = "Entrance"
+	restaurant_source.add_child(restaurant_entrance)
+	_harness_root.add_child(restaurant_source)
+
+	var existing_scene := load("res://Scenes/CityBuildings/multi_building/multi_building_004_eb500c74.tscn") as PackedScene
+	_expect(existing_scene != null, "existing residential scene should load for group-based mixed-use binding")
+	if existing_scene == null:
+		return _current_error
+	var existing_home := existing_scene.instantiate() as ResidentialBuilding
+	_expect(existing_home != null, "existing grouped scene root should be a ResidentialBuilding")
+	if existing_home == null:
+		return _current_error
+	existing_home.name = "ExistingTaggedResidential"
+	existing_home.position = Vector3(8.0, 0.0, 0.0)
+	existing_home.add_to_group("RESIDENTIAL")
+	existing_home.add_to_group("SHOP")
+	_harness_root.add_child(existing_home)
+
+	var world := _new_world()
+
+	var home := scene_root.get_node_or_null("ResidentialUnit") as ResidentialBuilding
+	_expect(home != null, "tagged mixed-use scene should generate a residential unit")
+	if home == null:
+		_free_world(world)
+		return _current_error
+	var cafe := home.get_node_or_null("CafeUnit") as Cafe
+	var shop := home.get_node_or_null("ShopUnit") as Shop
+	_expect(cafe != null, "tagged mixed-use scene should generate a cafe unit")
+	_expect(shop != null, "tagged mixed-use scene should generate a shop unit")
+	var restaurant_home := restaurant_source.get_node_or_null("ResidentialUnit") as ResidentialBuilding
+	_expect(restaurant_home != null, "tagged restaurant mixed-use source should generate a residential unit")
+	if restaurant_home == null:
+		_free_world(world)
+		return _current_error
+	var restaurant := restaurant_home.get_node_or_null("RestaurantUnit") as Restaurant
+	_expect(restaurant != null, "tagged residential+restaurant source should generate a restaurant unit")
+	var existing_shop := existing_home.get_node_or_null("ShopUnit") as Shop
+	_expect(existing_shop != null, "existing ResidentialBuilding with RESIDENTIAL+SHOP groups should generate a shop unit")
+	if cafe == null or shop == null or restaurant == null or existing_shop == null:
+		_free_world(world)
+		return _current_error
+
+	var businesses := home.get_ground_floor_businesses()
+	var restaurant_businesses := restaurant_home.get_ground_floor_businesses()
+	var shop_click_area := home.get_node_or_null("ShopUnit/GeneratedClickArea") as Area3D
+	_expect(shop_click_area != null, "generated shop unit should receive a click area")
+	if shop_click_area == null:
+		_free_world(world)
+		return _current_error
+
+	_expect(home.is_mixed_use(), "residential building should report nested ground-floor businesses")
+	_expect_eq(businesses.size(), 2, "tagged mixed-use residential should expose cafe and shop units")
+	_expect(businesses.has(cafe), "mixed-use residential should expose its cafe")
+	_expect(businesses.has(shop), "mixed-use residential should expose its shop")
+	_expect(restaurant_home.is_mixed_use(), "residential+restaurant source should report mixed-use")
+	_expect_eq(restaurant_businesses.size(), 1, "restaurant mixed-use residential should expose one business")
+	_expect(restaurant_businesses.has(restaurant), "mixed-use residential should support a restaurant unit")
+	_expect(cafe.is_in_group("ground_floor_business"), "cafe should be marked as a ground-floor business")
+	_expect(shop.is_in_group("ground_floor_business"), "shop should be marked as a ground-floor business")
+	_expect(restaurant.is_in_group("ground_floor_business"), "restaurant should be marked as a ground-floor business")
+	_expect(home.is_in_group("mixed_use"), "generated residential unit should be marked as mixed-use")
+	_expect(restaurant_home.is_in_group("mixed_use"), "generated residential+restaurant unit should be marked as mixed-use")
+
+	var home_click_targets: Array[CollisionObject3D] = []
+	var shop_click_targets: Array[CollisionObject3D] = []
+	home._collect_click_targets(home, home_click_targets)
+	shop._collect_click_targets(shop, shop_click_targets)
+	_expect(not home_click_targets.has(shop_click_area), "residential clicks must not capture nested shop click areas")
+	_expect(shop_click_targets.has(shop_click_area), "shop should own its click area")
+	_expect(not home.owns_navigation_node(shop_click_area), "residential navigation must not own nested shop nodes")
+	_expect(shop.owns_navigation_node(shop_click_area), "shop navigation should own its own nodes")
+
+	_expect(world.buildings.has(home), "world should register residential part of mixed-use building")
+	_expect(world.buildings.has(cafe), "world should register mixed-use cafe independently")
+	_expect(world.buildings.has(shop), "world should register mixed-use shop independently")
+	_expect(world.buildings.has(restaurant), "world should register mixed-use restaurant independently")
+	_expect(world.buildings.has(existing_home), "world should keep the existing residential building registered")
+	_expect(world.buildings.has(existing_shop), "world should register the generated shop on an existing residential building")
+	_expect(world.find_nearest_cafe(Vector3.ZERO, false) == cafe, "world cafe queries should include mixed-use cafe")
+	_expect(world.find_nearest_shop(Vector3.ZERO, false) == shop, "world shop queries should include mixed-use shop")
+	_expect(world.find_nearest_restaurant(Vector3.ZERO, false) == restaurant, "world restaurant queries should include mixed-use restaurant")
+
+	var registry = NetworkEntityRegistryScript.new()
+	var snapshot := WorldSnapshotSerializerScript.build_snapshot(world, _harness_root, 1, registry)
+	var building_lookup := WorldSnapshotSerializerScript.build_building_lookup(
+		_harness_root,
+		snapshot.get("buildings", []) as Array
+	)
+	for building in [home, cafe, shop, restaurant]:
+		var building_id := NetworkEntityRegistryScript.get_entity_id(building)
+		_expect(not building_id.is_empty(), "mixed-use unit should receive a stable snapshot id")
+		_expect(building_lookup.get(building_id, null) == building, "snapshot lookup should resolve nested mixed-use unit")
+
+	var ground_floor_info := _info_row_value(
+		home.get_info_sections(world),
+		LocaleServiceScript.t("details.label.ground_floor_uses")
+	)
+	_expect(ground_floor_info.contains("Cafe"), "residential info should list ground-floor cafe")
+	_expect(ground_floor_info.contains("Shop"), "residential info should list ground-floor shop")
+	var restaurant_info := _info_row_value(
+		restaurant_home.get_info_sections(world),
+		LocaleServiceScript.t("details.label.ground_floor_uses")
+	)
+	_expect(restaurant_info.contains("Restaurant"), "residential info should list ground-floor restaurant")
+	_free_world(world)
 	return _current_error
 
 func _test_player_buys_commercial_building() -> String:
@@ -1614,6 +1761,52 @@ func _test_offline_keyboard_player_building_input_uses_camera_target() -> String
 	var detail_text := JSON.stringify(player.get_info_sections(world))
 	_expect(detail_text.contains("OfflineInputShop"), "player details should include the current building after entry")
 	_expect(detail_text.contains(LocaleServiceScript.t("details.label.stock")), "player details should show current shop stock")
+
+	_free_world(world)
+	return _current_error
+
+func _test_player_entry_shared_entrance_shows_choice() -> String:
+	var world: World = _new_world()
+	var home: ResidentialBuilding = _new_residential("SharedEntranceHome", Vector3.ZERO, 1)
+	var shop: Shop = _new_shop("SharedEntranceShop", Vector3.ZERO)
+	var shop_entrance := shop.get_node_or_null("Entrance") as Node3D
+	if shop_entrance != null:
+		shop_entrance.position = Vector3.ZERO
+	home.set_meta("building_use_source_instance_id", 9001)
+	shop.set_meta("building_use_source_instance_id", 9001)
+	world.register_building(home)
+	world.register_building(shop)
+
+	var player: Citizen = _new_citizen("Shared Entrance Player")
+	player.keyboard_control_enabled = true
+	player.set_world_ref(world)
+	player.global_position = home.get_entrance_pos()
+
+	var selection := MockSelectionStateController.new()
+	selection.camera_player_target = player
+	var interaction = SimulationInteractionControllerScript.new()
+	interaction.owner_node = _harness_root
+	interaction.world = world
+	interaction.selection_state_controller = selection
+	interaction._ensure_player_building_input_actions()
+
+	var enter_event := InputEventAction.new()
+	enter_event.action = "player_enter_building"
+	enter_event.pressed = true
+	_expect(interaction.handle_input(enter_event), "R-enter should be handled when shared entrance choices exist")
+	_expect(not player.is_inside_building(), "shared entrance R-enter should wait for an explicit building-use choice")
+	_expect(interaction._building_entry_choice_panel != null, "shared entrance R-enter should show a building-use choice panel")
+
+	var shop_button := _find_button_by_text(interaction._building_entry_choice_panel, shop.get_display_name())
+	_expect(shop_button != null, "choice panel should include the shop unit")
+	if shop_button == null:
+		_free_world(world)
+		return _current_error
+	shop_button.emit_signal("pressed")
+	_expect(player.is_inside_building(), "choosing the shop should enter that building unit")
+	_expect(player.current_location == shop, "shared entrance choice should enter the selected shop, not the residential unit")
+	_expect_eq(selection.get_selected_citizen(), player, "choosing a building use should show player context details")
+	_expect_eq(interaction._player_inventory_mode, "shop", "choosing the shop should open shop inventory mode")
 
 	_free_world(world)
 	return _current_error
