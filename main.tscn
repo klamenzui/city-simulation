@@ -2788,8 +2788,8 @@ transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 24, 0,
 [node name="MultiBuilding005_11" parent="World/City/only_people_nav/only_people/Commercial building" unique_id=198801991 instance=ExtResource("116_wed7b")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28, 0, 28)
 
-[node name="CafeShop" parent="World/City/only_people_nav/only_people/Commercial building" unique_id=856810442 instance=ExtResource("60_fbvi6")]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 32.03017, 0, 17.977081)
+[node name="CafeShop" parent="World/City/only_people_nav/only_people/Commercial building" unique_id=856810442 groups=["RESIDENTIAL"] instance=ExtResource("60_fbvi6")]
+transform = Transform3D(1.3113416e-07, 0, -1, 0, 1, 0, 1, 0, 1.3113416e-07, 32.03017, 0, 17.977081)
 
 [node name="CafeShop2" parent="World/City/only_people_nav/only_people/Commercial building" unique_id=1242820274 instance=ExtResource("61_h0r08")]
 transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 22, 0, 22)
