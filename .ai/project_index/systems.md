@@ -191,6 +191,7 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_emotion_test.gd | - | SceneTree |
 | tools/codex_exterior_grass_scene_probe.gd | - | SceneTree |
 | tools/codex_facade_caller_drift_test.gd | - | SceneTree |
+| tools/codex_factory_delivery_test.gd | - | SceneTree |
 | tools/codex_farm_live_delivery_test.gd | - | SceneTree |
 | tools/codex_farm_scene_probe.gd | - | SceneTree |
 | tools/codex_farm_work_scene_test.gd | - | SceneTree |
@@ -212,4 +213,3 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_navigation_route_test.gd | - | SceneTree |
 | tools/codex_null_material_audit.gd | - | SceneTree |
 | tools/codex_parse_check.gd | - | SceneTree |
-| tools/codex_personality_scoring_test.gd | - | SceneTree |

@@ -684,7 +684,16 @@
       "close_hour": 21,
       "clothes_output_per_day": 25,
       "entertainment_output_per_day": 40,
-      "production_cost_per_unit": 2
+      "production_cost_per_unit": 2,
+      "storage_capacity": 360,
+      "initial_clothes_stock": 48,
+      "initial_entertainment_stock": 0,
+      "direct_shop_delivery_enabled": true,
+      "direct_delivery_batch_per_retailer": 24,
+      "delivery_unload_duration_minutes": 8,
+      "direct_delivery_price_multiplier": 0.85,
+      "market_export_enabled": true,
+      "market_export_limit_per_day": 0
     },
     "gas_station": {
       "capacity": 14,

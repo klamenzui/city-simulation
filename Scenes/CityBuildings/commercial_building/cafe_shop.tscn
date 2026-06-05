@@ -2829,7 +2829,7 @@ _data = {
 &"CylinderAction_001": SubResource("Animation_vxstf")
 }
 
-[node name="CafeShop" type="Node3D" unique_id=856810442 groups=["CAFE"]]
+[node name="CafeShop" type="Node3D" unique_id=856810442]
 
 [node name="cafe_shop" type="Node3D" parent="." unique_id=146311324]
 transform = Transform3D(0.17, 0, 0, 0, 0.17, 0, 0, 0, 0.17, 0, 0, 0)
