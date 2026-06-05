@@ -7,6 +7,7 @@ const CityDistrictIndexScript = preload("res://Simulation/Spatial/CityDistrictIn
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
+const BuildingUseBinderScript = preload("res://Simulation/Bootstrap/BuildingUseBinder.gd")
 const CITY_BENCH_NAME_HINTS := ["bench", "bank", "seat", "sit"]
 const CITY_BENCH_RESERVATIONS_META := "_world_city_bench_reservations"
 const CITY_SPAWN_POINT_GROUPS := ["city_spawn_point", "citizen_spawn_point", "spawn_point"]
@@ -92,6 +93,7 @@ func _ready() -> void:
 	city_account.balance = BalanceConfig.get_int("world.city_reserve_start_balance", 18000)
 
 	district_index.setup(self)
+	BuildingUseBinderScript.bind_tree(get_tree().root if get_tree() != null else self)
 	_register_existing_scene_nodes(get_tree())
 	_connect_tree_cache_invalidation()
 

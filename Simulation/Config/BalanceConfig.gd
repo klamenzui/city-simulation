@@ -96,6 +96,11 @@ static func _default_data() -> Dictionary:
 		},
 		"transport": {
 			"vehicle_lane_offset": 0.45,
+			"taxi": {
+				"fare_distance_per_euro": 20.0,
+				"min_fare": 1,
+				"pickup_radius": 2.5,
+			},
 			"vehicle": {
 				"max_speed": 5.0,
 				"acceleration": 2.8,
@@ -772,6 +777,17 @@ static func _default_data() -> Dictionary:
 				"citizen_vehicle_demand_factor": 0.35,
 				"fuel_units_per_vehicle": 2,
 				"base_operating_cost": 36,
+			},
+			"church": {
+				"capacity": 35,
+				"job_capacity": 0,
+				"open_hour": 7,
+				"close_hour": 21,
+				"navigation_blocker_margin": 1.2,
+				"entrance_clearance_width": 2.4,
+				"entrance_clearance_depth": 1.8,
+				"entrance_trigger_radius": 0.9,
+				"entrance_trigger_outset": 0.8,
 			},
 		},
 	}

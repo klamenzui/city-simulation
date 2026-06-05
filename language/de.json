@@ -80,6 +80,7 @@
 		"btn_economy": "Finanzen (F3)",
 		"btn_search": "Suche (F4)",
 		"btn_tools": "Tools",
+		"btn_taxi": "Taxi",
 		"control_player": "Spieler steuern",
 		"exit_player": "Steuerung beenden",
 		"player_control_client_disabled": "Clients steuern Citizens erst in Phase 2.",
@@ -137,6 +138,8 @@
 		"request_exit": "Anfrage gesendet: Gebäude verlassen.",
 		"enter_failed": "Gebäude betreten nicht möglich.",
 		"enter_ok": "Gebäude betreten: %s.",
+		"entry_choice_title": "Welche Nutzung betreten?",
+		"entry_choice_cancel": "Abbrechen",
 		"exit_failed": "Gebäude verlassen nicht möglich.",
 		"home_marker": "v\nZUHAUSE",
 		"hint_player_building": "R: Gebäude betreten · T: verlassen · F: Reden",
@@ -333,6 +336,7 @@
 			"category": "Kategorie",
 			"owner": "Besitzer",
 			"purchase_price": "Kaufpreis",
+			"ground_floor_uses": "Nutzungen im Erdgeschoss",
 			"residents": "Bewohner",
 			"staff": "Mitarbeiter",
 			"working_now": "Gerade bei Arbeit",
@@ -411,10 +415,12 @@
 			"farm": "Farm",
 			"factory": "Fabrik",
 			"gas_station": "Tankstelle",
-			"hospital": "Hospital"
+			"hospital": "Hospital",
+			"church": "Kirche"
 		},
 		"service_type": {
 			"commerce": "Handel",
+			"community": "Gemeinschaft",
 			"education": "Bildung",
 			"food": "Gastronomie",
 			"food_market": "Lebensmittelmarkt",

@@ -12,7 +12,8 @@ Purpose: likely duplication areas to inspect before adding new code.
 | building | 3 | Entities/Buildings/Building.gd<br>ImportedCitySource/scripts/building/building.gd<br>Scenes/Building.tscn |
 | character_body_3d | 2 | ImportedCitySource/scenes/units/character_body_3d.tscn<br>ImportedCitySource/scripts/character_body_3d.gd |
 | character_body_3d_new | 2 | ImportedCitySource/scenes/units/character_body_3d_new.gd<br>ImportedCitySource/scenes/units/character_body_3d_new.tscn |
-| cinema | 2 | Entities/Buildings/Cinema.gd<br>Scenes/Cinema.tscn |
+| church | 2 | Entities/Buildings/Church.gd<br>Scenes/CityBuildings/landmarks/church.tscn |
+| cinema | 3 | Entities/Buildings/Cinema.gd<br>Scenes/Cinema.tscn<br>Scenes/CityBuildings/commercial_building/cinema.tscn |
 | cityhall | 2 | Entities/Buildings/CityHall.gd<br>Scenes/CityHall.tscn |
 | cookingingredientcatchminigame | 2 | Scenes/Minigames/CookingIngredientCatch/CookingIngredientCatchMinigame.gd<br>Scenes/Minigames/CookingIngredientCatch/CookingIngredientCatchMinigame.tscn |
 | day | 2 | environment/sky/Day.tres<br>environment/sky/Day.tscn |

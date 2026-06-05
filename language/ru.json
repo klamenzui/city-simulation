@@ -80,6 +80,7 @@
 		"btn_economy": "Финансы (F3)",
 		"btn_search": "Поиск (F4)",
 		"btn_tools": "Инструменты",
+		"btn_taxi": "Taxi",
 		"control_player": "Управлять игроком",
 		"exit_player": "Выйти из управления",
 		"player_control_client_disabled": "Клиенты смогут управлять жителями только во 2-й фазе.",
@@ -137,6 +138,8 @@
 		"request_exit": "Запрос отправлен: покинуть здание.",
 		"enter_failed": "Невозможно войти в здание.",
 		"enter_ok": "Вход в здание: %s.",
+		"entry_choice_title": "Куда войти?",
+		"entry_choice_cancel": "Отмена",
 		"exit_failed": "Невозможно покинуть здание.",
 		"home_marker": "v\nДОМ",
 		"hint_player_building": "R: войти в здание · T: выйти · F: говорить",
@@ -333,6 +336,7 @@
 			"category": "Категория",
 			"owner": "Владелец",
 			"purchase_price": "Цена покупки",
+			"ground_floor_uses": "Помещения на первом этаже",
 			"residents": "Жители",
 			"staff": "Персонал",
 			"working_now": "Сейчас работает",
@@ -411,10 +415,12 @@
 			"farm": "Ферма",
 			"factory": "Фабрика",
 			"gas_station": "Заправка",
-			"hospital": "Больница"
+			"hospital": "Больница",
+			"church": "Церковь"
 		},
 		"service_type": {
 			"commerce": "Коммерция",
+			"community": "Сообщество",
 			"education": "Образование",
 			"food": "Питание",
 			"food_market": "Продуктовый рынок",

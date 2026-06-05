@@ -80,6 +80,7 @@
 		"btn_economy": "Maliyyə (F3)",
 		"btn_search": "Axtarış (F4)",
 		"btn_tools": "Alətlər",
+		"btn_taxi": "Taxi",
 		"control_player": "Oyunçunu idarə et",
 		"exit_player": "İdarədən çıx",
 		"player_control_client_disabled": "Müştərilər sakinləri yalnız 2-ci mərhələdə idarə edə biləcək.",
@@ -137,6 +138,8 @@
 		"request_exit": "Sorğu göndərildi: binadan çıx.",
 		"enter_failed": "Binaya daxil olmaq mümkün deyil.",
 		"enter_ok": "Binaya daxil oldu: %s.",
+		"entry_choice_title": "Hansı istifadə daxil edilsin?",
+		"entry_choice_cancel": "Ləğv et",
 		"exit_failed": "Binadan çıxmaq mümkün deyil.",
 		"home_marker": "v\nEV",
 		"hint_player_building": "R: binaya daxil ol · T: çıx · F: danış",
@@ -333,6 +336,7 @@
 			"category": "Kateqoriya",
 			"owner": "Sahib",
 			"purchase_price": "Alış qiyməti",
+			"ground_floor_uses": "Birinci mərtəbədə obyektlər",
 			"residents": "Sakinlər",
 			"staff": "Personal",
 			"working_now": "Hazırda işləyir",
@@ -411,10 +415,12 @@
 			"farm": "Ferma",
 			"factory": "Fabrik",
 			"gas_station": "Yanacaqdoldurma",
-			"hospital": "Xəstəxana"
+			"hospital": "Xəstəxana",
+			"church": "Kilsə"
 		},
 		"service_type": {
 			"commerce": "Ticarət",
+			"community": "İcma",
 			"education": "Təhsil",
 			"food": "Yemək",
 			"food_market": "Ərzaq bazarı",

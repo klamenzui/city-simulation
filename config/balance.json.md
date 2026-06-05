@@ -60,6 +60,9 @@ Vehicle pathing, delivery route-following, and first VehicleBody3D truck tuning.
 | Key | Default | Wirkung |
 | --- | --- | --- |
 | `vehicle_lane_offset` | `0.45` | Offset from RoadGraph centerline to the right-side vehicle lane. |
+| `taxi.fare_distance_per_euro` | `20.0` | Taxi fare distance in road/world units that costs 1 EUR. |
+| `taxi.min_fare` | `1` | Minimum fare charged when a taxi trip has a valid route. |
+| `taxi.pickup_radius` | `2.5` | Flat distance at which the taxi can board the player immediately instead of routing to pickup. |
 | `vehicle.max_speed` | `5.0` | Maximum truck speed in world units per second. |
 | `vehicle.acceleration` | `2.8` | Truck acceleration. |
 | `vehicle.braking_acceleration` | `5.5` | Truck deceleration while slowing down. |

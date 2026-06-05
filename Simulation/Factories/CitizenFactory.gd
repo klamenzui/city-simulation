@@ -76,6 +76,7 @@ const BUILDING_TYPE_NAMES := {
 	"FACTORY": BuildingScript.BuildingType.FACTORY,
 	"GAS_STATION": BuildingScript.BuildingType.GAS_STATION,
 	"HOSPITAL": BuildingScript.BuildingType.HOSPITAL,
+	"CHURCH": BuildingScript.BuildingType.CHURCH,
 }
 
 static func spawn_citizens(parent: Node, world: World, count: int, seed_staff: bool = false) -> Array[Citizen]:
