@@ -265,6 +265,11 @@ $availableTests = @(
 		Script = "res://tools/codex_farm_live_delivery_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "factory_delivery"
+		Label = "Factory Delivery"
+		Script = "res://tools/codex_factory_delivery_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "first_day_delivery"
 		Label = "First-Day Delivery Seed"
 		Script = "res://tools/codex_first_day_delivery_seed_test.gd"

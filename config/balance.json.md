@@ -596,7 +596,7 @@ Keys sind unten genannt.
 | `university` | capacity 40, jobs 8, 7–21 Uhr; `base_operating_cost` 110; **`education_gain` 1** (Bildungsstufen pro Studien-Session). |
 | `park` | capacity 40, jobs 2, 6–23 Uhr; `base_operating_cost` 32. Navigations-Tuning: `navigation_blocker_margin` 1.35, `entrance_clearance_width` 2.6, `entrance_clearance_depth` 1.9, `entrance_trigger_radius` 0.9, `entrance_trigger_outset` 0.8. |
 | `farm` | capacity 8, jobs 6, 5–19 Uhr; `base_food_output_per_day` 60, `production_cost_per_unit` 1; Crops grow for 2 days, then workers harvest into 300 product inventory. New farms start with `initial_stored_food` 80 so first-day supermarket deliveries can happen before the first harvest. `Fahrer` workers deliver stored products directly to supermarkets (`direct_delivery_batch_per_supermarket` 35, unload 10 min, price multiplier 0.85); remaining product stock can fall back to market export. |
-| `factory` | capacity 10, jobs 8, 6–21 Uhr; `clothes_output_per_day` 25, `entertainment_output_per_day` 40, `production_cost_per_unit` 2. |
+| `factory` | capacity 10, jobs 8, 6–21 Uhr; `clothes_output_per_day` 25, `entertainment_output_per_day` 40, `production_cost_per_unit` 2. Factories keep local product inventory (`storage_capacity` 360, `initial_clothes_stock` 48) and `Fahrer` workers can deliver clothes directly to retailer stock (`direct_delivery_batch_per_retailer` 24, unload 8 min, price multiplier 0.85); non-reserved goods fall back to market export. |
 | `gas_station` | capacity 14, jobs 4, 6–23 Uhr; `fuel_price` 7; Stock 90, Ziel 140, Batch 50; `base_vehicle_sales_per_day` 18, `citizen_vehicle_demand_factor` 0.35, `fuel_units_per_vehicle` 2, `base_operating_cost` 36. |
 
 ---
