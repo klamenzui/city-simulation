@@ -489,10 +489,12 @@ data = PackedVector3Array(-1, 0, -0.9, -1, 0.099999994, -1, -1, 0.099999994, -0.
 transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
 
 [node name="Balkony-1-1" type="MeshInstance3D" parent="." unique_id=1354026153]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5322102, 0)
 mesh = SubResource("ArrayMesh_2get6")
 skeleton = NodePath("")
 
 [node name="DoorExtension-1-1" type="MeshInstance3D" parent="." unique_id=670179499]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5322102, 0)
 mesh = SubResource("ArrayMesh_u0qfs")
 skeleton = NodePath("")
 
@@ -502,11 +504,12 @@ skeleton = NodePath("")
 shape = SubResource("ConcavePolygonShape3D_bgnqs")
 
 [node name="FrontExtension-1-1" type="MeshInstance3D" parent="." unique_id=223018503]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.383593, 6.937489, 0.07638741)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.3835933, 7.4696994, 0.07638741)
 mesh = SubResource("ArrayMesh_eoum5")
 skeleton = NodePath("")
 
 [node name="Main-1-1" type="MeshInstance3D" parent="." unique_id=348048792]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5322102, 0)
 mesh = SubResource("ArrayMesh_8ohh2")
 skeleton = NodePath("")
 
@@ -516,22 +519,22 @@ skeleton = NodePath("")
 shape = SubResource("ConcavePolygonShape3D_3yslw")
 
 [node name="RoofWindowBig-1-1" type="MeshInstance3D" parent="." unique_id=1768359584]
-transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846344, 0, 0, 0)
+transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846344, 0, 0.5322102, 0)
 mesh = SubResource("ArrayMesh_nfu3v")
 skeleton = NodePath("")
 
 [node name="RoofWindowCentre-1-1" type="MeshInstance3D" parent="." unique_id=490637077]
-transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846344, 0, 0, 0)
+transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846344, 0, 0.5322102, 0)
 mesh = SubResource("ArrayMesh_owpek")
 skeleton = NodePath("")
 
 [node name="RoofWindowsMiddle-1-1" type="MeshInstance3D" parent="." unique_id=1504362066]
-transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846344, 0, 0, 0)
+transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846344, 0, 0.5322102, 0)
 mesh = SubResource("ArrayMesh_v1pyd")
 skeleton = NodePath("")
 
 [node name="RoofWindowsSides-1-1" type="MeshInstance3D" parent="." unique_id=380959618]
-transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846344, 0, 0, 0)
+transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846344, 0, 0.5322102, 0)
 mesh = SubResource("ArrayMesh_ao6np")
 skeleton = NodePath("")
 

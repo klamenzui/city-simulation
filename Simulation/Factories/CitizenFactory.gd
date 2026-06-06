@@ -27,7 +27,7 @@ const JOB_TITLES := [
 	"Baecker", "Kellner", "Programmierer", "Fahrer", "Mechaniker",
 	"Tankwart", "Verkaeufer", "Designer", "Doctor", "Teacher", "Engineer",
 	"Professor", "Janitor", "Gardener", "MaintenanceWorker", "Technician",
-	"Mayor", "Nurse", "Pharmacist", "Therapist"
+	"Mayor", "Nurse", "Pharmacist", "Therapist", "Banker"
 ]
 
 # Pre-educated starting staff. Without it the University has no teaching staff
@@ -59,6 +59,7 @@ const JOB_SERVICE_TYPES := {
 	"Teacher": "education",
 	"Engineer": "production_goods",
 	"Professor": "education",
+	"Banker": "finance",
 }
 
 const BUILDING_TYPE_NAMES := {
@@ -77,6 +78,7 @@ const BUILDING_TYPE_NAMES := {
 	"GAS_STATION": BuildingScript.BuildingType.GAS_STATION,
 	"HOSPITAL": BuildingScript.BuildingType.HOSPITAL,
 	"CHURCH": BuildingScript.BuildingType.CHURCH,
+	"BANK": BuildingScript.BuildingType.BANK,
 }
 
 static func spawn_citizens(parent: Node, world: World, count: int, seed_staff: bool = false) -> Array[Citizen]:

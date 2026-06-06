@@ -5,6 +5,7 @@ const ResidentialBuildingScript = preload("res://Entities/Buildings/ResidentialB
 const ShopScript = preload("res://Entities/Buildings/Shop.gd")
 const CafeScript = preload("res://Entities/Buildings/Cafe.gd")
 const RestaurantScript = preload("res://Entities/Buildings/Restaurant.gd")
+const BankScript = preload("res://Entities/Buildings/Bank.gd")
 
 const META_USES := "building_uses"
 const META_USE := "building_use"
@@ -18,12 +19,14 @@ const USE_RESIDENTIAL := "residential"
 const USE_SHOP := "shop"
 const USE_CAFE := "cafe"
 const USE_RESTAURANT := "restaurant"
+const USE_BANK := "bank"
 
 const USE_ORDER := [
 	USE_RESIDENTIAL,
 	USE_SHOP,
 	USE_CAFE,
 	USE_RESTAURANT,
+	USE_BANK,
 ]
 
 static func bind_tree(root: Node) -> Array[Building]:
@@ -154,6 +157,8 @@ static func _normalize_use(use: String) -> String:
 			return USE_CAFE
 		"restourant":
 			return USE_RESTAURANT
+		"finanzbank", "finance_bank", "kreditbank":
+			return USE_BANK
 		_:
 			return normalized
 
@@ -161,7 +166,8 @@ static func _is_supported_use(use: String) -> bool:
 	return use == USE_RESIDENTIAL \
 		or use == USE_SHOP \
 		or use == USE_CAFE \
-		or use == USE_RESTAURANT
+		or use == USE_RESTAURANT \
+		or use == USE_BANK
 
 static func _resolve_entrance(source: Node) -> Node3D:
 	if source == null:
@@ -190,6 +196,8 @@ static func _new_business_unit(use: String, source: Node, source_3d: Node3D, ent
 			unit = CafeScript.new() as Cafe
 		USE_RESTAURANT:
 			unit = RestaurantScript.new() as Restaurant
+		USE_BANK:
+			unit = BankScript.new() as Bank
 		_:
 			return null
 	_configure_unit(unit, use, source, source_3d, entrance)
@@ -250,7 +258,7 @@ static func _collect_existing_business_units(node: Node, out: Array[Building]) -
 	for child in node.get_children():
 		if child is Building:
 			var building := child as Building
-			if building is Shop or building is Cafe or building is Restaurant:
+			if building is Shop or building is Cafe or building is Restaurant or building is Bank:
 				out.append(building)
 			continue
 		_collect_existing_business_units(child, out)
@@ -265,6 +273,8 @@ static func _building_matches_use(building: Building, use: String) -> bool:
 			return building is Cafe
 		USE_RESTAURANT:
 			return building is Restaurant
+		USE_BANK:
+			return building is Bank
 		_:
 			return false
 
@@ -309,7 +319,10 @@ static func _add_generated_click_area(unit: Building, source_3d: Node3D, entranc
 	shape_node.shape = shape
 	var local_pos := Vector3(0.0, 0.9, 0.0)
 	if source_3d != null and entrance != null:
-		local_pos = source_3d.to_local(entrance.global_position)
+		if source_3d.is_inside_tree() and entrance.is_inside_tree():
+			local_pos = source_3d.to_local(entrance.global_position)
+		else:
+			local_pos = entrance.position
 		local_pos.y += 0.9
 	shape_node.position = local_pos
 	area.add_child(shape_node)
@@ -325,6 +338,8 @@ static func _unit_node_name(use: String) -> String:
 			return "CafeUnit"
 		USE_RESTAURANT:
 			return "RestaurantUnit"
+		USE_BANK:
+			return "BankUnit"
 		_:
 			return "%sUnit" % use.capitalize()
 
@@ -343,5 +358,9 @@ static func _unit_display_name(use: String, source: Node) -> String:
 			return "%s Cafe" % base_name
 		USE_RESTAURANT:
 			return "%s Restaurant" % base_name
+		USE_BANK:
+			if base_name.to_lower().contains("bank"):
+				return base_name
+			return "%s Bank" % base_name
 		_:
 			return base_name

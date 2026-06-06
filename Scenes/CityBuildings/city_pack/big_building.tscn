@@ -278,4 +278,4 @@ skeleton = NodePath("")
 shape = SubResource("ConcavePolygonShape3D_py6gf")
 
 [node name="Entrance" type="Marker3D" parent="foundation_residential_01" unique_id=2145792967]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)

@@ -23,6 +23,7 @@ enum BuildingType {
 	GAS_STATION,
 	HOSPITAL,
 	CHURCH,
+	BANK,
 }
 
 const BUILDING_USE_GROUP_PREFIX := "building_use_"
@@ -42,7 +43,10 @@ const BUILDING_USE_GROUPS := [
 	"building_use_gas_station",
 	"building_use_hospital",
 	"building_use_church",
+	"building_use_bank",
 ]
+const STATUS_MARKER_NODE_NAME := "BuildingStatusMarker"
+const STATUS_MARKER_TEXTURE_SIZE := 64
 
 @export var building_name: String = "Building"
 @export var building_type: BuildingType = BuildingType.GENERIC
@@ -72,6 +76,8 @@ const BUILDING_USE_GROUPS := [
 @export var max_underfunded_days_before_closure: int = 3
 @export_range(0.1, 1.0, 0.01) var underfunded_efficiency_multiplier: float = 0.82
 @export_range(0.1, 1.0, 0.01) var underfunded_service_multiplier: float = 0.76
+@export var status_marker_enabled: bool = true
+@export var status_marker_vertical_offset: float = 1.0
 
 var account: Account = Account.new()
 var citizen_owner: Citizen = null
@@ -110,6 +116,10 @@ var underfunded_days: int = 0
 var _highlight_targets: Array[MeshInstance3D] = []
 var _original_overlay_by_mesh: Dictionary = {}
 var _highlight_material: StandardMaterial3D = null
+var _status_marker: Sprite3D = null
+var _status_marker_state: String = ""
+
+static var _status_marker_texture_by_key: Dictionary = {}
 
 func _ready() -> void:
 	add_to_group("buildings")
@@ -122,6 +132,7 @@ func _ready() -> void:
 	_setup_highlight()
 	#_setup_navigation_blocker()
 	_setup_entrance_trigger()
+	call_deferred("_sync_status_marker")
 
 func _apply_common_balance_settings() -> void:
 	_apply_financial_balance_settings(BalanceConfig.get_section("building"))
@@ -237,6 +248,154 @@ func _setup_highlight() -> void:
 		if mesh == null:
 			continue
 		_original_overlay_by_mesh[mesh] = mesh.material_overlay
+
+func _sync_status_marker() -> void:
+	var state_key := get_operational_blocker_key()
+	if not status_marker_enabled or state_key.is_empty():
+		_clear_status_marker()
+		return
+
+	_ensure_status_marker()
+	if _status_marker == null:
+		return
+
+	if _status_marker_state != state_key:
+		_status_marker.texture = _get_status_marker_texture(state_key)
+		_status_marker.set_meta("status_key", state_key)
+		_status_marker_state = state_key
+	_status_marker.position = Vector3(0.0, _get_status_marker_height(), 0.0)
+	_status_marker.visible = true
+
+func _ensure_status_marker() -> void:
+	if _status_marker != null and is_instance_valid(_status_marker):
+		return
+
+	var existing := get_node_or_null(STATUS_MARKER_NODE_NAME)
+	if existing is Sprite3D:
+		_status_marker = existing as Sprite3D
+		return
+	if existing != null:
+		existing.queue_free()
+
+	_status_marker = Sprite3D.new()
+	_status_marker.name = STATUS_MARKER_NODE_NAME
+	_status_marker.centered = true
+	_status_marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_status_marker.no_depth_test = true
+	_status_marker.pixel_size = 0.035
+	_status_marker.render_priority = 10
+	add_child(_status_marker)
+
+func _clear_status_marker() -> void:
+	if _status_marker != null and is_instance_valid(_status_marker):
+		if _status_marker.get_parent() == self:
+			remove_child(_status_marker)
+		_status_marker.queue_free()
+	_status_marker = null
+	_status_marker_state = ""
+
+func _get_status_marker_height() -> float:
+	var bounds := get_footprint_bounds()
+	return maxf(bounds.position.y + bounds.size.y + status_marker_vertical_offset, 2.5)
+
+static func _get_status_marker_texture(status_key: String) -> Texture2D:
+	var cached := _status_marker_texture_by_key.get(status_key, null) as Texture2D
+	if cached != null:
+		return cached
+
+	var image := Image.create(STATUS_MARKER_TEXTURE_SIZE, STATUS_MARKER_TEXTURE_SIZE, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0.0, 0.0, 0.0, 0.0))
+	_draw_lock_status_icon(image, status_key, Vector2i(3, 4), true)
+	_draw_lock_status_icon(image, status_key, Vector2i.ZERO, false)
+	var texture := ImageTexture.create_from_image(image)
+	_status_marker_texture_by_key[status_key] = texture
+	return texture
+
+static func _draw_lock_status_icon(image: Image, status_key: String, offset: Vector2i, shadow: bool) -> void:
+	var body_color := Color(1.0, 0.66, 0.12, 0.96)
+	var shackle_color := Color(1.0, 0.92, 0.56, 0.98)
+	var dark_color := Color(0.10, 0.08, 0.04, 0.92)
+	var highlight_color := Color(1.0, 0.84, 0.30, 0.94)
+
+	if status_key == "NO_FUNDS":
+		body_color = Color(0.95, 0.16, 0.13, 0.97)
+		shackle_color = Color(1.0, 0.58, 0.52, 0.98)
+		dark_color = Color(0.12, 0.02, 0.02, 0.94)
+		highlight_color = Color(1.0, 0.34, 0.28, 0.95)
+
+	if shadow:
+		body_color = Color(0.0, 0.0, 0.0, 0.32)
+		shackle_color = body_color
+		dark_color = body_color
+		highlight_color = body_color
+
+	_draw_lock_shackle(image, offset, dark_color, 18.0, 21.0, 10.0, 13.0)
+	_draw_lock_shackle(image, offset, shackle_color, 15.0, 18.0, 9.0, 12.0)
+	_draw_rounded_rect(image, Rect2i(15 + offset.x, 29 + offset.y, 34, 25), 7, dark_color)
+	_draw_rounded_rect(image, Rect2i(18 + offset.x, 31 + offset.y, 28, 20), 5, body_color)
+	_draw_rounded_rect(image, Rect2i(22 + offset.x, 33 + offset.y, 20, 4), 2, highlight_color)
+
+	if not shadow:
+		_draw_circle(image, Vector2i(32 + offset.x, 40 + offset.y), 4, dark_color)
+		_draw_rounded_rect(image, Rect2i(30 + offset.x, 41 + offset.y, 5, 8), 2, dark_color)
+
+static func _draw_lock_shackle(
+	image: Image,
+	offset: Vector2i,
+	color: Color,
+	outer_rx: float,
+	outer_ry: float,
+	inner_rx: float,
+	inner_ry: float
+) -> void:
+	var center := Vector2(32.0 + float(offset.x), 30.0 + float(offset.y))
+	var min_x := int(floor(center.x - outer_rx - 1.0))
+	var max_x := int(ceil(center.x + outer_rx + 1.0))
+	var min_y := int(floor(center.y - outer_ry - 1.0))
+	var max_y := int(ceil(center.y + 5.0))
+	for y in range(min_y, max_y):
+		for x in range(min_x, max_x):
+			if not _image_has_point(image, x, y):
+				continue
+			var outer_nx := (float(x) - center.x) / outer_rx
+			var outer_ny := (float(y) - center.y) / outer_ry
+			var inner_nx := (float(x) - center.x) / inner_rx
+			var inner_ny := (float(y) - center.y) / inner_ry
+			var outer_value := outer_nx * outer_nx + outer_ny * outer_ny
+			var inner_value := inner_nx * inner_nx + inner_ny * inner_ny
+			if outer_value <= 1.0 and inner_value >= 1.0 and y <= int(center.y + 4.0):
+				image.set_pixel(x, y, color)
+
+static func _draw_rounded_rect(image: Image, rect: Rect2i, radius: int, color: Color) -> void:
+	var x0 := rect.position.x
+	var y0 := rect.position.y
+	var x1 := rect.position.x + rect.size.x
+	var y1 := rect.position.y + rect.size.y
+	var clamped_radius := maxi(radius, 0)
+	for y in range(y0, y1):
+		for x in range(x0, x1):
+			if not _image_has_point(image, x, y):
+				continue
+			var nearest_x := clampi(x, x0 + clamped_radius, x1 - clamped_radius - 1)
+			var nearest_y := clampi(y, y0 + clamped_radius, y1 - clamped_radius - 1)
+			var dx := x - nearest_x
+			var dy := y - nearest_y
+			if dx * dx + dy * dy <= clamped_radius * clamped_radius:
+				image.set_pixel(x, y, color)
+
+static func _draw_circle(image: Image, center: Vector2i, radius: int, color: Color) -> void:
+	var radius_sq := radius * radius
+	for y in range(center.y - radius, center.y + radius + 1):
+		for x in range(center.x - radius, center.x + radius + 1):
+			if not _image_has_point(image, x, y):
+				continue
+			var dx := x - center.x
+			var dy := y - center.y
+			if dx * dx + dy * dy <= radius_sq:
+				image.set_pixel(x, y, color)
+
+static func _image_has_point(image: Image, x: int, y: int) -> bool:
+	return x >= 0 and y >= 0 and x < image.get_width() and y < image.get_height()
 
 func _setup_navigation_blocker() -> void:
 	if not navigation_blocker_enabled:
@@ -785,6 +944,8 @@ func get_building_type_name() -> String:
 			return "Hospital"
 		BuildingType.CHURCH:
 			return "Church"
+		BuildingType.BANK:
+			return "Bank"
 		_:
 			return "Generic"
 
@@ -818,6 +979,8 @@ func get_building_use_id() -> String:
 			return "hospital"
 		BuildingType.CHURCH:
 			return "church"
+		BuildingType.BANK:
+			return "bank"
 		_:
 			return "generic"
 
@@ -862,6 +1025,8 @@ func get_building_type_display_label() -> String:
 			return LocaleServiceScript.t("details.building_type.hospital")
 		BuildingType.CHURCH:
 			return LocaleServiceScript.t("details.building_type.church")
+		BuildingType.BANK:
+			return LocaleServiceScript.t("details.building_type.bank")
 		_:
 			return LocaleServiceScript.t("details.building_type.generic")
 
@@ -913,6 +1078,8 @@ static func _job_title_locale_key(job_title: String) -> String:
 			return "maintenance_worker"
 		"Technician":
 			return "technician"
+		"Banker":
+			return "banker"
 		"Worker":
 			return "worker"
 		_:
@@ -938,6 +1105,8 @@ func get_default_job_title() -> String:
 			return "Technician"
 		BuildingType.CITY_HALL:
 			return "Mayor"
+		BuildingType.BANK:
+			return "Banker"
 		_:
 			return "Worker"
 
@@ -1035,7 +1204,7 @@ func is_economic_building() -> bool:
 	match building_type:
 		BuildingType.CAFE, BuildingType.CINEMA, BuildingType.FACTORY, BuildingType.FARM, \
 		BuildingType.GAS_STATION, BuildingType.RESIDENTIAL, BuildingType.RESTAURANT, \
-		BuildingType.SHOP, BuildingType.SUPERMARKET:
+		BuildingType.SHOP, BuildingType.SUPERMARKET, BuildingType.BANK:
 			return true
 		_:
 			return false
@@ -1043,7 +1212,7 @@ func is_economic_building() -> bool:
 func is_citizen_ownable() -> bool:
 	match building_type:
 		BuildingType.CAFE, BuildingType.CINEMA, BuildingType.FACTORY, BuildingType.FARM, \
-		BuildingType.RESTAURANT, BuildingType.SHOP, BuildingType.SUPERMARKET:
+		BuildingType.RESTAURANT, BuildingType.SHOP, BuildingType.SUPERMARKET, BuildingType.BANK:
 			return true
 		_:
 			return false
@@ -1084,6 +1253,8 @@ func get_purchase_price() -> int:
 			base_price = 5200
 		BuildingType.FACTORY:
 			base_price = 9000
+		BuildingType.BANK:
+			base_price = 11000
 		_:
 			base_price = 0
 	if base_price <= 0:
@@ -1218,6 +1389,13 @@ func has_required_staff() -> bool:
 		return true
 	return get_employed_worker_count() > 0
 
+func get_operational_blocker_key() -> String:
+	if is_financially_closed():
+		return "NO_FUNDS"
+	if not has_required_staff():
+		return "UNSTAFFED"
+	return ""
+
 func get_worker_capacity() -> int:
 	return maxi(int(job_capacity), 0)
 
@@ -1247,11 +1425,9 @@ func get_open_status_label(hour: int = -1) -> String:
 	return get_open_status_label_at_minute(minute)
 
 func get_open_status_label_at_minute(day_minute: int = -1) -> String:
-	if is_financially_closed():
-		return "NO_FUNDS"
-
-	if not has_required_staff():
-		return "UNSTAFFED"
+	var blocker_key := get_operational_blocker_key()
+	if not blocker_key.is_empty():
+		return blocker_key
 
 	if not _is_within_open_minutes(day_minute):
 		return "CLOSED"
@@ -1380,6 +1556,7 @@ func try_hire(c: Citizen, reset_progression: bool = true) -> bool:
 		c.experience_wage_bonus = 0.0
 	if is_financially_closed() and account.balance >= 0:
 		reopen_after_funding()
+	_sync_status_marker()
 	return true
 
 func fire(c: Citizen) -> void:
@@ -1392,6 +1569,7 @@ func fire(c: Citizen) -> void:
 	c.job_tenure_days = 0
 	c.job_absence_days = 0
 	c.experience_wage_bonus = 0.0
+	_sync_status_marker()
 
 func try_add_visitor(c: Citizen) -> bool:
 	if c == null:
@@ -1541,6 +1719,7 @@ func begin_new_day() -> void:
 	public_funding_shortfall_today = 0
 	if is_financially_closed() and account.balance >= 0 and not can_be_force_closed():
 		reopen_after_funding()
+	_sync_status_marker()
 
 func get_condition_state_label() -> String:
 	if condition >= repair_threshold:
@@ -1772,6 +1951,7 @@ func get_daily_finance_log_summary() -> String:
 func close_due_to_finance(world: World, reason: String) -> void:
 	if not can_be_force_closed():
 		forced_closed_reason = reason
+		_sync_status_marker()
 		return
 	if forced_closed_reason == reason:
 		return
@@ -1790,6 +1970,7 @@ func close_due_to_finance(world: World, reason: String) -> void:
 			if visitor != null and visitor.current_location == self:
 				visitor.current_location = null
 	visitors.clear()
+	_sync_status_marker()
 
 func reopen_after_funding() -> void:
 	if forced_closed_reason.is_empty():
@@ -1801,6 +1982,7 @@ func reopen_after_funding() -> void:
 	negative_balance_days = 0
 	underfunded_days = 0
 	SimLogger.log("[Building %s] Reopened for operations after funding recovery." % get_display_name())
+	_sync_status_marker()
 
 func get_entrance_pos() -> Vector3:
 	var entrance_node := get_entrance_node()
