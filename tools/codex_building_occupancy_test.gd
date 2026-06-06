@@ -155,6 +155,7 @@ func _run_all_tests() -> void:
 		"job_absence_skips_weekend_paydays",
 		"university_requires_worker_for_study",
 		"restaurant_requires_worker_for_meals",
+		"building_status_marker_tracks_operational_blockers",
 		"cafe_snack_reduces_hunger_without_staff",
 		"university_accepts_education_service_staff",
 		"university_unstaffed_label_is_teaching_specific",
@@ -268,6 +269,8 @@ func _run_test(test_name: String) -> String:
 			return _test_university_requires_worker_for_study()
 		"restaurant_requires_worker_for_meals":
 			return _test_restaurant_requires_worker_for_meals()
+		"building_status_marker_tracks_operational_blockers":
+			return _test_building_status_marker_tracks_operational_blockers()
 		"cafe_snack_reduces_hunger_without_staff":
 			return _test_cafe_snack_reduces_hunger_without_staff()
 		"university_accepts_education_service_staff":
@@ -441,6 +444,37 @@ func _test_restaurant_requires_worker_for_meals() -> String:
 	_expect(restaurant.sell_meal(world, guest), "staffed restaurant should sell meals")
 
 	_free_world(world)
+	return _current_error
+
+func _test_building_status_marker_tracks_operational_blockers() -> String:
+	var restaurant: Restaurant = _new_restaurant("Marker Restaurant", Vector3.ZERO)
+	restaurant.job_capacity = 1
+
+	restaurant._sync_status_marker()
+	var marker := restaurant.get_node_or_null(BuildingScript.STATUS_MARKER_NODE_NAME) as Sprite3D
+	_expect(marker != null, "unstaffed operational building should show a lock status marker")
+	_expect(marker != null and marker.texture != null, "lock status marker should have a generated icon texture")
+	_expect_eq(str(marker.get_meta("status_key", "")), "UNSTAFFED", "unstaffed marker should expose its status key")
+
+	var worker: Citizen = _new_citizen("Marker Worker")
+	worker.job = Job.new()
+	worker.job.workplace = restaurant
+	_expect(restaurant.try_hire(worker), "hiring required staff should succeed")
+	marker = restaurant.get_node_or_null(BuildingScript.STATUS_MARKER_NODE_NAME) as Sprite3D
+	_expect(marker == null, "staffed operational building should hide the lock status marker")
+
+	restaurant.close_due_to_finance(null, "persistent negative balance")
+	marker = restaurant.get_node_or_null(BuildingScript.STATUS_MARKER_NODE_NAME) as Sprite3D
+	_expect(marker != null, "financially closed building should show a lock status marker")
+	_expect_eq(str(marker.get_meta("status_key", "")), "NO_FUNDS", "financial marker should expose the no-funds status key")
+	_expect_eq(restaurant.get_open_status_label(12), "NO_FUNDS", "financial blocker should remain the authoritative open status")
+
+	restaurant.account.balance = 500
+	restaurant.reopen_after_funding()
+	marker = restaurant.get_node_or_null(BuildingScript.STATUS_MARKER_NODE_NAME) as Sprite3D
+	_expect(marker != null, "reopened building without replacement staff should still show an unstaffed marker")
+	_expect_eq(str(marker.get_meta("status_key", "")), "UNSTAFFED", "reopened unstaffed building should fall back to the staff blocker")
+
 	return _current_error
 
 func _test_cafe_snack_reduces_hunger_without_staff() -> String:

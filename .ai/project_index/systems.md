@@ -38,6 +38,7 @@ Runtime domain objects: buildings, citizens, accounts, jobs, and benches.
 | Path | class_name | extends |
 | --- | --- | --- |
 | Entities/Account.gd | Account | Resource |
+| Entities/Buildings/Bank.gd | Bank | Building |
 | Entities/Buildings/Building.gd | Building | Node3D |
 | Entities/Buildings/Cafe.gd | Cafe | CommercialBuilding |
 | Entities/Buildings/Church.gd | Church | Building |
@@ -71,7 +72,6 @@ Runtime domain objects: buildings, citizens, accounts, jobs, and benches.
 | Entities/Citizens/New/Sim/CitizenDebugFacade.gd | CitizenDebugFacade | RefCounted |
 | Entities/Citizens/New/Sim/CitizenIdentity.gd | CitizenIdentity | RefCounted |
 | Entities/Citizens/New/Sim/CitizenLocation.gd | CitizenLocation | RefCounted |
-| Entities/Citizens/New/Sim/CitizenLodComponent.gd | CitizenLodComponent | RefCounted |
 
 ## ImportedCitySource
 

@@ -416,7 +416,8 @@
 			"factory": "Fabrik",
 			"gas_station": "Tankstelle",
 			"hospital": "Hospital",
-			"church": "Kirche"
+			"church": "Kirche",
+			"bank": "Bank"
 		},
 		"service_type": {
 			"commerce": "Handel",
@@ -432,7 +433,8 @@
 			"housing": "Wohnen",
 			"production_food": "Lebensmittelproduktion",
 			"production_goods": "Warenproduktion",
-			"shopping": "Einkaufen"
+			"shopping": "Einkaufen",
+			"finance": "Finanzen"
 		},
 		"job_title": {
 			"baker": "Bäcker",
@@ -455,6 +457,7 @@
 			"gardener": "Gärtner",
 			"maintenance_worker": "Wartungskraft",
 			"technician": "Techniker",
+			"banker": "Bankkaufmann",
 			"worker": "Arbeiter"
 		},
 		"economy_category": {

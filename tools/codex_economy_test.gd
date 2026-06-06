@@ -7,9 +7,11 @@ const JobScript = preload("res://Entities/Job.gd")
 const BuildingScript = preload("res://Entities/Buildings/Building.gd")
 const CityHallScript = preload("res://Entities/Buildings/CityHall.gd")
 const HospitalScript = preload("res://Entities/Buildings/Hospital.gd")
+const BankScript = preload("res://Entities/Buildings/Bank.gd")
 const ResidentialBuildingScript = preload("res://Entities/Buildings/ResidentialBuilding.gd")
 const CitizenScript = preload("res://Entities/Citizens/New/Citizen.gd")
 const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
+const BuildingUseBinderScript = preload("res://Simulation/Bootstrap/BuildingUseBinder.gd")
 
 var _checks_run: int = 0
 var _current_error: String = ""
@@ -32,6 +34,8 @@ func _initialize() -> void:
 		"unemployed_citizens_seek_new_jobs",
 		"critical_public_staffing_retargets_unemployed",
 		"economic_buildings_struggle_before_closure",
+		"bank_lends_and_collects_repayment",
+		"bank_binder_uses_nested_entrance",
 		"teaching_jobs_require_degree",
 		"tax_and_welfare",
 		"citizen_pay_rent",
@@ -81,6 +85,10 @@ func _run_test(test_name: String) -> String:
 			return _test_critical_public_staffing_retargets_unemployed()
 		"economic_buildings_struggle_before_closure":
 			return _test_economic_buildings_struggle_before_closure()
+		"bank_lends_and_collects_repayment":
+			return _test_bank_lends_and_collects_repayment()
+		"bank_binder_uses_nested_entrance":
+			return _test_bank_binder_uses_nested_entrance()
 		"teaching_jobs_require_degree":
 			return _test_teaching_jobs_require_degree()
 		"tax_and_welfare":
@@ -483,6 +491,81 @@ func _test_economic_buildings_struggle_before_closure() -> String:
 	_expect(shop.is_financially_closed(), "economic building should close only after repeated missed wage days")
 
 	_free_nodes([shop])
+	return _current_error
+
+func _test_bank_lends_and_collects_repayment() -> String:
+	var world = _new_world()
+	var bank: Bank = BankScript.new()
+	bank.name = "Bank"
+	bank.building_name = "Bank"
+	bank.building_type = BuildingScript.BuildingType.BANK
+	bank.account.balance = 2000
+	bank.job_capacity = 1
+	bank.min_operating_reserve = 1000
+	bank.borrower_cash_reserve = 220
+	bank.max_loan_per_building = 500
+	bank.max_debt_per_building = 1000
+	bank.max_daily_lending = 500
+	bank.interest_rate_per_day = 0.03
+	bank.repayment_rate = 0.25
+	bank.service_fee_per_loan = 6
+	var banker := _assign_worker(bank, "Banker", "Banker", 23, 8.0)
+
+	var shop := _new_building("Shop", BuildingScript.BuildingType.SHOP, 10, 0)
+	world.buildings.append(shop)
+
+	_expect_eq(bank.get_service_type(), "finance", "bank should use finance service type")
+	_expect_eq(bank.get_default_job_title(), "Banker", "bank should expose banker as default job")
+	_expect(
+		CitizenFactoryScript.get_allowed_building_types_for_job_title("Banker").has(BuildingScript.BuildingType.BANK),
+		"banker job should be allowed at bank buildings"
+	)
+
+	var summary := bank.run_daily_financial_services(world)
+	var loaned := int(summary.get("loaned", 0))
+	_expect(loaned > 0, "bank should lend to an under-liquid economic building")
+	_expect_eq(bank.get_business_debt(shop), loaned, "loan principal should become borrower debt")
+	_expect_eq(shop.account.balance, 10 + loaned - bank.service_fee_per_loan, "borrower should receive loan minus service fee")
+	_expect_eq(bank.service_fee_income_today, bank.service_fee_per_loan, "bank should record service fee income")
+
+	shop.account.balance = 1000
+	bank.begin_new_day()
+	var repayment_summary := bank.run_daily_financial_services(world)
+	_expect(int(repayment_summary.get("repaid", 0)) > 0, "borrower should repay when it has spare cash")
+	_expect(int(repayment_summary.get("interest", 0)) > 0, "repayment should include interest")
+	_expect(bank.get_business_debt(shop) < loaned, "borrower debt should shrink after repayment")
+
+	_free_nodes([banker, bank, shop])
+	_free_world(world)
+	return _current_error
+
+func _test_bank_binder_uses_nested_entrance() -> String:
+	var source := Node3D.new()
+	source.name = "BigBuilding"
+	source.add_to_group("building_use_bank")
+	source.set_meta("building_name", "City Bank")
+	source.set_meta("building_entrance", "foundation_residential_01/Entrance")
+	root.add_child(source)
+
+	var foundation := Node3D.new()
+	foundation.name = "foundation_residential_01"
+	source.add_child(foundation)
+
+	var entrance := Marker3D.new()
+	entrance.name = "Entrance"
+	entrance.position = Vector3(0.0, 0.0, 2.0)
+	foundation.add_child(entrance)
+
+	var created := BuildingUseBinderScript.bind_node(source)
+	_expect_eq(created.size(), 1, "bank binder should create one bank unit")
+	_expect(created[0] is Bank, "bank binder should create a Bank")
+	var bank := created[0] as Bank
+	_expect_eq(bank.building_name, "City Bank", "bank display name should avoid duplicate bank suffix")
+	_expect_eq(bank.entrance, entrance, "bank binder should use nested entrance metadata")
+	_expect(bank.is_in_group("buildings"), "generated bank should be in buildings group")
+	_expect(bank.is_in_group("building_use_bank"), "generated bank should be in bank use group")
+
+	_free_node(source)
 	return _current_error
 
 func _test_teaching_jobs_require_degree() -> String:

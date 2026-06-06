@@ -164,7 +164,8 @@
         "Janitor": 13,
         "Gardener": 14,
         "MaintenanceWorker": 16,
-        "Technician": 22
+        "Technician": 22,
+        "Banker": 23
       },
       "required_education": {
         "Professor": 3,
@@ -179,7 +180,8 @@
         "MaintenanceWorker": 1,
         "Mechaniker": 1,
         "Designer": 1,
-        "Technician": 1
+        "Technician": 1,
+        "Banker": 2
       },
       "allowed_building_types": {
         "Teacher": ["UNIVERSITY"],
@@ -193,7 +195,8 @@
         "Gardener": ["PARK"],
         "Fahrer": ["FARM", "FACTORY"],
         "Tankwart": ["GAS_STATION"],
-        "MaintenanceWorker": ["CAFE", "CINEMA", "FACTORY", "FARM", "GAS_STATION", "RESIDENTIAL", "RESTAURANT", "SHOP", "SUPERMARKET", "CITY_HALL", "UNIVERSITY", "PARK", "HOSPITAL"],
+        "Banker": ["BANK"],
+        "MaintenanceWorker": ["CAFE", "CINEMA", "FACTORY", "FARM", "GAS_STATION", "RESIDENTIAL", "RESTAURANT", "SHOP", "SUPERMARKET", "CITY_HALL", "UNIVERSITY", "PARK", "HOSPITAL", "BANK"],
         "Technician": ["FACTORY", "CITY_HALL", "HOSPITAL"]
       }
     },
@@ -708,6 +711,23 @@
       "citizen_vehicle_demand_factor": 0.35,
       "fuel_units_per_vehicle": 2,
       "base_operating_cost": 36
+    },
+    "bank": {
+      "capacity": 18,
+      "job_capacity": 4,
+      "open_hour": 8,
+      "close_hour": 18,
+      "start_balance": 12000,
+      "base_operating_cost": 45,
+      "min_operating_reserve": 3000,
+      "borrower_cash_reserve": 220,
+      "liquidity_target_days": 2.0,
+      "max_loan_per_building": 800,
+      "max_debt_per_building": 2400,
+      "max_daily_lending": 3200,
+      "repayment_rate": 0.25,
+      "interest_rate_per_day": 0.03,
+      "service_fee_per_loan": 6
     },
     "church": {
       "capacity": 35,

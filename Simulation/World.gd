@@ -39,6 +39,7 @@ var _universities: Array[University] = []
 var _hospitals: Array[Building] = []
 var _city_halls: Array[CityHall] = []
 var _parks: Array[Park] = []
+var _banks: Array[Bank] = []
 var vehicles: Array[Node3D] = []
 var _buildings_by_service_type: Dictionary = {}
 var _canonical_building_by_instance_id: Dictionary = {}
@@ -167,6 +168,8 @@ func _on_payday() -> void:
 		city_hall.ensure_operating_liquidity(self, "payday_start")
 		city_hall.fund_public_buildings(self)
 
+	var bank_activity := _run_daily_bank_services()
+
 	var employed_count := 0
 	for citizen in citizens:
 		if has_active_work_assignment(citizen):
@@ -289,13 +292,16 @@ func _on_payday() -> void:
 		var group_buildings: Array = building_groups[group_key]
 		SimLogger.log("  [BUILDING] %s" % _format_building_group_summary(group_buildings))
 
-	SimLogger.log("  [SUMMARY] salaries=%d welfare=%d operating=%d maintenance=%d owner_payouts=%d fired_absence=%d city_hall_balance=%d city_reserve_balance=%d reserve_transfers_today=%d public_funding_requested=%d public_funding_paid=%d struggling_buildings=%d closed_buildings=%d" % [
+	SimLogger.log("  [SUMMARY] salaries=%d welfare=%d operating=%d maintenance=%d owner_payouts=%d fired_absence=%d bank_loaned=%d bank_repaid=%d bank_interest=%d city_hall_balance=%d city_reserve_balance=%d reserve_transfers_today=%d public_funding_requested=%d public_funding_paid=%d struggling_buildings=%d closed_buildings=%d" % [
 		salaries_total,
 		welfare_total,
 		operating_total,
 		maintenance_total,
 		owner_payout_total,
 		fired_absence_total,
+		int(bank_activity.get("loaned", 0)),
+		int(bank_activity.get("repaid", 0)),
+		int(bank_activity.get("interest", 0)),
 		city_hall.account.balance if city_hall != null else 0,
 		city_account.balance,
 		city_hall.reserve_transfer_amount_today if city_hall != null else 0,
@@ -410,6 +416,37 @@ func _run_daily_market_cycle() -> void:
 	for building2 in buildings:
 		if building2 is CommercialBuilding:
 			(building2 as CommercialBuilding).run_daily_supply(self)
+
+func _run_daily_bank_services() -> Dictionary:
+	var total := {
+		"loans": 0,
+		"loaned": 0,
+		"repaid": 0,
+		"interest": 0,
+		"outstanding_principal": 0,
+		"borrowers": 0,
+	}
+	for bank in _banks:
+		if bank == null or not is_instance_valid(bank):
+			continue
+		var summary := bank.run_daily_financial_services(self)
+		total["loans"] = int(total.get("loans", 0)) + int(summary.get("loans", 0))
+		total["loaned"] = int(total.get("loaned", 0)) + int(summary.get("loaned", 0))
+		total["repaid"] = int(total.get("repaid", 0)) + int(summary.get("repaid", 0))
+		total["interest"] = int(total.get("interest", 0)) + int(summary.get("interest", 0))
+		total["outstanding_principal"] = int(total.get("outstanding_principal", 0)) + int(summary.get("outstanding_principal", 0))
+		total["borrowers"] = int(total.get("borrowers", 0)) + int(summary.get("borrowers", 0))
+
+	if int(total.get("loans", 0)) > 0 or int(total.get("repaid", 0)) > 0:
+		SimLogger.log("  [BANK] loans=%d loaned=%d repaid=%d interest=%d outstanding=%d borrowers=%d" % [
+			int(total.get("loans", 0)),
+			int(total.get("loaned", 0)),
+			int(total.get("repaid", 0)),
+			int(total.get("interest", 0)),
+			int(total.get("outstanding_principal", 0)),
+			int(total.get("borrowers", 0))
+		])
+	return total
 
 func _tick_building_simulation(elapsed_minutes: int) -> void:
 	var snapshot := buildings.duplicate()
@@ -1275,6 +1312,24 @@ func find_city_hall() -> CityHall:
 		return city_hall
 	return null
 
+func find_nearest_bank(from_pos: Vector3, require_open: bool = true, seeker: Citizen = null) -> Bank:
+	var best: Bank = null
+	var best_dist := INF
+	for bank in _banks:
+		if bank == null or not is_instance_valid(bank):
+			continue
+		if _is_building_temporarily_blocked_for(bank, seeker):
+			continue
+		if require_open and not bank.is_open(time.get_hour()):
+			continue
+		if not _is_building_pedestrian_reachable(from_pos, bank):
+			continue
+		var dist := from_pos.distance_to(bank.global_position)
+		if dist < best_dist:
+			best_dist = dist
+			best = bank
+	return best
+
 func find_available_residential_building(from_pos: Vector3 = Vector3.ZERO) -> ResidentialBuilding:
 	var best: ResidentialBuilding = null
 	var best_load := INF
@@ -1802,6 +1857,8 @@ func _index_building(building: Building) -> void:
 		_append_unique(_city_halls, building as CityHall)
 	if building is Park:
 		_append_unique(_parks, building as Park)
+	if building is Bank:
+		_append_unique(_banks, building as Bank)
 
 func _deindex_building(building: Building) -> void:
 	_remove_building_from_service_bucket(building.get_service_type(), building)
@@ -1826,6 +1883,8 @@ func _deindex_building(building: Building) -> void:
 		_city_halls.erase(building as CityHall)
 	if building is Park:
 		_parks.erase(building as Park)
+	if building is Bank:
+		_banks.erase(building as Bank)
 
 func _get_or_create_service_bucket(service_type: String) -> Array:
 	if not _buildings_by_service_type.has(service_type):
@@ -2156,6 +2215,13 @@ func _score_job_offer_for_citizen(
 				score += 180.0
 			elif job_title == "MaintenanceWorker":
 				score += 120.0
+		Building.BuildingType.BANK:
+			if job_title == "Banker":
+				score += 420.0 if building.workers.is_empty() else 180.0
+			elif job_title == "Programmierer" or job_title == "Technician":
+				score += 140.0
+			elif job_title == "Janitor" or job_title == "MaintenanceWorker":
+				score += 110.0
 		Building.BuildingType.FARM:
 			if job_title == "Fahrer":
 				score += 650.0 if farm_missing_driver else 120.0
@@ -2190,6 +2256,8 @@ func _get_candidate_job_titles_for_building(building: Building) -> Array[String]
 			return ["Engineer", "Technician", "Mechaniker", "Fahrer", "MaintenanceWorker"]
 		Building.BuildingType.GAS_STATION:
 			return ["Tankwart", "Mechaniker", "Verkaeufer", "MaintenanceWorker"]
+		Building.BuildingType.BANK:
+			return ["Banker", "Programmierer", "Technician", "Janitor", "MaintenanceWorker"]
 		Building.BuildingType.FARM:
 			return ["Fahrer", "Mechaniker", "Gardener", "MaintenanceWorker"]
 		Building.BuildingType.RESIDENTIAL:

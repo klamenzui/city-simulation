@@ -416,7 +416,8 @@
 			"factory": "Factory",
 			"gas_station": "Gas Station",
 			"hospital": "Hospital",
-			"church": "Church"
+			"church": "Church",
+			"bank": "Bank"
 		},
 		"service_type": {
 			"commerce": "Commerce",
@@ -432,7 +433,8 @@
 			"housing": "Housing",
 			"production_food": "Food production",
 			"production_goods": "Goods production",
-			"shopping": "Shopping"
+			"shopping": "Shopping",
+			"finance": "Finance"
 		},
 		"job_title": {
 			"baker": "Baker",
@@ -455,6 +457,7 @@
 			"gardener": "Gardener",
 			"maintenance_worker": "Maintenance worker",
 			"technician": "Technician",
+			"banker": "Banker",
 			"worker": "Worker"
 		},
 		"economy_category": {
