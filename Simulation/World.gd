@@ -2222,6 +2222,20 @@ func _score_job_offer_for_citizen(
 				score += 140.0
 			elif job_title == "Janitor" or job_title == "MaintenanceWorker":
 				score += 110.0
+		Building.BuildingType.TAXI_DEPOT:
+			if job_title == "Fahrer":
+				score += 420.0 if building.workers.is_empty() else 140.0
+			elif job_title == "Mechaniker":
+				score += 120.0
+			elif job_title == "MaintenanceWorker":
+				score += 90.0
+		Building.BuildingType.LOGISTICS_DEPOT:
+			if job_title == "Fahrer":
+				score += 420.0 if building.workers.is_empty() else 160.0
+			elif job_title == "Mechaniker" or job_title == "Technician":
+				score += 140.0
+			elif job_title == "MaintenanceWorker":
+				score += 90.0
 		Building.BuildingType.FARM:
 			if job_title == "Fahrer":
 				score += 650.0 if farm_missing_driver else 120.0
@@ -2258,6 +2272,10 @@ func _get_candidate_job_titles_for_building(building: Building) -> Array[String]
 			return ["Tankwart", "Mechaniker", "Verkaeufer", "MaintenanceWorker"]
 		Building.BuildingType.BANK:
 			return ["Banker", "Programmierer", "Technician", "Janitor", "MaintenanceWorker"]
+		Building.BuildingType.TAXI_DEPOT:
+			return ["Fahrer", "Mechaniker", "MaintenanceWorker"]
+		Building.BuildingType.LOGISTICS_DEPOT:
+			return ["Fahrer", "Mechaniker", "Technician", "MaintenanceWorker"]
 		Building.BuildingType.FARM:
 			return ["Fahrer", "Mechaniker", "Gardener", "MaintenanceWorker"]
 		Building.BuildingType.RESIDENTIAL:

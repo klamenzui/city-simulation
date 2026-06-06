@@ -49,11 +49,13 @@ Runtime domain objects: buildings, citizens, accounts, jobs, and benches.
 | Entities/Buildings/Farm.gd | Farm | CommercialBuilding |
 | Entities/Buildings/GasStation.gd | GasStation | CommercialBuilding |
 | Entities/Buildings/Hospital.gd | Hospital | Building |
+| Entities/Buildings/LogisticsDepot.gd | LogisticsDepot | Building |
 | Entities/Buildings/Park.gd | Park | Building |
 | Entities/Buildings/ResidentialBuilding.gd | ResidentialBuilding | - |
 | Entities/Buildings/Restaurant.gd | Restaurant | CommercialBuilding |
 | Entities/Buildings/Shop.gd | Shop | CommercialBuilding |
 | Entities/Buildings/Supermarket.gd | Supermarket | Shop |
+| Entities/Buildings/TaxiDepot.gd | TaxiDepot | Building |
 | Entities/Buildings/University.gd | University | Building |
 | Entities/Citizens/New/Citizen.gd | Citizen | CitizenController |
 | Entities/Citizens/New/CitizenController.gd | CitizenController | CharacterBody3D |
@@ -70,8 +72,6 @@ Runtime domain objects: buildings, citizens, accounts, jobs, and benches.
 | Entities/Citizens/New/Navigation/SurfaceClassifier.gd | SurfaceClassifier | RefCounted |
 | Entities/Citizens/New/Sim/CitizenBenchReservation.gd | CitizenBenchReservation | RefCounted |
 | Entities/Citizens/New/Sim/CitizenDebugFacade.gd | CitizenDebugFacade | RefCounted |
-| Entities/Citizens/New/Sim/CitizenIdentity.gd | CitizenIdentity | RefCounted |
-| Entities/Citizens/New/Sim/CitizenLocation.gd | CitizenLocation | RefCounted |
 
 ## ImportedCitySource
 

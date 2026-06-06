@@ -36,6 +36,7 @@ func _initialize() -> void:
 		"economic_buildings_struggle_before_closure",
 		"bank_lends_and_collects_repayment",
 		"bank_binder_uses_nested_entrance",
+		"extended_building_use_binder_creates_real_units",
 		"teaching_jobs_require_degree",
 		"tax_and_welfare",
 		"citizen_pay_rent",
@@ -89,6 +90,8 @@ func _run_test(test_name: String) -> String:
 			return _test_bank_lends_and_collects_repayment()
 		"bank_binder_uses_nested_entrance":
 			return _test_bank_binder_uses_nested_entrance()
+		"extended_building_use_binder_creates_real_units":
+			return _test_extended_building_use_binder_creates_real_units()
 		"teaching_jobs_require_degree":
 			return _test_teaching_jobs_require_degree()
 		"tax_and_welfare":
@@ -568,6 +571,71 @@ func _test_bank_binder_uses_nested_entrance() -> String:
 	_free_node(source)
 	return _current_error
 
+func _test_extended_building_use_binder_creates_real_units() -> String:
+	var source := Node3D.new()
+	source.name = "ConfirmedCommercialUses"
+	source.add_to_group("building_use_supermarket")
+	source.add_to_group("building_use_cinema")
+	source.add_to_group("building_use_factory")
+	source.add_to_group("building_use_gas_station")
+	source.add_to_group("building_use_taxi_depot")
+	source.add_to_group("building_use_logistics_depot")
+	root.add_child(source)
+
+	var entrance := Marker3D.new()
+	entrance.name = "Entrance"
+	source.add_child(entrance)
+
+	var created := BuildingUseBinderScript.bind_node(source)
+	_expect_eq(created.size(), 6, "binder should create one unit per supported commercial use")
+	var expected_use_ids := {
+		"supermarket": false,
+		"cinema": false,
+		"factory": false,
+		"gas_station": false,
+		"taxi_depot": false,
+		"logistics_depot": false,
+	}
+	for building in created:
+		for use_id in expected_use_ids.keys():
+			if building.is_in_group("building_use_%s" % use_id):
+				expected_use_ids[use_id] = true
+	for use_id in expected_use_ids.keys():
+		_expect(bool(expected_use_ids[use_id]), "binder should create %s unit" % use_id)
+
+	_free_node(source)
+
+	var residential_source := ResidentialBuildingScript.new()
+	residential_source.name = "DepotMixedUseHome"
+	residential_source.add_to_group("building_use_residential")
+	residential_source.add_to_group("building_use_taxi_depot")
+	residential_source.add_to_group("building_use_logistics_depot")
+	root.add_child(residential_source)
+
+	var residential_entrance := Marker3D.new()
+	residential_entrance.name = "Entrance"
+	residential_source.add_child(residential_entrance)
+	residential_source.entrance = residential_entrance
+
+	var depot_units := BuildingUseBinderScript.bind_node(residential_source)
+	_expect_eq(depot_units.size(), 2, "residential binder should add taxi and logistics units")
+	var found_taxi := false
+	var found_logistics := false
+	for building in depot_units:
+		if building.is_in_group("building_use_taxi_depot"):
+			found_taxi = true
+			_expect(building is TaxiDepot, "taxi_depot use should create TaxiDepot")
+			_expect(building.is_in_group("ground_floor_business"), "residential taxi depot should be marked as ground-floor business")
+		elif building.is_in_group("building_use_logistics_depot"):
+			found_logistics = true
+			_expect(building is LogisticsDepot, "logistics_depot use should create LogisticsDepot")
+			_expect(building.is_in_group("ground_floor_business"), "residential logistics depot should be marked as ground-floor business")
+	_expect(found_taxi, "binder should create a taxi depot unit")
+	_expect(found_logistics, "binder should create a logistics depot unit")
+
+	_free_node(residential_source)
+	return _current_error
+
 func _test_teaching_jobs_require_degree() -> String:
 	_expect_eq(
 		CitizenFactoryScript.get_required_education_for_job_title("Teacher"),
@@ -621,6 +689,18 @@ func _test_teaching_jobs_require_degree() -> String:
 	_expect(
 		CitizenFactoryScript.get_allowed_building_types_for_job_title("Mayor").has(BuildingScript.BuildingType.CITY_HALL),
 		"mayor jobs should be limited to city hall"
+	)
+	_expect(
+		CitizenFactoryScript.get_allowed_building_types_for_job_title("Fahrer").has(BuildingScript.BuildingType.TAXI_DEPOT),
+		"driver jobs should be allowed at taxi depots"
+	)
+	_expect(
+		CitizenFactoryScript.get_allowed_building_types_for_job_title("Fahrer").has(BuildingScript.BuildingType.LOGISTICS_DEPOT),
+		"driver jobs should be allowed at logistics depots"
+	)
+	_expect(
+		CitizenFactoryScript.get_allowed_building_types_for_job_title("Technician").has(BuildingScript.BuildingType.LOGISTICS_DEPOT),
+		"technician jobs should be allowed at logistics depots"
 	)
 
 	var teacher_job = JobScript.new()

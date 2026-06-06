@@ -24,6 +24,8 @@ enum BuildingType {
 	HOSPITAL,
 	CHURCH,
 	BANK,
+	TAXI_DEPOT,
+	LOGISTICS_DEPOT,
 }
 
 const BUILDING_USE_GROUP_PREFIX := "building_use_"
@@ -44,6 +46,8 @@ const BUILDING_USE_GROUPS := [
 	"building_use_hospital",
 	"building_use_church",
 	"building_use_bank",
+	"building_use_taxi_depot",
+	"building_use_logistics_depot",
 ]
 const STATUS_MARKER_NODE_NAME := "BuildingStatusMarker"
 const STATUS_MARKER_TEXTURE_SIZE := 64
@@ -946,6 +950,10 @@ func get_building_type_name() -> String:
 			return "Church"
 		BuildingType.BANK:
 			return "Bank"
+		BuildingType.TAXI_DEPOT:
+			return "Taxi Depot"
+		BuildingType.LOGISTICS_DEPOT:
+			return "Logistics Depot"
 		_:
 			return "Generic"
 
@@ -981,6 +989,10 @@ func get_building_use_id() -> String:
 			return "church"
 		BuildingType.BANK:
 			return "bank"
+		BuildingType.TAXI_DEPOT:
+			return "taxi_depot"
+		BuildingType.LOGISTICS_DEPOT:
+			return "logistics_depot"
 		_:
 			return "generic"
 
@@ -1027,6 +1039,10 @@ func get_building_type_display_label() -> String:
 			return LocaleServiceScript.t("details.building_type.church")
 		BuildingType.BANK:
 			return LocaleServiceScript.t("details.building_type.bank")
+		BuildingType.TAXI_DEPOT:
+			return LocaleServiceScript.t("details.building_type.taxi_depot")
+		BuildingType.LOGISTICS_DEPOT:
+			return LocaleServiceScript.t("details.building_type.logistics_depot")
 		_:
 			return LocaleServiceScript.t("details.building_type.generic")
 
@@ -1107,6 +1123,8 @@ func get_default_job_title() -> String:
 			return "Mayor"
 		BuildingType.BANK:
 			return "Banker"
+		BuildingType.TAXI_DEPOT, BuildingType.LOGISTICS_DEPOT:
+			return "Fahrer"
 		_:
 			return "Worker"
 
@@ -1204,7 +1222,8 @@ func is_economic_building() -> bool:
 	match building_type:
 		BuildingType.CAFE, BuildingType.CINEMA, BuildingType.FACTORY, BuildingType.FARM, \
 		BuildingType.GAS_STATION, BuildingType.RESIDENTIAL, BuildingType.RESTAURANT, \
-		BuildingType.SHOP, BuildingType.SUPERMARKET, BuildingType.BANK:
+		BuildingType.SHOP, BuildingType.SUPERMARKET, BuildingType.BANK, \
+		BuildingType.TAXI_DEPOT, BuildingType.LOGISTICS_DEPOT:
 			return true
 		_:
 			return false
@@ -1212,7 +1231,8 @@ func is_economic_building() -> bool:
 func is_citizen_ownable() -> bool:
 	match building_type:
 		BuildingType.CAFE, BuildingType.CINEMA, BuildingType.FACTORY, BuildingType.FARM, \
-		BuildingType.RESTAURANT, BuildingType.SHOP, BuildingType.SUPERMARKET, BuildingType.BANK:
+		BuildingType.RESTAURANT, BuildingType.SHOP, BuildingType.SUPERMARKET, BuildingType.BANK, \
+		BuildingType.TAXI_DEPOT, BuildingType.LOGISTICS_DEPOT:
 			return true
 		_:
 			return false
@@ -1255,6 +1275,10 @@ func get_purchase_price() -> int:
 			base_price = 9000
 		BuildingType.BANK:
 			base_price = 11000
+		BuildingType.TAXI_DEPOT:
+			base_price = 6200
+		BuildingType.LOGISTICS_DEPOT:
+			base_price = 7600
 		_:
 			base_price = 0
 	if base_price <= 0:
@@ -1519,6 +1543,10 @@ func get_service_type_display_label() -> String:
 			return LocaleServiceScript.t("details.service_type.production_goods")
 		"shopping":
 			return LocaleServiceScript.t("details.service_type.shopping")
+		"transport":
+			return LocaleServiceScript.t("details.service_type.transport")
+		"logistics":
+			return LocaleServiceScript.t("details.service_type.logistics")
 		_:
 			return service
 
@@ -1528,6 +1556,8 @@ func get_staff_requirement_label() -> String:
 			return LocaleServiceScript.t("details.staff_requirement.gas_station")
 		BuildingType.HOSPITAL:
 			return LocaleServiceScript.t("details.staff_requirement.medical")
+		BuildingType.TAXI_DEPOT, BuildingType.LOGISTICS_DEPOT:
+			return LocaleServiceScript.t("details.staff_requirement.driver")
 		_:
 			return LocaleServiceScript.t("details.staff_requirement.generic")
 
@@ -1779,6 +1809,8 @@ func get_maintenance_role_titles() -> Array[String]:
 		BuildingType.FACTORY:
 			return ["Technician", "MaintenanceWorker"]
 		BuildingType.GAS_STATION:
+			return ["Mechaniker", "MaintenanceWorker", "Technician"]
+		BuildingType.TAXI_DEPOT, BuildingType.LOGISTICS_DEPOT:
 			return ["Mechaniker", "MaintenanceWorker", "Technician"]
 		_:
 			return ["MaintenanceWorker", "Janitor", "Technician", "Gardener"]

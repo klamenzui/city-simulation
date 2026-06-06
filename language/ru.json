@@ -416,7 +416,10 @@
 			"factory": "Фабрика",
 			"gas_station": "Заправка",
 			"hospital": "Больница",
-			"church": "Церковь"
+			"church": "Церковь",
+			"bank": "Банк",
+			"taxi_depot": "Таксопарк",
+			"logistics_depot": "Логистический склад"
 		},
 		"service_type": {
 			"commerce": "Коммерция",
@@ -432,7 +435,10 @@
 			"housing": "Жилье",
 			"production_food": "Производство еды",
 			"production_goods": "Производство товаров",
-			"shopping": "Покупки"
+			"shopping": "Покупки",
+			"finance": "Финансы",
+			"transport": "Транспорт",
+			"logistics": "Логистика"
 		},
 		"job_title": {
 			"baker": "Пекарь",
@@ -455,6 +461,7 @@
 			"gardener": "Садовник",
 			"maintenance_worker": "Техобслуживание",
 			"technician": "Техник",
+			"banker": "Банкир",
 			"worker": "Рабочий"
 		},
 		"economy_category": {
@@ -486,7 +493,8 @@
 			"generic": "нет персонала",
 			"gas_station": "нет персонала заправки",
 			"teacher": "нет преподавателя",
-			"medical": "нет врача или медсестры"
+			"medical": "нет врача или медсестры",
+			"driver": "нет водителя"
 		}
 	},
 

@@ -417,7 +417,9 @@
 			"gas_station": "Tankstelle",
 			"hospital": "Hospital",
 			"church": "Kirche",
-			"bank": "Bank"
+			"bank": "Bank",
+			"taxi_depot": "Taxi-Depot",
+			"logistics_depot": "Logistikdepot"
 		},
 		"service_type": {
 			"commerce": "Handel",
@@ -434,7 +436,9 @@
 			"production_food": "Lebensmittelproduktion",
 			"production_goods": "Warenproduktion",
 			"shopping": "Einkaufen",
-			"finance": "Finanzen"
+			"finance": "Finanzen",
+			"transport": "Transport",
+			"logistics": "Logistik"
 		},
 		"job_title": {
 			"baker": "Bäcker",
@@ -489,7 +493,8 @@
 			"generic": "kein Personal",
 			"gas_station": "Tankstellenpersonal fehlt",
 			"teacher": "keine Lehrkraft",
-			"medical": "kein Arzt oder keine Pflegekraft"
+			"medical": "kein Arzt oder keine Pflegekraft",
+			"driver": "kein Fahrer"
 		}
 	},
 

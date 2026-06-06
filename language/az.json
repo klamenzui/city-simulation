@@ -416,7 +416,10 @@
 			"factory": "Fabrik",
 			"gas_station": "Yanacaqdoldurma",
 			"hospital": "Xəstəxana",
-			"church": "Kilsə"
+			"church": "Kilsə",
+			"bank": "Bank",
+			"taxi_depot": "Taksi deposu",
+			"logistics_depot": "Logistika deposu"
 		},
 		"service_type": {
 			"commerce": "Ticarət",
@@ -432,7 +435,10 @@
 			"housing": "Yaşayış",
 			"production_food": "Qida istehsalı",
 			"production_goods": "Məhsul istehsalı",
-			"shopping": "Alış-veriş"
+			"shopping": "Alış-veriş",
+			"finance": "Maliyyə",
+			"transport": "Nəqliyyat",
+			"logistics": "Logistika"
 		},
 		"job_title": {
 			"baker": "Çörəkçi",
@@ -455,6 +461,7 @@
 			"gardener": "Bağban",
 			"maintenance_worker": "Baxım işçisi",
 			"technician": "Texnik",
+			"banker": "Bank işçisi",
 			"worker": "İşçi"
 		},
 		"economy_category": {
@@ -486,7 +493,8 @@
 			"generic": "personal yoxdur",
 			"gas_station": "yanacaqdoldurma personalı yoxdur",
 			"teacher": "müəllim yoxdur",
-			"medical": "həkim və ya tibb bacısı yoxdur"
+			"medical": "həkim və ya tibb bacısı yoxdur",
+			"driver": "sürücü yoxdur"
 		}
 	},
 

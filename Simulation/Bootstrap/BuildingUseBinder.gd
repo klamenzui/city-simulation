@@ -3,9 +3,15 @@ class_name BuildingUseBinder
 
 const ResidentialBuildingScript = preload("res://Entities/Buildings/ResidentialBuilding.gd")
 const ShopScript = preload("res://Entities/Buildings/Shop.gd")
+const SupermarketScript = preload("res://Entities/Buildings/Supermarket.gd")
 const CafeScript = preload("res://Entities/Buildings/Cafe.gd")
 const RestaurantScript = preload("res://Entities/Buildings/Restaurant.gd")
 const BankScript = preload("res://Entities/Buildings/Bank.gd")
+const CinemaScript = preload("res://Entities/Buildings/Cinema.gd")
+const FactoryScript = preload("res://Entities/Buildings/Factory.gd")
+const GasStationScript = preload("res://Entities/Buildings/GasStation.gd")
+const TaxiDepotScript = preload("res://Entities/Buildings/TaxiDepot.gd")
+const LogisticsDepotScript = preload("res://Entities/Buildings/LogisticsDepot.gd")
 
 const META_USES := "building_uses"
 const META_USE := "building_use"
@@ -17,16 +23,28 @@ const GROUP_USE_PREFIX := "building_use_"
 
 const USE_RESIDENTIAL := "residential"
 const USE_SHOP := "shop"
+const USE_SUPERMARKET := "supermarket"
 const USE_CAFE := "cafe"
 const USE_RESTAURANT := "restaurant"
 const USE_BANK := "bank"
+const USE_CINEMA := "cinema"
+const USE_FACTORY := "factory"
+const USE_GAS_STATION := "gas_station"
+const USE_TAXI_DEPOT := "taxi_depot"
+const USE_LOGISTICS_DEPOT := "logistics_depot"
 
 const USE_ORDER := [
 	USE_RESIDENTIAL,
 	USE_SHOP,
+	USE_SUPERMARKET,
 	USE_CAFE,
 	USE_RESTAURANT,
 	USE_BANK,
+	USE_CINEMA,
+	USE_FACTORY,
+	USE_GAS_STATION,
+	USE_TAXI_DEPOT,
+	USE_LOGISTICS_DEPOT,
 ]
 
 static func bind_tree(root: Node) -> Array[Building]:
@@ -72,7 +90,7 @@ static func bind_node(source: Node) -> Array[Building]:
 	for use in uses:
 		if use == USE_RESIDENTIAL:
 			continue
-		var business := _new_business_unit(use, source, source_3d, entrance)
+		var business := _new_business_unit(use, source, source_3d, entrance, uses.has(USE_RESIDENTIAL))
 		if business == null:
 			continue
 		business_parent.add_child(business)
@@ -153,21 +171,39 @@ static func _normalize_use(use: String) -> String:
 			return USE_RESIDENTIAL
 		"store", "laden":
 			return USE_SHOP
+		"market", "grocery", "grocery_store", "lebensmittel", "lebensmittelmarkt", "supermarkt":
+			return USE_SUPERMARKET
 		"café":
 			return USE_CAFE
 		"restourant":
 			return USE_RESTAURANT
 		"finanzbank", "finance_bank", "kreditbank":
 			return USE_BANK
+		"movie_theater", "movie_theatre", "kino":
+			return USE_CINEMA
+		"industrial", "fabrik":
+			return USE_FACTORY
+		"gas", "petrol", "petrol_station", "fuel", "fuel_station", "tankstelle":
+			return USE_GAS_STATION
+		"taxi", "taxi_station", "rideservice", "ride_service":
+			return USE_TAXI_DEPOT
+		"logistics", "delivery_depot", "warehouse", "logistik", "logistik_depot":
+			return USE_LOGISTICS_DEPOT
 		_:
 			return normalized
 
 static func _is_supported_use(use: String) -> bool:
 	return use == USE_RESIDENTIAL \
 		or use == USE_SHOP \
+		or use == USE_SUPERMARKET \
 		or use == USE_CAFE \
 		or use == USE_RESTAURANT \
-		or use == USE_BANK
+		or use == USE_BANK \
+		or use == USE_CINEMA \
+		or use == USE_FACTORY \
+		or use == USE_GAS_STATION \
+		or use == USE_TAXI_DEPOT \
+		or use == USE_LOGISTICS_DEPOT
 
 static func _resolve_entrance(source: Node) -> Node3D:
 	if source == null:
@@ -187,21 +223,34 @@ static func _new_residential_unit(source: Node, source_3d: Node3D, entrance: Nod
 	_configure_unit(unit, USE_RESIDENTIAL, source, source_3d, entrance)
 	return unit
 
-static func _new_business_unit(use: String, source: Node, source_3d: Node3D, entrance: Node3D) -> Building:
+static func _new_business_unit(use: String, source: Node, source_3d: Node3D, entrance: Node3D, is_ground_floor: bool = false) -> Building:
 	var unit: Building = null
 	match use:
 		USE_SHOP:
 			unit = ShopScript.new() as Shop
+		USE_SUPERMARKET:
+			unit = SupermarketScript.new() as Supermarket
 		USE_CAFE:
 			unit = CafeScript.new() as Cafe
 		USE_RESTAURANT:
 			unit = RestaurantScript.new() as Restaurant
 		USE_BANK:
 			unit = BankScript.new() as Bank
+		USE_CINEMA:
+			unit = CinemaScript.new() as Cinema
+		USE_FACTORY:
+			unit = FactoryScript.new() as Factory
+		USE_GAS_STATION:
+			unit = GasStationScript.new() as GasStation
+		USE_TAXI_DEPOT:
+			unit = TaxiDepotScript.new() as TaxiDepot
+		USE_LOGISTICS_DEPOT:
+			unit = LogisticsDepotScript.new() as LogisticsDepot
 		_:
 			return null
 	_configure_unit(unit, use, source, source_3d, entrance)
-	unit.add_to_group("ground_floor_business")
+	if is_ground_floor:
+		unit.add_to_group("ground_floor_business")
 	return unit
 
 static func _bind_existing_building(source: Building, uses: Array[String]) -> Array[Building]:
@@ -225,7 +274,7 @@ static func _bind_existing_building(source: Building, uses: Array[String]) -> Ar
 	for use in actionable_uses:
 		if _has_existing_business_unit(source, use):
 			continue
-		var business := _new_business_unit(use, source, source_3d, entrance)
+		var business := _new_business_unit(use, source, source_3d, entrance, true)
 		if business == null:
 			continue
 		source.add_child(business)
@@ -258,10 +307,21 @@ static func _collect_existing_business_units(node: Node, out: Array[Building]) -
 	for child in node.get_children():
 		if child is Building:
 			var building := child as Building
-			if building is Shop or building is Cafe or building is Restaurant or building is Bank:
+			if _is_generated_business_class(building):
 				out.append(building)
 			continue
 		_collect_existing_business_units(child, out)
+
+static func _is_generated_business_class(building: Building) -> bool:
+	return building is Shop \
+		or building is Cafe \
+		or building is Restaurant \
+		or building is Bank \
+		or building is Cinema \
+		or building is Factory \
+		or building is GasStation \
+		or building is TaxiDepot \
+		or building is LogisticsDepot
 
 static func _building_matches_use(building: Building, use: String) -> bool:
 	if building == null:
@@ -269,12 +329,24 @@ static func _building_matches_use(building: Building, use: String) -> bool:
 	match use:
 		USE_SHOP:
 			return building is Shop and building is not Supermarket
+		USE_SUPERMARKET:
+			return building is Supermarket
 		USE_CAFE:
 			return building is Cafe
 		USE_RESTAURANT:
 			return building is Restaurant
 		USE_BANK:
 			return building is Bank
+		USE_CINEMA:
+			return building is Cinema
+		USE_FACTORY:
+			return building is Factory
+		USE_GAS_STATION:
+			return building is GasStation
+		USE_TAXI_DEPOT:
+			return building is TaxiDepot
+		USE_LOGISTICS_DEPOT:
+			return building is LogisticsDepot
 		_:
 			return false
 
@@ -340,6 +412,18 @@ static func _unit_node_name(use: String) -> String:
 			return "RestaurantUnit"
 		USE_BANK:
 			return "BankUnit"
+		USE_SUPERMARKET:
+			return "SupermarketUnit"
+		USE_CINEMA:
+			return "CinemaUnit"
+		USE_FACTORY:
+			return "FactoryUnit"
+		USE_GAS_STATION:
+			return "GasStationUnit"
+		USE_TAXI_DEPOT:
+			return "TaxiDepotUnit"
+		USE_LOGISTICS_DEPOT:
+			return "LogisticsDepotUnit"
 		_:
 			return "%sUnit" % use.capitalize()
 
@@ -362,5 +446,29 @@ static func _unit_display_name(use: String, source: Node) -> String:
 			if base_name.to_lower().contains("bank"):
 				return base_name
 			return "%s Bank" % base_name
+		USE_SUPERMARKET:
+			if base_name.to_lower().contains("supermarket"):
+				return base_name
+			return "%s Supermarket" % base_name
+		USE_CINEMA:
+			if base_name.to_lower().contains("cinema"):
+				return base_name
+			return "%s Cinema" % base_name
+		USE_FACTORY:
+			if base_name.to_lower().contains("factory"):
+				return base_name
+			return "%s Factory" % base_name
+		USE_GAS_STATION:
+			if base_name.to_lower().contains("gas"):
+				return base_name
+			return "%s Gas Station" % base_name
+		USE_TAXI_DEPOT:
+			if base_name.to_lower().contains("taxi"):
+				return base_name
+			return "%s Taxi Depot" % base_name
+		USE_LOGISTICS_DEPOT:
+			if base_name.to_lower().contains("logistics"):
+				return base_name
+			return "%s Logistics Depot" % base_name
 		_:
 			return base_name
