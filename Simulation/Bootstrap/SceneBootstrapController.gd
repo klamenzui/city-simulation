@@ -7,15 +7,9 @@ const NavigationSetupScript = preload("res://Simulation/Bootstrap/NavigationSetu
 const RoadBuilderScript = preload("res://Simulation/Bootstrap/RoadBuilder.gd")
 const WorldSetupScript = preload("res://Simulation/Bootstrap/WorldSetup.gd")
 
-const RestaurantScene = preload("res://Scenes/Restaurant.tscn")
-const SupermarketScene = preload("res://Scenes/Supermarket.tscn")
-const ShopScene = preload("res://Scenes/Shop.tscn")
-const CinemaScene = preload("res://Scenes/Cinema.tscn")
-const UniversityScene = preload("res://Scenes/University.tscn")
 const CityHallScene = preload("res://Scenes/CityHall.tscn")
 const GasStationScene = preload("res://Scenes/CityBuildings/services/services_004_b6d7b717.tscn")
 const FarmScene = preload("res://Scenes/Farm.tscn")
-const FactoryScene = preload("res://Scenes/Factory.tscn")
 
 const OCEAN_NODE_NAME := "Ocean"
 const MATTE_ROUGHNESS_FLOOR := 0.9
@@ -77,25 +71,14 @@ static func _disable_headless_visual_nodes(node: Node) -> void:
 static func _spawn_missing_core_buildings(root: Node3D) -> void:
 	if root == null:
 		return
-	if not _has_building_type(root, "restaurant"):
-		_spawn_if_missing(root, "Restaurant", RestaurantScene, Vector3(11.0, 0.0, -7.0))
-	if not _has_building_type(root, "supermarket"):
-		_spawn_if_missing(root, "Supermarket", SupermarketScene, Vector3(15.0, 0.0, 9.0))
-	if not _has_building_type(root, "shop"):
-		_spawn_if_missing(root, "Shop", ShopScene, Vector3(19.0, 0.0, -4.0))
-	if not _has_building_type(root, "cinema"):
-		_spawn_if_missing(root, "Cinema", CinemaScene, Vector3(-18.0, 0.0, -9.0))
-	if not _has_building_type(root, "university"):
-		_spawn_if_missing(root, "University", UniversityScene, Vector3(-14.0, 0.0, 10.0))
+	
 	if not _has_building_type(root, "city_hall"):
 		_spawn_if_missing(root, "CityHall", CityHallScene, Vector3(1.0, 0.0, 15.0))
 	if not _has_building_type(root, "gas_station"):
 		_spawn_if_missing(root, "GasStation", GasStationScene, Vector3(20.0, 0.0, -4.0))
 	if not _has_building_type(root, "farm"):
 		_spawn_if_missing(root, "Farm", FarmScene, Vector3(-24.0, 0.0, 14.0))
-	if not _has_building_type(root, "factory"):
-		_spawn_if_missing(root, "Factory", FactoryScene, Vector3(24.0, 0.0, 14.0))
-
+	
 static func _has_building_type(root: Node3D, type_id: String) -> bool:
 	if root == null or root.get_tree() == null:
 		return false

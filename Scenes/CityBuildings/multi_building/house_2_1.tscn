@@ -255,7 +255,7 @@ transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 7.15153, 2.721276,
 mesh = SubResource("ArrayMesh_6kmws")
 skeleton = NodePath("")
 
-[node name="foundation_residential_01" type="Node3D" parent="." unique_id=1487054142 groups=["buildings", "city_buildings", "city_foundation", "residential"]]
+[node name="foundation_residential_01" type="Node3D" parent="." unique_id=1487054142 groups=["buildings", "building_use_residential"]]
 script = ExtResource("2_jstd3")
 building_name = "Residential 01 (Foundation)"
 building_type = 1

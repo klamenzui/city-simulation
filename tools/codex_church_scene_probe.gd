@@ -37,8 +37,8 @@ func _check_church_contract(church: Church, errors: Array[String]) -> void:
 		errors.append("Church scene root should be named Church.")
 	if not church.is_in_group("buildings"):
 		errors.append("Church must register in the buildings group.")
-	if not church.is_in_group("city_landmark"):
-		errors.append("Church must stay marked as a city landmark.")
+	if not church.is_in_group("building_use_church"):
+		errors.append("Church must use the standard building_use_church group.")
 	if church.building_type != Building.BuildingType.CHURCH:
 		errors.append("Church building_type should be CHURCH.")
 	if church.get_building_type_name() != "Church":

@@ -1,0 +1,51 @@
+[gd_scene format=4]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ag3kw"]
+resource_name = "White"
+albedo_color = Color(0.74431866, 0.7605284, 0.7084905, 1)
+metallic = 0.4
+roughness = 0.4150871
+metadata/extras = {
+"fromFBX": {
+"isTruePBR": false,
+"shadingModel": "Phong"
+}
+}
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_o8gw8"]
+_surfaces = [{
+"aabb": AABB(-0.037594818, -0.031256504, 0.000118795484, 0.09281425, 0.0668028, 0.00024953473),
+"format": 34896613377,
+"index_count": 48,
+"index_data": PackedByteArray("AAABAAIAAAADAAEABAAFAAYABgAHAAQACAAJAAoACgALAAgADAANAA4ADgAPAAwAEAARABIAEgATABAAFAAVABYAFgAXABQAGAAZABoAGAAbABkAHAAdAB4AHgAfABwA"),
+"name": "White",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 32,
+"vertex_data": PackedByteArray("UNhyOuGQAABWxtuX4ZAAAILtNYHhkAAAJLEZUeGQAACyur+avvMAAIvX+sW+8wAA///fkb7zAAAm46RmvvMAAABONpEAAAAAo2mM0wAAAABhmSetAAAAAL990moAAAAAP21qa9imAAAdmfI82KYAAKt3AADYpgAAzUt4LtimAAALVQOlAAAAABofDLUAAAAApSr//wAAAACWYPXvAAAAAAAAbFLhkAAAcSBpeOGQAAD9Q8094ZAAAIsj0RfhkAAAMbRtiv//AABtdQ1K//8AAKR915X//wAA+qujPv//AAArUZVmvvMAAEsdhUy+8wAA3Q71g77zAAC9QgWevvMAAA==")
+}]
+blend_shape_mode = 0
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_raa5d"]
+resource_name = "Root Scene_Debris_Papers_2"
+_surfaces = [{
+"aabb": AABB(-0.037594818, -0.031256504, 0.000118795484, 0.09281425, 0.0668028, 0.00024953473),
+"format": 34896613383,
+"index_count": 48,
+"index_data": PackedByteArray("AAABAAIAAAADAAEABAAFAAYABgAHAAQACAAJAAoACgALAAgADAANAA4ADgAPAAwAEAARABIAEgATABAAFAAVABYAFgAXABQAGAAZABoAGAAbABkAHAAdAB4AHgAfABwA"),
+"material": SubResource("StandardMaterial3D_ag3kw"),
+"name": "White",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 32,
+"vertex_data": PackedByteArray("UNhyOuGQ/79WxtuX4ZD/v4LtNYHhkP+/JLEZUeGQ/7+yur+avvP/v4vX+sW+8/+////fkb7z/78m46RmvvP/vwBONpEAAP+/o2mM0wAA/79hmSetAAD/v7990moAAP+/P21qa9im/78dmfI82Kb/v6t3AADYpv+/zUt4Ltim/78LVQOlAAD/vxofDLUAAP+/pSr//wAA/7+WYPXvAAD/vwAAbFLhkP+/cSBpeOGQ/7/9Q8094ZD/v4sj0RfhkP+/MbRtiv///79tdQ1K////v6R915X///+/+qujPv///78rUZVmvvP/v0sdhUy+8/+/3Q71g77z/7+9QgWevvP/v/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9/")
+}]
+blend_shape_mode = 0
+shadow_mesh = SubResource("ArrayMesh_o8gw8")
+
+[node name="DebrisPapers" type="Node3D" unique_id=1596517040]
+
+[node name="Debris_Papers_2" type="MeshInstance3D" parent="." unique_id=1421769482]
+transform = Transform3D(10.875618, -3.4550495, -6.616886e-07, -1.7004075e-07, -2.720652e-06, 11.4112425, -3.455049, -10.875619, -2.6444338e-06, 0, 0, 0)
+mesh = SubResource("ArrayMesh_raa5d")
+skeleton = NodePath("")

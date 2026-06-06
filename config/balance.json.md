@@ -173,8 +173,8 @@ medicine `420 / 650 / 6`.
 - **`allowed_building_types`** — auf welche Gebäudetypen ein Titel beschränkt ist
   (z. B. Doctor/Nurse/Pharmacist/Therapist nur `HOSPITAL`, Mayor nur `CITY_HALL`,
   Teacher/Professor nur `UNIVERSITY`, Gardener nur `PARK`, Technician
-  `FACTORY`/`CITY_HALL`/`HOSPITAL`; MaintenanceWorker fast überall). Fehlt ein
-  Titel ⇒ keine Beschränkung.
+  `FACTORY`/`CITY_HALL`/`HOSPITAL`; MaintenanceWorker fast überall, aber nicht
+  `GENERIC`/`CHURCH`). Fehlt ein Titel ⇒ keine Beschränkung.
 
 **Effektive Beruf → Arbeitsgebäude.** Schnitt aus `allowed_building_types` (Obergrenze)
 und den Kandidatenlisten je Gebäudetyp in `World._get_candidate_job_titles_for_building`.
@@ -194,7 +194,7 @@ und den Kandidatenlisten je Gebäudetyp in `World._get_candidate_job_titles_for_
 | Technician | Fabrik, City Hall, Hospital | 1 |
 | Mechaniker | Fabrik, Tankstelle, Farm | 1 |
 | Designer | Kino | 1 |
-| MaintenanceWorker | alle Gebäude (außer generisch) | 1 |
+| MaintenanceWorker | Wohnen, Restaurant, Café, Laden, Supermarkt, Kino, Fabrik, Farm, Tankstelle, City Hall, Universität, Park, Hospital | 1 |
 | Baecker | Restaurant, Café | 0 |
 | Kellner | Restaurant, Café | 0 |
 | Fahrer | Fabrik, Farm | 0 |
@@ -598,6 +598,7 @@ Keys sind unten genannt.
 | `farm` | capacity 8, jobs 6, 5–19 Uhr; `base_food_output_per_day` 60, `production_cost_per_unit` 1; Crops grow for 2 days, then workers harvest into 300 product inventory. New farms start with `initial_stored_food` 80 so first-day supermarket deliveries can happen before the first harvest. `Fahrer` workers deliver stored products directly to supermarkets (`direct_delivery_batch_per_supermarket` 35, unload 10 min, price multiplier 0.85); remaining product stock can fall back to market export. |
 | `factory` | capacity 10, jobs 8, 6–21 Uhr; `clothes_output_per_day` 25, `entertainment_output_per_day` 40, `production_cost_per_unit` 2. Factories keep local product inventory (`storage_capacity` 360, `initial_clothes_stock` 48) and `Fahrer` workers can deliver clothes directly to retailer stock (`direct_delivery_batch_per_retailer` 24, unload 8 min, price multiplier 0.85); non-reserved goods fall back to market export. |
 | `gas_station` | capacity 14, jobs 4, 6–23 Uhr; `fuel_price` 7; Stock 90, Ziel 140, Batch 50; `base_vehicle_sales_per_day` 18, `citizen_vehicle_demand_factor` 0.35, `fuel_units_per_vehicle` 2, `base_operating_cost` 36. |
+| `church` | capacity 35, jobs 0, 7–21 Uhr; Community-/Landmark-Gebäude ohne aktuelle Berufszuteilung; Navigations-Tuning: `navigation_blocker_margin` 1.2, `entrance_clearance_width` 2.4, `entrance_clearance_depth` 1.8, `entrance_trigger_radius` 0.9, `entrance_trigger_outset` 0.8. |
 
 ---
 

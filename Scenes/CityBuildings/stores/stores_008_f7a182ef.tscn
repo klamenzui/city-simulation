@@ -125,7 +125,7 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_8ng3i")
 
-[node name="stores_supermarket_08" type="Node3D" unique_id=1306592356 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_stores", "commercial", "work"]]
+[node name="stores_supermarket_08" type="Node3D" unique_id=1306592356 node_paths=PackedStringArray("entrance") groups=["buildings", "work", "building_use_supermarket"]]
 script = ExtResource("1_lypuj")
 building_name = "Supermarket 08 (Stores)"
 building_type = 4

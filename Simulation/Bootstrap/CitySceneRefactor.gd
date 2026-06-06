@@ -226,20 +226,12 @@ func _apply_archetype(root: Node3D, category_name: String, archetype: String, un
 
 	if not root.is_in_group("buildings"):
 		root.add_to_group("buildings")
-	if not root.is_in_group("city_buildings"):
-		root.add_to_group("city_buildings")
 
-	var category_group = "city_%s" % _slugify(category_name)
-	if not root.is_in_group(category_group):
-		root.add_to_group(category_group)
-
-	if archetype == "residential" and not root.is_in_group("residential"):
-		root.add_to_group("residential")
+	var use_group := "building_use_%s" % archetype
+	if not root.is_in_group(use_group):
+		root.add_to_group(use_group)
 	if archetype == "park" and not root.is_in_group("parks"):
 		root.add_to_group("parks")
-	if archetype in ["shop", "restaurant", "supermarket", "cafe", "cinema", "gas_station"] \
-		and not root.is_in_group("commercial"):
-		root.add_to_group("commercial")
 	if archetype in ["shop", "restaurant", "supermarket", "cafe", "cinema", "factory", "farm", "city_hall", "university", "gas_station"] \
 		and not root.is_in_group("work"):
 		root.add_to_group("work")

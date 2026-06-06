@@ -2,7 +2,7 @@
 
 [ext_resource type="PackedScene" path="res://Scenes/CityBuildings/commercial_building/cafe_shop.tscn" id="1_visual"]
 
-[node name="CafeShopApartments" type="Node3D" groups=["city_buildings", "mixed_use", "RESIDENTIAL", "CAFE", "SHOP"]]
+[node name="CafeShopApartments" type="Node3D" groups=["buildings", "mixed_use", "building_use_residential", "building_use_shop", "building_use_cafe"]]
 metadata/building_uses = "residential,cafe,shop"
 metadata/building_name = "Cafe-Shop Apartments"
 metadata/entrance = "Entrance"
