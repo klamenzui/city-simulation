@@ -88,7 +88,7 @@ size = Vector3(1.2, 0.7, 1)
 [sub_resource type="BoxShape3D" id="s_click"]
 size = Vector3(9.2, 2.6, 8.4)
 
-[node name="Farm" type="Node3D" unique_id=1354300990 node_paths=PackedStringArray("entrance") groups=["buildings"]]
+[node name="Farm" type="Node3D" unique_id=1354300990 node_paths=PackedStringArray("entrance") groups=["buildings", "building_use_farm"]]
 script = ExtResource("1_farm")
 building_name = "Windmill Farm"
 product_commodity = "bread"

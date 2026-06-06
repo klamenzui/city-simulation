@@ -46,7 +46,7 @@ shadow_mesh = SubResource("ArrayMesh_113vh")
 [sub_resource type="BoxShape3D" id="BoxShape3D_6pjdl"]
 size = Vector3(0.02, 0.02, 0.001)
 
-[node name="park_park_05" type="Node3D" unique_id=1808626305 groups=["buildings", "city_buildings", "city_park", "parks"]]
+[node name="park_park_05" type="Node3D" unique_id=1808626305 groups=["buildings", "parks", "building_use_park"]]
 script = ExtResource("1_6pjdl")
 building_name = "Park 05 (Park)"
 building_type = 9

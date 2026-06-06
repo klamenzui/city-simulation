@@ -552,8 +552,8 @@ func _test_mixed_use_residential_indexes_ground_floor_businesses() -> String:
 		return _current_error
 	existing_home.name = "ExistingTaggedResidential"
 	existing_home.position = Vector3(8.0, 0.0, 0.0)
-	existing_home.add_to_group("RESIDENTIAL")
-	existing_home.add_to_group("SHOP")
+	existing_home.add_to_group("building_use_residential")
+	existing_home.add_to_group("building_use_shop")
 	_harness_root.add_child(existing_home)
 
 	var world := _new_world()
@@ -575,7 +575,7 @@ func _test_mixed_use_residential_indexes_ground_floor_businesses() -> String:
 	var restaurant := restaurant_home.get_node_or_null("RestaurantUnit") as Restaurant
 	_expect(restaurant != null, "tagged residential+restaurant source should generate a restaurant unit")
 	var existing_shop := existing_home.get_node_or_null("ShopUnit") as Shop
-	_expect(existing_shop != null, "existing ResidentialBuilding with RESIDENTIAL+SHOP groups should generate a shop unit")
+	_expect(existing_shop != null, "existing ResidentialBuilding with residential+shop use groups should generate a shop unit")
 	if cafe == null or shop == null or restaurant == null or existing_shop == null:
 		_free_world(world)
 		return _current_error
@@ -598,6 +598,7 @@ func _test_mixed_use_residential_indexes_ground_floor_businesses() -> String:
 	_expect(cafe.is_in_group("ground_floor_business"), "cafe should be marked as a ground-floor business")
 	_expect(shop.is_in_group("ground_floor_business"), "shop should be marked as a ground-floor business")
 	_expect(restaurant.is_in_group("ground_floor_business"), "restaurant should be marked as a ground-floor business")
+	_expect(shop.is_in_group("building_use_shop"), "generated shop should use the standard building_use_shop group")
 	_expect(home.is_in_group("mixed_use"), "generated residential unit should be marked as mixed-use")
 	_expect(restaurant_home.is_in_group("mixed_use"), "generated residential+restaurant unit should be marked as mixed-use")
 

@@ -826,7 +826,7 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_q8sic")
 
-[node name="services_university_02" type="Node3D" unique_id=1753990449 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_services", "work"]]
+[node name="services_university_02" type="Node3D" unique_id=1753990449 node_paths=PackedStringArray("entrance") groups=["buildings", "work", "building_use_university"]]
 script = ExtResource("1_snyoe")
 building_name = "University 02 (Services)"
 building_type = 7

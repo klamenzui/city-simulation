@@ -25,6 +25,25 @@ enum BuildingType {
 	CHURCH,
 }
 
+const BUILDING_USE_GROUP_PREFIX := "building_use_"
+const BUILDING_USE_GROUPS := [
+	"building_use_generic",
+	"building_use_residential",
+	"building_use_restaurant",
+	"building_use_shop",
+	"building_use_supermarket",
+	"building_use_cafe",
+	"building_use_city_hall",
+	"building_use_university",
+	"building_use_cinema",
+	"building_use_park",
+	"building_use_farm",
+	"building_use_factory",
+	"building_use_gas_station",
+	"building_use_hospital",
+	"building_use_church",
+]
+
 @export var building_name: String = "Building"
 @export var building_type: BuildingType = BuildingType.GENERIC
 @export var entrance: Node3D
@@ -94,6 +113,7 @@ var _highlight_material: StandardMaterial3D = null
 
 func _ready() -> void:
 	add_to_group("buildings")
+	call_deferred("_sync_building_use_group")
 	if building_name.strip_edges().is_empty():
 		building_name = name
 	_apply_common_balance_settings()
@@ -767,6 +787,50 @@ func get_building_type_name() -> String:
 			return "Church"
 		_:
 			return "Generic"
+
+func get_building_use_id() -> String:
+	match building_type:
+		BuildingType.RESIDENTIAL:
+			return "residential"
+		BuildingType.RESTAURANT:
+			return "restaurant"
+		BuildingType.SHOP:
+			return "shop"
+		BuildingType.SUPERMARKET:
+			return "supermarket"
+		BuildingType.CAFE:
+			return "cafe"
+		BuildingType.CITY_HALL:
+			return "city_hall"
+		BuildingType.UNIVERSITY:
+			return "university"
+		BuildingType.CINEMA:
+			return "cinema"
+		BuildingType.PARK:
+			return "park"
+		BuildingType.FARM:
+			return "farm"
+		BuildingType.FACTORY:
+			return "factory"
+		BuildingType.GAS_STATION:
+			return "gas_station"
+		BuildingType.HOSPITAL:
+			return "hospital"
+		BuildingType.CHURCH:
+			return "church"
+		_:
+			return "generic"
+
+func get_building_use_group() -> String:
+	return "%s%s" % [BUILDING_USE_GROUP_PREFIX, get_building_use_id()]
+
+func _sync_building_use_group() -> void:
+	var current_group := get_building_use_group()
+	for group_name in BUILDING_USE_GROUPS:
+		if group_name != current_group and is_in_group(group_name):
+			remove_from_group(group_name)
+	if not current_group.is_empty():
+		add_to_group(current_group)
 
 func get_building_type_display_label() -> String:
 	match building_type:

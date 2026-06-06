@@ -15,7 +15,7 @@ extends SceneTree
 #   --size=WxH                        render resolution
 #   --settle=N                        extra render frames before capture (default 6)
 #
-# With no --pos/--look it frames an angled view on the park (city_park group), which is the
+# With no --pos/--look it frames an angled view on the park (parks group), which is the
 # current area of interest. Because it runs the real scene, the capture reflects the actual
 # in-game look (matte pass, park tint, sky, etc.).
 
@@ -90,7 +90,7 @@ func _park_aabb(main: Node) -> AABB:
 	if tree == null:
 		return aabb
 	var has := false
-	for node in tree.get_nodes_in_group("city_park"):
+	for node in tree.get_nodes_in_group("parks"):
 		if node is Node3D:
 			var p := (node as Node3D).global_position
 			if not has:

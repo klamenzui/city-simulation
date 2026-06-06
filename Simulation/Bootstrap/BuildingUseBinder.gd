@@ -12,6 +12,7 @@ const META_BOUND := "_building_uses_bound"
 const META_GENERATED := "generated_from_building_uses"
 const META_SOURCE_INSTANCE_ID := "building_use_source_instance_id"
 const DEFAULT_ENTRANCE_NAME := "Entrance"
+const GROUP_USE_PREFIX := "building_use_"
 
 const USE_RESIDENTIAL := "residential"
 const USE_SHOP := "shop"
@@ -272,8 +273,7 @@ static func _configure_unit(unit: Building, use: String, source: Node, source_3d
 	unit.building_name = _unit_display_name(use, source)
 	unit.entrance = entrance
 	unit.add_to_group("buildings")
-	unit.add_to_group("city_buildings")
-	unit.add_to_group(use)
+	unit.add_to_group("%s%s" % [GROUP_USE_PREFIX, use])
 	unit.set_meta(META_GENERATED, true)
 	unit.set_meta(META_SOURCE_INSTANCE_ID, source.get_instance_id())
 	if source.has_meta("building_archetype"):

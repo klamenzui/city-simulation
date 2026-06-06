@@ -51,7 +51,7 @@ size = Vector3(0.559845, 1, 0.17602539)
 [sub_resource type="BoxShape3D" id="BoxShape3D_bt5ai"]
 size = Vector3(0.559021, 1, 0.31713867)
 
-[node name="park_park_03" type="Node3D" unique_id=104907270 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_park", "parks"]]
+[node name="park_park_03" type="Node3D" unique_id=104907270 node_paths=PackedStringArray("entrance") groups=["buildings", "parks", "building_use_park"]]
 script = ExtResource("1_wbmcw")
 building_name = "Park 03 (Park)"
 building_type = 9

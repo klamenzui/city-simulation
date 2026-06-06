@@ -86,7 +86,7 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_35668")
 
-[node name="multilayer_residential_07" type="Node3D" unique_id=516660607 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_multilayer", "residential"]]
+[node name="multilayer_residential_07" type="Node3D" unique_id=516660607 node_paths=PackedStringArray("entrance") groups=["buildings", "building_use_residential"]]
 script = ExtResource("1_a0hvm")
 building_name = "Residential 07 (Multilayer)"
 building_type = 1

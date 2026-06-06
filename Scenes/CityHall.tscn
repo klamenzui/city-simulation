@@ -7,7 +7,7 @@
 [sub_resource type="BoxShape3D" id="BoxShape3D_click"]
 size = Vector3(2.05, 2.5, 2.05)
 
-[node name="services_city_hall_01" type="Node3D" groups=["buildings", "city_buildings", "city_services", "work"] node_paths=PackedStringArray("entrance")]
+[node name="services_city_hall_01" type="Node3D" groups=["buildings", "work", "building_use_city_hall"] node_paths=PackedStringArray("entrance")]
 script = ExtResource("1")
 building_name = "City Hall 01 (Services)"
 building_type = 6

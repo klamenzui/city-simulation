@@ -116,7 +116,7 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_ht4oy")
 
-[node name="garages_factory_05" type="Node3D" unique_id=1964905264 node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_garages", "work"]]
+[node name="garages_factory_05" type="Node3D" unique_id=1964905264 node_paths=PackedStringArray("entrance") groups=["buildings", "work", "building_use_factory"]]
 script = ExtResource("1_50ahq")
 building_name = "Factory 05 (Garages)"
 building_type = 11

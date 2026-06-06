@@ -200,7 +200,7 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_p57mq")
 
-[node name="stores_cinema_20" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings", "city_buildings", "city_stores", "commercial", "work"]]
+[node name="stores_cinema_20" type="Node3D" node_paths=PackedStringArray("entrance") groups=["buildings", "work", "building_use_cinema"]]
 script = ExtResource("1_bonei")
 building_name = "Cinema 20 (Stores)"
 building_type = 8
