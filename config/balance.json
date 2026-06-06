@@ -193,11 +193,12 @@
         "Mayor": ["CITY_HALL"],
         "Janitor": ["UNIVERSITY", "CITY_HALL", "PARK", "HOSPITAL"],
         "Gardener": ["PARK"],
-        "Fahrer": ["FARM", "FACTORY"],
+        "Fahrer": ["FARM", "FACTORY", "TAXI_DEPOT", "LOGISTICS_DEPOT"],
+        "Mechaniker": ["FACTORY", "FARM", "GAS_STATION", "TAXI_DEPOT", "LOGISTICS_DEPOT"],
         "Tankwart": ["GAS_STATION"],
         "Banker": ["BANK"],
-        "MaintenanceWorker": ["CAFE", "CINEMA", "FACTORY", "FARM", "GAS_STATION", "RESIDENTIAL", "RESTAURANT", "SHOP", "SUPERMARKET", "CITY_HALL", "UNIVERSITY", "PARK", "HOSPITAL", "BANK"],
-        "Technician": ["FACTORY", "CITY_HALL", "HOSPITAL"]
+        "MaintenanceWorker": ["CAFE", "CINEMA", "FACTORY", "FARM", "GAS_STATION", "RESIDENTIAL", "RESTAURANT", "SHOP", "SUPERMARKET", "CITY_HALL", "UNIVERSITY", "PARK", "HOSPITAL", "BANK", "TAXI_DEPOT", "LOGISTICS_DEPOT"],
+        "Technician": ["FACTORY", "CITY_HALL", "HOSPITAL", "LOGISTICS_DEPOT"]
       }
     },
     "city_hall": {
@@ -711,6 +712,20 @@
       "citizen_vehicle_demand_factor": 0.35,
       "fuel_units_per_vehicle": 2,
       "base_operating_cost": 36
+    },
+    "taxi_depot": {
+      "capacity": 12,
+      "job_capacity": 4,
+      "open_hour": 6,
+      "close_hour": 24,
+      "base_operating_cost": 32
+    },
+    "logistics_depot": {
+      "capacity": 16,
+      "job_capacity": 5,
+      "open_hour": 5,
+      "close_hour": 22,
+      "base_operating_cost": 40
     },
     "bank": {
       "capacity": 18,

@@ -162,7 +162,7 @@ medicine `420 / 650 / 6`.
   Baecker 12, Kellner 12, Programmierer 24, Fahrer 15, Mechaniker 18, Tankwart 14,
   Verkaeufer 13, Designer 19, Doctor 30, Nurse 22, Pharmacist 25, Therapist 24,
   Mayor 32, Teacher 18, Engineer 26, Professor 28,
-  Janitor 13, Gardener 14, MaintenanceWorker 16, Technician 22.
+  Janitor 13, Gardener 14, MaintenanceWorker 16, Technician 22, Banker 23.
 - **`required_education`** — Mindest-`education_level` je Titel (fehlt ein Titel ⇒ 0).
   Doctor 3, Nurse 2, Pharmacist 2, Therapist 2, Mayor 3, Professor 3, Teacher 2,
   Engineer 2, Programmierer 2,
@@ -173,7 +173,7 @@ medicine `420 / 650 / 6`.
 - **`allowed_building_types`** — auf welche Gebäudetypen ein Titel beschränkt ist
   (z. B. Doctor/Nurse/Pharmacist/Therapist nur `HOSPITAL`, Mayor nur `CITY_HALL`,
   Teacher/Professor nur `UNIVERSITY`, Gardener nur `PARK`, Technician
-  `FACTORY`/`CITY_HALL`/`HOSPITAL`; MaintenanceWorker fast überall, aber nicht
+  `FACTORY`/`CITY_HALL`/`HOSPITAL`/`LOGISTICS_DEPOT`; MaintenanceWorker fast überall, aber nicht
   `GENERIC`/`CHURCH`). Fehlt ein Titel ⇒ keine Beschränkung.
 
 **Effektive Beruf → Arbeitsgebäude.** Schnitt aus `allowed_building_types` (Obergrenze)
@@ -191,15 +191,16 @@ und den Kandidatenlisten je Gebäudetyp in `World._get_candidate_job_titles_for_
 | Teacher | Universität | 2 |
 | Engineer | Fabrik | 2 |
 | Programmierer | City Hall | 2 |
-| Technician | Fabrik, City Hall, Hospital | 1 |
-| Mechaniker | Fabrik, Tankstelle, Farm | 1 |
+| Technician | Fabrik, City Hall, Hospital, Logistikdepot | 1 |
+| Mechaniker | Fabrik, Tankstelle, Farm, Taxi-Depot, Logistikdepot | 1 |
 | Designer | Kino | 1 |
-| MaintenanceWorker | Wohnen, Restaurant, Café, Laden, Supermarkt, Kino, Fabrik, Farm, Tankstelle, City Hall, Universität, Park, Hospital | 1 |
+| MaintenanceWorker | Wohnen, Restaurant, Café, Laden, Supermarkt, Kino, Fabrik, Farm, Tankstelle, City Hall, Universität, Park, Hospital, Bank, Taxi-Depot, Logistikdepot | 1 |
 | Baecker | Restaurant, Café | 0 |
 | Kellner | Restaurant, Café | 0 |
-| Fahrer | Fabrik, Farm | 0 |
+| Fahrer | Fabrik, Farm, Taxi-Depot, Logistikdepot | 0 |
 | Tankwart | Tankstelle | 0 |
 | Verkaeufer | Laden, Supermarkt, Tankstelle | 0 |
+| Banker | Bank | 2 |
 | Janitor | Universität, City Hall, Park, Hospital | 0 |
 | Gardener | Park | 0 |
 
@@ -598,6 +599,9 @@ Keys sind unten genannt.
 | `farm` | capacity 8, jobs 6, 5–19 Uhr; `base_food_output_per_day` 60, `production_cost_per_unit` 1; Crops grow for 2 days, then workers harvest into 300 product inventory. New farms start with `initial_stored_food` 80 so first-day supermarket deliveries can happen before the first harvest. `Fahrer` workers deliver stored products directly to supermarkets (`direct_delivery_batch_per_supermarket` 35, unload 10 min, price multiplier 0.85); remaining product stock can fall back to market export. |
 | `factory` | capacity 10, jobs 8, 6–21 Uhr; `clothes_output_per_day` 25, `entertainment_output_per_day` 40, `production_cost_per_unit` 2. Factories keep local product inventory (`storage_capacity` 360, `initial_clothes_stock` 48) and `Fahrer` workers can deliver clothes directly to retailer stock (`direct_delivery_batch_per_retailer` 24, unload 8 min, price multiplier 0.85); non-reserved goods fall back to market export. |
 | `gas_station` | capacity 14, jobs 4, 6–23 Uhr; `fuel_price` 7; Stock 90, Ziel 140, Batch 50; `base_vehicle_sales_per_day` 18, `citizen_vehicle_demand_factor` 0.35, `fuel_units_per_vehicle` 2, `base_operating_cost` 36. |
+| `taxi_depot` | capacity 12, jobs 4, 6–24 Uhr; `base_operating_cost` 32. |
+| `logistics_depot` | capacity 16, jobs 5, 5–22 Uhr; `base_operating_cost` 40. |
+| `bank` | capacity 18, jobs 4, 8–18 Uhr; Startliquiditaet und Kreditlimits kommen aus den `bank`-Keys in `config/balance.json`. |
 | `church` | capacity 35, jobs 0, 7–21 Uhr; Community-/Landmark-Gebäude ohne aktuelle Berufszuteilung; Navigations-Tuning: `navigation_blocker_margin` 1.2, `entrance_clearance_width` 2.4, `entrance_clearance_depth` 1.8, `entrance_trigger_radius` 0.9, `entrance_trigger_outset` 0.8. |
 
 ---

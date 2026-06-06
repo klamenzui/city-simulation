@@ -417,7 +417,9 @@
 			"gas_station": "Gas Station",
 			"hospital": "Hospital",
 			"church": "Church",
-			"bank": "Bank"
+			"bank": "Bank",
+			"taxi_depot": "Taxi depot",
+			"logistics_depot": "Logistics depot"
 		},
 		"service_type": {
 			"commerce": "Commerce",
@@ -434,7 +436,9 @@
 			"production_food": "Food production",
 			"production_goods": "Goods production",
 			"shopping": "Shopping",
-			"finance": "Finance"
+			"finance": "Finance",
+			"transport": "Transport",
+			"logistics": "Logistics"
 		},
 		"job_title": {
 			"baker": "Baker",
@@ -489,7 +493,8 @@
 			"generic": "no staff",
 			"gas_station": "gas station staff missing",
 			"teacher": "no teacher",
-			"medical": "no Doctor or Nurse"
+			"medical": "no Doctor or Nurse",
+			"driver": "no driver"
 		}
 	},
 
