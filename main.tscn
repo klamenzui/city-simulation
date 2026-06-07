@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://duu3qhchgt3f0" path="res://Scenes/Roads/RoadStraight.tscn" id="6_1nwvn"]
 [ext_resource type="PackedScene" uid="uid://bfeifu0c35w8k" path="res://Scenes/Roads/RoadTSplit.tscn" id="7_dfq0k"]
 [ext_resource type="PackedScene" uid="uid://c6aq6481iy1ul" path="res://Scenes/CityBuildings/services/services_002_16fa335f.tscn" id="12_05tku"]
+[ext_resource type="PackedScene" path="res://Scenes/Environment/CityProps/CityPack/debris_papers.tscn" id="12_08030"]
 [ext_resource type="Texture2D" uid="uid://c07jlgiwvm37r" path="res://ImportedCitySource/assets/roads/citybits_texture.png" id="12_fbvi6"]
 [ext_resource type="PackedScene" uid="uid://clc4gmqsftxix" path="res://Scenes/Farm.tscn" id="15_b1va2"]
 [ext_resource type="PackedScene" path="res://Scenes/CityHall.tscn" id="15_sx4hl"]
@@ -26,8 +27,11 @@
 [ext_resource type="PackedScene" uid="uid://bqr5f73uo5wve" path="res://Scenes/Plants/City2/building_red_corner.tscn" id="34_yaiuy"]
 [ext_resource type="PackedScene" uid="uid://bowhsnguim6qn" path="res://Scenes/CityBuildings/city_pack/building_red.tscn" id="35_md2r7"]
 [ext_resource type="PackedScene" uid="uid://bpdrevgbr14g4" path="res://Scenes/CityBuildings/city_pack/big_building.tscn" id="36_gbxmp"]
+[ext_resource type="PackedScene" path="res://Scenes/Environment/CityProps/CityPack/mailbox.tscn" id="40_vybqf"]
+[ext_resource type="PackedScene" path="res://Scenes/Plants/City2/birchtree.tscn" id="41_marsu"]
 [ext_resource type="PackedScene" uid="uid://coh64olr6la2r" path="res://Scenes/CityBuildings/multi_building/B4_Base.tscn" id="50_8gn08"]
 [ext_resource type="PackedScene" path="res://Scenes/Environment/BuildingProps/CityPack/roof_exit.tscn" id="50_fbvi6"]
+[ext_resource type="PackedScene" uid="uid://dds0njwpaa2a3" path="res://Scenes/Plants/CityPack/flower_pot.tscn" id="51_vybqf"]
 [ext_resource type="PackedScene" uid="uid://bi0sqqjfi7jse" path="res://Scenes/CityBuildings/multi_building/B2_Base.tscn" id="52_8gn08"]
 [ext_resource type="PackedScene" uid="uid://doaenty10x3ft" path="res://Scenes/Roads/RoadStraightCrossing.tscn" id="55_eho1g"]
 [ext_resource type="PackedScene" uid="uid://dxc5islvp7qsk" path="res://Scenes/CityBuildings/commercial_building/cafe_shop.tscn" id="60_fbvi6"]
@@ -37,6 +41,8 @@
 [ext_resource type="PackedScene" uid="uid://2jbmvyomvyw6" path="res://Scenes/CityBuildings/commercial_building/pizza_building.tscn" id="62_uecmj"]
 [ext_resource type="PackedScene" uid="uid://c4r3jxrk6ho3j" path="res://Scenes/CityBuildings/commercial_building/burger_building.tscn" id="62_vybqf"]
 [ext_resource type="PackedScene" uid="uid://dbrjppty284xt" path="res://Scenes/CityBuildings/commercial_building/shop_building.tscn" id="62_y5qkn"]
+[ext_resource type="PackedScene" path="res://Scenes/Environment/CityProps/CityPack/atm.tscn" id="63_imbc2"]
+[ext_resource type="PackedScene" uid="uid://bwl4uc4mirp8m" path="res://Scenes/Environment/CityProps/CityPack/bench.tscn" id="64_6xmvy"]
 [ext_resource type="Script" uid="uid://bj48dr0vegu14" path="res://Entities/Buildings/ResidentialBuilding.gd" id="64_h7qxs"]
 [ext_resource type="Texture2D" uid="uid://b3b5vu8lonkcv" path="res://ImportedCitySource/assets/city/citybits_texture.png" id="65_vq823"]
 [ext_resource type="PackedScene" uid="uid://d05bpqavptn1g" path="res://Scenes/CityBuildings/multi_building/house_1_2.tscn" id="66_eho1g"]
@@ -2532,6 +2538,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -18)
 [node name="road_straight_crossing" parent="World/City/only_transport/Road_straight" unique_id=1934165070 instance=ExtResource("55_eho1g")]
 transform = Transform3D(1, 0, 0, 0, 0.9999999, 0, 0, 0, 1, 15.999376, 0.00054091215, -1.999968)
 
+[node name="DebrisPapers" parent="World/City/only_transport/Road_straight" unique_id=1596517040 instance=ExtResource("12_08030")]
+transform = Transform3D(1, 0, 0, 0, 0.9999999, 0, 0, 0, 1, 22.757708, 0.09999991, 2.9552417)
+
 [node name="Road_tsplit" type="Node3D" parent="World/City/only_transport" unique_id=217125772 groups=["road_group"]]
 
 [node name="road_tsplit2" parent="World/City/only_transport/Road_tsplit" unique_id=20326055 instance=ExtResource("7_dfq0k")]
@@ -2797,6 +2806,27 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26.000109, 0, 8)
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 0.9999999, 0, 1, 0, -4.371139e-08, 22.529583, -0.0037250519, 5.1372337)
 metadata/building_name = "City Bank"
 metadata/building_entrance = "foundation_residential_01/Entrance"
+
+[node name="Mailbox" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=1050575197 instance=ExtResource("40_vybqf")]
+transform = Transform3D(1, 0, 0, 0, 0.9999999, 0, 0, 0, 1, 17.256731, 0.11457505, -4.5080013)
+
+[node name="Birchtree" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=1650794016 instance=ExtResource("41_marsu")]
+transform = Transform3D(0.2, 0, 0, 0, 0.19999997, 0, 0, 0, 0.2, 3.449654, 0.019829586, 11.873066)
+
+[node name="Foliage2" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=477489818 instance=ExtResource("18_6xmvy")]
+transform = Transform3D(0.0040628454, -0.19995867, -4.6398566e-11, -0.0018461549, -3.751073e-05, -0.19999145, 0.19995022, 0.004062689, -0.0018465333, 18.46991, 0.81737584, 15.046725)
+
+[node name="Foliage" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=2124531102 instance=ExtResource("129_xkfyu")]
+transform = Transform3D(0.04214554, -0.19550891, 0, 0.19550896, 0.04214554, 0, 0, 0, 0.19999999, 18.42783, 0.84720284, 15.391241)
+
+[node name="Foliage3" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=1166096748 instance=ExtResource("129_xkfyu")]
+transform = Transform3D(0.05438216, -0.19246449, 0, 0.041820895, 0.011816778, -0.19522133, 0.18786588, 0.053082783, 0.043458294, 18.413633, 0.7142299, 15.371064)
+
+[node name="Foliage4" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=153562865 instance=ExtResource("129_xkfyu")]
+transform = Transform3D(0.09237759, -0.17738762, 0, 0.0017027739, 0.00088673434, 0.19999075, -0.1773795, -0.09237333, 0.0019198273, 18.326557, 0.26921266, 15.393236)
+
+[node name="Foliage5" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=1484770171 instance=ExtResource("129_xkfyu")]
+transform = Transform3D(0.12453295, -0.15649769, 0, 0.030046165, 0.023909211, 0.19627932, -0.15358636, -0.12221622, 0.038398206, 18.403008, 0.59408325, 15.373608)
 
 [node name="Road_straight_crossing" type="Node3D" parent="World/City/only_people_nav/only_people" unique_id=1132916993 groups=["road_group"]]
 
@@ -3085,6 +3115,9 @@ skeleton = NodePath("")
 transform = Transform3D(1, 0, 0, 0, 1, 0, -7.10543e-15, 0, 1, 0, 0, 0)
 shape = SubResource("ConcavePolygonShape3D_baglu")
 
+[node name="FlowerPot" parent="World/City/only_people_nav/only_people/Multi-building/base1" unique_id=230245858 instance=ExtResource("51_vybqf")]
+transform = Transform3D(-0.2000001, 0, -3.019916e-08, 0, 0.99999994, 0, 3.774899e-08, 0, -0.25, -1.1297238, 0.42290297, 0.4151683)
+
 [node name="foundation_residential_01" type="Node3D" parent="World/City/only_people_nav/only_people/Multi-building" unique_id=1763045622 groups=["building_use_residential", "buildings"]]
 transform = Transform3D(1, 0, 0, 0, 0.9999999, 0, 0, 0, 1, 2.5013642, -2.3841858e-07, 4.996533)
 script = ExtResource("64_h7qxs")
@@ -3177,6 +3210,12 @@ transform = Transform3D(-1, -1.4243006e-14, -8.742278e-08, 0, 1, -1.6292101e-07,
 
 [node name="BurgerBuilding" parent="World/City/only_people_nav/only_people/Commercial building" unique_id=374273239 groups=["building_use_restaurant"] instance=ExtResource("62_vybqf")]
 transform = Transform3D(3.059797e-07, -1.6292101e-07, -1, 3.3881312e-21, 1, -1.6292101e-07, 1, 4.9850518e-14, 3.059797e-07, -0.6107124, 0, -2)
+
+[node name="ATM" parent="World/City/only_people_nav/only_people/Commercial building" unique_id=934089287 instance=ExtResource("63_imbc2")]
+transform = Transform3D(-0.9985404, 0, -0.05400908, 0, 0.9999999, 0, 0.05400908, 0, -0.9985404, 22.38711, -0.06279754, 3.9463286)
+
+[node name="Bench" parent="World/City/only_people_nav/only_people/Commercial building" unique_id=1873589175 instance=ExtResource("64_6xmvy")]
+transform = Transform3D(1, 0, 0, 0, 0.9999999, 0, 0, 0, 1, 23.080425, 0.24182966, 3.9312396)
 
 [node name="Park" type="Node3D" parent="World/City/only_people_nav/only_people" unique_id=1011288149]
 
@@ -4419,7 +4458,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.549235, 0.06279755, -17.07
 [node name="Truck_NormalTrailler_0012" parent="." unique_id=1092581037 instance=ExtResource("106_al55t")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.548128, 0.3005532, -16.933512)
 
-[node name="Foliage" parent="." unique_id=2124531102 instance=ExtResource("129_xkfyu")]
+[node name="Foliage" parent="." unique_id=821145833 instance=ExtResource("129_xkfyu")]
 transform = Transform3D(0.16773412, 0.107272945, 0.018915122, 0, 0.034729645, -0.19696155, -0.10892781, 0.16518585, 0.029126732, 8.361088, 0.42653257, 15.431273)
 
 [node name="Foliage2" parent="." unique_id=1782222951 instance=ExtResource("129_xkfyu")]
@@ -4495,3 +4534,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
 
 [node name="House-1-7" parent="." unique_id=2095938739 instance=ExtResource("67_evvf3")]
 transform = Transform3D(-0.2, 0, -1.7484556e-08, 0, 0.2, 0, 1.7484556e-08, 0, -0.2, 26.544668, 0.15326047, 15.777073)
+
+[node name="Foliage4" parent="." unique_id=1636118979 instance=ExtResource("129_xkfyu")]
+transform = Transform3D(0.00426351, -0.15255973, -0.12925695, -0.019533446, 0.12835017, -0.1521338, 0.19899818, 0.01586726, -0.012163982, 18.512823, 0.49133247, 15.263376)
