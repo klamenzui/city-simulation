@@ -19,10 +19,8 @@ const DELIVERY_PHASE_DRIVING_TO_TARGET := "driving_to_target"
 const DELIVERY_PHASE_UNLOADING := "unloading"
 const DELIVERY_PHASE_DRIVING_RETURN := "driving_return"
 const DELIVERY_PHASE_PARKING_DEPOT := "parking_depot"
-const TRUCK_SCENE_PATH := "res://Entities/Transport/Truck_NormalTrailler_001.tscn"
 const DELIVERY_DEPOT_MARKER_NAME := "DeliveryVehicleDepot"
 const DELIVERY_DEPOT_MAX_LOCAL_MANEUVER_DISTANCE := 16.0
-const DeliveryTruckScene := preload("res://Entities/Transport/Truck_NormalTrailler_001.tscn")
 const VehicleDepotAccessScript := preload("res://Simulation/Transport/VehicleDepotAccess.gd")
 
 @export var base_food_output_per_day: int = 60
@@ -472,11 +470,15 @@ func _tick_delivery_worker(world: World, citizen: Citizen, tick_minutes: int) ->
 				return
 			if citizen.has_method("stop_travel"):
 				citizen.stop_travel()
-			_delivery_quantity = _calculate_delivery_quantity(world, _delivery_target)
-			if _delivery_quantity <= 0:
+			if not _ensure_delivery_vehicle(world):
 				_release_delivery_worker()
 				return
-			if not _ensure_delivery_vehicle(world):
+			var load_capacity := VehicleDepotAccessScript.get_delivery_vehicle_load_capacity(
+				_delivery_vehicle,
+				direct_delivery_batch_per_supermarket
+			)
+			_delivery_quantity = _calculate_delivery_quantity(world, _delivery_target, load_capacity)
+			if _delivery_quantity <= 0:
 				_release_delivery_worker()
 				return
 			_delivery_phase = DELIVERY_PHASE_TO_VEHICLE
@@ -685,19 +687,12 @@ func _ensure_delivery_vehicle(world: World) -> bool:
 		return false
 	if _delivery_vehicle != null and is_instance_valid(_delivery_vehicle):
 		return true
-	var instance := DeliveryTruckScene.instantiate()
-	if instance == null or instance is not Node3D or not instance.has_method("assign_delivery_driver"):
-		push_warning("Farm: Could not instantiate delivery truck from %s." % TRUCK_SCENE_PATH)
-		if instance != null:
-			instance.queue_free()
+	var vehicle := VehicleDepotAccessScript.find_available_delivery_vehicle(self, world)
+	if vehicle == null:
+		push_warning("Farm: No free delivery vehicle available at depot.")
 		return false
-	_delivery_vehicle = instance as Node3D
-	_delivery_vehicle.name = "%s_DeliveryTruck" % get_display_name().replace(" ", "_")
-	var parent: Node = world.get_parent() if world != null and world.get_parent() != null else world
-	if parent == null:
-		parent = self
-	parent.add_child(_delivery_vehicle)
-	_place_delivery_vehicle_at(_delivery_depot_parking_position)
+	_delivery_vehicle = vehicle
+	_delivery_vehicle.add_to_group(VehicleDepotAccessScript.DELIVERY_VEHICLE_ASSIGNED_GROUP)
 	if world != null and world.has_method("register_vehicle"):
 		world.register_vehicle(_delivery_vehicle)
 	return true
