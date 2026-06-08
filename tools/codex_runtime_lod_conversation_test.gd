@@ -1662,7 +1662,7 @@ func _test_dialogue_runtime_ui_state_prefers_setup_when_model_missing() -> Strin
 	return _current_error
 
 func _test_multilayer_residential_corner_rejects_blocked_slide_cache() -> String:
-	var residential_scene: PackedScene = load("res://Scenes/CityBuildings/multilayer/multilayer_004_d588520f.tscn")
+	var residential_scene: PackedScene = load("res://Scenes/CityBuildings/multi_building/multilayer_004_d588520f.tscn")
 	_expect(residential_scene != null, "multilayer residential scene should load for hard-corner movement regression coverage")
 	if residential_scene == null:
 		return _current_error
