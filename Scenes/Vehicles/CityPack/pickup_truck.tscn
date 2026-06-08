@@ -1,6 +1,6 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://oe6ifm4j38q0"]
 
-[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city_pack/Pickup Truck_Zombie_Atlas.png" id="1_bg0m5"]
+[ext_resource type="Texture2D" uid="uid://uovrbskha0ml" path="res://ImportedCitySource/assets/city_pack/Pickup Truck_Zombie_Atlas.png" id="1_bg0m5"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_v7ojr"]
 resource_name = "Atlas"
@@ -224,21 +224,21 @@ shadow_mesh = SubResource("ArrayMesh_rrpsi")
 [node name="PickupTruck" type="Node3D" unique_id=792145080]
 
 [node name="BackWheels" type="MeshInstance3D" parent="." unique_id=491233795]
-transform = Transform3D(100, 0, 0, 0, -1.1920931e-05, 100, 0, -100, -1.1920931e-05, 0, 0, 0)
+transform = Transform3D(25, 0, 0, 0, -1.0927847e-06, 25, 0, -25, -1.0927847e-06, 0, 0, 0)
 mesh = SubResource("ArrayMesh_c245o")
 skeleton = NodePath("")
 
 [node name="FrontWheel_R" type="MeshInstance3D" parent="." unique_id=1527217607]
-transform = Transform3D(100, 0, 0, 0, -1.1920931e-05, 100, 0, -100, -1.1920931e-05, 0, 0, 0)
+transform = Transform3D(25, 0, 0, 0, -1.0927847e-06, 25, 0, -25, -1.0927847e-06, 0, 0, 0)
 mesh = SubResource("ArrayMesh_pw2p0")
 skeleton = NodePath("")
 
 [node name="FrontWheel_L" type="MeshInstance3D" parent="." unique_id=533763799]
-transform = Transform3D(100, 0, 0, 0, -1.1920931e-05, 100, 0, -100, -1.1920931e-05, 0, 0, 0)
+transform = Transform3D(25, 0, 0, 0, -1.0927847e-06, 25, 0, -25, -1.0927847e-06, 0, 0, 0)
 mesh = SubResource("ArrayMesh_rqprk")
 skeleton = NodePath("")
 
 [node name="Pickup" type="MeshInstance3D" parent="." unique_id=148257126]
-transform = Transform3D(100, 0, 0, 0, -1.1920931e-05, 100, 0, -100, -1.1920931e-05, 0, 0, 0)
+transform = Transform3D(25, 0, 0, 0, -1.0927847e-06, 25, 0, -25, -1.0927847e-06, 0, 0, 0)
 mesh = SubResource("ArrayMesh_0iuqv")
 skeleton = NodePath("")

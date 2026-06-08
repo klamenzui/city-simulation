@@ -4,7 +4,7 @@ const TRUCK_SCENE_PATH := "res://Entities/Transport/Truck_NormalTrailler_001.tsc
 const TRAFFIC_LIGHT_SCENE_PATH := "res://ImportedCitySource/scenes/trafficlight_c_active.tscn"
 const VEHICLE_SCENE_PATHS := [
 	TRUCK_SCENE_PATH,
-	"res://Entities/Transport/Vehicle_Minivan.tscn",
+	"res://Scenes/Vehicles/CityPack/car.tscn",
 	"res://Entities/Transport/Vehicle_TowTruck.tscn",
 	"res://Entities/Transport/Vehicle_TrailerTruck.tscn",
 ]

@@ -11,6 +11,7 @@ const DEFAULT_IMPACT_AUDIO_PATH := "res://environment/audio/vehicles/impact_1.wa
 const TRAFFIC_LIGHT_GROUP := "traffic_lights"
 const VEHICLE_COLLISION_LAYER := 4
 const VEHICLE_WORLD_AND_VEHICLE_MASK := 5
+const ARRIVAL_EXIT_MAX_ACCESS_DISTANCE := 8.0
 
 @export var delivery_vehicle: bool = true
 @export var max_speed: float = 5.0
@@ -99,6 +100,7 @@ var _impact_contact_linger: float = 0.0
 var _registered_world: World = null
 var _waiting_for_traffic_light: bool = false
 var _waiting_for_vehicle: bool = false
+var _unboard_driver_on_trip_finish: bool = true
 
 
 func _ready() -> void:
@@ -208,8 +210,17 @@ func unboard_driver(world: World = null, exit_pos: Vector3 = Vector3.INF) -> Cit
 
 
 func start_drive_to(destination: Vector3, world: World = null) -> bool:
+	return _start_drive_to(destination, world, true)
+
+
+func start_drive_to_keep_driver(destination: Vector3, world: World = null) -> bool:
+	return _start_drive_to(destination, world, false)
+
+
+func _start_drive_to(destination: Vector3, world: World = null, unboard_driver_on_finish: bool = true) -> bool:
 	target_position = destination
 	last_path_failed = false
+	_unboard_driver_on_trip_finish = unboard_driver_on_finish
 	if current_driver != null:
 		_arrival_exit_position = _resolve_arrival_exit_position(world, destination, target_building)
 	last_vehicle_route = _build_vehicle_route(destination, world)
@@ -221,6 +232,7 @@ func start_drive_to(destination: Vector3, world: World = null) -> bool:
 		_waiting_for_traffic_light = false
 		_waiting_for_vehicle = false
 		_set_manual_physics_active(false)
+		_unboard_driver_on_trip_finish = true
 		if current_driver != null:
 			unboard_driver(world, get_entry_point_global())
 		return false
@@ -397,7 +409,12 @@ func _advance_manual_drive(delta: float) -> void:
 
 func _finish_trip(world: World = null) -> void:
 	stop_vehicle()
-	var driver := unboard_driver(world)
+	var driver := current_driver
+	if _unboard_driver_on_trip_finish:
+		driver = unboard_driver(world)
+	else:
+		_pin_current_driver_to_seat()
+	_unboard_driver_on_trip_finish = true
 	trip_completed.emit(self, driver, target_building)
 
 
@@ -441,7 +458,9 @@ func _rotate_towards(direction: Vector3, delta: float) -> void:
 
 func _resolve_arrival_exit_position(world: World, fallback: Vector3, building: Building = null) -> Vector3:
 	if world != null and world.has_method("get_pedestrian_access_point"):
-		return world.get_pedestrian_access_point(fallback, building)
+		var access_point: Vector3 = world.get_pedestrian_access_point(fallback, building)
+		if _is_finite_vector(access_point) and _planar_distance(access_point, fallback) <= ARRIVAL_EXIT_MAX_ACCESS_DISTANCE:
+			return access_point
 	if building != null and building.has_method("get_entrance_pos"):
 		return building.get_entrance_pos()
 	return fallback
