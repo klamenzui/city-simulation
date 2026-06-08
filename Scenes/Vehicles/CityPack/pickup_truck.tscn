@@ -1,6 +1,8 @@
 [gd_scene format=4 uid="uid://oe6ifm4j38q0"]
 
+[ext_resource type="Script" uid="uid://cd1nnk30w7t4c" path="res://Simulation/Transport/VehicleAgent.gd" id="0_vehicle_agent"]
 [ext_resource type="Texture2D" uid="uid://uovrbskha0ml" path="res://ImportedCitySource/assets/city_pack/Pickup Truck_Zombie_Atlas.png" id="1_bg0m5"]
+[ext_resource type="AudioStream" path="res://environment/audio/vehicles/engine.wav" id="2_engine_audio"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_v7ojr"]
 resource_name = "Atlas"
@@ -221,24 +223,116 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_rrpsi")
 
-[node name="PickupTruck" type="Node3D" unique_id=792145080]
+[sub_resource type="BoxShape3D" id="BoxShape3D_vehicle_body"]
+size = Vector3(0.48, 0.32, 0.98)
 
-[node name="BackWheels" type="MeshInstance3D" parent="." unique_id=491233795]
+[node name="PickupTruck" type="VehicleBody3D" unique_id=792145080]
+collision_layer = 4
+collision_mask = 5
+mass = 18.0
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, 0.08, 0.02)
+script = ExtResource("0_vehicle_agent")
+delivery_vehicle = true
+delivery_load_capacity = 4
+use_balance_vehicle_geometry = false
+vehicle_mass = 18.0
+center_of_mass_offset = Vector3(0, 0.08, 0.02)
+wheel_track_half_width = 0.17
+wheel_front_z = 0.34
+wheel_rear_z = -0.23
+wheel_mount_y = 0.08
+wheel_radius = 0.08
+wheel_roll_influence = 0.35
+wheel_friction_slip = 1.1
+suspension_stiffness = 34.0
+suspension_travel = 0.12
+damping_compression = 0.9
+damping_relaxation = 1.6
+collision_shape_size = Vector3(0.48, 0.32, 0.98)
+collision_shape_offset = Vector3(0, 0.18, 0.02)
+
+[node name="VehicleCollisionShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.18, 0.02)
+shape = SubResource("BoxShape3D_vehicle_body")
+
+[node name="FrontLeftWheel" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.17, 0.08, 0.34)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.08
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="FrontRightWheel" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.17, 0.08, 0.34)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.08
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="RearLeftWheel" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.17, 0.08, -0.23)
+use_as_traction = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.08
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="RearRightWheel" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.17, 0.08, -0.23)
+use_as_traction = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.08
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="VisualRoot" type="Node3D" parent="."]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
+
+[node name="BackWheels" type="MeshInstance3D" parent="VisualRoot" unique_id=491233795]
 transform = Transform3D(24, 0, 0, 0, -1.0490733e-06, 24, 0, -24, -1.0490733e-06, 0, 0, 0)
 mesh = SubResource("ArrayMesh_c245o")
 skeleton = NodePath("")
 
-[node name="FrontWheel_R" type="MeshInstance3D" parent="." unique_id=1527217607]
+[node name="FrontWheel_R" type="MeshInstance3D" parent="VisualRoot" unique_id=1527217607]
 transform = Transform3D(24, 0, 0, 0, -1.0490733e-06, 24, 0, -24, -1.0490733e-06, 0, 0, 0)
 mesh = SubResource("ArrayMesh_pw2p0")
 skeleton = NodePath("")
 
-[node name="FrontWheel_L" type="MeshInstance3D" parent="." unique_id=533763799]
+[node name="FrontWheel_L" type="MeshInstance3D" parent="VisualRoot" unique_id=533763799]
 transform = Transform3D(24, 0, 0, 0, -1.0490733e-06, 24, 0, -24, -1.0490733e-06, 0, 0, 0)
 mesh = SubResource("ArrayMesh_rqprk")
 skeleton = NodePath("")
 
-[node name="Pickup" type="MeshInstance3D" parent="." unique_id=148257126]
+[node name="Pickup" type="MeshInstance3D" parent="VisualRoot" unique_id=148257126]
 transform = Transform3D(24, 0, 0, 0, -1.0490733e-06, 24, 0, -24, -1.0490733e-06, 0, 0, 0)
 mesh = SubResource("ArrayMesh_0iuqv")
 skeleton = NodePath("")
+
+[node name="EntryPoint" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.38, 0.03, 0.06)
+
+[node name="SeatPoint" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.09, 0.27, 0.09)
+
+[node name="EngineSound" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("2_engine_audio")
+pitch_scale = 0.05
+volume_db = -28.0
+attenuation_filter_cutoff_hz = 20500.0

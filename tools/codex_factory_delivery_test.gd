@@ -5,6 +5,9 @@ const FactoryScript := preload("res://Entities/Buildings/Factory.gd")
 const ShopScript := preload("res://Entities/Buildings/Shop.gd")
 const CitizenScene := preload("res://Entities/Citizens/CitizenNew.tscn")
 const WorkActionScript := preload("res://Actions/WorkAction.gd")
+const DepotSmallDeliveryVehicleScene := preload("res://Scenes/Vehicles/CityPack/pickup_truck.tscn")
+const DepotLargeDeliveryVehicleScene := preload("res://Entities/Transport/Truck_NormalTrailler_001.tscn")
+const VehicleDepotAccessScript := preload("res://Simulation/Transport/VehicleDepotAccess.gd")
 
 const DELIVERY_TICK_MINUTES := 5
 const ROUTE_DRIVE_DELTA := 0.2
@@ -92,7 +95,25 @@ func _initialize() -> void:
 	if driver.has_method("set_click_move_mode_enabled"):
 		driver.set_click_move_mode_enabled(false, world)
 
-	var existing_vehicle_ids := _capture_delivery_vehicle_ids()
+	var depot_vehicle := DepotSmallDeliveryVehicleScene.instantiate() as Node3D
+	if depot_vehicle == null:
+		_errors.append("Could not instantiate small depot delivery vehicle scene for factory test.")
+		_finish(world, factory, shop, driver)
+		return
+	root.add_child(depot_vehicle)
+	depot_vehicle.global_position = depot_shape.global_position
+	world.register_vehicle(depot_vehicle)
+
+	var depot_large_vehicle := DepotLargeDeliveryVehicleScene.instantiate() as Node3D
+	if depot_large_vehicle == null:
+		_errors.append("Could not instantiate large depot delivery vehicle scene for factory test.")
+		_finish(world, factory, shop, driver)
+		return
+	root.add_child(depot_large_vehicle)
+	depot_large_vehicle.global_position = depot_shape.global_position + Vector3(1.4, 0.0, 0.0)
+	world.register_vehicle(depot_large_vehicle)
+	await process_frame
+	var vehicle_count_before_delivery := world.vehicles.size()
 	var regional_clothes_before := int(world.economy.commodity_stock.get("clothes", 0))
 	var shop_stock_before := shop.get_stock("clothing")
 	var factory_stock_before := factory.get_factory_inventory_amount("clothes")
@@ -104,15 +125,26 @@ func _initialize() -> void:
 	action.start(world, driver)
 	action.tick(world, driver, DELIVERY_TICK_MINUTES)
 
-	var truck := _find_new_delivery_truck(existing_vehicle_ids)
+	var truck := _find_assigned_delivery_truck()
 	if truck == null:
-		_errors.append("Factory Fahrer delivery should spawn a delivery truck.")
+		_errors.append("Factory Fahrer delivery should claim the existing depot delivery vehicle.")
 		_finish(world, factory, shop, driver, action)
 		return
+	if truck != depot_vehicle:
+		_errors.append("Factory delivery should reuse the pre-placed pickup truck from the depot.")
+	if world.vehicles.size() != vehicle_count_before_delivery:
+		_errors.append("Factory delivery should not register a new dynamic delivery vehicle.")
+	if int(factory.get("_delivery_quantity")) != 4:
+		_errors.append("Small pickup delivery should be limited to 4 load units.")
+	var next_vehicle := VehicleDepotAccessScript.find_available_delivery_vehicle(factory, world)
+	if next_vehicle != depot_large_vehicle:
+		_errors.append("Large delivery vehicle should remain available after the small pickup is claimed.")
+	elif VehicleDepotAccessScript.get_delivery_vehicle_load_capacity(next_vehicle, 1) != 8:
+		_errors.append("Large delivery vehicle should expose 8 load units.")
 	if not world.vehicles.has(truck):
-		_errors.append("Factory delivery truck should be registered in World.vehicles.")
+		_errors.append("Factory delivery vehicle should be registered in World.vehicles.")
 	if _planar_distance(truck.global_position, depot_shape.global_position) > 2.0:
-		_errors.append("Factory delivery truck should spawn parked inside DeliveryVehicleDepot.")
+		_errors.append("Factory delivery vehicle should be parked inside DeliveryVehicleDepot at hand-off.")
 
 	driver.global_position = truck.call("get_entry_point_global") as Vector3
 	if driver.has_method("stop_travel"):
@@ -185,17 +217,9 @@ func _configure_probe_vehicle_road_graph(world: World, factory: Factory, shop: S
 	world.road_graph._is_ready = true
 
 
-func _capture_delivery_vehicle_ids() -> Dictionary:
-	var ids := {}
-	for node in get_nodes_in_group("delivery_vehicles"):
-		if node != null:
-			ids[node.get_instance_id()] = true
-	return ids
-
-
-func _find_new_delivery_truck(existing_vehicle_ids: Dictionary) -> Node3D:
-	for node in get_nodes_in_group("delivery_vehicles"):
-		if node is Node3D and not existing_vehicle_ids.has(node.get_instance_id()):
+func _find_assigned_delivery_truck() -> Node3D:
+	for node in get_nodes_in_group(VehicleDepotAccessScript.DELIVERY_VEHICLE_ASSIGNED_GROUP):
+		if node is Node3D:
 			return node as Node3D
 	return null
 

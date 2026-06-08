@@ -4,6 +4,7 @@ const MainScene := preload("res://Main.tscn")
 const WorkActionScript := preload("res://Actions/WorkAction.gd")
 const VehicleDepotAccessScript := preload("res://Simulation/Transport/VehicleDepotAccess.gd")
 
+const PICKUP_TRUCK_SCENE_PATH := "res://scenes/vehicles/citypack/pickup_truck.tscn"
 const SETTLE_PROCESS_FRAMES := 12
 const SETTLE_PHYSICS_FRAMES := 4
 const DELIVERY_TICK_MINUTES := 5
@@ -59,7 +60,6 @@ func _initialize() -> void:
 		return
 
 	var action := _prepare_live_delivery_fixture(world, farm, supermarket, driver)
-	var existing_vehicle_ids := _capture_vehicle_instance_ids()
 	var product_key := farm.get_product_commodity()
 	var delivery_item := farm.get_supermarket_delivery_item()
 	var stock_before := supermarket.get_stock(delivery_item)
@@ -67,18 +67,30 @@ func _initialize() -> void:
 	var farm_income_before := farm.income_today
 	var supermarket_supply_cost_before := supermarket.production_costs_today
 	var regional_product_before := int(world.economy.commodity_stock.get(product_key, 0))
+	var vehicle_count_before_delivery := world.vehicles.size()
+	var depot_capacities := _collect_free_depot_delivery_capacities(main, world, depot_parking_position)
+	if depot_capacities.size() < 2 or not depot_capacities.has(4) or not depot_capacities.has(8):
+		_errors.append("Main DeliveryVehicleDepot should contain two free delivery vehicles with capacities 4 and 8.")
 
 	action.start(world, driver)
 	action.tick(world, driver, DELIVERY_TICK_MINUTES)
-	var truck := _find_new_delivery_truck(existing_vehicle_ids)
+	var truck := _find_assigned_delivery_truck()
 	if truck == null:
-		_errors.append("Farm Fahrer live delivery should spawn a new delivery truck in Main.tscn.")
+		_errors.append("Farm Fahrer live delivery should claim a delivery truck from the depot fleet in Main.tscn.")
 		_finish(main, action, world, driver)
 		return
+	if not _is_pickup_delivery_vehicle(truck):
+		_errors.append("Farm live delivery should claim the pre-placed PickupTruck from DeliveryVehicleDepot.")
+	if VehicleDepotAccessScript.get_delivery_vehicle_load_capacity(truck, 1) != 4:
+		_errors.append("Farm live delivery should use the 4-unit pickup load capacity.")
+	if int(farm.get("_delivery_quantity")) != 4:
+		_errors.append("Farm live delivery quantity should be limited to 4 by the pickup.")
+	if world.vehicles.size() != vehicle_count_before_delivery:
+		_errors.append("Farm live delivery should not register a new dynamic delivery vehicle.")
 	if not world.vehicles.has(truck):
-		_errors.append("Spawned Farm delivery truck should be registered in World.vehicles.")
+		_errors.append("Claimed Farm delivery truck should be registered in World.vehicles.")
 	if _planar_distance((truck as Node3D).global_position, depot_parking_position) > 2.0:
-		_errors.append("Live Farm delivery truck should spawn parked inside DeliveryVehicleDepot.")
+		_errors.append("Claimed Farm delivery truck should be parked inside DeliveryVehicleDepot at hand-off.")
 
 	driver.global_position = truck.call("get_entry_point_global") as Vector3
 	if driver.has_method("stop_travel"):
@@ -86,7 +98,7 @@ func _initialize() -> void:
 	action.tick(world, driver, DELIVERY_TICK_MINUTES)
 
 	if not driver.has_method("is_inside_vehicle") or not driver.is_inside_vehicle():
-		_errors.append("Live Farm Fahrer should board the spawned truck before delivery driving.")
+		_errors.append("Live Farm Fahrer should board the existing pickup truck before delivery driving.")
 	if not bool(truck.call("is_driving")):
 		_errors.append("Live Farm delivery truck should start driving out of DeliveryVehicleDepot.")
 	if str(farm.get("_delivery_phase")) == "exiting_depot":
@@ -286,19 +298,56 @@ func _clear_driver_state(world: World, driver: Citizen) -> void:
 		driver.exit_current_building(world)
 
 
-func _capture_vehicle_instance_ids() -> Dictionary:
-	var ids := {}
-	for node in get_nodes_in_group("delivery_vehicles"):
-		if node != null:
-			ids[node.get_instance_id()] = true
-	return ids
-
-
-func _find_new_delivery_truck(existing_vehicle_ids: Dictionary) -> Node3D:
-	for node in get_nodes_in_group("delivery_vehicles"):
-		if node is Node3D and not existing_vehicle_ids.has(node.get_instance_id()):
+func _find_assigned_delivery_truck() -> Node3D:
+	for node in get_nodes_in_group(VehicleDepotAccessScript.DELIVERY_VEHICLE_ASSIGNED_GROUP):
+		if node is Node3D:
 			return node as Node3D
 	return null
+
+
+func _is_pickup_delivery_vehicle(vehicle: Node) -> bool:
+	if vehicle == null:
+		return false
+	var scene_path := vehicle.scene_file_path.to_lower()
+	return scene_path == PICKUP_TRUCK_SCENE_PATH or vehicle.name.to_lower().contains("pickup")
+
+
+func _collect_free_depot_delivery_capacities(owner_node: Node, world: World, depot_position: Vector3) -> Array[int]:
+	var capacities: Array[int] = []
+	var depot_marker := VehicleDepotAccessScript.find_marker(owner_node, "DeliveryVehicleDepot")
+	var depot_radius := VehicleDepotAccessScript.get_marker_parking_radius(depot_marker)
+	var seen: Dictionary = {}
+	if world != null:
+		for vehicle in world.vehicles:
+			_append_depot_delivery_capacity(vehicle, depot_position, depot_radius, capacities, seen)
+	for node in get_nodes_in_group("delivery_vehicles"):
+		_append_depot_delivery_capacity(node, depot_position, depot_radius, capacities, seen)
+	capacities.sort()
+	return capacities
+
+
+func _append_depot_delivery_capacity(
+	node: Node,
+	depot_position: Vector3,
+	depot_radius: float,
+	capacities: Array[int],
+	seen: Dictionary
+) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	if seen.has(node.get_instance_id()):
+		return
+	seen[node.get_instance_id()] = true
+	if node is not VehicleAgent:
+		return
+	var vehicle := node as VehicleAgent
+	if not vehicle.delivery_vehicle:
+		return
+	if vehicle.is_in_group(VehicleDepotAccessScript.DELIVERY_VEHICLE_ASSIGNED_GROUP):
+		return
+	if _planar_distance(vehicle.global_position, depot_position) > depot_radius:
+		return
+	capacities.append(VehicleDepotAccessScript.get_delivery_vehicle_load_capacity(vehicle, 1))
 
 
 func _advance_vehicle_until_stopped(vehicle: Node) -> bool:

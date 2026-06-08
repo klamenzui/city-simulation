@@ -14,6 +14,7 @@ const VEHICLE_WORLD_AND_VEHICLE_MASK := 5
 const ARRIVAL_EXIT_MAX_ACCESS_DISTANCE := 8.0
 
 @export var delivery_vehicle: bool = true
+@export var delivery_load_capacity: int = 8
 @export var max_speed: float = 5.0
 @export var acceleration: float = 2.8
 @export var braking_acceleration: float = 5.5

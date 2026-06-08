@@ -824,6 +824,7 @@ mass = 35.0
 center_of_mass_mode = 1
 center_of_mass = Vector3(0, 0.12, -0.45)
 script = ExtResource("1_vehicle_agent")
+delivery_load_capacity = 8
 
 [node name="VehicleCollisionShape" type="CollisionShape3D" parent="." unique_id=1752759976]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.31879023, -0.7714392)

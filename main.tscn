@@ -4566,12 +4566,14 @@ log_file_path = "res://controlled_citizen.log"
 
 [node name="Truck_NormalTrailler_0012" parent="." unique_id=1092581037 instance=ExtResource("106_al55t")]
 transform = Transform3D(-0.025444193, 0, 0.9996762, 0, 1, 0, -0.9996762, 0, -0.025444193, 20.88638, 0.3005532, -7.4285245)
+delivery_load_capacity = 8
 
 [node name="Car" parent="." unique_id=652043323 instance=ExtResource("124_y5qkn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.290373, 0.16279975, 33.96953)
 
 [node name="PickupTruck" parent="." unique_id=792145080 instance=ExtResource("125_08030")]
 transform = Transform3D(0.089328825, 0, 0.99600226, 0, 1, 0, -0.99600226, 0, 0.089328825, 19.533073, 0.16873345, -8.824667)
+delivery_load_capacity = 4
 
 [node name="Car2" parent="." unique_id=4149117 instance=ExtResource("124_y5qkn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.707024, 0.13279748, 32.259483)
