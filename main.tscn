@@ -16,12 +16,9 @@
 [ext_resource type="PackedScene" path="res://Scenes/Farm_Windmill.tscn" id="16_farmw"]
 [ext_resource type="PackedScene" path="res://Scenes/Farm_AnimalRanch.tscn" id="16_ranch"]
 [ext_resource type="PackedScene" uid="uid://bby4h5xvcfpkj" path="res://Scenes/CityBuildings/services/services_004_b6d7b717.tscn" id="17_xnuy3"]
-[ext_resource type="PackedScene" path="res://Entities/Transport/Vehicle_Minivan.tscn" id="18_6nglk"]
 [ext_resource type="PackedScene" path="res://Scenes/Plants/City2/foliage2.tscn" id="18_6xmvy"]
-[ext_resource type="PackedScene" path="res://Entities/Transport/Vehicle_TowTruck.tscn" id="19_dsf7v"]
 [ext_resource type="PackedScene" uid="uid://d1al3br0tpajn" path="res://Scenes/CityBuildings/multi_building/house_2_1.tscn" id="19_rkgid"]
 [ext_resource type="PackedScene" uid="uid://csq8ah8pjec8y" path="res://Scenes/CityBuildings/services/petrol_station.tscn" id="20_fbvi6"]
-[ext_resource type="PackedScene" path="res://Entities/Transport/Vehicle_TrailerTruck.tscn" id="20_xbxht"]
 [ext_resource type="PackedScene" uid="uid://cy7ejlinvbnv3" path="res://Scenes/CityBuildings/garages/garages_004_926a0961.tscn" id="24_myh4s"]
 [ext_resource type="PackedScene" uid="uid://crqki0w8ha4l8" path="res://Scenes/CityBuildings/garages/garages_005_99fe1588.tscn" id="25_5qs2s"]
 [ext_resource type="PackedScene" uid="uid://bqr5f73uo5wve" path="res://Scenes/Plants/City2/building_red_corner.tscn" id="34_yaiuy"]
@@ -97,7 +94,9 @@
 [ext_resource type="Texture2D" uid="uid://cqc8vysg50cc" path="res://ImportedCitySource/assets/plants/flowerblue01_materialtexture.png" id="122_7luwo"]
 [ext_resource type="Texture2D" uid="uid://dewguhf2cqrby" path="res://ImportedCitySource/assets/plants/flowerKrokus01_materialtexture.png" id="123_nsoiq"]
 [ext_resource type="Texture2D" uid="uid://daoqdj1ec8d1u" path="res://ImportedCitySource/assets/plants/flowertulipan01_materialtexture.png" id="124_mlps3"]
+[ext_resource type="PackedScene" uid="uid://c5cr2heq55iqj" path="res://Scenes/Vehicles/CityPack/car.tscn" id="124_y5qkn"]
 [ext_resource type="Texture2D" uid="uid://dhymjlkrmx84d" path="res://ImportedCitySource/assets/plants/flowervalmue01_materialtexture.png" id="125_0tmpl"]
+[ext_resource type="PackedScene" uid="uid://oe6ifm4j38q0" path="res://Scenes/Vehicles/CityPack/pickup_truck.tscn" id="125_08030"]
 [ext_resource type="Texture2D" uid="uid://cdht1at0ce08r" path="res://ImportedCitySource/assets/plants/flowers01_materialtexture.png" id="126_mixfv"]
 [ext_resource type="Texture2D" uid="uid://d26uspah6piw6" path="res://ImportedCitySource/assets/plants/flowers02_materialtexture.png" id="127_8hdu8"]
 [ext_resource type="PackedScene" uid="uid://yoqb0pc5m7o" path="res://Scenes/CityBuildings/park/park_001_0c8c5798.tscn" id="127_eesqs"]
@@ -208,6 +207,18 @@ shadow_mesh = SubResource("ArrayMesh_ht4oy")
 
 [sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_py6gf"]
 data = PackedVector3Array(-1, 0, -0.9, -1, 0.099999994, -1, -1, 0.099999994, -0.9, -1, 0, -0.9, -1, 0, -1, -1, 0.099999994, -1, 0.9, 0, -1, 1, 0.099999994, -1, 0.9, 0.099999994, -1, 0.9, 0, -1, 1, 0, -1, 1, 0.099999994, -1, 1, 0, 0.9, 1, 0.099999994, 1, 1, 0.099999994, 0.9, 1, 0, 0.9, 1, 0, 1, 1, 0.099999994, 1, -0.9, 0, 1, -1, 0.099999994, 1, -0.9, 0.099999994, 1, -0.9, 0, 1, -1, 0, 1, -1, 0.099999994, 1, 0.9, 0, 0.9, 1, 0, 1, 1, 0, 0.9, 0.9, 0, 0.9, 0.9, 0, 1, 1, 0, 1, 0.9, 0, 0.9, -0.9, 0, 1, 0.9, 0, 1, 0.9, 0, -0.9, 0.9, 0, 0.9, 1, 0, 0.9, 0.9, 0, -0.9, 1, 0, 0.9, 1, 0, -0.9, 0.9, 0, 0.9, -0.9, 0, 0.9, -0.9, 0, 1, 0.9, 0, -0.9, -0.9, 0, 0.9, 0.9, 0, 0.9, -1, 0, 0.9, -0.9, 0, 1, -0.9, 0, 0.9, -1, 0, 0.9, -1, 0, 1, -0.9, 0, 1, -0.9, 0, -0.9, -1, 0, 0.9, -0.9, 0, 0.9, 0.9, 0, -0.9, -0.9, 0, -0.9, -0.9, 0, 0.9, -0.9, 0, -0.9, -1, 0, -0.9, -1, 0, 0.9, -1, 0, -1, -1, 0, -0.9, -0.9, 0, -0.9, -1, 0, -1, -0.9, 0, -0.9, -0.9, 0, -1, 0.9, 0, -1, -0.9, 0, -1, -0.9, 0, -0.9, 0.9, 0, -1, -0.9, 0, -0.9, 0.9, 0, -0.9, 0.9, 0, -1, 0.9, 0, -0.9, 1, 0, -0.9, 0.9, 0, -1, 1, 0, -0.9, 1, 0, -1, -0.9, 0.099999994, 0.9, -1, 0.099999994, 1, -1, 0.099999994, 0.9, -0.9, 0.099999994, 0.9, -0.9, 0.099999994, 1, -1, 0.099999994, 1, 1, 0.099999994, 0.9, 0.9, 0.099999994, 1, 0.9, 0.099999994, 0.9, 1, 0.099999994, 0.9, 1, 0.099999994, 1, 0.9, 0.099999994, 1, 0.9, 0.099999994, 1, -0.9, 0, 1, -0.9, 0.099999994, 1, 0.9, 0.099999994, 1, 0.9, 0, 1, -0.9, 0, 1, 1, 0, 1, 0.9, 0.099999994, 1, 1, 0.099999994, 1, 1, 0, 1, 0.9, 0, 1, 0.9, 0.099999994, 1, -0.9, 0.099999994, -1, 0.9, 0, -1, 0.9, 0.099999994, -1, -0.9, 0.099999994, -1, -0.9, 0, -1, 0.9, 0, -1, 0.9, 0.099999994, -1, -0.9, 0.099999994, -0.9, -0.9, 0.099999994, -1, 0.9, 0.099999994, -1, 0.9, 0.099999994, -0.9, -0.9, 0.099999994, -0.9, 0.9, 0.099999994, -0.9, 1, 0.099999994, -0.9, 1, 0.099999994, 0.9, 0.9, 0.099999994, -0.9, 1, 0.099999994, 0.9, 0.9, 0.099999994, 0.9, -0.9, 0.099999994, -0.9, -1, 0.099999994, 0.9, -1, 0.099999994, -0.9, -0.9, 0.099999994, -0.9, -0.9, 0.099999994, 0.9, -1, 0.099999994, 0.9, 0.9, 0.099999994, 1, -0.9, 0.099999994, 0.9, 0.9, 0.099999994, 0.9, 0.9, 0.099999994, 1, -0.9, 0.099999994, 1, -0.9, 0.099999994, 0.9, -1, 0, -1, -0.9, 0.099999994, -1, -1, 0.099999994, -1, -1, 0, -1, -0.9, 0, -1, -0.9, 0.099999994, -1, -0.9, 0.099999994, -0.9, 0.9, 0.099999994, 0.9, -0.9, 0.099999994, 0.9, -0.9, 0.099999994, -0.9, 0.9, 0.099999994, -0.9, 0.9, 0.099999994, 0.9, 1, 0.099999994, -1, 0.9, 0.099999994, -0.9, 0.9, 0.099999994, -1, 1, 0.099999994, -1, 1, 0.099999994, -0.9, 0.9, 0.099999994, -0.9, -0.9, 0.099999994, -1, -1, 0.099999994, -0.9, -1, 0.099999994, -1, -0.9, 0.099999994, -1, -0.9, 0.099999994, -0.9, -1, 0.099999994, -0.9, 1, 0, -1, 1, 0.099999994, -0.9, 1, 0.099999994, -1, 1, 0, -1, 1, 0, -0.9, 1, 0.099999994, -0.9, 1, 0.099999994, -0.9, 1, 0, 0.9, 1, 0.099999994, 0.9, 1, 0.099999994, -0.9, 1, 0, -0.9, 1, 0, 0.9, -1, 0, 1, -1, 0.099999994, 0.9, -1, 0.099999994, 1, -1, 0, 1, -1, 0, 0.9, -1, 0.099999994, 0.9, -1, 0.099999994, 0.9, -1, 0, -0.9, -1, 0.099999994, -0.9, -1, 0.099999994, 0.9, -1, 0, 0.9, -1, 0, -0.9)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_rkgid"]
+size = Vector2(4, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_y5qkn"]
+size = Vector3(4, 0.001, 2)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_vybqf"]
+size = Vector2(5, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_vybqf"]
+size = Vector3(5, 0.001, 2)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_snq0j"]
 resource_name = "citybits_texture"
@@ -2629,6 +2640,18 @@ shape = SubResource("ConcavePolygonShape3D_py6gf")
 
 [node name="Entrance" type="Marker3D" parent="World/City/only_people_nav/only_people/Services/foundation_residential_01" unique_id=2145792967]
 
+[node name="DeliveryVehicleDepot" type="Area3D" parent="World/City/only_people_nav/only_people/Services" unique_id=1932927809]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.620344, 0, -7.9972954)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Services/DeliveryVehicleDepot" unique_id=1953525883]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.37622452, 0.1691365, 0)
+mesh = SubResource("PlaneMesh_rkgid")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="World/City/only_people_nav/only_people/Services/DeliveryVehicleDepot" unique_id=72688944]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.37622452, 0.1691365, 0)
+shape = SubResource("BoxShape3D_y5qkn")
+debug_color = Color(0.80784315, 0, 0.20392157, 1)
+
 [node name="Production" type="Node3D" parent="World/City/only_people_nav/only_people" unique_id=1574422090]
 
 [node name="Farm" parent="World/City/only_people_nav/only_people/Production" unique_id=386220770 instance=ExtResource("15_b1va2")]
@@ -2792,6 +2815,18 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26, 0, 28)
 
 [node name="Multilayer006_06" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=1376390508 groups=["building_use_taxi_depot"] instance=ExtResource("102_xpnqb")]
 transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 14, 0, 32)
+
+[node name="TaxiVehicleDepot" type="Area3D" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=789547595]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 11.989, 0, 33.336)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Multilayer/TaxiVehicleDepot" unique_id=1431013757]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.44138718, 0.11595713, 0)
+mesh = SubResource("PlaneMesh_vybqf")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="World/City/only_people_nav/only_people/Multilayer/TaxiVehicleDepot" unique_id=1677775797]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.44138718, 0.11595713, 0)
+shape = SubResource("BoxShape3D_vybqf")
+debug_color = Color(0.9210075, 0.05030185, 1.92523e-07, 0.41960785)
 
 [node name="Multilayer005_08" parent="World/City/only_people_nav/only_people/Multilayer" unique_id=1391613944 instance=ExtResource("100_inxc5")]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 32, 0, 28)
@@ -4516,7 +4551,7 @@ max_random_rotation = Vector3(0, 360, 0)
 script = ExtResource("401_skybr")
 
 [node name="ControlledCitizen" parent="." unique_id=1375507526 instance=ExtResource("106_llcqu")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.04, 0.156, -15.1684)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.427485, 0.156, -4.173453)
 collision_layer = 0
 autonomous_simulation_enabled = false
 move_speed = 0.9
@@ -4529,14 +4564,11 @@ local_astar_radius = 0.6
 jump_velocity = 3.2
 log_file_path = "res://controlled_citizen.log"
 
-[node name="Vehicle_Minivan" parent="." unique_id=385987254 instance=ExtResource("18_6nglk")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.054972, 0.06279731, -19.180878)
-
-[node name="Vehicle_TowTruck" parent="." unique_id=891135846 instance=ExtResource("19_dsf7v")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.318912, 0.11082408, -18.286476)
-
-[node name="Vehicle_TrailerTruck" parent="." unique_id=788327754 instance=ExtResource("20_xbxht")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.549235, 0.06279755, -17.073765)
-
 [node name="Truck_NormalTrailler_0012" parent="." unique_id=1092581037 instance=ExtResource("106_al55t")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.548128, 0.3005532, -16.933512)
+transform = Transform3D(-0.023297988, 0, -0.99972856, 0, 1, 0, 0.99972856, 0, -0.023297988, 20.744984, 0.3005532, -7.4285245)
+
+[node name="Car" parent="." unique_id=652043323 instance=ExtResource("124_y5qkn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.290373, 0.16279975, 33.96953)
+
+[node name="PickupTruck" parent="." unique_id=792145080 instance=ExtResource("125_08030")]
+transform = Transform3D(-0.062128603, 0, -0.99806815, 0, 1, 0, 0.99806815, 0, -0.062128603, 21.650639, 0.16873345, -8.824667)

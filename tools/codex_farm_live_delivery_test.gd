@@ -2,6 +2,7 @@ extends SceneTree
 
 const MainScene := preload("res://Main.tscn")
 const WorkActionScript := preload("res://Actions/WorkAction.gd")
+const VehicleDepotAccessScript := preload("res://Simulation/Transport/VehicleDepotAccess.gd")
 
 const SETTLE_PROCESS_FRAMES := 12
 const SETTLE_PHYSICS_FRAMES := 4
@@ -32,8 +33,14 @@ func _initialize() -> void:
 		return
 	world.is_paused = true
 	world.time.minutes_total = 10 * 60
+	var depot_parking_position := VehicleDepotAccessScript.resolve_marker_parking_position(main, "DeliveryVehicleDepot")
+	if not VehicleDepotAccessScript.is_finite_vector(depot_parking_position):
+		_errors.append("Main scene should contain a DeliveryVehicleDepot with a parking CollisionShape3D.")
+		_finish(main)
+		return
+	var depot_access_position := _get_vehicle_road_access_point(world, depot_parking_position)
 
-	var pair := _select_farm_supermarket_pair(world)
+	var pair := _select_farm_supermarket_pair(world, depot_access_position)
 	var farm := pair.get("farm", null) as Farm
 	var supermarket := pair.get("supermarket", null) as Supermarket
 	if farm == null:
@@ -70,6 +77,8 @@ func _initialize() -> void:
 		return
 	if not world.vehicles.has(truck):
 		_errors.append("Spawned Farm delivery truck should be registered in World.vehicles.")
+	if _planar_distance((truck as Node3D).global_position, depot_parking_position) > 2.0:
+		_errors.append("Live Farm delivery truck should spawn parked inside DeliveryVehicleDepot.")
 
 	driver.global_position = truck.call("get_entry_point_global") as Vector3
 	if driver.has_method("stop_travel"):
@@ -79,7 +88,14 @@ func _initialize() -> void:
 	if not driver.has_method("is_inside_vehicle") or not driver.is_inside_vehicle():
 		_errors.append("Live Farm Fahrer should board the spawned truck before delivery driving.")
 	if not bool(truck.call("is_driving")):
-		_errors.append("Live Farm delivery truck should start driving toward the Supermarket.")
+		_errors.append("Live Farm delivery truck should start driving out of DeliveryVehicleDepot.")
+	if str(farm.get("_delivery_phase")) == "exiting_depot":
+		var exited_depot := await _advance_vehicle_until_stopped(truck)
+		if not exited_depot:
+			_errors.append("Live Farm delivery truck did not finish the local depot exit maneuver.")
+		action.tick(world, driver, DELIVERY_TICK_MINUTES)
+	if not bool(truck.call("is_driving")):
+		_errors.append("Live Farm delivery truck should start driving toward the Supermarket after depot exit.")
 	var outbound_route := truck.get("last_vehicle_route") as PackedVector3Array
 	if outbound_route.size() <= 2:
 		_errors.append("Live Farm delivery should use the Main road graph, not a direct two-point fallback route.")
@@ -120,16 +136,24 @@ func _initialize() -> void:
 		var return_route := truck.get("last_vehicle_route") as PackedVector3Array
 		if return_route.size() <= 2:
 			_errors.append("Live Farm return trip should use the Main road graph, not a direct fallback route.")
-		elif _route_uses_building_endpoint(return_route, supermarket.get_entrance_pos(), farm.get_storage_point_global()):
-			_errors.append("Live Farm return route should stay on road waypoints instead of driving directly to building endpoints.")
-		var returned_to_farm := await _advance_vehicle_until_stopped(truck)
-		if not returned_to_farm:
-			_errors.append("Live Farm delivery truck did not return to the Farm within the test step budget.")
+		elif _route_uses_building_endpoint(return_route, supermarket.get_entrance_pos(), depot_parking_position):
+			_errors.append("Live Farm return route should stay on road waypoints before the local depot parking maneuver.")
+		var returned_to_depot_access := await _advance_vehicle_until_stopped(truck)
+		if not returned_to_depot_access:
+			_errors.append("Live Farm delivery truck did not return to the DeliveryVehicleDepot road access within the test step budget.")
 		else:
-			var farm_distance := _planar_distance((truck as Node3D).global_position, _get_vehicle_road_access_point(world, farm.get_storage_point_global()))
-			if farm_distance > 1.75:
-				_errors.append("Live Farm delivery truck stopped %.2f units from the Farm road access point after return." % farm_distance)
+			var depot_access_distance := _planar_distance((truck as Node3D).global_position, depot_access_position)
+			if depot_access_distance > 1.75:
+				_errors.append("Live Farm delivery truck stopped %.2f units from the DeliveryVehicleDepot road access point after return." % depot_access_distance)
 		action.tick(world, driver, DELIVERY_TICK_MINUTES)
+		if bool(truck.call("is_driving")):
+			var parked_at_depot := await _advance_vehicle_until_stopped(truck)
+			if not parked_at_depot:
+				_errors.append("Live Farm delivery truck did not finish the local DeliveryVehicleDepot parking maneuver.")
+		action.tick(world, driver, DELIVERY_TICK_MINUTES)
+		var depot_parking_distance := _planar_distance((truck as Node3D).global_position, depot_parking_position)
+		if depot_parking_distance > 2.0:
+			_errors.append("Live Farm delivery truck should park inside DeliveryVehicleDepot after return, distance %.2f." % depot_parking_distance)
 
 	if driver.has_method("is_inside_vehicle") and driver.is_inside_vehicle():
 		_errors.append("Live Farm Fahrer should exit the truck after the return trip.")
@@ -139,7 +163,7 @@ func _initialize() -> void:
 	_finish(main, action, world, driver)
 
 
-func _select_farm_supermarket_pair(world: World) -> Dictionary:
+func _select_farm_supermarket_pair(world: World, depot_access_position: Vector3) -> Dictionary:
 	var farms: Array[Farm] = []
 	var supermarkets: Array[Supermarket] = []
 	for building in world.buildings:
@@ -150,8 +174,9 @@ func _select_farm_supermarket_pair(world: World) -> Dictionary:
 
 	for farm in farms:
 		for supermarket in supermarkets:
-			var route := world.get_vehicle_road_path(farm.get_storage_point_global(), supermarket.get_entrance_pos())
-			if route.size() > 2:
+			var outbound_route := world.get_vehicle_road_path(depot_access_position, supermarket.get_entrance_pos())
+			var return_route := world.get_vehicle_road_path(supermarket.get_entrance_pos(), depot_access_position)
+			if outbound_route.size() > 2 and return_route.size() > 2:
 				return {
 					"farm": farm,
 					"supermarket": supermarket,
