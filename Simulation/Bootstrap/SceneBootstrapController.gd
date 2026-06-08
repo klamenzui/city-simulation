@@ -10,8 +10,11 @@ const WorldSetupScript = preload("res://Simulation/Bootstrap/WorldSetup.gd")
 const CityHallScene = preload("res://Scenes/CityHall.tscn")
 const GasStationScene = preload("res://Scenes/CityBuildings/services/services_004_b6d7b717.tscn")
 const FarmScene = preload("res://Scenes/Farm.tscn")
+const SupermarketScene = preload("res://Scenes/CityBuildings/stores/stores_003_d67cc4f3.tscn")
+const ExteriorGrassDecoratorScript = preload("res://Scenes/Environment/ExteriorGrassDecorator.gd")
 
 const OCEAN_NODE_NAME := "Ocean"
+const EXTERIOR_GRASS_NODE_NAME := "ExteriorGrass"
 const MATTE_ROUGHNESS_FLOOR := 0.9
 const MATTE_METALLIC_CAP := 0.02
 const MATTE_SPECULAR_CAP := 0.18
@@ -46,6 +49,7 @@ static func setup_scene(root: Node3D, world: World) -> void:
 	world.rebuild_road_graph(root)
 	world.rebuild_pedestrian_graph(root)
 	_ensure_ocean(world)
+	_ensure_exterior_grass(world)
 
 static func _is_headless_runtime() -> bool:
 	return DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server")
@@ -78,6 +82,8 @@ static func _spawn_missing_core_buildings(root: Node3D) -> void:
 		_spawn_if_missing(root, "GasStation", GasStationScene, Vector3(20.0, 0.0, -4.0))
 	if not _has_building_type(root, "farm"):
 		_spawn_if_missing(root, "Farm", FarmScene, Vector3(-24.0, 0.0, 14.0))
+	if not _has_building_type(root, "supermarket"):
+		_spawn_if_missing(root, "Supermarket", SupermarketScene, Vector3(13.8, 0.0, -2.9))
 	
 static func _has_building_type(root: Node3D, type_id: String) -> bool:
 	if root == null or root.get_tree() == null:
@@ -296,6 +302,16 @@ static func _ensure_ocean(world: World) -> void:
 	plane.material = ocean_material
 	ocean.mesh = plane
 	ocean.position = world.to_local(_get_ocean_world_position(world, bounds))
+
+static func _ensure_exterior_grass(world: World) -> void:
+	if world == null or world.get_node_or_null(EXTERIOR_GRASS_NODE_NAME) != null:
+		return
+
+	var grass := ExteriorGrassDecoratorScript.new() as Node3D
+	if grass == null:
+		return
+	grass.name = EXTERIOR_GRASS_NODE_NAME
+	world.add_child(grass)
 
 static func _get_ocean_world_position(world: World, bounds: AABB) -> Vector3:
 	var center := bounds.position + bounds.size * 0.5

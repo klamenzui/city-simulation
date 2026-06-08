@@ -305,18 +305,26 @@ func _select_nearest_survival_food_route(world, citizen) -> Dictionary:
 	var best: Dictionary = {"route": "", "target": null, "distance": INF}
 	var from_pos: Vector3 = citizen.global_position
 	if citizen.home != null and citizen.get_home_inventory_count("food") > 0:
+		if citizen.current_location == citizen.home:
+			return {"route": FOOD_ROUTE_HOME, "target": citizen.home, "distance": 0.0}
 		_consider_survival_food_route(best, FOOD_ROUTE_HOME, citizen.home, from_pos)
 
 	var survival_restaurant := _select_survival_restaurant(world, citizen)
 	if survival_restaurant != null:
+		if citizen.current_location == survival_restaurant:
+			return {"route": FOOD_ROUTE_RESTAURANT, "target": survival_restaurant, "distance": 0.0}
 		_consider_survival_food_route(best, FOOD_ROUTE_RESTAURANT, survival_restaurant, from_pos)
 
 	var survival_cafe := _select_survival_cafe(world, citizen)
 	if survival_cafe != null:
+		if citizen.current_location == survival_cafe:
+			return {"route": FOOD_ROUTE_CAFE, "target": survival_cafe, "distance": 0.0}
 		_consider_survival_food_route(best, FOOD_ROUTE_CAFE, survival_cafe, from_pos)
 
 	var survival_supermarket := _select_survival_supermarket(world, citizen)
 	if survival_supermarket != null and citizen.home != null and citizen.get_home_inventory_count("food") <= 0:
+		if citizen.current_location == survival_supermarket:
+			return {"route": FOOD_ROUTE_SUPERMARKET, "target": survival_supermarket, "distance": 0.0}
 		_consider_survival_food_route(best, FOOD_ROUTE_SUPERMARKET, survival_supermarket, from_pos)
 
 	return best if not str(best.get("route", "")).is_empty() else {}

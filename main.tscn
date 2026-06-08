@@ -2653,7 +2653,7 @@ transform = Transform3D(-0.4, 0, 6.03983e-08, 0, 0.4, 0, -6.03983e-08, 0, -0.4, 
 
 [node name="Stores" type="Node3D" parent="World/City/only_people_nav/only_people" unique_id=685374619]
 
-[node name="B4_Base" parent="World/City/only_people_nav/only_people/Stores" unique_id=1297833715 instance=ExtResource("50_8gn08")]
+[node name="B4_Base" parent="World/City/only_people_nav/only_people/Stores" unique_id=1297833715 groups=["building_use_supermarket"] instance=ExtResource("50_8gn08")]
 transform = Transform3D(0.9076163, 0, 0.41980064, 0, 1, 0, -0.41980064, 0, 0.9076163, 13.81895, 0.060503714, -2.9095695)
 
 [node name="B2_Base" parent="World/City/only_people_nav/only_people/Stores" unique_id=1422704373 groups=["building_use_shop"] instance=ExtResource("52_8gn08")]

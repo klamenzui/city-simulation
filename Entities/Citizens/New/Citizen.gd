@@ -41,7 +41,7 @@ const SocialVisitActionScript = preload("res://Actions/SocialVisitAction.gd")
 const TreatAtHospitalActionScript = preload("res://Actions/TreatAtHospitalAction.gd")
 const PlayerActionUiStateBuilderScript = preload("res://Simulation/UI/PlayerActionUiStateBuilder.gd")
 const PlayerInventoryUiStateBuilderScript = preload("res://Simulation/UI/PlayerInventoryUiStateBuilder.gd")
-const PlayerInventoryCatalogScript = preload("res://Simulation/UI/PlayerInventoryCatalog.gd")
+const CitizenInfoSectionBuilderScript = preload("res://Simulation/UI/CitizenInfoSectionBuilder.gd")
 const FALL_RESPAWN_DEPTH_METERS := 8.0
 const FALL_RESPAWN_COOLDOWN_SEC := 1.0
 const FALL_RESPAWN_GROUND_OFFSET := 0.12
@@ -3185,221 +3185,7 @@ func _update_debug(world: World, _h_delta: float) -> void:
 # Order: identity -> needs -> activity -> compact finance. Empty fields are
 # skipped by DebugPanel, so education only appears when it carries useful data.
 func get_info_sections(_world = null) -> Array:
-	return [
-		_build_identity_section(),
-		_build_needs_section(),
-		_build_activity_section(),
-		_build_current_building_section(_world),
-		_build_finance_section(_world),
-	]
-
-
-func _build_identity_section() -> Dictionary:
-	var rows: Array = [{"label": LocaleServiceScript.t("details.label.name"), "value": citizen_name}]
-	rows.append({"label": LocaleServiceScript.t("details.label.home"), "value": _building_label(home) if home != null else LocaleServiceScript.t("player.none")})
-	var job_str := _format_job_status_text()
-	if not job_str.is_empty():
-		rows.append({"label": LocaleServiceScript.t("details.label.job"), "value": job_str})
-	var edu_str := _format_education_status_text()
-	if not edu_str.is_empty():
-		rows.append({"label": LocaleServiceScript.t("details.label.education"), "value": edu_str})
-	return {"title": LocaleServiceScript.t("details.section.identity"), "rows": rows}
-
-
-func _format_job_status_text() -> String:
-	if job == null:
-		return LocaleServiceScript.t("details.value.job_unemployed")
-	var job_title_display := Building.get_job_title_display_label(job.title)
-	if job.workplace == null:
-		return LocaleServiceScript.t("details.value.job_unemployed_with_title") % job_title_display
-	return LocaleServiceScript.t("details.value.job_with_workplace") % [
-		job_title_display,
-		_building_label(job.workplace),
-		job.wage_per_hour
-	]
-
-
-func _format_education_status_text() -> String:
-	if job != null and job.required_education_level > education_level:
-		return LocaleServiceScript.t("details.value.education_for_job") % [
-			education_level,
-			job.required_education_level,
-			Building.get_job_title_display_label(job.title),
-		]
-	if education_level > 0:
-		return LocaleServiceScript.t("details.value.education_level") % education_level
-	return ""
-
-
-func _build_needs_section() -> Dictionary:
-	if needs == null:
-		return {"title": LocaleServiceScript.t("details.section.needs"), "rows": []}
-	return {
-		"title": LocaleServiceScript.t("details.section.needs"),
-		"rows": [
-			_build_need_row(LocaleServiceScript.t("needs.hunger.title"), needs.hunger, true),
-			_build_need_row(LocaleServiceScript.t("needs.energy.title"), needs.energy, false),
-			_build_need_row(LocaleServiceScript.t("needs.fun.title"), needs.fun, false),
-			_build_need_row(LocaleServiceScript.t("needs.social.title"), needs.social, false),
-			_build_need_row(LocaleServiceScript.t("needs.health.title"), needs.health, false),
-		]
-	}
-
-
-# `high_is_bad` is true for hunger and false for energy/fun/health.
-# Severity controls the DebugPanel color.
-func _build_need_row(label_text: String, value: float, high_is_bad: bool) -> Dictionary:
-	return {
-		"label": label_text,
-		"value": "%s  %3d / 100" % [_format_need_bar(value), int(round(value))],
-		"severity": _classify_need_severity(value, high_is_bad),
-	}
-
-
-func _classify_need_severity(value: float, high_is_bad: bool) -> String:
-	if high_is_bad:
-		if value >= 85:
-			return "critical"
-		if value >= 70:
-			return "warning"
-		return "normal"
-	if value <= 10:
-		return "critical"
-	if value <= 30:
-		return "warning"
-	return "normal"
-
-
-func _format_need_bar(value: float, width: int = 10) -> String:
-	var clamped := clampf(value, 0.0, 100.0)
-	var fill := clampi(int(round(clamped / 100.0 * width)), 0, width)
-	return "█".repeat(fill) + "░".repeat(width - fill)
-
-
-func _build_activity_section() -> Dictionary:
-	var rows: Array = []
-	var action_label := current_action.label if current_action != null else LocaleServiceScript.t("overview.action_idle")
-	if current_action == null and not _server_interaction_label.is_empty():
-		action_label = _server_interaction_label
-	if network_replica_mode and not _network_action_label.is_empty():
-		action_label = _network_action_label
-	rows.append({"label": LocaleServiceScript.t("details.label.action"), "value": action_label})
-	var location_text := _format_location_text()
-	if not location_text.is_empty():
-		rows.append({"label": LocaleServiceScript.t("details.label.location"), "value": location_text})
-	if is_travelling():
-		var target_label := _format_travel_target_label()
-		if not target_label.is_empty():
-			rows.append({"label": LocaleServiceScript.t("details.label.target"), "value": LocaleServiceScript.t("details.value.travel_target") % target_label})
-	rows.append({"label": "LOD", "value": get_simulation_lod_tier()})
-	return {"title": LocaleServiceScript.t("details.section.activity"), "rows": rows}
-
-
-func _build_current_building_section(world = null) -> Dictionary:
-	var location := _get_player_current_building()
-	if location == null:
-		return {"title": LocaleServiceScript.t("details.section.current_building"), "rows": []}
-	var rows: Array = [
-		{"label": LocaleServiceScript.t("details.label.name"), "value": location.get_display_name()},
-		{"label": LocaleServiceScript.t("details.label.type"), "value": location.get_building_type_display_label()},
-	]
-	var service := location.get_service_type()
-	if not service.is_empty() and service != "housing":
-		rows.append({"label": LocaleServiceScript.t("details.label.service"), "value": location.get_service_type_display_label()})
-	if location.is_citizen_ownable() or location.has_citizen_owner():
-		rows.append({"label": LocaleServiceScript.t("details.label.owner"), "value": location.get_owner_display_name()})
-	var hour := -1
-	if world != null and world.time != null:
-		hour = world.time.get_hour()
-	if location.open_hour != location.close_hour:
-		rows.append({
-			"label": LocaleServiceScript.t("details.label.opening_hours"),
-			"value": "%02d:00 - %02d:00 (%s)" % [
-				location.open_hour,
-				location.close_hour,
-				location.get_open_status_display_label(hour),
-			],
-		})
-	if location is CommercialBuilding:
-		var stock_text := _format_commercial_building_stock(location as CommercialBuilding)
-		if not stock_text.is_empty():
-			rows.append({"label": LocaleServiceScript.t("details.label.stock"), "value": stock_text})
-		var price_text := _format_commercial_building_prices(location as CommercialBuilding)
-		if not price_text.is_empty():
-			rows.append({"label": LocaleServiceScript.t("details.label.prices"), "value": price_text})
-	elif location is ResidentialBuilding:
-		var home_stock_text := _format_residential_building_inventory(location as ResidentialBuilding)
-		if not home_stock_text.is_empty():
-			rows.append({"label": LocaleServiceScript.t("details.label.stock"), "value": home_stock_text})
-	return {"title": LocaleServiceScript.t("details.section.current_building"), "rows": rows}
-
-
-func _format_commercial_building_stock(building: CommercialBuilding) -> String:
-	if building == null:
-		return ""
-	var parts: PackedStringArray = []
-	for key in building.inventory.keys():
-		var stock_key := str(key)
-		parts.append("%s:%d" % [_inventory_label_for_stock_key(stock_key), building.get_stock(stock_key)])
-	return ", ".join(parts)
-
-
-func _format_commercial_building_prices(building: CommercialBuilding) -> String:
-	if building == null:
-		return ""
-	var parts: PackedStringArray = []
-	for key in building.inventory.keys():
-		var stock_key := str(key)
-		parts.append("%s:%d EUR" % [_inventory_label_for_stock_key(stock_key), building.get_item_price(stock_key, 1)])
-	return ", ".join(parts)
-
-
-func _format_residential_building_inventory(building: ResidentialBuilding) -> String:
-	if building == null or not building.has_method("get_inventory_snapshot"):
-		return ""
-	var snapshot: Dictionary = building.get_inventory_snapshot()
-	var parts: PackedStringArray = []
-	for key in snapshot.keys():
-		var item_id := str(key)
-		var amount := int(snapshot.get(key, 0))
-		if amount > 0:
-			parts.append("%s:%d" % [_inventory_label_for_item_id(item_id), amount])
-	return ", ".join(parts)
-
-
-func _inventory_label_for_stock_key(stock_key: String) -> String:
-	var item_id := PlayerInventoryCatalogScript.get_shop_item_id_for_stock(stock_key)
-	if not item_id.is_empty():
-		return PlayerInventoryCatalogScript.get_label(item_id)
-	return stock_key.replace("_", " ").capitalize()
-
-
-func _inventory_label_for_item_id(item_id: String) -> String:
-	var clean := CityInventoryAdapterScript.normalize_item_id(item_id)
-	if not clean.is_empty():
-		return PlayerInventoryCatalogScript.get_label(clean)
-	return item_id.replace("_", " ").capitalize()
-
-
-func _format_location_text() -> String:
-	if current_location == null:
-		return LocaleServiceScript.t("player.location_travelling")
-	if current_location.has_method("get_display_name"):
-		return current_location.get_display_name()
-	return current_location.building_name
-
-
-func _format_travel_target_label() -> String:
-	var target_building: Building = null
-	if _debug_travel_target_building != null:
-		target_building = _debug_travel_target_building
-	elif _travel_target_building != null:
-		target_building = _travel_target_building
-	if target_building == null:
-		return ""
-	if target_building.has_method("get_display_name"):
-		return target_building.get_display_name()
-	return target_building.building_name
+	return CitizenInfoSectionBuilderScript.build(self, _world)
 
 
 func _profit_tier_label(tier: int) -> String:
@@ -3412,44 +3198,11 @@ func _profit_tier_label(tier: int) -> String:
 			return LocaleServiceScript.t("player.profit_normal")
 
 
-func _build_finance_section(world = null) -> Dictionary:
-	var rows: Array = [{"label": LocaleServiceScript.t("details.label.money"), "value": "%d EUR" % (wallet.balance if wallet != null else 0)}]
-	if job != null and job.workplace != null:
-		var base_wage: int = job.wage_per_hour
-		if world != null and world.has_method("get_wage_progression"):
-			var prog: Dictionary = world.get_wage_progression(self)
-			var eff_wage: int = int(round(float(base_wage) * float(prog.get("multiplier", 1.0))))
-			rows.append({"label": LocaleServiceScript.t("details.label.wage_per_hour"), "value": LocaleServiceScript.t("details.value.wage_with_base") % [eff_wage, base_wage]})
-			rows.append({"label": LocaleServiceScript.t("details.label.education_bonus"), "value": "+%d%%" % int(round(float(prog.get("education_bonus", 0.0)) * 100.0))})
-			rows.append({"label": LocaleServiceScript.t("details.label.experience"), "value": LocaleServiceScript.t("details.value.percent_with_days") % [
-				int(round(float(prog.get("experience_bonus", 0.0)) * 100.0)),
-				int(prog.get("tenure_days", 0)),
-			]})
-			rows.append({"label": LocaleServiceScript.t("details.label.absence_days"), "value": "%d / %d" % [
-				int(prog.get("absence_days", 0)),
-				int(prog.get("absence_limit", 3)),
-			]})
-			rows.append({"label": LocaleServiceScript.t("details.label.company"), "value": _profit_tier_label(int(prog.get("profit_tier", 1)))})
-		else:
-			rows.append({"label": LocaleServiceScript.t("details.label.wage_per_hour"), "value": "%d EUR" % base_wage})
-	var owned_count := get_owned_building_count(world)
-	if owned_count > 0:
-		rows.append({"label": LocaleServiceScript.t("details.label.owned"), "value": LocaleServiceScript.t("details.value.owned_buildings") % owned_count})
-	if home != null:
-		rows.append({"label": LocaleServiceScript.t("details.label.rent_per_day"), "value": "%d EUR" % home.rent_per_day})
-	var home_food := get_home_inventory_count("food")
-	if home_food > 0:
-		rows.append({"label": LocaleServiceScript.t("details.label.food_stock"), "value": str(home_food)})
-	if clothing_items > 0:
-		rows.append({"label": LocaleServiceScript.t("details.label.clothing"), "value": str(clothing_items)})
-	return {"title": LocaleServiceScript.t("details.section.finance"), "rows": rows}
-
-
 # Fallback for panels that do not implement the newer update_sections API.
 func _get_flat_info_fallback() -> Dictionary:
 	return {
 		"Citizen": citizen_name,
-		"Location": _format_location_text(),
+		"Location": CitizenInfoSectionBuilderScript.format_location_text(self),
 		"Action": current_action.label if current_action != null else "idle",
 		"Hunger": "%.1f / 100" % (needs.hunger if needs != null else 0.0),
 		"Energy": "%.1f / 100" % (needs.energy if needs != null else 0.0),

@@ -246,6 +246,20 @@ func _select_preferred_food_route(
 	target_cafe: Cafe,
 	target_supermarket: Supermarket
 ) -> String:
+	if citizen.home != null \
+			and citizen.current_location == citizen.home \
+			and citizen.get_home_inventory_count("food") > 0:
+		return FOOD_ROUTE_HOME
+	if target_restaurant != null and citizen.current_location == target_restaurant:
+		return FOOD_ROUTE_RESTAURANT
+	if target_cafe != null and citizen.current_location == target_cafe:
+		return FOOD_ROUTE_CAFE
+	if target_supermarket != null \
+			and citizen.current_location == target_supermarket \
+			and citizen.home != null \
+			and citizen.get_home_inventory_count("food") <= 0:
+		return FOOD_ROUTE_SUPERMARKET
+
 	var best: Dictionary = {"route": "", "distance": INF}
 	var from_pos: Vector3 = citizen.global_position
 	if citizen.home != null and citizen.get_home_inventory_count("food") > 0:
