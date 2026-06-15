@@ -1,12 +1,13 @@
 extends SceneTree
 
 const MAIN_SCENE_PATH := "res://Main.tscn"
-const GRASS_SCRIPT_PATH := "res://Scenes/Environment/ExteriorGrassDecorator.gd"
+const SCATTER_ROOT_PATH := NodePath("World/MeadowPlantsScatter")
+const GRASS_ITEM_PATH := NodePath("World/MeadowPlantsScatter/GrassItem")
 const GRASS_SCENE_PATH := "res://Scenes/Environment/Grass/grass.glb"
-const GRASS_MATERIAL_PATH := "res://Scenes/Environment/Grass/Stylized3DGrass.tres"
-const GRASS_SHADER_PATH := "res://Scenes/Environment/Grass/GrassShader.tres"
+const GRASS_MATERIAL_PATH := "res://Scenes/Plants/Biomes/Stylized3DGrass.tres"
+const GRASS_SHADER_PATH := "res://Scenes/Plants/Biomes/GrassShader.tres"
 
-var _runtime_instance_count: int = 0
+var _grass_instance_budget: int = 0
 
 
 func _initialize() -> void:
@@ -20,7 +21,7 @@ func _initialize() -> void:
 		quit(FAILED)
 		return
 
-	print("Exterior grass probe passed: instances=%d." % _runtime_instance_count)
+	print("Scatter grass probe passed: budget=%d." % _grass_instance_budget)
 	quit(OK)
 
 
@@ -35,29 +36,32 @@ func _check_main_scene_contract(errors: Array[String]) -> void:
 	for _i in range(3):
 		await physics_frame
 
-	var grass := main.get_node_or_null(NodePath("World/ExteriorGrass"))
-	if grass == null:
-		errors.append("Main scene is missing World/ExteriorGrass.")
+	if main.get_node_or_null(NodePath("World/ExteriorGrass")) != null:
+		errors.append("Main scene should use scatter grass, not legacy World/ExteriorGrass.")
+
+	var scatter := main.get_node_or_null(SCATTER_ROOT_PATH)
+	if scatter == null:
+		errors.append("Main scene is missing %s." % str(SCATTER_ROOT_PATH))
 		main.free()
 		return
+	if _count_nodes_of_type(scatter, StaticBody3D) > 0:
+		errors.append("Scatter grass must stay visual-only and contain no StaticBody3D.")
+	if _count_nodes_of_type(scatter, CollisionShape3D) > 0:
+		errors.append("Scatter grass must not add CollisionShape3D nodes.")
+	if scatter.is_in_group("buildings") or scatter.is_in_group("walkable_surface"):
+		errors.append("Scatter grass must not register as a building or walkable surface.")
 
-	if grass.get_script() == null or grass.get_script().resource_path != GRASS_SCRIPT_PATH:
-		errors.append("World/ExteriorGrass must use %s." % GRASS_SCRIPT_PATH)
-	if grass is ExteriorGrassDecorator:
-		_runtime_instance_count = grass.get_generated_instance_count()
-		if _runtime_instance_count <= 0:
-			errors.append("Exterior grass should generate visible MultiMesh instances at runtime.")
-	var grass_multimesh := grass.get_node_or_null(NodePath("GrassMultiMesh")) as MultiMeshInstance3D
-	if grass_multimesh == null:
-		errors.append("Exterior grass should create a GrassMultiMesh child at runtime.")
-	elif grass_multimesh.multimesh == null or grass_multimesh.multimesh.instance_count <= 0:
-		errors.append("GrassMultiMesh should contain a populated MultiMesh.")
-	if _count_nodes_of_type(grass, StaticBody3D) > 0:
-		errors.append("Exterior grass must stay visual-only and contain no StaticBody3D.")
-	if _count_nodes_of_type(grass, CollisionShape3D) > 0:
-		errors.append("Exterior grass must not add CollisionShape3D nodes.")
-	if grass.is_in_group("buildings") or grass.is_in_group("walkable_surface"):
-		errors.append("Exterior grass must not register as a building or walkable surface.")
+	var grass_item := main.get_node_or_null(GRASS_ITEM_PATH) as MultiMeshInstance3D
+	if grass_item == null:
+		errors.append("Main scene is missing %s." % str(GRASS_ITEM_PATH))
+		main.free()
+		return
+	if grass_item.multimesh == null or grass_item.multimesh.mesh == null:
+		errors.append("GrassItem should contain a MultiMesh with a mesh.")
+	else:
+		_grass_instance_budget = grass_item.multimesh.instance_count
+	if grass_item.material_override == null or grass_item.material_override.resource_path != GRASS_MATERIAL_PATH:
+		errors.append("GrassItem should use %s as material_override." % GRASS_MATERIAL_PATH)
 
 	main.free()
 	await process_frame

@@ -1,5 +1,11 @@
 [gd_scene format=4]
 
+[ext_resource type="Script" path="res://Simulation/Transport/VehicleAgent.gd" id="1_btvyk"]
+[ext_resource type="AudioStream" path="res://environment/audio/vehicles/engine.wav" id="2_6v7xg"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_qpsgl"]
+size = Vector3(0.6086531, 0.4167767, 1.5096)
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_qlce8"]
 resource_name = "White"
 albedo_color = Color(0.77267665, 0.77267665, 0.77267665, 1)
@@ -334,20 +340,111 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_gywp3")
 
-[node name="SUV" type="Node3D" unique_id=1667347764]
+[node name="SUV" type="VehicleBody3D" unique_id=250522134]
+collision_layer = 4
+collision_mask = 5
+mass = 16.0
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, 0.09169087, 0)
+script = ExtResource("1_btvyk")
+delivery_vehicle = false
+delivery_load_capacity = 0
+use_balance_vehicle_geometry = false
+vehicle_mass = 16.0
+center_of_mass_offset = Vector3(0, 0.09169087, 0)
+wheel_track_half_width = 0.2069420635700226
+wheel_front_z = 0.3774
+wheel_rear_z = -0.42268801212310797
+wheel_mount_y = 0.09169087111949921
+wheel_radius = 0.09169087111949921
+wheel_roll_influence = 0.35
+wheel_friction_slip = 1.1
+suspension_stiffness = 34.0
+suspension_travel = 0.12
+damping_compression = 0.9
+damping_relaxation = 1.6
+collision_shape_size = Vector3(0.6086531, 0.4167767, 1.5096)
+collision_shape_offset = Vector3(0, 0.22838834, 0)
 
-[node name="SUV_Cube" type="MeshInstance3D" parent="." unique_id=612521648]
+[node name="VehicleCollisionShape" type="CollisionShape3D" parent="." unique_id=1580643054]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.22838834, 0)
+shape = SubResource("BoxShape3D_qpsgl")
+
+[node name="FrontLeftWheel" type="VehicleWheel3D" parent="." unique_id=637215444]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.20694207, 0.09169087, 0.3774)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.09169087
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="FrontRightWheel" type="VehicleWheel3D" parent="." unique_id=1809932751]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.20694207, 0.09169087, 0.3774)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.09169087
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="RearLeftWheel" type="VehicleWheel3D" parent="." unique_id=1680073335]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.20694207, 0.09169087, -0.422688)
+use_as_traction = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.09169087
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="RearRightWheel" type="VehicleWheel3D" parent="." unique_id=196211130]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.20694207, 0.09169087, -0.422688)
+use_as_traction = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.09169087
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="VisualRoot" type="Node3D" parent="." unique_id=441476807]
+transform = Transform3D(0.3515983, 0, 0, 0, 0.3515983, 0, 0, 0, 0.3515983, 0, 0.026360413, 7.611543e-05)
+
+[node name="SUVVisual" type="Node3D" parent="VisualRoot" unique_id=1667347764]
+
+[node name="SUV_Cube" type="MeshInstance3D" parent="VisualRoot/SUVVisual" unique_id=612521648]
 mesh = SubResource("ArrayMesh_5it3x")
 skeleton = NodePath("")
 
-[node name="SUV_BackWheels_Cylinder_009" type="MeshInstance3D" parent="." unique_id=1516600906]
+[node name="SUV_BackWheels_Cylinder_009" type="MeshInstance3D" parent="VisualRoot/SUVVisual" unique_id=1516600906]
 mesh = SubResource("ArrayMesh_u000s")
 skeleton = NodePath("")
 
-[node name="SUV_FrontLeftWheel_Cylinder_010" type="MeshInstance3D" parent="." unique_id=1074728586]
+[node name="SUV_FrontLeftWheel_Cylinder_010" type="MeshInstance3D" parent="VisualRoot/SUVVisual" unique_id=1074728586]
 mesh = SubResource("ArrayMesh_w65tw")
 skeleton = NodePath("")
 
-[node name="SUV_FrontRightWheel_Cylinder_005" type="MeshInstance3D" parent="." unique_id=1574678658]
+[node name="SUV_FrontRightWheel_Cylinder_005" type="MeshInstance3D" parent="VisualRoot/SUVVisual" unique_id=1574678658]
 mesh = SubResource("ArrayMesh_ydkln")
 skeleton = NodePath("")
+
+[node name="EntryPoint" type="Node3D" parent="." unique_id=675442520]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.43823025, 0.03, 0.02)
+
+[node name="SeatPoint" type="Node3D" parent="." unique_id=323205703]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.10955756, 0.28340814, 0.08)
+
+[node name="EngineSound" type="AudioStreamPlayer3D" parent="." unique_id=437880642]
+stream = ExtResource("2_6v7xg")
+volume_db = -28.0
+pitch_scale = 0.05
+attenuation_filter_cutoff_hz = 20500.0

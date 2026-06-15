@@ -30,6 +30,7 @@ Purpose: likely duplication areas to inspect before adding new code.
 | serviceflowminigame | 2 | Scenes/Minigames/ServiceFlow/ServiceFlowMinigame.gd<br>Scenes/Minigames/ServiceFlow/ServiceFlowMinigame.tscn |
 | teacherlessonminigame | 2 | Scenes/Minigames/TeacherLesson/TeacherLessonMinigame.gd<br>Scenes/Minigames/TeacherLesson/TeacherLessonMinigame.tscn |
 | trafficlight_c_active | 2 | ImportedCitySource/scenes/trafficlight_c_active.gd<br>ImportedCitySource/scenes/trafficlight_c_active.tscn |
+| vehicledepot | 2 | Simulation/Transport/VehicleDepot.gd<br>Simulation/Transport/VehicleDepot.tscn |
 | warehousestackminigame | 2 | Scenes/Minigames/WarehouseStack/WarehouseStackMinigame.gd<br>Scenes/Minigames/WarehouseStack/WarehouseStackMinigame.tscn |
 | world | 2 | ImportedCitySource/scripts/world.gd<br>Simulation/World.gd |
 

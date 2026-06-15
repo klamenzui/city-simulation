@@ -1,6 +1,6 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://dmhw6xfti2ruq"]
 
-[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city_pack/Box_citybits_texture.png" id="1_if68l"]
+[ext_resource type="Texture2D" uid="uid://21irgfarx2im" path="res://ImportedCitySource/assets/city_pack/Box_citybits_texture.png" id="1_if68l"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_727nm"]
 resource_name = "citybits_texture"
@@ -49,6 +49,6 @@ shadow_mesh = SubResource("ArrayMesh_18j7t")
 [node name="Box" type="Node3D" unique_id=163361701]
 
 [node name="box_A" type="MeshInstance3D" parent="." unique_id=1578297481]
-transform = Transform3D(100, 0, 0, 0, 100, -4.371139e-06, 0, 4.371139e-06, 100, 0, 0, 0)
+transform = Transform3D(50, 0, 0, 0, 50, -2.1855694e-06, 0, 2.1855694e-06, 50, 0, 0, 0)
 mesh = SubResource("ArrayMesh_02ook")
 skeleton = NodePath("")

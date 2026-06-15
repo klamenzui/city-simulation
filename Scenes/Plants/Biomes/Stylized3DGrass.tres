@@ -1,6 +1,6 @@
-[gd_resource type="ShaderMaterial" load_steps=4 format=3]
+[gd_resource type="ShaderMaterial" format=3 uid="uid://cwey8mao74ycy"]
 
-[ext_resource type="Shader" path="res://Scenes/Environment/Grass/GrassShader.tres" id="1_tuser"]
+[ext_resource type="Shader" uid="uid://ba0q8uxy1gjnf" path="res://Scenes/Plants/Biomes/GrassShader.tres" id="1_8q1bp"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_txcs8"]
 frequency = 0.005
@@ -13,7 +13,7 @@ seamless_blend_skirt = 0.3
 
 [resource]
 render_priority = 0
-shader = ExtResource("1_tuser")
+shader = ExtResource("1_8q1bp")
 shader_parameter/WindNoise = SubResource("NoiseTexture2D_cpywb")
 shader_parameter/BaseColor = Color(0.141176, 0.156863, 0.07451, 1)
 shader_parameter/WindColor = Color(0.384314, 0.529412, 0.301961, 1)

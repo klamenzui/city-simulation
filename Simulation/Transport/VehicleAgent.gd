@@ -12,6 +12,7 @@ const TRAFFIC_LIGHT_GROUP := "traffic_lights"
 const VEHICLE_COLLISION_LAYER := 4
 const VEHICLE_WORLD_AND_VEHICLE_MASK := 5
 const ARRIVAL_EXIT_MAX_ACCESS_DISTANCE := 8.0
+const CARGO_LOAD_NODE := "Load"
 
 @export var delivery_vehicle: bool = true
 @export var delivery_load_capacity: int = 8
@@ -63,6 +64,7 @@ const ARRIVAL_EXIT_MAX_ACCESS_DISTANCE := 8.0
 @export var route_vehicle_lateral_tolerance: float = 0.9
 @export var route_vehicle_stop_distance: float = 1.7
 @export var route_vehicle_slowdown_distance: float = 3.2
+@export var route_start_snap_max_distance: float = 2.5
 @export var obey_traffic_lights: bool = true
 @export var traffic_light_detection_distance: float = 6.0
 @export var traffic_light_lateral_tolerance: float = 0.85
@@ -116,6 +118,7 @@ func _ready() -> void:
 	_ensure_vehicle_audio()
 	_ensure_marker("EntryPoint", Vector3(0.3675, 0.0075, -0.0975))
 	_ensure_marker("SeatPoint", Vector3(0.12, 0.3375, -0.0825))
+	_set_cargo_visible(false)
 	_set_manual_physics_active(false)
 	set_physics_process(true)
 	call_deferred("_register_with_world")
@@ -164,8 +167,12 @@ func assign_delivery_driver_to_position(
 		return false
 	target_building = delivery_target
 	target_position = delivery_target_pos
+	_set_cargo_visible(delivery_target != null)
 	_arrival_exit_position = _resolve_arrival_exit_position(world, delivery_target_pos, delivery_target)
-	return start_drive_to(delivery_target_pos, world)
+	if not start_drive_to(delivery_target_pos, world):
+		_set_cargo_visible(false)
+		return false
+	return true
 
 
 func board_driver(citizen: Citizen) -> bool:
@@ -237,7 +244,18 @@ func _start_drive_to(destination: Vector3, world: World = null, unboard_driver_o
 		if current_driver != null:
 			unboard_driver(world, get_entry_point_global())
 		return false
-	_snap_to_route_start_if_needed(last_vehicle_route)
+	if not _snap_to_route_start_if_needed(last_vehicle_route):
+		last_path_failed = true
+		_route_index = -1
+		_current_speed = 0.0
+		_is_driving = false
+		_waiting_for_traffic_light = false
+		_waiting_for_vehicle = false
+		_set_manual_physics_active(false)
+		_unboard_driver_on_trip_finish = true
+		if current_driver != null:
+			unboard_driver(world, get_entry_point_global())
+		return false
 	_route_index = 1
 	_current_speed = 0.0
 	_is_driving = last_vehicle_route.size() >= 2
@@ -269,6 +287,10 @@ func is_manual_driving() -> bool:
 
 func has_arrived() -> bool:
 	return not _is_driving
+
+
+func set_delivery_cargo_visible(show_cargo: bool) -> void:
+	_set_cargo_visible(show_cargo)
 
 
 func is_waiting_at_traffic_light() -> bool:
@@ -410,6 +432,7 @@ func _advance_manual_drive(delta: float) -> void:
 
 func _finish_trip(world: World = null) -> void:
 	stop_vehicle()
+	_set_cargo_visible(false)
 	var driver := current_driver
 	if _unboard_driver_on_trip_finish:
 		driver = unboard_driver(world)
@@ -432,15 +455,24 @@ func _build_vehicle_route(destination: Vector3, world: World = null) -> PackedVe
 	last_path_failed = true
 	return PackedVector3Array()
 
-func _snap_to_route_start_if_needed(route: PackedVector3Array) -> void:
+func _snap_to_route_start_if_needed(route: PackedVector3Array) -> bool:
 	if route.is_empty():
-		return
+		return true
 	var route_start := route[0]
-	if _planar_distance(global_position, route_start) <= waypoint_reach_distance:
-		return
+	var snap_distance := _planar_distance(global_position, route_start)
+	if snap_distance <= waypoint_reach_distance:
+		return true
+	if snap_distance > maxf(route_start_snap_max_distance, waypoint_reach_distance):
+		push_warning("VehicleAgent: Refusing %.2f unit route-start snap from %s to %s." % [
+			snap_distance,
+			str(global_position),
+			str(route_start),
+		])
+		return false
 	global_position = Vector3(route_start.x, global_position.y, route_start.z)
 	_snap_to_ground_now()
 	_pin_current_driver_to_seat()
+	return true
 
 
 func _remaining_route_distance(current_segment_distance: float) -> float:
@@ -474,6 +506,15 @@ func _ensure_marker(marker_name: String, local_position: Vector3) -> void:
 	marker.name = marker_name
 	marker.position = local_position
 	add_child(marker)
+
+
+func _set_cargo_visible(show_cargo: bool) -> void:
+	# Toggle the editor-authored "Load" node holding the visual cargo boxes. The
+	# boxes are pure MeshInstance children, so they ride the truck transform with
+	# no physics body and never collide or tunnel.
+	var load_node := get_node_or_null(CARGO_LOAD_NODE) as Node3D
+	if load_node != null:
+		load_node.visible = show_cargo
 
 
 func _configure_rigid_body() -> void:
@@ -539,6 +580,7 @@ func _apply_balance_settings() -> void:
 	route_vehicle_lateral_tolerance = BalanceConfig.get_float("transport.vehicle.route_vehicle_lateral_tolerance", route_vehicle_lateral_tolerance)
 	route_vehicle_stop_distance = BalanceConfig.get_float("transport.vehicle.route_vehicle_stop_distance", route_vehicle_stop_distance)
 	route_vehicle_slowdown_distance = BalanceConfig.get_float("transport.vehicle.route_vehicle_slowdown_distance", route_vehicle_slowdown_distance)
+	route_start_snap_max_distance = BalanceConfig.get_float("transport.vehicle.route_start_snap_max_distance", route_start_snap_max_distance)
 	vehicle_audio_enabled = BalanceConfig.get_bool("transport.vehicle.audio_enabled", vehicle_audio_enabled)
 	engine_audio_path = BalanceConfig.get_string("transport.vehicle.engine_audio_path", engine_audio_path)
 	impact_audio_path = BalanceConfig.get_string("transport.vehicle.impact_audio_path", impact_audio_path)
@@ -656,6 +698,8 @@ func _find_blocking_vehicle(direction: Vector3) -> Node3D:
 		var lateral_offset := to_vehicle - planar_direction * forward_distance
 		if lateral_offset.length() > max_lateral:
 			continue
+		if not _should_yield_to_route_vehicle(other_vehicle, planar_direction):
+			continue
 		if forward_distance < best_forward_distance:
 			best_forward_distance = forward_distance
 			best_vehicle = other_vehicle
@@ -680,6 +724,37 @@ func _should_ignore_vehicle_for_route_spacing(other_vehicle: Node3D) -> bool:
 		if planar_velocity.length_squared() > 0.0025:
 			return false
 	return true
+
+
+func _should_yield_to_route_vehicle(other_vehicle: Node3D, travel_direction: Vector3) -> bool:
+	if other_vehicle == null:
+		return false
+	if other_vehicle is not VehicleAgent:
+		return true
+	var vehicle_agent := other_vehicle as VehicleAgent
+	var other_direction := vehicle_agent._get_route_drive_direction()
+	if other_direction == Vector3.ZERO:
+		return true
+	var direction_dot := _normalize_planar(travel_direction).dot(other_direction)
+	if direction_dot < -0.35:
+		return get_instance_id() > vehicle_agent.get_instance_id()
+	return true
+
+
+func _get_route_drive_direction() -> Vector3:
+	if not _is_driving or last_vehicle_route.size() < 2:
+		var planar_velocity := linear_velocity
+		planar_velocity.y = 0.0
+		return planar_velocity.normalized() if planar_velocity.length_squared() > 0.0001 else Vector3.ZERO
+	if _route_index >= 0 and _route_index < last_vehicle_route.size():
+		var to_waypoint := last_vehicle_route[_route_index] - global_position
+		to_waypoint.y = 0.0
+		if to_waypoint.length_squared() > 0.0001:
+			return to_waypoint.normalized()
+	var from_index := clampi(_route_index - 1, 0, last_vehicle_route.size() - 2)
+	var fallback := last_vehicle_route[from_index + 1] - last_vehicle_route[from_index]
+	fallback.y = 0.0
+	return fallback.normalized() if fallback.length_squared() > 0.0001 else Vector3.ZERO
 
 
 func _get_vehicle_stop_line_distance(other_vehicle: Node3D, direction: Vector3) -> float:
@@ -756,11 +831,8 @@ func _ensure_key_action(action_name: String, keycode: int) -> void:
 
 
 func _ensure_vehicle_collision_shape() -> void:
-	if get_node_or_null("VehicleCollisionShape") != null:
+	if _has_enabled_collision_shape(self):
 		return
-	for child in get_children():
-		if child is CollisionShape3D:
-			return
 	var shape_node := CollisionShape3D.new()
 	shape_node.name = "VehicleCollisionShape"
 	var shape := BoxShape3D.new()
@@ -768,6 +840,17 @@ func _ensure_vehicle_collision_shape() -> void:
 	shape_node.shape = shape
 	shape_node.position = collision_shape_offset
 	add_child(shape_node)
+
+
+func _has_enabled_collision_shape(node: Node) -> bool:
+	if node is CollisionShape3D:
+		var shape_node := node as CollisionShape3D
+		if not shape_node.disabled and shape_node.shape != null:
+			return true
+	for child in node.get_children():
+		if _has_enabled_collision_shape(child):
+			return true
+	return false
 
 
 func _ensure_vehicle_wheels() -> void:

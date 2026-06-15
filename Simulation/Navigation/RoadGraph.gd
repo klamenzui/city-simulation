@@ -154,8 +154,19 @@ func _append_transport_segments(transport_root: Node3D, out: Array[Node3D]) -> v
 		if category is not Node3D:
 			continue
 		for segment in (category as Node3D).get_children():
-			if segment is Node3D:
+			if segment is Node3D and not _is_non_road_transport_node(segment as Node3D):
 				out.append(segment as Node3D)
+
+func _is_non_road_transport_node(node: Node3D) -> bool:
+	if node == null:
+		return true
+	if node is VehicleDepot:
+		return true
+	if node.is_in_group("delivery_loading_depots") or node.is_in_group("delivery_vehicle_depots"):
+		return true
+	if node.get_node_or_null("ParkingSpots") != null:
+		return true
+	return false
 
 func _build_links() -> void:
 	_rebuild_road_support_keys()

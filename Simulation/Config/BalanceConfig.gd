@@ -149,6 +149,7 @@ static func _default_data() -> Dictionary:
 				"route_vehicle_lateral_tolerance": 0.9,
 				"route_vehicle_stop_distance": 1.7,
 				"route_vehicle_slowdown_distance": 3.2,
+				"route_start_snap_max_distance": 2.5,
 				"obey_traffic_lights": true,
 				"traffic_light_detection_distance": 6.0,
 				"traffic_light_lateral_tolerance": 0.85,

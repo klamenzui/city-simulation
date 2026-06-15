@@ -15,11 +15,16 @@ const DELIVERY_PHASE_NONE := ""
 const DELIVERY_PHASE_TO_STORAGE := "to_storage"
 const DELIVERY_PHASE_TO_VEHICLE := "to_vehicle"
 const DELIVERY_PHASE_EXITING_DEPOT := "exiting_depot"
+const DELIVERY_PHASE_DRIVING_TO_LOADING := "driving_to_loading"
+const DELIVERY_PHASE_PARKING_LOADING := "parking_loading"
+const DELIVERY_PHASE_LOADING := "loading"
+const DELIVERY_PHASE_EXITING_LOADING := "exiting_loading"
 const DELIVERY_PHASE_DRIVING_TO_TARGET := "driving_to_target"
 const DELIVERY_PHASE_UNLOADING := "unloading"
 const DELIVERY_PHASE_DRIVING_RETURN := "driving_return"
 const DELIVERY_PHASE_PARKING_DEPOT := "parking_depot"
 const DELIVERY_DEPOT_MARKER_NAME := "DeliveryVehicleDepot"
+const DELIVERY_LOADING_DEPOT_MARKER_NAME := "DeliveryLoadingDepot"
 const DELIVERY_DEPOT_MAX_LOCAL_MANEUVER_DISTANCE := 16.0
 const VehicleDepotAccessScript := preload("res://Simulation/Transport/VehicleDepotAccess.gd")
 
@@ -34,6 +39,7 @@ const VehicleDepotAccessScript := preload("res://Simulation/Transport/VehicleDep
 @export var supermarket_delivery_item: String = "grocery_bundle"
 @export var direct_supermarket_delivery_enabled: bool = true
 @export var direct_delivery_batch_per_supermarket: int = 35
+@export var delivery_load_duration_minutes: int = 5
 @export var delivery_unload_duration_minutes: int = 10
 @export var direct_delivery_price_multiplier: float = 0.85
 @export var market_export_enabled: bool = true
@@ -62,6 +68,10 @@ var _delivery_minutes_left: int = 0
 var _delivery_vehicle = null
 var _delivery_depot_parking_position: Vector3 = Vector3.INF
 var _delivery_depot_road_access_position: Vector3 = Vector3.INF
+var _delivery_parking_spot: VehicleParkingSpot = null
+var _delivery_loading_parking_position: Vector3 = Vector3.INF
+var _delivery_loading_road_access_position: Vector3 = Vector3.INF
+var _delivery_loading_spot: VehicleParkingSpot = null
 var _player_work_session_citizen_ids: Dictionary = {}
 
 func _ready() -> void:
@@ -79,6 +89,7 @@ func _ready() -> void:
 	supermarket_delivery_item = str(settings.get("supermarket_delivery_item", supermarket_delivery_item)).strip_edges()
 	direct_supermarket_delivery_enabled = bool(settings.get("direct_supermarket_delivery_enabled", direct_supermarket_delivery_enabled))
 	direct_delivery_batch_per_supermarket = maxi(int(settings.get("direct_delivery_batch_per_supermarket", direct_delivery_batch_per_supermarket)), 1)
+	delivery_load_duration_minutes = maxi(int(settings.get("delivery_load_duration_minutes", delivery_load_duration_minutes)), 1)
 	delivery_unload_duration_minutes = maxi(int(settings.get("delivery_unload_duration_minutes", delivery_unload_duration_minutes)), 1)
 	direct_delivery_price_multiplier = maxf(float(settings.get("direct_delivery_price_multiplier", direct_delivery_price_multiplier)), 0.01)
 	market_export_enabled = bool(settings.get("market_export_enabled", market_export_enabled))
@@ -473,14 +484,6 @@ func _tick_delivery_worker(world: World, citizen: Citizen, tick_minutes: int) ->
 			if not _ensure_delivery_vehicle(world):
 				_release_delivery_worker()
 				return
-			var load_capacity := VehicleDepotAccessScript.get_delivery_vehicle_load_capacity(
-				_delivery_vehicle,
-				direct_delivery_batch_per_supermarket
-			)
-			_delivery_quantity = _calculate_delivery_quantity(world, _delivery_target, load_capacity)
-			if _delivery_quantity <= 0:
-				_release_delivery_worker()
-				return
 			_delivery_phase = DELIVERY_PHASE_TO_VEHICLE
 			_start_worker_travel_to(world, citizen, _delivery_vehicle.get_entry_point_global())
 		DELIVERY_PHASE_TO_VEHICLE:
@@ -495,6 +498,45 @@ func _tick_delivery_worker(world: World, citizen: Citizen, tick_minutes: int) ->
 			if citizen.has_method("stop_travel"):
 				citizen.stop_travel()
 			if not _start_delivery_depot_exit(world, citizen):
+				_release_delivery_worker()
+				return
+		DELIVERY_PHASE_DRIVING_TO_LOADING:
+			if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
+				_release_delivery_worker()
+				return
+			if _delivery_vehicle.is_driving():
+				return
+			if not (citizen.has_method("is_inside_vehicle") and citizen.is_inside_vehicle()):
+				_release_delivery_worker()
+				return
+			if not _start_delivery_loading_parking():
+				_release_delivery_worker()
+				return
+			_delivery_phase = DELIVERY_PHASE_PARKING_LOADING
+		DELIVERY_PHASE_PARKING_LOADING:
+			if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
+				_release_delivery_worker()
+				return
+			if _delivery_vehicle.is_driving():
+				return
+			_finish_delivery_loading_parking()
+		DELIVERY_PHASE_LOADING:
+			_delivery_minutes_left -= tick_minutes
+			if _delivery_minutes_left > 0:
+				return
+			if not _finish_delivery_loading(world, citizen):
+				_release_delivery_worker()
+				return
+		DELIVERY_PHASE_EXITING_LOADING:
+			if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
+				_release_delivery_worker()
+				return
+			if _delivery_vehicle.is_driving():
+				return
+			if not (citizen.has_method("is_inside_vehicle") and citizen.is_inside_vehicle()):
+				_release_delivery_worker()
+				return
+			if not _start_delivery_after_loading_exit(world, citizen):
 				_release_delivery_worker()
 				return
 		DELIVERY_PHASE_DRIVING_TO_TARGET:
@@ -518,10 +560,9 @@ func _tick_delivery_worker(world: World, citizen: Citizen, tick_minutes: int) ->
 			if not (citizen.has_method("is_inside_vehicle") and citizen.is_inside_vehicle()):
 				_release_delivery_worker()
 				return
-			if not _delivery_vehicle.assign_delivery_driver(citizen, _delivery_target, world):
+			if not _start_delivery_drive_to_loading(world, citizen):
 				_release_delivery_worker()
 				return
-			_delivery_phase = DELIVERY_PHASE_DRIVING_TO_TARGET
 		DELIVERY_PHASE_UNLOADING:
 			_delivery_minutes_left -= tick_minutes
 			if _delivery_minutes_left > 0:
@@ -558,20 +599,110 @@ func _start_delivery_depot_exit(world: World, citizen: Citizen) -> bool:
 		return false
 	if not _resolve_delivery_depot_positions(world):
 		return false
+	if not _resolve_delivery_loading_positions(world):
+		return false
 	if not _delivery_vehicle.board_driver(citizen):
 		return false
+	# Leaving the depot frees the spot this vehicle was parked on.
+	_release_delivery_parking_spot()
 	var distance_to_access := VehicleDepotAccessScript.planar_distance(_delivery_vehicle.global_position, _delivery_depot_road_access_position)
 	if distance_to_access <= _vehicle_arrival_radius():
-		if not _delivery_vehicle.assign_delivery_driver(citizen, _delivery_target, world):
-			return false
-		_delivery_phase = DELIVERY_PHASE_DRIVING_TO_TARGET
-		return true
+		return _start_delivery_drive_to_loading(world, citizen)
 	if distance_to_access > DELIVERY_DEPOT_MAX_LOCAL_MANEUVER_DISTANCE:
 		push_warning("Farm: DeliveryVehicleDepot parking area is too far from road access.")
 		return false
 	if not _delivery_vehicle.start_drive_to_keep_driver(_delivery_depot_road_access_position, null):
 		return false
 	_delivery_phase = DELIVERY_PHASE_EXITING_DEPOT
+	return true
+
+func _start_delivery_drive_to_loading(world: World, citizen: Citizen) -> bool:
+	if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
+		return false
+	if not _resolve_delivery_loading_positions(world):
+		return false
+	if not _delivery_vehicle.board_driver(citizen):
+		return false
+	if _delivery_vehicle.has_method("set_delivery_cargo_visible"):
+		_delivery_vehicle.set_delivery_cargo_visible(false)
+	_delivery_vehicle.target_building = null
+	_delivery_vehicle.target_position = _delivery_loading_road_access_position
+	if not _delivery_vehicle.start_drive_to_keep_driver(_delivery_loading_road_access_position, world):
+		return false
+	_delivery_phase = DELIVERY_PHASE_DRIVING_TO_LOADING
+	return true
+
+func _start_delivery_loading_parking() -> bool:
+	if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
+		return false
+	_ensure_delivery_loading_spot()
+	var parking_position := _get_delivery_loading_parking_position()
+	if not VehicleDepotAccessScript.is_finite_vector(parking_position):
+		return false
+	var distance_to_parking := VehicleDepotAccessScript.planar_distance(_delivery_vehicle.global_position, parking_position)
+	if distance_to_parking <= _vehicle_arrival_radius():
+		_place_delivery_vehicle_at(parking_position)
+		_occupy_delivery_loading_spot()
+		return true
+	if distance_to_parking > DELIVERY_DEPOT_MAX_LOCAL_MANEUVER_DISTANCE:
+		push_warning("Farm: DeliveryLoadingDepot parking area is too far from road access.")
+		return false
+	return _delivery_vehicle.start_drive_to_keep_driver(parking_position, null)
+
+func _finish_delivery_loading_parking() -> void:
+	var parking_position := _get_delivery_loading_parking_position()
+	if _delivery_vehicle != null and is_instance_valid(_delivery_vehicle) \
+			and VehicleDepotAccessScript.is_finite_vector(parking_position):
+		if VehicleDepotAccessScript.planar_distance(_delivery_vehicle.global_position, parking_position) > _vehicle_arrival_radius():
+			_place_delivery_vehicle_at(parking_position)
+	_occupy_delivery_loading_spot()
+	_delivery_phase = DELIVERY_PHASE_LOADING
+	_delivery_minutes_left = delivery_load_duration_minutes
+
+func _finish_delivery_loading(world: World, citizen: Citizen) -> bool:
+	if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
+		return false
+	if _delivery_target != null and is_instance_valid(_delivery_target):
+		var load_capacity := VehicleDepotAccessScript.get_delivery_vehicle_load_capacity(
+			_delivery_vehicle,
+			direct_delivery_batch_per_supermarket
+		)
+		_delivery_quantity = _calculate_delivery_quantity(world, _delivery_target, load_capacity)
+	else:
+		_delivery_quantity = 0
+	if _delivery_vehicle.has_method("set_delivery_cargo_visible"):
+		_delivery_vehicle.set_delivery_cargo_visible(_delivery_quantity > 0)
+	return _start_delivery_loading_exit(world, citizen)
+
+func _start_delivery_loading_exit(world: World, citizen: Citizen) -> bool:
+	if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
+		return false
+	if not _resolve_delivery_loading_positions(world):
+		return false
+	_release_delivery_loading_spot()
+	var distance_to_access := VehicleDepotAccessScript.planar_distance(_delivery_vehicle.global_position, _delivery_loading_road_access_position)
+	if distance_to_access <= _vehicle_arrival_radius():
+		return _start_delivery_after_loading_exit(world, citizen)
+	if distance_to_access > DELIVERY_DEPOT_MAX_LOCAL_MANEUVER_DISTANCE:
+		push_warning("Farm: DeliveryLoadingDepot parking area is too far from road access after loading.")
+		return false
+	if not _delivery_vehicle.start_drive_to_keep_driver(_delivery_loading_road_access_position, null):
+		return false
+	_delivery_phase = DELIVERY_PHASE_EXITING_LOADING
+	return true
+
+func _start_delivery_after_loading_exit(world: World, citizen: Citizen) -> bool:
+	if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
+		return false
+	if _delivery_quantity <= 0 or _delivery_target == null or not is_instance_valid(_delivery_target):
+		_delivery_quantity = 0
+		if not _start_delivery_return_to_depot(world, citizen):
+			return false
+		_delivery_phase = DELIVERY_PHASE_DRIVING_RETURN
+		return true
+	if not _delivery_vehicle.assign_delivery_driver(citizen, _delivery_target, world):
+		return false
+	_delivery_phase = DELIVERY_PHASE_DRIVING_TO_TARGET
 	return true
 
 func _start_delivery_return_to_depot(world: World, citizen: Citizen) -> bool:
@@ -584,25 +715,82 @@ func _start_delivery_return_to_depot(world: World, citizen: Citizen) -> bool:
 func _start_delivery_depot_parking() -> bool:
 	if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
 		return false
-	if not VehicleDepotAccessScript.is_finite_vector(_delivery_depot_parking_position):
+	_ensure_delivery_parking_spot()
+	var parking_position := _delivery_parking_position()
+	if not VehicleDepotAccessScript.is_finite_vector(parking_position):
 		return false
-	var distance_to_parking := VehicleDepotAccessScript.planar_distance(_delivery_vehicle.global_position, _delivery_depot_parking_position)
+	var distance_to_parking := VehicleDepotAccessScript.planar_distance(_delivery_vehicle.global_position, parking_position)
 	if distance_to_parking <= _vehicle_arrival_radius():
-		_place_delivery_vehicle_at(_delivery_depot_parking_position)
+		_place_delivery_vehicle_at(parking_position)
+		_occupy_delivery_parking_spot()
 		return true
 	if distance_to_parking > DELIVERY_DEPOT_MAX_LOCAL_MANEUVER_DISTANCE:
 		push_warning("Farm: DeliveryVehicleDepot parking area is too far from return road access.")
 		return false
-	return _delivery_vehicle.start_drive_to(_delivery_depot_parking_position, null)
+	return _delivery_vehicle.start_drive_to(parking_position, null)
 
 func _finish_delivery_after_depot_parking(world: World, citizen: Citizen) -> void:
+	var parking_position := _delivery_parking_position()
 	if _delivery_vehicle != null and is_instance_valid(_delivery_vehicle) \
-			and VehicleDepotAccessScript.is_finite_vector(_delivery_depot_parking_position):
-		if VehicleDepotAccessScript.planar_distance(_delivery_vehicle.global_position, _delivery_depot_parking_position) > _vehicle_arrival_radius():
-			_place_delivery_vehicle_at(_delivery_depot_parking_position)
+			and VehicleDepotAccessScript.is_finite_vector(parking_position):
+		if VehicleDepotAccessScript.planar_distance(_delivery_vehicle.global_position, parking_position) > _vehicle_arrival_radius():
+			_place_delivery_vehicle_at(parking_position)
+	_occupy_delivery_parking_spot()
 	if citizen.has_method("enter_building"):
 		citizen.enter_building(self, world, true, true)
 	_release_delivery_worker()
+
+# Reserves a free VehicleDepot parking spot for this building's truck. Falls back to
+# the marker-center position when the depot exposes no VehicleParkingSpot.
+func _ensure_delivery_parking_spot() -> void:
+	if _delivery_parking_spot != null and is_instance_valid(_delivery_parking_spot):
+		return
+	_delivery_parking_spot = VehicleDepotAccessScript.reserve_free_parking_spot(
+		self, _delivery_vehicle, DELIVERY_DEPOT_MARKER_NAME
+	)
+
+func _delivery_parking_position() -> Vector3:
+	if _delivery_parking_spot != null and is_instance_valid(_delivery_parking_spot):
+		return _delivery_parking_spot.get_parking_transform().origin
+	return _delivery_depot_parking_position
+
+func _occupy_delivery_parking_spot() -> void:
+	VehicleDepotAccessScript.occupy_vehicle_spot(_delivery_vehicle, _delivery_parking_spot)
+	_delivery_parking_spot = null
+
+func _release_delivery_parking_spot() -> void:
+	VehicleDepotAccessScript.release_vehicle_spot(_delivery_vehicle)
+	_release_reserved_delivery_parking_spot()
+
+func _release_reserved_delivery_parking_spot() -> void:
+	if _delivery_parking_spot != null and is_instance_valid(_delivery_parking_spot):
+		_delivery_parking_spot.release(_delivery_vehicle)
+	_delivery_parking_spot = null
+
+func _ensure_delivery_loading_spot() -> void:
+	if _delivery_loading_spot != null and is_instance_valid(_delivery_loading_spot):
+		return
+	_delivery_loading_spot = VehicleDepotAccessScript.reserve_free_parking_spot(
+		self, _delivery_vehicle, DELIVERY_LOADING_DEPOT_MARKER_NAME
+	)
+
+func _get_delivery_loading_parking_position() -> Vector3:
+	if _delivery_loading_spot != null and is_instance_valid(_delivery_loading_spot):
+		return _delivery_loading_spot.get_parking_transform().origin
+	return _delivery_loading_parking_position
+
+func _occupy_delivery_loading_spot() -> void:
+	VehicleDepotAccessScript.occupy_vehicle_spot(_delivery_vehicle, _delivery_loading_spot)
+	_delivery_loading_spot = null
+
+func _release_delivery_loading_spot() -> void:
+	VehicleDepotAccessScript.release_vehicle_spot(_delivery_vehicle)
+	_release_reserved_delivery_loading_spot()
+
+func _release_reserved_delivery_loading_spot() -> void:
+	if _delivery_loading_spot != null and is_instance_valid(_delivery_loading_spot):
+		_delivery_loading_spot.release(_delivery_vehicle)
+	_delivery_loading_spot = null
 
 func _resolve_delivery_depot_positions(world: World) -> bool:
 	var parking_position := VehicleDepotAccessScript.resolve_marker_parking_position(self, DELIVERY_DEPOT_MARKER_NAME)
@@ -617,6 +805,21 @@ func _resolve_delivery_depot_positions(world: World) -> bool:
 		return false
 	_delivery_depot_parking_position = parking_position
 	_delivery_depot_road_access_position = road_access
+	return true
+
+func _resolve_delivery_loading_positions(world: World) -> bool:
+	var parking_position := VehicleDepotAccessScript.resolve_marker_parking_position(self, DELIVERY_LOADING_DEPOT_MARKER_NAME)
+	if not VehicleDepotAccessScript.is_finite_vector(parking_position):
+		push_warning("Farm: Missing DeliveryLoadingDepot for delivery truck loading.")
+		return false
+	var road_access := parking_position
+	if world != null and world.has_method("get_vehicle_road_access_point"):
+		road_access = world.get_vehicle_road_access_point(parking_position)
+	if not VehicleDepotAccessScript.is_finite_vector(road_access):
+		push_warning("Farm: DeliveryLoadingDepot has no valid road access.")
+		return false
+	_delivery_loading_parking_position = parking_position
+	_delivery_loading_road_access_position = road_access
 	return true
 
 func _place_delivery_vehicle_at(position: Vector3) -> void:
@@ -726,8 +929,16 @@ func _has_vehicle_route_to(world: World, target: Building) -> bool:
 		return false
 	if not _resolve_delivery_depot_positions(world):
 		return false
-	var outbound_route: PackedVector3Array = world.get_vehicle_road_path(_delivery_depot_road_access_position, target.get_entrance_pos())
-	if outbound_route.size() < 2:
+	if not _resolve_delivery_loading_positions(world):
+		return false
+	var depot_to_loading_route: PackedVector3Array = world.get_vehicle_road_path(
+		_delivery_depot_road_access_position,
+		_delivery_loading_road_access_position
+	)
+	if depot_to_loading_route.size() < 2:
+		return false
+	var loading_to_target_route: PackedVector3Array = world.get_vehicle_road_path(_delivery_loading_road_access_position, target.get_entrance_pos())
+	if loading_to_target_route.size() < 2:
 		return false
 	var return_route: PackedVector3Array = world.get_vehicle_road_path(target.get_entrance_pos(), _delivery_depot_road_access_position)
 	return return_route.size() >= 2
@@ -849,6 +1060,13 @@ func _release_harvest_worker() -> void:
 	_harvest_minutes_left = 0
 
 func _release_delivery_worker() -> void:
+	if _delivery_phase == DELIVERY_PHASE_PARKING_LOADING \
+			or _delivery_phase == DELIVERY_PHASE_LOADING \
+			or _delivery_phase == DELIVERY_PHASE_EXITING_LOADING:
+		VehicleDepotAccessScript.release_vehicle_spot(_delivery_vehicle)
+	_release_reserved_delivery_parking_spot()
+	_release_reserved_delivery_loading_spot()
+	_release_delivery_vehicle_claim()
 	_delivery_worker = null
 	_delivery_target = null
 	_delivery_phase = DELIVERY_PHASE_NONE
@@ -856,6 +1074,18 @@ func _release_delivery_worker() -> void:
 	_delivery_minutes_left = 0
 	_delivery_depot_parking_position = Vector3.INF
 	_delivery_depot_road_access_position = Vector3.INF
+	_delivery_loading_parking_position = Vector3.INF
+	_delivery_loading_road_access_position = Vector3.INF
+
+func _release_delivery_vehicle_claim() -> void:
+	if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
+		_delivery_vehicle = null
+		return
+	if _delivery_vehicle.has_method("set_delivery_cargo_visible"):
+		_delivery_vehicle.set_delivery_cargo_visible(false)
+	if _delivery_vehicle.is_in_group(VehicleDepotAccessScript.DELIVERY_VEHICLE_ASSIGNED_GROUP):
+		_delivery_vehicle.remove_from_group(VehicleDepotAccessScript.DELIVERY_VEHICLE_ASSIGNED_GROUP)
+	_delivery_vehicle = null
 
 func _is_delivery_worker(citizen: Citizen) -> bool:
 	if citizen == null or citizen.job == null:

@@ -137,14 +137,14 @@ func _build_biome_scene(biome: Dictionary, dir: String) -> bool:
 	if excludes.is_empty():
 		excludes = _build_exclude_curves(area)
 
-	var multi_scatter: Node3D = MultiScatterScript.new()
+	var multi_scatter = MultiScatterScript.new()
 	multi_scatter.name = "%s%s" % [biome_name, str(_config["output"].get("root_suffix", "Scatter"))]
 	multi_scatter.curve = polygon
 	multi_scatter.amount = total_count
 	multi_scatter.seed = int(global.get("seed", 0))
 
 	for ex in excludes:
-		var exclude: Node3D = MultiScatterExcludeScript.new()
+		var exclude = MultiScatterExcludeScript.new()
 		exclude.name = str(ex["name"])
 		exclude.curve = ex["curve"]
 		multi_scatter.add_child(exclude)
@@ -166,6 +166,11 @@ func _build_biome_scene(biome: Dictionary, dir: String) -> bool:
 		var item: Node3D = MultiScatterItemScript.new()
 		item.name = "%sItem" % str(it["name"])
 		item.multimesh = multi_mesh
+		var material_path = str(_resolve(it, cat_cfg, {}, "material_override", ""))
+		if not material_path.is_empty():
+			var material = _load_material(material_path)
+			if material != null and item is GeometryInstance3D:
+				(item as GeometryInstance3D).material_override = material
 		item.percentage = float(counts[i]) / float(total_count) * 100.0
 		item.cast_shadow = (
 			GeometryInstance3D.SHADOW_CASTING_SETTING_ON
@@ -174,10 +179,18 @@ func _build_biome_scene(biome: Dictionary, dir: String) -> bool:
 		)
 		item.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 		item.visibility_range_end = float(_resolve(it, cat_cfg, {}, "visibility_range_end", default_vis))
+		if global.has("custom_aabb"):
+			var custom_aabb := _to_aabb(global["custom_aabb"])
+			if custom_aabb.size != Vector3.ZERO:
+				item.custom_aabb = custom_aabb
 		multi_scatter.add_child(item)
 		item.owner = multi_scatter
 
-		var placement: Node3D = PMDropOnColliderScript.new()
+		var mode = str(_resolve(it, cat_cfg, defaults, "mode", "drop_on_collider"))
+		if mode != "drop_on_collider":
+			push_error("Unsupported placement mode: %s" % mode)
+			return false
+		var placement = PMDropOnColliderScript.new()
 		placement.name = "DropOnGround"
 		placement.collision_mask = int(global.get("ground_collision_mask", 1))
 		placement.placement_direction = 1  # direction.Down
@@ -206,6 +219,23 @@ func _build_biome_scene(biome: Dictionary, dir: String) -> bool:
 	print("  %s -> %s (%d items, amount=%d)" % [biome_name, scene_path, items.size(), total_count])
 	return true
 
+func _load_material(path: String) -> Material:
+	if path.is_empty():
+		return null
+
+	var res := load(path)
+	if res is Material:
+		return res as Material
+
+	push_warning("Material path is not a Material: %s" % path)
+	return null
+
+func _to_aabb(value: Variant) -> AABB:
+	if value is Dictionary:
+		var pos := _to_vec3(value.get("position"), Vector3.ZERO)
+		var size := _to_vec3(value.get("size"), Vector3.ZERO)
+		return AABB(pos, size)
+	return AABB()
 
 # Returns [Curve3D polygon_or_null, Array exclude_dicts] from an existing biome
 # scene so editor reshaping of that scene survives a rebuild.

@@ -12,8 +12,7 @@ the real renderer + the ground collider that lives in Main). The live scatters
 are the runtime; there is no bake step.
 
 ```
-Godot_v4.6.3-stable_win64_console.exe --headless --path . \
-  --script res://tools/codex_generate_forest_yamms.gd
+Godot_v4.6.3-stable_win64_console.exe --headless --path . --script res://tools/codex_generate_forest_yamms.gd
 ```
 
 ## Top level
