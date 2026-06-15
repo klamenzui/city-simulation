@@ -246,7 +246,7 @@ $availableTests = @(
 	}
 	[pscustomobject]@{
 		Key = "grass"
-		Label = "Exterior Grass Scene"
+		Label = "Scatter Grass Scene"
 		Script = "res://tools/codex_exterior_grass_scene_probe.gd"
 	}
 	[pscustomobject]@{

@@ -1,95 +1,352 @@
 {
-  "version": 2,
-  "output": {
-    "biome_scene_dir": "res://Scenes/Plants/Biomes/",
-    "root_suffix": "Scatter"
-  },
-  "global": {
-    "seed": 202605261,
-    "density_multiplier": 1.0,
-    "ground_collision_mask": 1,
-    "ray_height": 42.0,
-    "visibility_range_end": 180.0,
-    "custom_aabb": { "position": [-124.0, -6.0, -124.0], "size": [248.0, 22.0, 248.0] }
-  },
-  "placement_defaults": {
-    "mode": "drop_on_collider",
-    "normal_influence": 0.0,
-    "rotation": { "randomize": true, "min_deg": [0.0, 0.0, 0.0], "max_deg": [0.0, 360.0, 0.0] }
-  },
-  "categories": {
-    "Trees": { "shadow": true },
-    "Palms": { "shadow": true },
-    "Understory": { "shadow": true },
-    "GroundPlants": { "shadow": false },
-    "Flowers": { "shadow": false }
-  },
-  "biomes": [
-    {
-      "name": "Forest",
-      "area": {
-        "source": "authoring",
-        "polygon": { "shape": "points", "points": [
-          [43.41, -6.90], [42.73, 0.97], [39.30, 9.12], [40.46, 17.54], [43.21, 31.30], [36.63, 39.91],
-          [31.34, 62.97], [10.37, 53.71], [-5.32, 54.91], [-18.58, 44.71], [-16.21, 13.74], [-17.50, 8.10],
-          [-19.88, 0.0], [-17.97, -13.56], [-12.07, -29.21], [-8.88, -37.13], [-9.47, -43.75], [-10.39, -62.65],
-          [0.0, -71.23], [14.52, -61.93], [18.96, -52.85], [26.30, -45.30], [30.75, -37.11], [41.78, -18.88]
-        ] },
-        "exclusions": [ { "name": "City", "shape": "points", "points": [
-          [26.69, -14.74], [32.96, -4.91], [33.14, 31.98], [18.11, 43.26], [13.69, 51.40], [2.06, 46.25],
-          [16.16, 39.48], [2.05, 35.51], [-5.31, 34.45], [-6.04, 25.90], [-3.75, 9.48], [-8.45, -27.16],
-          [2.40, -44.98], [20.92, -36.79], [27.65, -26.34], [30.66, -19.31]
-        ] } ]
-      },
-      "items": [
-        { "name": "Tree01", "category": "Trees", "mesh": "res://ImportedCitySource/assets/plants/tree01.gltf", "count": 36, "height_min": 4.5, "height_max": 6.7 },
-        { "name": "Tree02", "category": "Trees", "mesh": "res://ImportedCitySource/assets/plants/tree02.gltf", "count": 38, "height_min": 5.0, "height_max": 7.5 },
-        { "name": "Tree03", "category": "Trees", "mesh": "res://ImportedCitySource/assets/plants/tree03.gltf", "count": 42, "height_min": 4.8, "height_max": 7.2 },
-        { "name": "Tree04", "category": "Trees", "mesh": "res://ImportedCitySource/assets/plants/tree04.gltf", "count": 36, "height_min": 4.6, "height_max": 6.9 },
-        { "name": "Tree05", "category": "Trees", "mesh": "res://ImportedCitySource/assets/plants/tree05.gltf", "count": 34, "height_min": 5.4, "height_max": 8.2 },
-        { "name": "SpruceMK4", "category": "Trees", "mesh": "res://Scenes/Plants/PineTree_1.obj", "count": 48, "scale_min": 0.25, "scale_max": 0.7 },
-        { "name": "Bush01", "category": "Understory", "mesh": "res://ImportedCitySource/assets/plants/bush01.gltf", "count": 58, "height_min": 0.8, "height_max": 1.35 },
-        { "name": "Bush02", "category": "Understory", "mesh": "res://ImportedCitySource/assets/plants/bush02.gltf", "count": 56, "height_min": 0.85, "height_max": 1.45 },
-        { "name": "Bush03", "category": "Understory", "mesh": "res://ImportedCitySource/assets/plants/bush03.gltf", "count": 60, "height_min": 0.75, "height_max": 1.25 },
-        { "name": "Bush04", "category": "Understory", "mesh": "res://ImportedCitySource/assets/plants/bush04.gltf", "count": 52, "height_min": 0.9, "height_max": 1.55 },
-        { "name": "Weed01", "category": "GroundPlants", "mesh": "res://ImportedCitySource/assets/plants/Weed01.gltf", "count": 78, "height_min": 0.35, "height_max": 0.65 },
-        { "name": "Weed02", "category": "GroundPlants", "mesh": "res://ImportedCitySource/assets/plants/Weed02.gltf", "count": 72, "height_min": 0.35, "height_max": 0.65 },
-        { "name": "Weed03", "category": "GroundPlants", "mesh": "res://ImportedCitySource/assets/plants/Weed03.gltf", "count": 66, "height_min": 0.35, "height_max": 0.65 },
-        { "name": "Weedplant01", "category": "GroundPlants", "mesh": "res://ImportedCitySource/assets/plants/Weedplant01.gltf", "count": 48, "height_min": 0.45, "height_max": 0.8 },
-        { "name": "Weedplant02", "category": "GroundPlants", "mesh": "res://ImportedCitySource/assets/plants/weedplant02.gltf", "count": 48, "height_min": 0.45, "height_max": 0.8 },
-        { "name": "Weedplant03", "category": "GroundPlants", "mesh": "res://ImportedCitySource/assets/plants/weedplant03.gltf", "count": 42, "height_min": 0.45, "height_max": 0.8 },
-        { "name": "ThreeLeaf01", "category": "GroundPlants", "mesh": "res://ImportedCitySource/assets/plants/threeleaf01.gltf", "count": 56, "height_min": 0.25, "height_max": 0.48 },
-        { "name": "Mushroom01", "category": "GroundPlants", "mesh": "res://ImportedCitySource/assets/plants/mushroom01.gltf", "count": 24, "height_min": 0.18, "height_max": 0.36 },
-        { "name": "Mushroom02", "category": "GroundPlants", "mesh": "res://ImportedCitySource/assets/plants/mushroom02.gltf", "count": 22, "height_min": 0.18, "height_max": 0.36 },
-        { "name": "FlowerBlue01", "category": "Flowers", "mesh": "res://ImportedCitySource/assets/plants/flowerblue01.gltf", "count": 44, "height_min": 0.28, "height_max": 0.55 },
-        { "name": "FlowerKrokus01", "category": "Flowers", "mesh": "res://ImportedCitySource/assets/plants/flowerKrokus01.gltf", "count": 36, "height_min": 0.25, "height_max": 0.5 },
-        { "name": "FlowerTulipan01", "category": "Flowers", "mesh": "res://ImportedCitySource/assets/plants/flowertulipan01.gltf", "count": 36, "height_min": 0.35, "height_max": 0.65 },
-        { "name": "FlowerValmue01", "category": "Flowers", "mesh": "res://ImportedCitySource/assets/plants/flowervalmue01.gltf", "count": 44, "height_min": 0.35, "height_max": 0.65 },
-        { "name": "Flowers01", "category": "Flowers", "mesh": "res://ImportedCitySource/assets/plants/flowers01.gltf", "count": 40, "height_min": 0.25, "height_max": 0.5 },
-        { "name": "Flowers02", "category": "Flowers", "mesh": "res://ImportedCitySource/assets/plants/flowers02.gltf", "count": 40, "height_min": 0.25, "height_max": 0.5 }
-      ]
+    "version": 2,
+    "output": {
+        "biome_scene_dir": "res://Scenes/Plants/Biomes/",
+        "root_suffix": "Scatter"
     },
-    {
-      "name": "Palms",
-      "area": {
-        "source": "authoring",
-        "polygon": { "shape": "points", "points": [
-          [58.06, 9.41], [63.54, 38.40], [53.63, 55.79], [42.92, 88.00], [10.51, 78.36], [-15.86, 78.42],
-          [-36.16, 63.39], [-33.13, 15.50], [-37.43, -6.17], [-32.71, -32.00], [-20.73, -55.04], [-26.71, -88.75],
-          [-7.81, -97.90], [16.59, -97.87], [38.45, -78.18], [61.22, -31.11]
-        ] },
-        "exclusions": [ { "name": "Inner", "shape": "points", "points": [
-          [-19.40, -0.15], [-15.08, 15.00], [-17.64, 46.51], [-4.14, 55.47], [10.39, 53.95], [27.86, 58.04],
-          [33.87, 37.39], [41.17, 30.03], [38.84, 9.48], [42.73, -4.43], [40.51, -17.68], [29.13, -37.25],
-          [14.61, -57.23], [2.14, -65.19], [-6.72, -58.60], [-1.03, -42.00], [-4.15, -28.78], [-15.44, -13.08]
-        ] } ]
-      },
-      "items": [
-        { "name": "PalmTree2", "category": "Palms", "mesh": "res://Scenes/Plants/PalmTree_2.obj", "count": 28, "scale_min": 0.8, "scale_max": 1.4 },
-        { "name": "PalmTree3", "category": "Palms", "mesh": "res://Scenes/Plants/PalmTree_3.obj", "count": 26, "scale_min": 0.8, "scale_max": 1.4 },
-        { "name": "Plant2", "category": "Understory", "mesh": "res://Scenes/Plants/Plant_2.obj", "count": 50, "scale_min": 0.7, "scale_max": 1.2 },
-        { "name": "Plant5", "category": "Understory", "mesh": "res://Scenes/Plants/Plant_5.obj", "count": 50, "scale_min": 0.7, "scale_max": 1.2 }
-      ]
-    }
-  ]
+    "global": {
+        "seed": 202605261,
+        "density_multiplier": 1.0,
+        "ground_collision_mask": 1,
+        "ray_height": 42.0,
+        "custom_aabb": {
+            "position": [-124.0, -6.0, -124.0],
+            "size": [248.0, 22.0, 248.0]
+        }
+    },
+    "placement_defaults": {
+        "mode": "drop_on_collider",
+        "normal_influence": 0.0,
+        "rotation": {
+            "randomize": true,
+            "min_deg": [0.0, 0.0, 0.0],
+            "max_deg": [0.0, 360.0, 0.0]
+        }
+    },
+    "categories": {
+        "Trees": {
+            "shadow": true,
+            "visibility_range_end": 180.0
+        },
+        "Palms": {
+            "shadow": true,
+            "visibility_range_end": 150.0
+        },
+        "Understory": {
+            "shadow": true,
+            "visibility_range_end": 100.0
+        },
+        "GroundPlants": {
+            "shadow": false,
+            "visibility_range_end": 40.0
+        },
+        "Flowers": {
+            "shadow": false,
+            "visibility_range_end": 40.0
+        }
+    },
+    "biomes": [{
+            "name": "Forest",
+            "area": {
+                "source": "authoring",
+                "polygon": {
+                    "shape": "points",
+                    "points": [
+                        [43.41, -6.90], [42.73, 0.97], [39.30, 9.12], [40.46, 17.54], [43.21, 31.30], [36.63, 39.91],
+                        [31.34, 62.97], [10.37, 53.71], [-5.32, 54.91], [-18.58, 44.71], [-16.21, 13.74], [-17.50, 8.10],
+                        [-19.88, 0.0], [-17.97, -13.56], [-12.07, -29.21], [-8.88, -37.13], [-9.47, -43.75], [-10.39, -62.65],
+                        [0.0, -71.23], [14.52, -61.93], [18.96, -52.85], [26.30, -45.30], [30.75, -37.11], [41.78, -18.88]
+                    ]
+                },
+                "exclusions": [{
+                        "name": "City",
+                        "shape": "points",
+                        "points": [
+                            [26.69, -14.74], [32.96, -4.91], [33.14, 31.98], [18.11, 43.26], [13.69, 51.40], [2.06, 46.25],
+                            [16.16, 39.48], [2.05, 35.51], [-5.31, 34.45], [-6.04, 25.90], [-3.75, 9.48], [-8.45, -27.16],
+                            [2.40, -44.98], [20.92, -36.79], [27.65, -26.34], [30.66, -19.31]
+                        ]
+                    }
+                ]
+            },
+            "items": [{
+                    "name": "Tree01",
+                    "category": "Trees",
+                    "mesh": "res://ImportedCitySource/assets/plants/tree01.gltf",
+                    "count": 36,
+                    "height_min": 4.5,
+                    "height_max": 6.7
+                }, {
+                    "name": "Tree02",
+                    "category": "Trees",
+                    "mesh": "res://ImportedCitySource/assets/plants/tree02.gltf",
+                    "count": 38,
+                    "height_min": 5.0,
+                    "height_max": 7.5
+                }, {
+                    "name": "Tree03",
+                    "category": "Trees",
+                    "mesh": "res://ImportedCitySource/assets/plants/tree03.gltf",
+                    "count": 42,
+                    "height_min": 4.8,
+                    "height_max": 7.2
+                }, {
+                    "name": "Tree04",
+                    "category": "Trees",
+                    "mesh": "res://ImportedCitySource/assets/plants/tree04.gltf",
+                    "count": 36,
+                    "height_min": 4.6,
+                    "height_max": 6.9
+                }, {
+                    "name": "Tree05",
+                    "category": "Trees",
+                    "mesh": "res://ImportedCitySource/assets/plants/tree05.gltf",
+                    "count": 34,
+                    "height_min": 5.4,
+                    "height_max": 8.2
+                }, {
+                    "name": "SpruceMK4",
+                    "category": "Trees",
+                    "mesh": "res://Scenes/Plants/PineTree_1.obj",
+                    "count": 48,
+                    "scale_min": 0.25,
+                    "scale_max": 0.7
+                }, {
+                    "name": "Bush01",
+                    "category": "Understory",
+                    "mesh": "res://ImportedCitySource/assets/plants/bush01.gltf",
+                    "count": 58,
+                    "height_min": 0.8,
+                    "height_max": 1.35
+                }, {
+                    "name": "Bush02",
+                    "category": "Understory",
+                    "mesh": "res://ImportedCitySource/assets/plants/bush02.gltf",
+                    "count": 56,
+                    "height_min": 0.85,
+                    "height_max": 1.45
+                }, {
+                    "name": "Bush03",
+                    "category": "Understory",
+                    "mesh": "res://ImportedCitySource/assets/plants/bush03.gltf",
+                    "count": 60,
+                    "height_min": 0.75,
+                    "height_max": 1.25
+                }, {
+                    "name": "Bush04",
+                    "category": "Understory",
+                    "mesh": "res://ImportedCitySource/assets/plants/bush04.gltf",
+                    "count": 52,
+                    "height_min": 0.9,
+                    "height_max": 1.55
+                }, {
+                    "name": "ThreeLeaf01",
+                    "category": "GroundPlants",
+                    "mesh": "res://ImportedCitySource/assets/plants/threeleaf01.gltf",
+                    "count": 56,
+                    "height_min": 0.25,
+                    "height_max": 0.48
+                }, {
+                    "name": "Mushroom01",
+                    "category": "GroundPlants",
+                    "mesh": "res://ImportedCitySource/assets/plants/mushroom01.gltf",
+                    "count": 24,
+                    "height_min": 0.18,
+                    "height_max": 0.36
+                }, {
+                    "name": "Mushroom02",
+                    "category": "GroundPlants",
+                    "mesh": "res://ImportedCitySource/assets/plants/mushroom02.gltf",
+                    "count": 22,
+                    "height_min": 0.18,
+                    "height_max": 0.36
+                }
+            ]
+        }, {
+            "name": "MeadowPlants",
+            "area": {
+                "source": "authoring",
+                "polygon": {
+                    "shape": "points",
+                    "points": [
+                        [43.41, -6.90], [42.73, 0.97], [39.30, 9.12], [40.46, 17.54], [43.21, 31.30], [36.63, 39.91],
+                        [31.34, 62.97], [10.37, 53.71], [-5.32, 54.91], [-18.58, 44.71], [-16.21, 13.74], [-17.50, 8.10],
+                        [-19.88, 0.0], [-17.97, -13.56], [-12.07, -29.21], [-8.88, -37.13], [-9.47, -43.75], [-10.39, -62.65],
+                        [0.0, -71.23], [14.52, -61.93], [18.96, -52.85], [26.30, -45.30], [30.75, -37.11], [41.78, -18.88]
+                    ]
+                },
+                "exclusions": [{
+                        "name": "City",
+                        "shape": "points",
+                        "points": [
+                            [20.29, -14.74],
+                            [32.96, -4.91],
+                            [33.14, 34.41],
+                            [18.11, 33.48],
+                            [16.16, 37.40],
+                            [2.05, 35.51],
+                            [-5.31, 34.45],
+                            [-6.04, 25.90],
+                            [-3.75, 9.48],
+                            [-3.11, -3.94],
+                            [13.68, -3.96],
+                            [13.92, -14.42],
+                            [0.74, -15.66],
+                            [0.54, -30.29],
+                            [9.80, -40.03],
+                            [20.92, -36.79],
+                            [27.65, -26.34]
+                        ]
+                    }
+                ]
+            },
+            "items": [{
+                    "name": "Weed01",
+                    "category": "GroundPlants",
+                    "mesh": "res://ImportedCitySource/assets/plants/Weed01.gltf",
+                    "count": 78,
+                    "height_min": 0.35,
+                    "height_max": 0.65
+                }, {
+                    "name": "Weed02",
+                    "category": "GroundPlants",
+                    "mesh": "res://ImportedCitySource/assets/plants/Weed02.gltf",
+                    "count": 72,
+                    "height_min": 0.35,
+                    "height_max": 0.65
+                }, {
+                    "name": "Weed03",
+                    "category": "GroundPlants",
+                    "mesh": "res://ImportedCitySource/assets/plants/Weed03.gltf",
+                    "count": 66,
+                    "height_min": 0.35,
+                    "height_max": 0.65
+                }, {
+                    "name": "Weedplant01",
+                    "category": "GroundPlants",
+                    "mesh": "res://ImportedCitySource/assets/plants/Weedplant01.gltf",
+                    "count": 48,
+                    "height_min": 0.45,
+                    "height_max": 0.8
+                }, {
+                    "name": "Weedplant02",
+                    "category": "GroundPlants",
+                    "mesh": "res://ImportedCitySource/assets/plants/weedplant02.gltf",
+                    "count": 48,
+                    "height_min": 0.45,
+                    "height_max": 0.8
+                }, {
+                    "name": "Weedplant03",
+                    "category": "GroundPlants",
+                    "mesh": "res://ImportedCitySource/assets/plants/weedplant03.gltf",
+                    "count": 42,
+                    "height_min": 0.45,
+                    "height_max": 0.8
+                }, {
+                    "name": "FlowerBlue01",
+                    "category": "Flowers",
+                    "mesh": "res://ImportedCitySource/assets/plants/flowerblue01.gltf",
+                    "count": 44,
+                    "height_min": 0.28,
+                    "height_max": 0.55
+                }, {
+                    "name": "FlowerKrokus01",
+                    "category": "Flowers",
+                    "mesh": "res://ImportedCitySource/assets/plants/flowerKrokus01.gltf",
+                    "count": 36,
+                    "height_min": 0.25,
+                    "height_max": 0.5
+                }, {
+                    "name": "FlowerTulipan01",
+                    "category": "Flowers",
+                    "mesh": "res://ImportedCitySource/assets/plants/flowertulipan01.gltf",
+                    "count": 36,
+                    "height_min": 0.35,
+                    "height_max": 0.65
+                }, {
+                    "name": "FlowerValmue01",
+                    "category": "Flowers",
+                    "mesh": "res://ImportedCitySource/assets/plants/flowervalmue01.gltf",
+                    "count": 44,
+                    "height_min": 0.35,
+                    "height_max": 0.65
+                }, {
+                    "name": "Flowers01",
+                    "category": "Flowers",
+                    "mesh": "res://ImportedCitySource/assets/plants/flowers01.gltf",
+                    "count": 40,
+                    "height_min": 0.25,
+                    "height_max": 0.5
+                }, {
+                    "name": "Flowers02",
+                    "category": "Flowers",
+                    "mesh": "res://ImportedCitySource/assets/plants/flowers02.gltf",
+                    "count": 40,
+                    "height_min": 0.25,
+                    "height_max": 0.5
+                }, {
+                    "name": "Grass",
+                    "category": "GroundPlants",
+                    "mesh": "res://Scenes/Environment/Grass/grass.glb",
+					"material_override": "res://Scenes/Plants/Biomes/Stylized3DGrass.tres",
+                    "count": 540,
+                    "height_min": 0.15,
+                    "height_max": 0.25
+                }
+            ]
+        }, {
+            "name": "Palms",
+            "area": {
+                "source": "authoring",
+                "polygon": {
+                    "shape": "points",
+                    "points": [
+                        [58.06, 9.41], [63.54, 38.40], [53.63, 55.79], [42.92, 88.00], [10.51, 78.36], [-15.86, 78.42],
+                        [-36.16, 63.39], [-33.13, 15.50], [-37.43, -6.17], [-32.71, -32.00], [-20.73, -55.04], [-26.71, -88.75],
+                        [-7.81, -97.90], [16.59, -97.87], [38.45, -78.18], [61.22, -31.11]
+                    ]
+                },
+                "exclusions": [{
+                        "name": "Inner",
+                        "shape": "points",
+                        "points": [
+                            [-19.40, -0.15], [-15.08, 15.00], [-17.64, 46.51], [-4.14, 55.47], [10.39, 53.95], [27.86, 58.04],
+                            [33.87, 37.39], [41.17, 30.03], [38.84, 9.48], [42.73, -4.43], [40.51, -17.68], [29.13, -37.25],
+                            [14.61, -57.23], [2.14, -65.19], [-6.72, -58.60], [-1.03, -42.00], [-4.15, -28.78], [-15.44, -13.08]
+                        ]
+                    }
+                ]
+            },
+            "items": [{
+                    "name": "PalmTree2",
+                    "category": "Palms",
+                    "mesh": "res://Scenes/Plants/PalmTree_2.obj",
+                    "count": 28,
+                    "scale_min": 0.8,
+                    "scale_max": 1.4
+                }, {
+                    "name": "PalmTree3",
+                    "category": "Palms",
+                    "mesh": "res://Scenes/Plants/PalmTree_3.obj",
+                    "count": 26,
+                    "scale_min": 0.8,
+                    "scale_max": 1.4
+                }, {
+                    "name": "Plant2",
+                    "category": "Understory",
+                    "mesh": "res://Scenes/Plants/Plant_2.obj",
+                    "count": 50,
+                    "scale_min": 0.7,
+                    "scale_max": 1.2
+                }, {
+                    "name": "Plant5",
+                    "category": "Understory",
+                    "mesh": "res://Scenes/Plants/Plant_5.obj",
+                    "count": 50,
+                    "scale_min": 0.7,
+                    "scale_max": 1.2
+                }
+            ]
+        }
+    ]
 }

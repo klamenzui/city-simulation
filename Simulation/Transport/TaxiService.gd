@@ -7,6 +7,7 @@ signal ride_finished(vehicle: VehicleAgent, rider: Citizen, fare: int, paid: boo
 
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
+const TaxiReturnTripScript = preload("res://Simulation/Transport/TaxiReturnTrip.gd")
 const TAXI_VEHICLE_SCENE_PATH := "res://Scenes/Vehicles/CityPack/car.tscn"
 const TaxiVehicleScene = preload("res://Scenes/Vehicles/CityPack/car.tscn")
 
@@ -35,12 +36,16 @@ var _planned_trip_distance: float = 0.0
 var _planned_fare: int = 0
 var _assigned_depot_position: Vector3 = Vector3.INF
 var _assigned_depot_parking_position: Vector3 = Vector3.INF
+var _assigned_parking_spot: VehicleParkingSpot = null
 var _return_depot_position: Vector3 = Vector3.INF
 var _pending_pickup_position: Vector3 = Vector3.INF
 var _depot_exit_maneuver_active: bool = false
 var _depot_parking_maneuver_active: bool = false
 var _billing_suppressed: bool = false
 var _previous_manual_drive_enabled: bool = true
+# Taxis handed off after drop-off that drive back to the depot and park on their own,
+# so the active service slot is free for a reserve taxi to serve the next request.
+var _returning_trips: Array = []
 
 
 func setup(owner_ref: Node, world_ref: World, overlay_ref) -> void:
@@ -55,6 +60,7 @@ func setup(owner_ref: Node, world_ref: World, overlay_ref) -> void:
 
 
 func update(_delta: float, player: Citizen) -> void:
+	_tick_returning_trips()
 	if map_overlay == null:
 		return
 	if _state == STATE_RIDE or _state == STATE_DESTINATION_DRIVE:
@@ -87,7 +93,9 @@ func request_taxi(player: Citizen) -> Dictionary:
 			return _result(true, "Taxi-Map geoeffnet.", "info")
 		return _result(false, "Das Taxi ist gerade belegt.", "warning")
 	if _state == STATE_RETURN_TO_DEPOT:
-		return _result(false, "Taxi faehrt zurueck zum Depot.", "info")
+		# A taxi is still heading back. Hand it off so it parks itself, then dispatch a
+		# free reserve taxi for this new request below.
+		_handoff_active_return_to_trip()
 	var depot_parking_position := _resolve_taxi_depot_parking_position(player.global_position)
 	if not _is_finite_vector(depot_parking_position):
 		return _result(false, "Kein TaxiVehicleDepot oder TaxiDepot fuer Taxi-Service gefunden.", "warning")
@@ -162,7 +170,11 @@ func is_active_rider(citizen: Citizen) -> bool:
 
 
 func is_taxi_vehicle(vehicle: Node) -> bool:
-	return vehicle != null and vehicle == _taxi_vehicle
+	if vehicle == null:
+		return false
+	if vehicle == _taxi_vehicle:
+		return true
+	return _is_in_returning_trips(vehicle)
 
 
 func get_state() -> String:
@@ -178,13 +190,18 @@ func get_taxi_vehicle() -> VehicleAgent:
 
 
 func _ensure_taxi_vehicle(request_origin: Vector3, depot_position: Vector3 = Vector3.INF) -> bool:
-	if _taxi_vehicle != null and is_instance_valid(_taxi_vehicle):
+	# Reuse the current taxi only while it is free (parked, no driver, not returning).
+	if _taxi_vehicle != null and is_instance_valid(_taxi_vehicle) and not _is_vehicle_busy(_taxi_vehicle):
 		return true
-	_taxi_vehicle = _find_reusable_taxi_vehicle()
-	if _taxi_vehicle != null:
+	var free_vehicle := _find_reusable_taxi_vehicle()
+	if free_vehicle != null:
+		_taxi_vehicle = free_vehicle
 		_taxi_vehicle.add_to_group(TAXI_GROUP)
 		_connect_vehicle_signals(_taxi_vehicle)
 		return true
+	# Every taxi in the scene is currently serving or returning: wait, never spawn extras.
+	if _scene_has_taxi_candidate():
+		return false
 
 	var instance := TaxiVehicleScene.instantiate()
 	if instance == null or instance is not VehicleAgent:
@@ -208,7 +225,33 @@ func _ensure_taxi_vehicle(request_origin: Vector3, depot_position: Vector3 = Vec
 	return true
 
 
+# Picks a free taxi from the scene pool, preferring already-tagged taxi vehicles.
+# Excludes the active taxi, vehicles with a driver, driving ones, and taxis already
+# heading back to the depot, so a reserve taxi serves while another one returns.
 func _find_reusable_taxi_vehicle() -> VehicleAgent:
+	var candidates := _collect_vehicle_candidates()
+	for node in candidates:
+		var vehicle := node as VehicleAgent
+		if vehicle == null or not is_instance_valid(vehicle):
+			continue
+		if not vehicle.is_in_group(TAXI_GROUP):
+			continue
+		if _is_free_taxi_candidate(vehicle):
+			return vehicle
+	for node2 in candidates:
+		var vehicle2 := node2 as VehicleAgent
+		if vehicle2 == null or not is_instance_valid(vehicle2):
+			continue
+		if vehicle2.delivery_vehicle:
+			continue
+		if not _is_supported_taxi_scene(vehicle2):
+			continue
+		if _is_free_taxi_candidate(vehicle2):
+			return vehicle2
+	return null
+
+
+func _collect_vehicle_candidates() -> Array[Node]:
 	var candidates: Array[Node] = []
 	if world != null:
 		for vehicle in world.vehicles:
@@ -218,28 +261,44 @@ func _find_reusable_taxi_vehicle() -> VehicleAgent:
 		for node in owner_node.get_tree().get_nodes_in_group("vehicles"):
 			if node is Node and not candidates.has(node):
 				candidates.append(node as Node)
-	for node in candidates:
-		if node == null or not is_instance_valid(node):
-			continue
-		if node is not VehicleAgent:
-			continue
+	return candidates
+
+
+func _is_free_taxi_candidate(vehicle: VehicleAgent) -> bool:
+	if vehicle == null or not is_instance_valid(vehicle):
+		return false
+	if vehicle == _taxi_vehicle:
+		return false
+	return not _is_vehicle_busy(vehicle)
+
+
+func _is_vehicle_busy(vehicle: VehicleAgent) -> bool:
+	if vehicle == null or not is_instance_valid(vehicle):
+		return true
+	if vehicle.current_driver != null:
+		return true
+	if vehicle.is_driving():
+		return true
+	return _is_in_returning_trips(vehicle)
+
+
+func _is_in_returning_trips(vehicle: Node) -> bool:
+	for trip in _returning_trips:
+		if trip != null and trip.get_vehicle() == vehicle:
+			return true
+	return false
+
+
+func _scene_has_taxi_candidate() -> bool:
+	for node in _collect_vehicle_candidates():
 		var vehicle := node as VehicleAgent
-		if vehicle.is_in_group(TAXI_GROUP):
-			return vehicle
-	for node2 in candidates:
-		if node2 == null or not is_instance_valid(node2):
+		if vehicle == null or not is_instance_valid(vehicle):
 			continue
-		if node2 is not VehicleAgent:
+		if vehicle.delivery_vehicle:
 			continue
-		var vehicle2 := node2 as VehicleAgent
-		if vehicle2.current_driver != null:
-			continue
-		if vehicle2.delivery_vehicle:
-			continue
-		if not _is_supported_taxi_scene(vehicle2):
-			continue
-		return vehicle2
-	return null
+		if vehicle.is_in_group(TAXI_GROUP) or _is_supported_taxi_scene(vehicle):
+			return true
+	return false
 
 
 func _is_supported_taxi_scene(vehicle: VehicleAgent) -> bool:
@@ -266,6 +325,8 @@ func _connect_vehicle_signals(vehicle: VehicleAgent) -> void:
 func _prepare_taxi_for_service() -> void:
 	if _taxi_vehicle == null:
 		return
+	# Entering service frees the depot spot the taxi was parked on.
+	_release_taxi_parking_spot()
 	_previous_manual_drive_enabled = _taxi_vehicle.manual_drive_enabled
 	_taxi_vehicle.manual_drive_enabled = false
 	_taxi_vehicle.add_to_group(TAXI_GROUP)
@@ -414,9 +475,11 @@ func _begin_return_to_depot() -> void:
 func _start_depot_parking_maneuver() -> bool:
 	if _taxi_vehicle == null or not is_instance_valid(_taxi_vehicle):
 		return false
-	var parking_position := _assigned_depot_parking_position
+	_ensure_taxi_parking_spot()
+	var parking_position := _taxi_parking_position()
 	if not _is_finite_vector(parking_position):
 		return false
+	_return_depot_position = parking_position
 	var distance := _planar_distance(_taxi_vehicle.global_position, parking_position)
 	if distance <= _pickup_radius():
 		_place_taxi_at(parking_position)
@@ -425,7 +488,6 @@ func _start_depot_parking_maneuver() -> bool:
 		_emit_status("Taxi-Depot-Parkflaeche ist zu weit von der Strasse entfernt.", "warning", 2.6)
 		return false
 	_depot_parking_maneuver_active = true
-	_return_depot_position = parking_position
 	_taxi_vehicle.target_building = null
 	return _taxi_vehicle.start_drive_to(parking_position, null)
 
@@ -434,8 +496,75 @@ func _finish_return_to_depot() -> void:
 	if _taxi_vehicle != null and is_instance_valid(_taxi_vehicle) and _is_finite_vector(_return_depot_position):
 		if _planar_distance(_taxi_vehicle.global_position, _return_depot_position) > _pickup_radius():
 			_place_taxi_at(_return_depot_position)
+	_occupy_taxi_parking_spot()
 	_emit_status("Taxi ist am Depot bereit.", "info", 1.8)
 	_reset_service()
+
+
+# Reserves a free VehicleDepot parking spot for the taxi. Falls back to the marker-center
+# position when the depot exposes no VehicleParkingSpot.
+func _ensure_taxi_parking_spot() -> void:
+	if _assigned_parking_spot != null and is_instance_valid(_assigned_parking_spot):
+		return
+	_assigned_parking_spot = VehicleDepotAccess.reserve_free_parking_spot(
+		owner_node, _taxi_vehicle, TAXI_DEPOT_MARKER_NAME
+	)
+
+
+func _taxi_parking_position() -> Vector3:
+	if _assigned_parking_spot != null and is_instance_valid(_assigned_parking_spot):
+		return _assigned_parking_spot.get_parking_transform().origin
+	return _assigned_depot_parking_position
+
+
+func _occupy_taxi_parking_spot() -> void:
+	# Ownership moves onto the vehicle (meta), so the spot is released correctly even
+	# if a different object (a return trip) later departs this taxi.
+	VehicleDepotAccess.occupy_vehicle_spot(_taxi_vehicle, _assigned_parking_spot)
+	_assigned_parking_spot = null
+
+
+func _release_taxi_parking_spot() -> void:
+	VehicleDepotAccess.release_vehicle_spot(_taxi_vehicle)
+	if _assigned_parking_spot != null and is_instance_valid(_assigned_parking_spot):
+		_assigned_parking_spot.release(_taxi_vehicle)
+	_assigned_parking_spot = null
+
+
+# Hands the active (returning) taxi to a self-driving return trip and frees the
+# service slot so a reserve taxi can take the next request. Transfers any reserved
+# spot to the trip without releasing or restoring the vehicle here.
+func _handoff_active_return_to_trip() -> void:
+	var vehicle := _taxi_vehicle
+	if vehicle != null and is_instance_valid(vehicle):
+		var trip = TaxiReturnTripScript.new()
+		trip.start(
+			world,
+			owner_node,
+			vehicle,
+			TAXI_DEPOT_MARKER_NAME,
+			_pickup_radius(),
+			_previous_manual_drive_enabled,
+			_assigned_parking_spot
+		)
+		if not trip.is_done():
+			_returning_trips.append(trip)
+	_taxi_vehicle = null
+	_assigned_parking_spot = null
+	_reset_service(false)
+
+
+func _tick_returning_trips() -> void:
+	if _returning_trips.is_empty():
+		return
+	var still_active: Array = []
+	for trip in _returning_trips:
+		if trip == null:
+			continue
+		trip.update()
+		if not trip.is_done():
+			still_active.append(trip)
+	_returning_trips = still_active
 
 
 func _charge_fare(rider: Citizen, fare: int) -> bool:

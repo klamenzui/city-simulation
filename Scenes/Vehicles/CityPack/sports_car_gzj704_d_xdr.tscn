@@ -1,6 +1,11 @@
 [gd_scene format=4]
 
+[ext_resource type="Script" path="res://Simulation/Transport/VehicleAgent.gd" id="1_bqcue"]
 [ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city_pack/Sports Car-Gzj704DXdr_Zombie_Atlas.png" id="1_sfcd4"]
+[ext_resource type="AudioStream" path="res://environment/audio/vehicles/engine.wav" id="3_yu0ld"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_2inat"]
+size = Vector3(0.49567312, 0.3, 1.3055999)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ra241"]
 resource_name = "Atlas"
@@ -217,24 +222,115 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_lxk07")
 
-[node name="SportsCarGzj704DXdr" type="Node3D" unique_id=1741639125]
+[node name="SportsCarGzj704DXdr" type="VehicleBody3D" unique_id=1455168981]
+collision_layer = 4
+collision_mask = 5
+mass = 11.0
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, 0.08, 0)
+script = ExtResource("1_bqcue")
+delivery_vehicle = false
+delivery_load_capacity = 0
+use_balance_vehicle_geometry = false
+vehicle_mass = 11.0
+center_of_mass_offset = Vector3(0, 0.08, 0)
+wheel_track_half_width = 0.16852886080741883
+wheel_front_z = 0.32639998
+wheel_rear_z = -0.3655679798126221
+wheel_mount_y = 0.07
+wheel_radius = 0.07
+wheel_roll_influence = 0.35
+wheel_friction_slip = 1.1
+suspension_stiffness = 34.0
+suspension_travel = 0.12
+damping_compression = 0.9
+damping_relaxation = 1.6
+collision_shape_size = Vector3(0.49567312, 0.3, 1.3055999)
+collision_shape_offset = Vector3(0, 0.17, 0)
 
-[node name="BackWheels" type="MeshInstance3D" parent="." unique_id=1022543126]
+[node name="VehicleCollisionShape" type="CollisionShape3D" parent="." unique_id=1075051743]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.17, 0)
+shape = SubResource("BoxShape3D_2inat")
+
+[node name="FrontLeftWheel" type="VehicleWheel3D" parent="." unique_id=1351357756]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.16852885, 0.07, 0.32639998)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.07
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="FrontRightWheel" type="VehicleWheel3D" parent="." unique_id=2106416664]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.16852885, 0.07, 0.32639998)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.07
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="RearLeftWheel" type="VehicleWheel3D" parent="." unique_id=1974034980]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.16852885, 0.07, -0.36556798)
+use_as_traction = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.07
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="RearRightWheel" type="VehicleWheel3D" parent="." unique_id=944054799]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.16852885, 0.07, -0.36556798)
+use_as_traction = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.07
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="VisualRoot" type="Node3D" parent="." unique_id=824600399]
+transform = Transform3D(0.22634433, 0, 0, 0, 0.22634433, 0, 0, 0, 0.22634433, 1.0792939e-07, 0.022662023, -0.025297515)
+
+[node name="SportsCarGzj704DXdrVisual" type="Node3D" parent="VisualRoot" unique_id=1741639125]
+
+[node name="BackWheels" type="MeshInstance3D" parent="VisualRoot/SportsCarGzj704DXdrVisual" unique_id=1022543126]
 transform = Transform3D(100, 0, 0, 0, -1.1920931e-05, 100, 0, -100, -1.1920931e-05, 0, 0, 0)
 mesh = SubResource("ArrayMesh_2quhg")
 skeleton = NodePath("")
 
-[node name="FrontWheel_R" type="MeshInstance3D" parent="." unique_id=267702676]
+[node name="FrontWheel_R" type="MeshInstance3D" parent="VisualRoot/SportsCarGzj704DXdrVisual" unique_id=267702676]
 transform = Transform3D(100, 0, 0, 0, -1.1920931e-05, 100, 0, -100, -1.1920931e-05, -0.984554, 0.43657017, 1.7625417)
 mesh = SubResource("ArrayMesh_errl4")
 skeleton = NodePath("")
 
-[node name="FrontWheel_L" type="MeshInstance3D" parent="." unique_id=1051461376]
+[node name="FrontWheel_L" type="MeshInstance3D" parent="VisualRoot/SportsCarGzj704DXdrVisual" unique_id=1051461376]
 transform = Transform3D(100, 0, 0, 0, -1.1920931e-05, 100, 0, -100, -1.1920931e-05, 0.98455167, 0.4365703, 1.7625428)
 mesh = SubResource("ArrayMesh_po4q4")
 skeleton = NodePath("")
 
-[node name="Sports" type="MeshInstance3D" parent="." unique_id=431923876]
+[node name="Sports" type="MeshInstance3D" parent="VisualRoot/SportsCarGzj704DXdrVisual" unique_id=431923876]
 transform = Transform3D(100, 0, 0, 0, -1.1920931e-05, 100, 0, -100, -1.1920931e-05, 0, 0, 0)
 mesh = SubResource("ArrayMesh_r0w1l")
 skeleton = NodePath("")
+
+[node name="EntryPoint" type="Node3D" parent="." unique_id=1106212257]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35688466, 0.03, 0.02)
+
+[node name="SeatPoint" type="Node3D" parent="." unique_id=1583220272]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.089221165, 0.20400001, 0.08)
+
+[node name="EngineSound" type="AudioStreamPlayer3D" parent="." unique_id=1357323867]
+stream = ExtResource("3_yu0ld")
+volume_db = -28.0
+pitch_scale = 0.05
+attenuation_filter_cutoff_hz = 20500.0

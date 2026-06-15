@@ -52,6 +52,14 @@ func _initialize() -> void:
 		_errors.append("Main scene should contain a registered Supermarket reachable from the selected Farm.")
 		_finish(main)
 		return
+	var loading_parking_position := VehicleDepotAccessScript.resolve_marker_parking_position(farm, "DeliveryLoadingDepot")
+	if not VehicleDepotAccessScript.is_finite_vector(loading_parking_position):
+		_errors.append("Selected Farm should resolve a nearby DeliveryLoadingDepot parking area.")
+		_finish(main)
+		return
+	var loading_marker := VehicleDepotAccessScript.find_marker(farm, "DeliveryLoadingDepot")
+	var loading_parking_radius := VehicleDepotAccessScript.get_marker_parking_radius(loading_marker)
+	var loading_access_position := _get_vehicle_road_access_point(world, loading_parking_position)
 
 	var driver := _find_delivery_driver_candidate(main, world)
 	if driver == null:
@@ -83,8 +91,8 @@ func _initialize() -> void:
 		_errors.append("Farm live delivery should claim the pre-placed PickupTruck from DeliveryVehicleDepot.")
 	if VehicleDepotAccessScript.get_delivery_vehicle_load_capacity(truck, 1) != 4:
 		_errors.append("Farm live delivery should use the 4-unit pickup load capacity.")
-	if int(farm.get("_delivery_quantity")) != 4:
-		_errors.append("Farm live delivery quantity should be limited to 4 by the pickup.")
+	if int(farm.get("_delivery_quantity")) != 0:
+		_errors.append("Farm live delivery should not load cargo before reaching the Farm loading depot.")
 	if world.vehicles.size() != vehicle_count_before_delivery:
 		_errors.append("Farm live delivery should not register a new dynamic delivery vehicle.")
 	if not world.vehicles.has(truck):
@@ -107,12 +115,52 @@ func _initialize() -> void:
 			_errors.append("Live Farm delivery truck did not finish the local depot exit maneuver.")
 		action.tick(world, driver, DELIVERY_TICK_MINUTES)
 	if not bool(truck.call("is_driving")):
-		_errors.append("Live Farm delivery truck should start driving toward the Supermarket after depot exit.")
+		_errors.append("Live Farm delivery truck should start driving toward the Farm loading depot after depot exit.")
+	var depot_to_loading_route := truck.get("last_vehicle_route") as PackedVector3Array
+	if depot_to_loading_route.size() < 2:
+		_errors.append("Live Farm depot-to-loading route should use the Main road graph, not a direct fallback route.")
+	elif _route_uses_building_endpoint(depot_to_loading_route, depot_parking_position, loading_parking_position):
+		_errors.append("Live Farm depot-to-loading route should stay on road waypoints before the local Farm parking maneuver.")
+
+	var reached_loading_access := await _advance_vehicle_until_stopped(truck)
+	if not reached_loading_access:
+		_errors.append("Live Farm delivery truck did not reach the Farm loading road access within the test step budget.")
+	else:
+		var loading_access_distance := _planar_distance((truck as Node3D).global_position, loading_access_position)
+		if loading_access_distance > 1.75:
+			_errors.append("Live Farm delivery truck stopped %.2f units from the Farm loading road access point." % loading_access_distance)
+	action.tick(world, driver, DELIVERY_TICK_MINUTES)
+	if bool(truck.call("is_driving")):
+		var parked_at_loading := await _advance_vehicle_until_stopped(truck)
+		if not parked_at_loading:
+			_errors.append("Live Farm delivery truck did not finish the local Farm loading parking maneuver.")
+		action.tick(world, driver, DELIVERY_TICK_MINUTES)
+	var loading_parking_distance := _planar_distance((truck as Node3D).global_position, loading_parking_position)
+	if loading_parking_distance > maxf(loading_parking_radius, 2.0):
+		_errors.append("Live Farm delivery truck should park inside DeliveryLoadingDepot before loading, distance %.2f." % loading_parking_distance)
+	if str(farm.get("_delivery_phase")) != "loading":
+		_errors.append("Live Farm delivery should enter a loading phase at the Farm parking depot, phase=%s." % str(farm.get("_delivery_phase")))
+	for _i in range(4):
+		if str(farm.get("_delivery_phase")) != "loading":
+			break
+		action.tick(world, driver, DELIVERY_TICK_MINUTES)
+	if int(farm.get("_delivery_quantity")) != 4:
+		_errors.append("Farm live delivery quantity should be limited to 4 after loading at the Farm depot.")
+	if not _is_delivery_cargo_visible(truck):
+		_errors.append("Farm live delivery truck should show cargo immediately after loading at the Farm loading depot.")
+	if str(farm.get("_delivery_phase")) == "exiting_loading":
+		if bool(truck.call("is_driving")):
+			var exited_loading := await _advance_vehicle_until_stopped(truck)
+			if not exited_loading:
+				_errors.append("Live Farm delivery truck did not finish the local Farm loading exit maneuver.")
+		action.tick(world, driver, DELIVERY_TICK_MINUTES)
+	if not bool(truck.call("is_driving")):
+		_errors.append("Live Farm delivery truck should start driving toward the Supermarket after Farm loading.")
 	var outbound_route := truck.get("last_vehicle_route") as PackedVector3Array
 	if outbound_route.size() <= 2:
-		_errors.append("Live Farm delivery should use the Main road graph, not a direct two-point fallback route.")
-	elif _route_uses_building_endpoint(outbound_route, farm.get_storage_point_global(), supermarket.get_entrance_pos()):
-		_errors.append("Live Farm delivery route should stay on road waypoints instead of driving from storage directly to the supermarket entrance.")
+		_errors.append("Live Farm loading-to-target route should use the Main road graph, not a direct fallback route.")
+	elif _route_uses_building_endpoint(outbound_route, loading_parking_position, supermarket.get_entrance_pos()):
+		_errors.append("Live Farm delivery route should stay on road waypoints after leaving the Farm loading depot.")
 
 	var reached_supermarket := await _advance_vehicle_until_stopped(truck)
 	if not reached_supermarket:
@@ -171,6 +219,8 @@ func _initialize() -> void:
 		_errors.append("Live Farm Fahrer should exit the truck after the return trip.")
 	if farm.has_delivery_in_progress():
 		_errors.append("Live Farm delivery state should be released after the return trip.")
+	if truck.is_in_group(VehicleDepotAccessScript.DELIVERY_VEHICLE_ASSIGNED_GROUP):
+		_errors.append("Live Farm delivery truck should be released back to the depot fleet after the return trip.")
 
 	_finish(main, action, world, driver)
 
@@ -185,10 +235,15 @@ func _select_farm_supermarket_pair(world: World, depot_access_position: Vector3)
 			supermarkets.append(building as Supermarket)
 
 	for farm in farms:
+		var loading_position := VehicleDepotAccessScript.resolve_marker_parking_position(farm, "DeliveryLoadingDepot")
+		if not VehicleDepotAccessScript.is_finite_vector(loading_position):
+			continue
+		var loading_access_position := _get_vehicle_road_access_point(world, loading_position)
 		for supermarket in supermarkets:
-			var outbound_route := world.get_vehicle_road_path(depot_access_position, supermarket.get_entrance_pos())
+			var depot_to_loading_route := world.get_vehicle_road_path(depot_access_position, loading_access_position)
+			var outbound_route := world.get_vehicle_road_path(loading_access_position, supermarket.get_entrance_pos())
 			var return_route := world.get_vehicle_road_path(supermarket.get_entrance_pos(), depot_access_position)
-			if outbound_route.size() > 2 and return_route.size() > 2:
+			if depot_to_loading_route.size() >= 2 and outbound_route.size() > 2 and return_route.size() > 2:
 				return {
 					"farm": farm,
 					"supermarket": supermarket,
@@ -310,6 +365,13 @@ func _is_pickup_delivery_vehicle(vehicle: Node) -> bool:
 		return false
 	var scene_path := vehicle.scene_file_path.to_lower()
 	return scene_path == PICKUP_TRUCK_SCENE_PATH or vehicle.name.to_lower().contains("pickup")
+
+
+func _is_delivery_cargo_visible(vehicle: Node) -> bool:
+	if vehicle == null:
+		return false
+	var load_node := vehicle.get_node_or_null("Load") as Node3D
+	return load_node != null and load_node.visible
 
 
 func _collect_free_depot_delivery_capacities(owner_node: Node, world: World, depot_position: Vector3) -> Array[int]:

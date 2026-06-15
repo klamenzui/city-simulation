@@ -13,6 +13,7 @@ func _initialize() -> void:
 	await _check_taxi_requires_depot()
 	await _check_taxi_exits_depot_parking_without_snap()
 	await _check_taxi_request_route_and_fare()
+	await _check_taxi_fleet_reserve()
 	if not _errors.is_empty():
 		for error in _errors:
 			push_error(error)
@@ -218,6 +219,127 @@ func _check_taxi_request_route_and_fare() -> void:
 	taxi_car.free()
 	overlay.free()
 	world.free()
+
+
+# A second request while the first taxi is still returning to the depot must be served
+# by a different free taxi from the pool, and the returning taxi must park on its own.
+func _check_taxi_fleet_reserve() -> void:
+	var world := World.new()
+	root.add_child(world)
+	await process_frame
+	_configure_test_roads(world)
+
+	var depot_marker := Area3D.new()
+	depot_marker.name = "TaxiVehicleDepot"
+	root.add_child(depot_marker)
+	depot_marker.global_position = Vector3(0.0, 0.0, 5.0)
+	var depot_shape := CollisionShape3D.new()
+	var depot_box := BoxShape3D.new()
+	depot_box.size = Vector3(4.0, 1.0, 5.0)
+	depot_shape.shape = depot_box
+	depot_shape.position = Vector3(0.0, 0.0, 1.5)
+	depot_marker.add_child(depot_shape)
+	await process_frame
+
+	var car_a := TaxiCarScene.instantiate() as VehicleAgent
+	root.add_child(car_a)
+	var car_b := TaxiCarScene.instantiate() as VehicleAgent
+	root.add_child(car_b)
+	await process_frame
+	car_a.global_position = depot_shape.global_position
+	car_b.global_position = depot_shape.global_position
+	car_a.manual_drive_enabled = true
+	car_b.manual_drive_enabled = true
+	# The trivial 1D test road has no lanes; disable head-on avoidance so the two taxis
+	# do not deadlock passing each other. This isolates the dispatch logic under test.
+	car_a.route_vehicle_avoidance_enabled = false
+	car_b.route_vehicle_avoidance_enabled = false
+	world.register_vehicle(car_a)
+	world.register_vehicle(car_b)
+
+	var player := CitizenScene.instantiate() as Citizen
+	root.add_child(player)
+	await process_frame
+	player.set_world_ref(world)
+	player.wallet.balance = 40
+	player.global_position = Vector3(20.0, 0.0, 0.0)
+	world.register_citizen(player)
+
+	var overlay := CanvasLayer.new()
+	overlay.set_script(WorldMapOverlayScript)
+	root.add_child(overlay)
+	overlay.setup(world, player)
+	var taxi_service := TaxiServiceScript.new()
+	taxi_service.setup(root, world, overlay)
+
+	var fleet: Array = [car_a, car_b]
+	var first_result: Dictionary = taxi_service.request_taxi(player)
+	if not bool(first_result.get("accepted", false)):
+		_errors.append("Fleet: first taxi request should be accepted.")
+	var first_taxi: VehicleAgent = taxi_service.get_taxi_vehicle()
+	if first_taxi == null:
+		_errors.append("Fleet: first request should assign a taxi.")
+
+	_advance_fleet_until_player_inside(taxi_service, player, fleet, 300)
+	if not player.is_inside_vehicle():
+		_errors.append("Fleet: player should be inside the first taxi after pickup.")
+	if not taxi_service.select_destination(Vector3(60.0, 0.0, 0.0)):
+		_errors.append("Fleet: first taxi should accept a destination.")
+	_advance_fleet_until_player_exited(taxi_service, player, fleet, 400)
+	if player.is_inside_vehicle():
+		_errors.append("Fleet: player should exit the first taxi at the destination.")
+	if taxi_service.get_state() != "return_to_depot":
+		_errors.append("Fleet: first taxi should be returning to the depot after drop-off.")
+
+	# Hail again immediately: a reserve taxi must serve while the first one still returns.
+	player.global_position = Vector3(40.0, 0.0, 0.0)
+	var second_result: Dictionary = taxi_service.request_taxi(player)
+	if not bool(second_result.get("accepted", false)):
+		_errors.append("Fleet: a reserve taxi should serve a new request while the first returns.")
+	var second_taxi: VehicleAgent = taxi_service.get_taxi_vehicle()
+	if second_taxi == null:
+		_errors.append("Fleet: second request should assign a reserve taxi.")
+	if second_taxi == first_taxi:
+		_errors.append("Fleet: the reserve request should use a different taxi than the returning one.")
+	if first_taxi != null and not taxi_service.is_taxi_vehicle(first_taxi):
+		_errors.append("Fleet: the returning taxi should still count as a taxi vehicle.")
+
+	_advance_fleet_until_player_inside(taxi_service, player, fleet, 400)
+	if not player.is_inside_vehicle():
+		_errors.append("Fleet: the reserve taxi should pick up the player.")
+	# Let the handed-off taxi finish parking back at the depot.
+	_advance_fleet(taxi_service, player, fleet, 200)
+	if first_taxi != null and _planar_distance(first_taxi.global_position, depot_shape.global_position) > 3.5:
+		_errors.append("Fleet: the returning taxi should park back near the depot.")
+
+	player.free()
+	car_a.free()
+	car_b.free()
+	overlay.free()
+	depot_marker.free()
+	world.free()
+
+
+func _advance_fleet(taxi_service, player: Citizen, vehicles: Array, steps: int) -> void:
+	for _i in range(steps):
+		for vehicle in vehicles:
+			if vehicle != null and is_instance_valid(vehicle):
+				vehicle.advance_vehicle_simulation(0.2)
+		taxi_service.update(0.2, player)
+
+
+func _advance_fleet_until_player_inside(taxi_service, player: Citizen, vehicles: Array, max_steps: int) -> void:
+	for _i in range(max_steps):
+		if player != null and player.is_inside_vehicle():
+			return
+		_advance_fleet(taxi_service, player, vehicles, 1)
+
+
+func _advance_fleet_until_player_exited(taxi_service, player: Citizen, vehicles: Array, max_steps: int) -> void:
+	for _i in range(max_steps):
+		if player != null and not player.is_inside_vehicle():
+			return
+		_advance_fleet(taxi_service, player, vehicles, 1)
 
 
 func _configure_test_roads(world: World) -> void:

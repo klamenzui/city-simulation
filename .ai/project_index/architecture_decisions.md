@@ -54,14 +54,19 @@ Purpose: compact decisions that should be checked before architectural edits.
 - When no player is actively working a Farm WorkScene, NPC farm workers and the normal economy/delivery loops must continue unchanged. A player Farm WorkScene may reserve only the same farm's harvest activity while active; it must not stop city time, delivery drivers, or unrelated farms.
 - Delivery/Logistics gameplay should use real production, stock, demand, route, vehicle capacity, fragile/cold goods, and time-window state. It should connect Farm/Factory/Warehouse producers to Shop/Supermarket/Restaurant consumers.
 - Taxi/Rideservice gameplay should use real citizen trip needs when possible, such as work, home, leisure, hospital, or shopping destinations. Scoring should consider time, route quality, comfort, mistakes, customer satisfaction, and money earned.
-- Taxi service is depot-based, not MVP teleport behavior: requests require `TaxiVehicleDepot` or a real `TaxiDepot`; pickup/drop-off/return use RoadGraph vehicle routes, while `TaxiVehicleDepot` parking and exit use short local maneuvers between road access and the marker's `CollisionShape3D` area.
-- Delivery vehicles use a central `DeliveryVehicleDepot` parking area. Farm/Factory deliveries must claim pre-placed free depot vehicles instead of instantiating dynamic delivery cars. Vehicle load quantity is capped by `VehicleAgent.delivery_load_capacity` on the claimed vehicle; the current depot setup uses a 4-unit pickup and an 8-unit truck. Delivery routes via RoadGraph between depot road access and delivery targets, use short local depot exit/parking maneuvers for the depot `CollisionShape3D`, and must not silently fall back to source-building parking when the depot or route is missing.
+- Taxi service is depot-based, not MVP teleport behavior: requests require `TaxiVehicleDepot` or a real `TaxiDepot`; pickup/drop-off/return use RoadGraph vehicle routes, while `TaxiVehicleDepot` parking and exit use short local maneuvers between road access and the depot.
+- Vehicle depot parking targets a free `VehicleParkingSpot` from the `VehicleDepot` node (`reserve_next_parking_spot`/`occupy`/`release`), not a single marker center. Both `DeliveryVehicleDepot` and `TaxiVehicleDepot` carry the `VehicleDepot` script directly on the named node; `VehicleDepotAccess.resolve_depot`/`find_depot_in` still locate it self-or-descendant so a wrapped layout keeps working. Taxi (`TaxiService`) and delivery (`Factory`/`Farm`) reserve on arrival, occupy when parked, release on departure, and fall back to the marker `CollisionShape3D` center when no depot/free spot exists.
+- Delivery vehicles use a `DeliveryVehicleDepot` as their fleet/home depot and must claim pre-placed free depot vehicles instead of instantiating dynamic delivery cars. Farm deliveries then drive empty from the home depot to the nearest `DeliveryLoadingDepot`/`delivery_loading_depots` parking area, perform a short local parking/loading stop, calculate load quantity there, and only then drive to the target. Cargo visuals must become visible at the loading depot before the truck exits back to the road. If nothing can be loaded at the loading stop, the vehicle returns to the home depot. Vehicle load quantity is capped by `VehicleAgent.delivery_load_capacity`; the current depot setup uses a 4-unit pickup and an 8-unit truck. VehicleDepot nodes are parking destinations, not RoadGraph road nodes; RoadGraph access should resolve to the nearest real connected road and local depot maneuvers handle parking. Delivery cleanup must remove `delivery_vehicle_assigned` when an order finishes or aborts so parked fleet vehicles become claimable again.
 - Delivery/Logistics and Taxi/Rideservice should run in the main world because their gameplay depends on live roads, buildings, citizens, vehicles, and city routes.
 - Multiplayer competition should be considered at data-contract level for every job-game: record comparable score outputs such as earned_money, time_used, quality_score, mistakes, customer_satisfaction, goods_produced, goods_delivered, and reputation_gain. Host/server remains authoritative for economy and job results.
 - Commercial ownership should grow from the first buy/profit/personality-gated AI slice into resale, insolvency sale, richer AI purchase criteria, and owner controls for prices/wages/stock.
 - Social invitations must become commitments: when dialog agrees on restaurant, park, cinema, or similar, both participants should get a shared destination/action plan instead of just flavor text.
 - First social invitation slice: clear phrases such as "lass uns essen gehen" create a `SocialVisitAction` for player and NPC. The action sequences existing GoTo + restaurant/park/cinema activity actions and only chooses real usable targets.
 - Wardrobe/clothing is a good early home interaction because it does not require apartment interiors. Store owned clothes on the Citizen/player inventory and apply a selected outfit.
+
+## Vehicle Scene Contract
+
+- Four-wheel CityPack vehicle scenes should follow the taxi `VehicleAgent` contract: `VehicleBody3D` root, `VisualRoot`, enabled `CollisionShape3D`, four direct `VehicleWheel3D` nodes, `EntryPoint`, `SeatPoint`, and `EngineSound`. The adapted CityPack four-wheel scenes are `bus`, `van`, `suv`, `police_car`, `sports_car`, `sports_car_gzj704_d_xdr`, and `car_unqqk_u_lt_ru`; keep `bicycle` and `motorcycle` out of this contract until two-wheel physics is defined.
 
 ## Multiplayer Ownership Rules
 
@@ -82,6 +87,10 @@ Purpose: compact decisions that should be checked before architectural edits.
 - Clients are locked to `PLAYER_THIRD_PERSON`; `toggle()`/`set_mode(CITY_BUILDER)` are no-ops for clients. Host/offline may toggle via the HUD bottom-bar button (hidden for clients).
 - Host/client player-follow and the offline ControlledCitizen route through the manager (`set_follow_target`/`set_player_target`), never by poking `get_viewport().get_camera_3d()`.
 - Direct WASD/click control of an arbitrary selected citizen was removed; only the real local player avatar (networked player or offline ControlledCitizen) is controllable.
+
+## Environment Ownership Rules
+
+- Grass is part of the generated biome/YAMMS scatter system (`MeadowPlantsScatter` with `GrassItem` and `Scenes/Plants/Biomes/Stylized3DGrass.tres`). Do not reintroduce runtime `ExteriorGrassDecorator` bootstrap grass; keep grass visual-only with no collision or walkable/building groups.
 
 ## Knowledge Storage Rule
 

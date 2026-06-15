@@ -4,8 +4,15 @@ const TRUCK_SCENE_PATH := "res://Entities/Transport/Truck_NormalTrailler_001.tsc
 const TRAFFIC_LIGHT_SCENE_PATH := "res://ImportedCitySource/scenes/trafficlight_c_active.tscn"
 const VEHICLE_SCENE_PATHS := [
 	TRUCK_SCENE_PATH,
+	"res://Scenes/Vehicles/CityPack/bus.tscn",
 	"res://Scenes/Vehicles/CityPack/car.tscn",
+	"res://Scenes/Vehicles/CityPack/car_unqqk_u_lt_ru.tscn",
 	"res://Scenes/Vehicles/CityPack/pickup_truck.tscn",
+	"res://Scenes/Vehicles/CityPack/police_car.tscn",
+	"res://Scenes/Vehicles/CityPack/sports_car.tscn",
+	"res://Scenes/Vehicles/CityPack/sports_car_gzj704_d_xdr.tscn",
+	"res://Scenes/Vehicles/CityPack/suv.tscn",
+	"res://Scenes/Vehicles/CityPack/van.tscn",
 	"res://Entities/Transport/Vehicle_TowTruck.tscn",
 	"res://Entities/Transport/Vehicle_TrailerTruck.tscn",
 ]
@@ -17,9 +24,11 @@ var _errors: Array[String] = []
 func _initialize() -> void:
 	_check_vehicle_lane_path()
 	_check_vehicle_route_contract()
+	await _check_vehicle_refuses_large_world_route_snap()
 	_check_vehicle_impact_audio_contract()
 	await _check_vehicle_waits_at_red_traffic_light()
 	await _check_route_vehicle_keeps_vehicle_gap()
+	await _check_route_vehicle_opposite_direction_breaks_deadlock()
 	await _check_vehicle_scene_catalog()
 	await _check_vehicle_snaps_to_ground()
 	await _check_truck_board_drive_exit()
@@ -127,6 +136,32 @@ func _check_vehicle_impact_audio_contract() -> void:
 	if vehicle._should_play_impact_audio(0.0):
 		_errors.append("Vehicle impact audio should respect the impact cooldown.")
 	vehicle.free()
+
+
+func _check_vehicle_refuses_large_world_route_snap() -> void:
+	var world := World.new()
+	var graph := RoadGraph.new()
+	graph.nodes = [Vector3(10.0, 0.0, 0.0), Vector3(20.0, 0.0, 0.0)]
+	graph.neighbors = {0: [1], 1: [0]}
+	graph._is_ready = true
+	world.road_graph = graph
+
+	var vehicle := VehicleAgent.new()
+	root.add_child(vehicle)
+	await process_frame
+	vehicle.global_position = Vector3.ZERO
+	vehicle.route_start_snap_max_distance = 2.0
+
+	var started := vehicle.start_drive_to(Vector3(20.0, 0.0, 0.0), world)
+	if started:
+		_errors.append("Vehicle should refuse a RoadGraph route whose first waypoint requires a large start snap.")
+	if not vehicle.last_path_failed:
+		_errors.append("Vehicle should mark large route-start snap refusals as path failures.")
+	if _planar_distance(vehicle.global_position, Vector3.ZERO) > 0.1:
+		_errors.append("Vehicle should not teleport toward a far RoadGraph route start.")
+
+	vehicle.free()
+	world.free()
 
 
 func _check_vehicle_waits_at_red_traffic_light() -> void:
@@ -246,6 +281,42 @@ func _check_route_vehicle_keeps_vehicle_gap() -> void:
 	follower.free()
 
 
+func _check_route_vehicle_opposite_direction_breaks_deadlock() -> void:
+	var westbound := VehicleAgent.new()
+	var eastbound := VehicleAgent.new()
+	root.add_child(westbound)
+	root.add_child(eastbound)
+	await process_frame
+
+	westbound.global_position = Vector3(3.0, 0.0, 0.0)
+	eastbound.global_position = Vector3.ZERO
+	for vehicle in [westbound, eastbound]:
+		vehicle.max_speed = 5.0
+		vehicle.acceleration = 20.0
+		vehicle.braking_acceleration = 20.0
+		vehicle.route_vehicle_detection_distance = 5.0
+		vehicle.route_vehicle_lateral_tolerance = 0.75
+		vehicle.route_vehicle_stop_distance = 1.8
+		vehicle.route_vehicle_slowdown_distance = 2.2
+
+	westbound.start_drive_to(Vector3(-3.0, 0.0, 0.0), null)
+	eastbound.start_drive_to(Vector3(6.0, 0.0, 0.0), null)
+
+	for _i in range(160):
+		if not westbound.is_driving() and not eastbound.is_driving():
+			break
+		westbound.advance_vehicle_simulation(0.1)
+		eastbound.advance_vehicle_simulation(0.1)
+
+	if westbound.is_waiting_for_vehicle() and eastbound.is_waiting_for_vehicle():
+		_errors.append("Opposite-direction route vehicles should not both wait forever nose-to-nose.")
+	if westbound.global_position.x > 0.5 and eastbound.global_position.x < 4.5:
+		_errors.append("At least one opposite-direction route vehicle should clear the conflict instead of deadlocking.")
+
+	westbound.free()
+	eastbound.free()
+
+
 func _check_vehicle_scene_catalog() -> void:
 	for scene_path in VEHICLE_SCENE_PATHS:
 		var scene := _load_vehicle_scene(scene_path)
@@ -275,8 +346,8 @@ func _check_vehicle_scene_catalog() -> void:
 			_errors.append("Vehicle scene %s should expose EntryPoint." % scene_path)
 		if vehicle.get_node_or_null("SeatPoint") == null:
 			_errors.append("Vehicle scene %s should expose SeatPoint." % scene_path)
-		if vehicle.get_node_or_null("VehicleCollisionShape") == null:
-			_errors.append("Vehicle scene %s should expose VehicleCollisionShape." % scene_path)
+		if not _has_vehicle_collision_shape(vehicle):
+			_errors.append("Vehicle scene %s should expose at least one enabled CollisionShape3D." % scene_path)
 		var engine_sound := vehicle.get_node_or_null("EngineSound") as AudioStreamPlayer3D
 		if engine_sound == null:
 			_errors.append("Vehicle scene %s should expose EngineSound." % scene_path)
@@ -353,8 +424,8 @@ func _check_truck_board_drive_exit() -> void:
 		_errors.append("Truck should expose EntryPoint marker.")
 	if truck.get_node_or_null("SeatPoint") == null:
 		_errors.append("Truck should expose SeatPoint marker.")
-	if truck.get_node_or_null("VehicleCollisionShape") == null:
-		_errors.append("Truck should expose a VehicleCollisionShape for physics blocking.")
+	if not _has_vehicle_collision_shape(truck):
+		_errors.append("Truck should expose at least one enabled CollisionShape3D for physics blocking.")
 	if _count_vehicle_wheels(truck) < 4:
 		_errors.append("Truck should expose at least four VehicleWheel3D nodes.")
 	if not _vehicle_wheels_match_visible_radius(truck):
@@ -612,6 +683,17 @@ func _count_vehicle_wheels(vehicle: Node) -> int:
 		if child is VehicleWheel3D:
 			count += 1
 	return count
+
+
+func _has_vehicle_collision_shape(node: Node) -> bool:
+	if node is CollisionShape3D:
+		var shape_node := node as CollisionShape3D
+		if not shape_node.disabled and shape_node.shape != null:
+			return true
+	for child in node.get_children():
+		if _has_vehicle_collision_shape(child):
+			return true
+	return false
 
 
 func _has_mesh_instance(node: Node) -> bool:

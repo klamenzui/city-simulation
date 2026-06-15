@@ -42,6 +42,7 @@ var _delivery_minutes_left: int = 0
 var _delivery_vehicle = null
 var _delivery_depot_parking_position: Vector3 = Vector3.INF
 var _delivery_depot_road_access_position: Vector3 = Vector3.INF
+var _delivery_parking_spot: VehicleParkingSpot = null
 
 func _ready() -> void:
 	super._ready()
@@ -293,6 +294,8 @@ func _start_delivery_depot_exit(world: World, citizen: Citizen) -> bool:
 		return false
 	if not _delivery_vehicle.board_driver(citizen):
 		return false
+	# Leaving the depot frees the spot this vehicle was parked on.
+	_release_delivery_parking_spot()
 	var distance_to_access := VehicleDepotAccessScript.planar_distance(_delivery_vehicle.global_position, _delivery_depot_road_access_position)
 	if distance_to_access <= _vehicle_arrival_radius():
 		if not _delivery_vehicle.assign_delivery_driver(citizen, _delivery_target, world):
@@ -317,25 +320,57 @@ func _start_delivery_return_to_depot(world: World, citizen: Citizen) -> bool:
 func _start_delivery_depot_parking() -> bool:
 	if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
 		return false
-	if not VehicleDepotAccessScript.is_finite_vector(_delivery_depot_parking_position):
+	_ensure_delivery_parking_spot()
+	var parking_position := _delivery_parking_position()
+	if not VehicleDepotAccessScript.is_finite_vector(parking_position):
 		return false
-	var distance_to_parking := VehicleDepotAccessScript.planar_distance(_delivery_vehicle.global_position, _delivery_depot_parking_position)
+	var distance_to_parking := VehicleDepotAccessScript.planar_distance(_delivery_vehicle.global_position, parking_position)
 	if distance_to_parking <= _vehicle_arrival_radius():
-		_place_delivery_vehicle_at(_delivery_depot_parking_position)
+		_place_delivery_vehicle_at(parking_position)
+		_occupy_delivery_parking_spot()
 		return true
 	if distance_to_parking > DELIVERY_DEPOT_MAX_LOCAL_MANEUVER_DISTANCE:
 		push_warning("Factory: DeliveryVehicleDepot parking area is too far from return road access.")
 		return false
-	return _delivery_vehicle.start_drive_to(_delivery_depot_parking_position, null)
+	return _delivery_vehicle.start_drive_to(parking_position, null)
 
 func _finish_delivery_after_depot_parking(world: World, citizen: Citizen) -> void:
+	var parking_position := _delivery_parking_position()
 	if _delivery_vehicle != null and is_instance_valid(_delivery_vehicle) \
-			and VehicleDepotAccessScript.is_finite_vector(_delivery_depot_parking_position):
-		if VehicleDepotAccessScript.planar_distance(_delivery_vehicle.global_position, _delivery_depot_parking_position) > _vehicle_arrival_radius():
-			_place_delivery_vehicle_at(_delivery_depot_parking_position)
+			and VehicleDepotAccessScript.is_finite_vector(parking_position):
+		if VehicleDepotAccessScript.planar_distance(_delivery_vehicle.global_position, parking_position) > _vehicle_arrival_radius():
+			_place_delivery_vehicle_at(parking_position)
+	_occupy_delivery_parking_spot()
 	if citizen.has_method("enter_building"):
 		citizen.enter_building(self, world, true, true)
 	_release_delivery_worker()
+
+# Reserves a free VehicleDepot parking spot for this building's truck. Falls back to
+# the marker-center position when the depot exposes no VehicleParkingSpot.
+func _ensure_delivery_parking_spot() -> void:
+	if _delivery_parking_spot != null and is_instance_valid(_delivery_parking_spot):
+		return
+	_delivery_parking_spot = VehicleDepotAccessScript.reserve_free_parking_spot(
+		self, _delivery_vehicle, DELIVERY_DEPOT_MARKER_NAME
+	)
+
+func _delivery_parking_position() -> Vector3:
+	if _delivery_parking_spot != null and is_instance_valid(_delivery_parking_spot):
+		return _delivery_parking_spot.get_parking_transform().origin
+	return _delivery_depot_parking_position
+
+func _occupy_delivery_parking_spot() -> void:
+	VehicleDepotAccessScript.occupy_vehicle_spot(_delivery_vehicle, _delivery_parking_spot)
+	_delivery_parking_spot = null
+
+func _release_delivery_parking_spot() -> void:
+	VehicleDepotAccessScript.release_vehicle_spot(_delivery_vehicle)
+	_release_reserved_delivery_parking_spot()
+
+func _release_reserved_delivery_parking_spot() -> void:
+	if _delivery_parking_spot != null and is_instance_valid(_delivery_parking_spot):
+		_delivery_parking_spot.release(_delivery_vehicle)
+	_delivery_parking_spot = null
 
 func _resolve_delivery_depot_positions(world: World) -> bool:
 	var parking_position := VehicleDepotAccessScript.resolve_marker_parking_position(self, DELIVERY_DEPOT_MARKER_NAME)
@@ -570,6 +605,7 @@ func _prune_invalid_delivery_worker() -> void:
 		_release_delivery_worker()
 
 func _release_delivery_worker() -> void:
+	_release_reserved_delivery_parking_spot()
 	_delivery_worker = null
 	_delivery_target = null
 	_delivery_target_item = ""

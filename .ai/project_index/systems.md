@@ -107,7 +107,6 @@ Runtime and debug scenes/resources.
 | Path | class_name | extends |
 | --- | --- | --- |
 | Scenes/DebugPanel.gd | DebugPanel | CanvasLayer |
-| Scenes/Environment/ExteriorGrassDecorator.gd | ExteriorGrassDecorator | Node3D |
 | Scenes/Minigames/CookingIngredientCatch/CookingIngredientCatchMinigame.gd | CookingIngredientCatchMinigame | Control |
 | Scenes/Minigames/RetailWorkSort/RetailWorkSortMinigame.gd | RetailWorkSortMinigame | Control |
 | Scenes/Minigames/ServiceFlow/ServiceFlowMinigame.gd | ServiceFlowMinigame | Control |
@@ -178,6 +177,7 @@ Headless probes, parse checks, audits, and regression tests.
 
 | Path | class_name | extends |
 | --- | --- | --- |
+| tools/codex_adapt_citypack_vehicles.gd | - | SceneTree |
 | tools/codex_building_entry_travel_test.gd | - | SceneTree |
 | tools/codex_building_occupancy_test.gd | - | SceneTree, RefCounted, RefCounted, RefCounted, RefCounted |
 | tools/codex_church_scene_probe.gd | - | SceneTree |
@@ -212,4 +212,3 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_navigation_edge_step_test.gd | - | SceneTree |
 | tools/codex_navigation_route_test.gd | - | SceneTree |
 | tools/codex_null_material_audit.gd | - | SceneTree |
-| tools/codex_parse_check.gd | - | SceneTree |

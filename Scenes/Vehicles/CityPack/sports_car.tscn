@@ -1,5 +1,11 @@
 [gd_scene format=4]
 
+[ext_resource type="Script" path="res://Simulation/Transport/VehicleAgent.gd" id="1_b4at5"]
+[ext_resource type="AudioStream" path="res://environment/audio/vehicles/engine.wav" id="2_ky814"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_p265i"]
+size = Vector3(0.50029427, 0.3, 1.3056)
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_qclca"]
 resource_name = "White"
 albedo_color = Color(0.766602, 0.766602, 0.766602, 1)
@@ -313,20 +319,111 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_h3s08")
 
-[node name="SportsCar" type="Node3D" unique_id=1818846135]
+[node name="SportsCar" type="VehicleBody3D" unique_id=1258154379]
+collision_layer = 4
+collision_mask = 5
+mass = 11.0
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, 0.08, 0)
+script = ExtResource("1_b4at5")
+delivery_vehicle = false
+delivery_load_capacity = 0
+use_balance_vehicle_geometry = false
+vehicle_mass = 11.0
+center_of_mass_offset = Vector3(0, 0.08, 0)
+wheel_track_half_width = 0.1701000511646271
+wheel_front_z = 0.3264
+wheel_rear_z = -0.3655680131912232
+wheel_mount_y = 0.07
+wheel_radius = 0.07
+wheel_roll_influence = 0.35
+wheel_friction_slip = 1.1
+suspension_stiffness = 34.0
+suspension_travel = 0.12
+damping_compression = 0.9
+damping_relaxation = 1.6
+collision_shape_size = Vector3(0.50029427, 0.3, 1.3056)
+collision_shape_offset = Vector3(0, 0.17, 0)
 
-[node name="SportsCar2_Cube_006" type="MeshInstance3D" parent="." unique_id=1126132444]
+[node name="VehicleCollisionShape" type="CollisionShape3D" parent="." unique_id=1483000800]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.17, 0)
+shape = SubResource("BoxShape3D_p265i")
+
+[node name="FrontLeftWheel" type="VehicleWheel3D" parent="." unique_id=416375199]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.17010005, 0.07, 0.3264)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.07
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="FrontRightWheel" type="VehicleWheel3D" parent="." unique_id=147568583]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.17010005, 0.07, 0.3264)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.07
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="RearLeftWheel" type="VehicleWheel3D" parent="." unique_id=426995706]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.17010005, 0.07, -0.365568)
+use_as_traction = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.07
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="RearRightWheel" type="VehicleWheel3D" parent="." unique_id=2059265790]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.17010005, 0.07, -0.365568)
+use_as_traction = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.07
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="VisualRoot" type="Node3D" parent="." unique_id=2127367752]
+transform = Transform3D(0.32598734, 0, 0, 0, 0.32598734, 0, 0, 0, 0.32598734, 1.5544288e-07, 0.02513039, 0.021286152)
+
+[node name="SportsCarVisual" type="Node3D" parent="VisualRoot" unique_id=1818846135]
+
+[node name="SportsCar2_Cube_006" type="MeshInstance3D" parent="VisualRoot/SportsCarVisual" unique_id=1126132444]
 mesh = SubResource("ArrayMesh_lb2q3")
 skeleton = NodePath("")
 
-[node name="SportsCar2_BackWheels_Cylinder_002" type="MeshInstance3D" parent="." unique_id=484873435]
+[node name="SportsCar2_BackWheels_Cylinder_002" type="MeshInstance3D" parent="VisualRoot/SportsCarVisual" unique_id=484873435]
 mesh = SubResource("ArrayMesh_3ksyw")
 skeleton = NodePath("")
 
-[node name="SportsCar2_FrontLeftWheel_Cylinder_017" type="MeshInstance3D" parent="." unique_id=279514856]
+[node name="SportsCar2_FrontLeftWheel_Cylinder_017" type="MeshInstance3D" parent="VisualRoot/SportsCarVisual" unique_id=279514856]
 mesh = SubResource("ArrayMesh_00ux8")
 skeleton = NodePath("")
 
-[node name="SportsCar2_FrontRightWheel_Cylinder_018" type="MeshInstance3D" parent="." unique_id=823687107]
+[node name="SportsCar2_FrontRightWheel_Cylinder_018" type="MeshInstance3D" parent="VisualRoot/SportsCarVisual" unique_id=823687107]
 mesh = SubResource("ArrayMesh_p3c56")
 skeleton = NodePath("")
+
+[node name="EntryPoint" type="Node3D" parent="." unique_id=436776453]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.36021188, 0.03, 0.02)
+
+[node name="SeatPoint" type="Node3D" parent="." unique_id=364005868]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.09005297, 0.20400001, 0.08)
+
+[node name="EngineSound" type="AudioStreamPlayer3D" parent="." unique_id=253037715]
+stream = ExtResource("2_ky814")
+volume_db = -28.0
+pitch_scale = 0.05
+attenuation_filter_cutoff_hz = 20500.0

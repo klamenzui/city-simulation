@@ -1,6 +1,11 @@
 [gd_scene format=4]
 
+[ext_resource type="Script" path="res://Simulation/Transport/VehicleAgent.gd" id="1_2bdd8"]
 [ext_resource type="Texture2D" path="res://ImportedCitySource/assets/city_pack/Bus_1376 Bus.png" id="1_r33ow"]
+[ext_resource type="AudioStream" path="res://environment/audio/vehicles/engine.wav" id="3_mre03"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_6arlr"]
+size = Vector3(0.6126391, 0.5744567, 2.3969998)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wjf3o"]
 resource_name = "Mat"
@@ -42,8 +47,99 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_e8kic")
 
-[node name="Bus" type="Node3D" unique_id=979182888]
+[node name="Bus" type="VehicleBody3D" unique_id=1607091520]
+collision_layer = 4
+collision_mask = 5
+mass = 36.0
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, 0.105, 0)
+script = ExtResource("1_2bdd8")
+delivery_vehicle = false
+delivery_load_capacity = 0
+use_balance_vehicle_geometry = false
+vehicle_mass = 36.0
+center_of_mass_offset = Vector3(0, 0.105, 0)
+wheel_track_half_width = 0.20829730391502382
+wheel_front_z = 0.7430699491500854
+wheel_rear_z = -0.814979944229126
+wheel_mount_y = 0.105
+wheel_radius = 0.105
+wheel_roll_influence = 0.35
+wheel_friction_slip = 1.1
+suspension_stiffness = 34.0
+suspension_travel = 0.12
+damping_compression = 0.9
+damping_relaxation = 1.6
+collision_shape_size = Vector3(0.6126391, 0.5744567, 2.3969998)
+collision_shape_offset = Vector3(0, 0.30722836, 0)
 
-[node name="Bus" type="MeshInstance3D" parent="." unique_id=656842409]
+[node name="VehicleCollisionShape" type="CollisionShape3D" parent="." unique_id=652238616]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.30722836, 0)
+shape = SubResource("BoxShape3D_6arlr")
+
+[node name="FrontLeftWheel" type="VehicleWheel3D" parent="." unique_id=1834084449]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2082973, 0.105, 0.74306995)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.105
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="FrontRightWheel" type="VehicleWheel3D" parent="." unique_id=7709838]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2082973, 0.105, 0.74306995)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.105
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="RearLeftWheel" type="VehicleWheel3D" parent="." unique_id=1502669734]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2082973, 0.105, -0.81498)
+use_as_traction = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.105
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="RearRightWheel" type="VehicleWheel3D" parent="." unique_id=1874672606]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2082973, 0.105, -0.81498)
+use_as_traction = true
+wheel_roll_influence = 0.35
+wheel_radius = 0.105
+wheel_friction_slip = 1.1
+suspension_travel = 0.12
+suspension_stiffness = 34.0
+damping_compression = 0.9
+damping_relaxation = 1.6
+
+[node name="VisualRoot" type="Node3D" parent="." unique_id=880927514]
+transform = Transform3D(0.014924318, 0, 0, 0, 0.014924318, 0, 0, 0, 0.014924318, 0, 0.020000434, 0)
+
+[node name="BusVisual" type="Node3D" parent="VisualRoot" unique_id=979182888]
+
+[node name="Bus" type="MeshInstance3D" parent="VisualRoot/BusVisual" unique_id=656842409]
 mesh = SubResource("ArrayMesh_amjow")
 skeleton = NodePath("")
+
+[node name="EntryPoint" type="Node3D" parent="." unique_id=1680604939]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.44110018, 0.03, 0.02)
+
+[node name="SeatPoint" type="Node3D" parent="." unique_id=1655849414]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.110275045, 0.39063054, 0.08)
+
+[node name="EngineSound" type="AudioStreamPlayer3D" parent="." unique_id=1139731944]
+stream = ExtResource("3_mre03")
+volume_db = -28.0
+pitch_scale = 0.05
+attenuation_filter_cutoff_hz = 20500.0
