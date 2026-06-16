@@ -73,6 +73,9 @@
       "route_vehicle_stop_distance": 1.7,
       "route_vehicle_slowdown_distance": 3.2,
       "route_start_snap_max_distance": 2.5,
+      "route_curbside_pullout_enabled": true,
+      "route_curbside_pullout_offset": 0.9,
+      "route_curbside_pullout_length": 2.0,
       "obey_traffic_lights": true,
       "traffic_light_detection_distance": 6.0,
       "traffic_light_lateral_tolerance": 0.85,
@@ -446,6 +449,7 @@
     "health": {
       "visit_threshold": 20.0,
       "emergency_threshold": 5.0,
+      "taxi_threshold": 20.0,
       "priority_scale": 20.0,
       "sick_work_skip_threshold": 55.0,
       "sick_work_skip_base_probability": 0.18,

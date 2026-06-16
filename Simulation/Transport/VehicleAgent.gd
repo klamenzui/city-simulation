@@ -13,6 +13,10 @@ const VEHICLE_COLLISION_LAYER := 4
 const VEHICLE_WORLD_AND_VEHICLE_MASK := 5
 const ARRIVAL_EXIT_MAX_ACCESS_DISTANCE := 8.0
 const CARGO_LOAD_NODE := "Load"
+const ROUTE_STATIC_COLLISION_MASK := 1
+const ROUTE_STATIC_COLLISION_SKIN := 0.18
+const ROUTE_STATIC_COLLISION_MIN_STEP := 0.02
+const CURBSIDE_TARGET_CLEARANCE := 0.65
 
 @export var delivery_vehicle: bool = true
 @export var delivery_load_capacity: int = 8
@@ -65,6 +69,9 @@ const CARGO_LOAD_NODE := "Load"
 @export var route_vehicle_stop_distance: float = 1.7
 @export var route_vehicle_slowdown_distance: float = 3.2
 @export var route_start_snap_max_distance: float = 2.5
+@export var route_curbside_pullout_enabled: bool = true
+@export var route_curbside_pullout_offset: float = 0.9
+@export var route_curbside_pullout_length: float = 2.0
 @export var obey_traffic_lights: bool = true
 @export var traffic_light_detection_distance: float = 6.0
 @export var traffic_light_lateral_tolerance: float = 0.85
@@ -104,6 +111,7 @@ var _registered_world: World = null
 var _waiting_for_traffic_light: bool = false
 var _waiting_for_vehicle: bool = false
 var _unboard_driver_on_trip_finish: bool = true
+var _last_kinematic_blocked: bool = false
 
 
 func _ready() -> void:
@@ -169,7 +177,7 @@ func assign_delivery_driver_to_position(
 	target_position = delivery_target_pos
 	_set_cargo_visible(delivery_target != null)
 	_arrival_exit_position = _resolve_arrival_exit_position(world, delivery_target_pos, delivery_target)
-	if not start_drive_to(delivery_target_pos, world):
+	if not _start_drive_to(delivery_target_pos, world, true, delivery_target != null):
 		_set_cargo_visible(false)
 		return false
 	return true
@@ -221,17 +229,30 @@ func start_drive_to(destination: Vector3, world: World = null) -> bool:
 	return _start_drive_to(destination, world, true)
 
 
+func start_drive_to_curbside(destination: Vector3, world: World = null) -> bool:
+	return _start_drive_to(destination, world, true, true)
+
+
 func start_drive_to_keep_driver(destination: Vector3, world: World = null) -> bool:
 	return _start_drive_to(destination, world, false)
 
 
-func _start_drive_to(destination: Vector3, world: World = null, unboard_driver_on_finish: bool = true) -> bool:
+func start_drive_to_keep_driver_curbside(destination: Vector3, world: World = null) -> bool:
+	return _start_drive_to(destination, world, false, true)
+
+
+func _start_drive_to(
+	destination: Vector3,
+	world: World = null,
+	unboard_driver_on_finish: bool = true,
+	curbside_arrival: bool = false
+) -> bool:
 	target_position = destination
 	last_path_failed = false
 	_unboard_driver_on_trip_finish = unboard_driver_on_finish
 	if current_driver != null:
 		_arrival_exit_position = _resolve_arrival_exit_position(world, destination, target_building)
-	last_vehicle_route = _build_vehicle_route(destination, world)
+	last_vehicle_route = _build_vehicle_route(destination, world, curbside_arrival)
 	if last_vehicle_route.size() < 2:
 		last_path_failed = true
 		_route_index = -1
@@ -355,6 +376,10 @@ func _advance_route_drive(delta: float) -> void:
 	if _route_index >= last_vehicle_route.size() - 1 and distance <= waypoint_reach_distance:
 		var arrival_motion := Vector3(waypoint.x - global_position.x, 0.0, waypoint.z - global_position.z)
 		_move_vehicle_kinematic(arrival_motion)
+		if _last_kinematic_blocked:
+			_current_speed = 0.0
+			_finish_trip(_resolve_world_from_tree())
+			return
 		if _planar_distance(global_position, waypoint) <= waypoint_reach_distance:
 			_finish_trip(_resolve_world_from_tree())
 		return
@@ -397,6 +422,13 @@ func _advance_route_drive(delta: float) -> void:
 		max_step = minf(max_step, maxf(vehicle_stop_distance, 0.0))
 	var step := minf(_current_speed * delta, max_step)
 	_move_vehicle_kinematic(direction * step)
+	if _last_kinematic_blocked:
+		_current_speed = 0.0
+		var blocked_remaining := _remaining_route_distance(_planar_distance(global_position, waypoint))
+		if _route_index >= last_vehicle_route.size() - 1 \
+				or blocked_remaining <= maxf(waypoint_reach_distance, 1.25):
+			_finish_trip(_resolve_world_from_tree())
+			return
 	_pin_current_driver_to_seat()
 
 
@@ -442,11 +474,11 @@ func _finish_trip(world: World = null) -> void:
 	trip_completed.emit(self, driver, target_building)
 
 
-func _build_vehicle_route(destination: Vector3, world: World = null) -> PackedVector3Array:
+func _build_vehicle_route(destination: Vector3, world: World = null, curbside_arrival: bool = false) -> PackedVector3Array:
 	if world != null and world.has_method("get_vehicle_road_path"):
 		var route: PackedVector3Array = world.get_vehicle_road_path(global_position, destination)
 		if route.size() >= 2:
-			return route
+			return _append_curbside_arrival(route, destination) if curbside_arrival else route
 		push_warning("VehicleAgent: RoadGraph returned no vehicle path; refusing direct vehicle fallback.")
 		last_path_failed = true
 		return PackedVector3Array()
@@ -454,6 +486,56 @@ func _build_vehicle_route(destination: Vector3, world: World = null) -> PackedVe
 		return PackedVector3Array([global_position, destination])
 	last_path_failed = true
 	return PackedVector3Array()
+
+
+func _append_curbside_arrival(route: PackedVector3Array, requested_destination: Vector3) -> PackedVector3Array:
+	if not route_curbside_pullout_enabled or route.size() < 2:
+		return route
+	var offset := maxf(route_curbside_pullout_offset, 0.0)
+	if offset <= 0.01:
+		return route
+	var end := route[route.size() - 1]
+	var previous := route[route.size() - 2]
+	var direction := end - previous
+	direction.y = 0.0
+	var segment_distance := direction.length()
+	if segment_distance <= 0.001:
+		return route
+	direction = direction.normalized()
+	var right := Vector3(-direction.z, 0.0, direction.x)
+	var destination_delta := requested_destination - end
+	destination_delta.y = 0.0
+	var side_distance := destination_delta.dot(right)
+	if absf(side_distance) > offset + CURBSIDE_TARGET_CLEARANCE:
+		right *= signf(side_distance)
+		offset = minf(offset, maxf(absf(side_distance) - CURBSIDE_TARGET_CLEARANCE, 0.0))
+		if offset <= 0.01:
+			return route
+	var pullout_length := minf(maxf(route_curbside_pullout_length, 0.0), segment_distance * 0.4)
+	var merge_length := minf(maxf(pullout_length * 1.5, waypoint_reach_distance), maxf(segment_distance - pullout_length, 0.0))
+	var lane_merge_start := Vector3(
+		end.x - direction.x * (pullout_length + merge_length),
+		end.y,
+		end.z - direction.z * (pullout_length + merge_length)
+	)
+	var curb_end := Vector3(end.x + right.x * offset, end.y, end.z + right.z * offset)
+	var curb_approach := Vector3(
+		end.x - direction.x * pullout_length + right.x * offset,
+		end.y,
+		end.z - direction.z * pullout_length + right.z * offset
+	)
+
+	var out := PackedVector3Array()
+	for i in range(route.size() - 1):
+		out.append(route[i])
+	if merge_length > waypoint_reach_distance and _planar_distance(out[out.size() - 1], lane_merge_start) > 0.15:
+		out.append(lane_merge_start)
+	if pullout_length > waypoint_reach_distance and _planar_distance(out[out.size() - 1], curb_approach) > 0.15:
+		out.append(curb_approach)
+	if _planar_distance(out[out.size() - 1], curb_end) > 0.15:
+		out.append(curb_end)
+	return out
+
 
 func _snap_to_route_start_if_needed(route: PackedVector3Array) -> bool:
 	if route.is_empty():
@@ -581,6 +663,9 @@ func _apply_balance_settings() -> void:
 	route_vehicle_stop_distance = BalanceConfig.get_float("transport.vehicle.route_vehicle_stop_distance", route_vehicle_stop_distance)
 	route_vehicle_slowdown_distance = BalanceConfig.get_float("transport.vehicle.route_vehicle_slowdown_distance", route_vehicle_slowdown_distance)
 	route_start_snap_max_distance = BalanceConfig.get_float("transport.vehicle.route_start_snap_max_distance", route_start_snap_max_distance)
+	route_curbside_pullout_enabled = BalanceConfig.get_bool("transport.vehicle.route_curbside_pullout_enabled", route_curbside_pullout_enabled)
+	route_curbside_pullout_offset = BalanceConfig.get_float("transport.vehicle.route_curbside_pullout_offset", route_curbside_pullout_offset)
+	route_curbside_pullout_length = BalanceConfig.get_float("transport.vehicle.route_curbside_pullout_length", route_curbside_pullout_length)
 	vehicle_audio_enabled = BalanceConfig.get_bool("transport.vehicle.audio_enabled", vehicle_audio_enabled)
 	engine_audio_path = BalanceConfig.get_string("transport.vehicle.engine_audio_path", engine_audio_path)
 	impact_audio_path = BalanceConfig.get_string("transport.vehicle.impact_audio_path", impact_audio_path)
@@ -1039,13 +1124,79 @@ func _is_manual_input_braking(throttle: float) -> bool:
 
 
 func _move_vehicle_kinematic(motion: Vector3) -> bool:
+	_last_kinematic_blocked = false
 	if motion.length_squared() <= 0.000001:
 		return false
 	var before := global_position
-	global_position += motion
+	var safe_motion := _clip_route_motion_against_static_collision(motion)
+	if safe_motion.length_squared() < motion.length_squared() - 0.000001:
+		_last_kinematic_blocked = true
+	global_position += safe_motion
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
 	return before.distance_squared_to(global_position) > 0.000001
+
+
+func _clip_route_motion_against_static_collision(motion: Vector3) -> Vector3:
+	if not is_inside_tree():
+		return motion
+	var distance := motion.length()
+	if distance <= ROUTE_STATIC_COLLISION_MIN_STEP:
+		return motion
+	var direction := motion / distance
+	direction.y = 0.0
+	if direction.length_squared() <= 0.0001:
+		return motion
+	direction = direction.normalized()
+	var hit_distance := _get_route_static_collision_distance(direction, distance)
+	if hit_distance == INF:
+		return motion
+	var safe_distance := maxf(hit_distance - ROUTE_STATIC_COLLISION_SKIN, 0.0)
+	if safe_distance <= ROUTE_STATIC_COLLISION_MIN_STEP:
+		return Vector3.ZERO
+	return direction * minf(safe_distance, distance)
+
+
+func _get_route_static_collision_distance(direction: Vector3, travel_distance: float) -> float:
+	var world_3d := get_world_3d()
+	if world_3d == null:
+		return INF
+	var space_state := world_3d.direct_space_state
+	if space_state == null:
+		return INF
+	var side := Vector3(-direction.z, 0.0, direction.x)
+	var half_width := _route_collision_half_width()
+	var front_extent := _route_collision_front_extent()
+	var probe_y := _route_collision_probe_y()
+	var best_distance := INF
+	for lateral in [-half_width, 0.0, half_width]:
+		var start := Vector3(global_position.x, probe_y, global_position.z) \
+			+ direction * front_extent \
+			+ side * float(lateral)
+		var end := start + direction * (travel_distance + ROUTE_STATIC_COLLISION_SKIN)
+		var query := PhysicsRayQueryParameters3D.create(start, end, ROUTE_STATIC_COLLISION_MASK)
+		query.exclude = [get_rid()]
+		query.hit_from_inside = false
+		var hit := space_state.intersect_ray(query)
+		if hit.is_empty():
+			continue
+		var hit_pos: Vector3 = hit.get("position", end) as Vector3
+		var to_hit := hit_pos - start
+		to_hit.y = 0.0
+		best_distance = minf(best_distance, maxf(to_hit.dot(direction), 0.0))
+	return best_distance
+
+
+func _route_collision_half_width() -> float:
+	return maxf(collision_shape_size.x * 0.5 + ROUTE_STATIC_COLLISION_SKIN, 0.25)
+
+
+func _route_collision_front_extent() -> float:
+	return maxf(absf(collision_shape_offset.z) + collision_shape_size.z * 0.5, 0.35)
+
+
+func _route_collision_probe_y() -> float:
+	return global_position.y + maxf(collision_shape_offset.y + collision_shape_size.y * 0.5, 0.35)
 
 
 func _snap_to_ground_now() -> void:

@@ -391,6 +391,8 @@ func _setup_taxi_service() -> void:
 	taxi_service = TaxiServiceScript.new()
 	taxi_service.setup(owner_node, world, world_map_overlay)
 	taxi_service.status_changed.connect(_on_taxi_status_changed)
+	if world != null and world.has_method("set_taxi_service"):
+		world.set_taxi_service(taxi_service)
 
 func _on_taxi_status_changed(message: String, kind: String, duration_sec: float) -> void:
 	_show_toast(message, kind, duration_sec)

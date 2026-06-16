@@ -27,6 +27,7 @@ Legacy/resource-style action classes for citizen behaviors.
 | Actions/SocializeAction.gd | SocializeAction | Action |
 | Actions/SocialVisitAction.gd | SocialVisitAction | Action |
 | Actions/StudyAtUniversityAction.gd | StudyAtUniversityAction | Action |
+| Actions/TaxiToBuildingAction.gd | TaxiToBuildingAction | Action |
 | Actions/TreatAtHospitalAction.gd | TreatAtHospitalAction | Action |
 | Actions/WatchCinemaAction.gd | WatchCinemaAction | Action |
 | Actions/WorkAction.gd | WorkAction | Action |

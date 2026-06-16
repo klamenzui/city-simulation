@@ -44,6 +44,7 @@ var vehicles: Array[Node3D] = []
 var _buildings_by_service_type: Dictionary = {}
 var _canonical_building_by_instance_id: Dictionary = {}
 var _park_representative_by_cluster_id: Dictionary = {}
+var _taxi_service = null
 
 var is_paused: bool = false
 var simulation_authority_enabled: bool = true
@@ -877,6 +878,12 @@ func set_speed(multiplier: float) -> void:
 	speed_multiplier = maxf(multiplier, 0.1)
 	_refresh_timer_wait_time()
 	speed_changed.emit(speed_multiplier)
+
+func set_taxi_service(service) -> void:
+	_taxi_service = service
+
+func get_taxi_service():
+	return _taxi_service
 
 func _refresh_timer_wait_time() -> void:
 	if _timer == null:

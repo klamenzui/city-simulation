@@ -6,9 +6,9 @@ enum LightColors {
 	RED
 }
 
-const GREEN_DURATION_SEC := 5.0
-const YELLOW_DURATION_SEC := 2.0
-const RED_DURATION_SEC := 5.0
+const GREEN_DURATION_SEC := 3.0
+const YELLOW_DURATION_SEC := 1.0
+const RED_DURATION_SEC := 3.0
 
 @onready var green_light := %green
 @onready var yellow_light := %yellow

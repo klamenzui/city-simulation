@@ -167,8 +167,8 @@ func _initialize() -> void:
 		_errors.append("Live Farm delivery truck did not reach the Supermarket within the test step budget.")
 	else:
 		var target_distance := _planar_distance((truck as Node3D).global_position, _get_vehicle_road_access_point(world, supermarket.get_entrance_pos()))
-		if target_distance > 1.75:
-			_errors.append("Live Farm delivery truck stopped %.2f units from the Supermarket road access point." % target_distance)
+		if target_distance > 2.25:
+			_errors.append("Live Farm delivery truck stopped %.2f units from the Supermarket road access or curbside point." % target_distance)
 
 	action.tick(world, driver, DELIVERY_TICK_MINUTES)
 	for _i in range(6):

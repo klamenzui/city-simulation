@@ -5,10 +5,14 @@ const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const GoapActionScript = preload("res://Simulation/GOAP/GoapAction.gd")
 const GoapPlannerScript = preload("res://Simulation/GOAP/GoapPlanner.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
+const TaxiToBuildingActionScript = preload("res://Actions/TaxiToBuildingAction.gd")
 const TreatAtHospitalActionScript = preload("res://Actions/TreatAtHospitalAction.gd")
+
+const HOSPITAL_DEPOT_MARKER_NAME := "HospitalVehicleDepot"
 
 var _treatment_threshold: float = BalanceConfig.get_float("planner.health.visit_threshold", 20.0)
 var _emergency_threshold: float = BalanceConfig.get_float("planner.health.emergency_threshold", 5.0)
+var _taxi_threshold: float = BalanceConfig.get_float("planner.health.taxi_threshold", _treatment_threshold)
 var _go_hospital_cost: float = BalanceConfig.get_float("goap.health.go_hospital_cost", 0.45)
 var _treatment_cost: float = BalanceConfig.get_float("goap.health.treatment_cost", 0.25)
 var _travel_minutes: int = BalanceConfig.get_int("goap.health.travel_minutes", 18)
@@ -78,6 +82,9 @@ func _execute_first_action(action, world, citizen, hospital) -> bool:
 		return false
 	match action.action_id:
 		"go_hospital":
+			if _should_take_taxi_to_hospital(world, citizen, hospital):
+				citizen.start_action(TaxiToBuildingActionScript.new(hospital, HOSPITAL_DEPOT_MARKER_NAME), world)
+				return true
 			citizen.start_action(GoToBuildingActionScript.new(hospital, _travel_minutes), world)
 			return true
 		"treat":
@@ -95,3 +102,23 @@ func _select_hospital(citizen):
 	if citizen.has_method("_find_nearest_hospital"):
 		return citizen._find_nearest_hospital(citizen.global_position, true)
 	return null
+
+func _should_take_taxi_to_hospital(world, citizen, hospital) -> bool:
+	if world == null or citizen == null or hospital == null:
+		return false
+	if citizen.current_location == hospital:
+		return false
+	if citizen.needs == null or citizen.needs.health > _taxi_threshold:
+		return false
+	if citizen.has_method("is_inside_vehicle") and citizen.is_inside_vehicle():
+		return false
+	if not world.has_method("get_taxi_service"):
+		return false
+	var taxi_service = world.get_taxi_service()
+	if taxi_service == null:
+		return false
+	if taxi_service.has_method("get_state"):
+		var state := str(taxi_service.get_state())
+		if state != "idle" and state != "return_to_depot":
+			return false
+	return true

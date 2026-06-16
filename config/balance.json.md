@@ -108,6 +108,10 @@ Vehicle pathing, delivery route-following, and first VehicleBody3D truck tuning.
 | `vehicle.route_vehicle_lateral_tolerance` | `0.9` | Maximum lateral distance from the route lane to a blocking vehicle. |
 | `vehicle.route_vehicle_stop_distance` | `1.7` | Minimum route-drive center-to-center spacing kept behind a vehicle ahead. |
 | `vehicle.route_vehicle_slowdown_distance` | `3.2` | Distance over which route-driven vehicles brake for vehicles ahead. |
+| `vehicle.route_start_snap_max_distance` | `2.5` | Maximum distance a route-driven vehicle may snap to the first RoadGraph waypoint before the route is rejected. |
+| `vehicle.route_curbside_pullout_enabled` | `true` | Enables curbside arrival waypoints for explicit service destination stops such as taxi drop-off and delivery targets. |
+| `vehicle.route_curbside_pullout_offset` | `0.9` | Additional right-side offset from the vehicle lane for curbside destination stops. |
+| `vehicle.route_curbside_pullout_length` | `2.0` | Parallel curbside segment length before the final destination stop. |
 | `vehicle.obey_traffic_lights` | `true` | Makes route-driven vehicles stop at blocking traffic lights. |
 | `vehicle.traffic_light_detection_distance` | `6.0` | Forward scan distance for red/yellow traffic signals. |
 | `vehicle.traffic_light_lateral_tolerance` | `0.85` | Maximum lateral distance from the current vehicle lane to a relevant traffic light. |
@@ -446,6 +450,7 @@ GOAP-Zielauswahl: Schwellen, Prioritäts-Skalen und Gewichte.
 | --- | --- | --- |
 | `visit_threshold` | `20.0` | Unter dieser Gesundheit plant der Bürger eine Hospital-Behandlung. |
 | `emergency_threshold` | `5.0` | Unter dieser Gesundheit wird Notfallbehandlung priorisiert. |
+| `taxi_threshold` | `20.0` | Unter oder gleich dieser Gesundheit nutzt der Bürger einen verfügbaren Taxi-Service zum Hospital. |
 | `priority_scale` | `20.0` | Skaliert, wie schnell das Health-Ziel an Priorität gewinnt. |
 | `sick_work_skip_threshold` | `55.0` | Unter dieser Gesundheit kann ein Bürger krankheitsbedingt Arbeit auslassen. |
 | `sick_work_skip_base_probability` / `_max_probability` | `0.18` / `0.75` | Tagesstabile Wahrscheinlichkeit fürs Auslassen der Schicht je nach Schwere. |

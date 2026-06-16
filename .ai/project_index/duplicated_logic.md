@@ -20,7 +20,7 @@ Purpose: likely duplication areas to inspect before adding new code.
 | debugpanel | 2 | Scenes/DebugPanel.gd<br>Scenes/DebugPanel.tscn |
 | farm | 2 | Entities/Buildings/Farm.gd<br>Scenes/Farm.tscn |
 | farmworkscene | 2 | Scenes/WorkScenes/Farm/FarmWorkScene.gd<br>Scenes/WorkScenes/Farm/FarmWorkScene.tscn |
-| fence | 2 | Scenes/Environment/CityProps/CityPack/fence.tscn<br>Scenes/Environment/CityProps/fence.tscn |
+| fence | 3 | Scenes/Environment/CityProps/CityPack/fence.tscn<br>Scenes/Environment/CityProps/fence.tscn<br>Scenes/FarmAssets/Quaternius/Fence.tscn |
 | fence_end | 2 | Scenes/Environment/CityProps/CityPack/fence_end.tscn<br>Scenes/Environment/CityProps/fence_end.tscn |
 | hospital | 2 | Entities/Buildings/Hospital.gd<br>Scenes/CityBuildings/services/Hospital.tscn |
 | main | 2 | main.gd<br>Main.tscn |
@@ -41,6 +41,6 @@ Purpose: likely duplication areas to inspect before adding new code.
 
 ## Citizen Behavior Overlap
 
-- `Actions/*` files: Action, BuyClothingAction, BuyGroceriesAction, EatAtCafeAction, EatAtHomeAction, EatAtRestaurantAction, EatFromInventoryAction, GoToBenchAction, GoToBuildingAction, Needs, RelaxAtBenchAction, RelaxAtHomeAction, RelaxAtParkAction, SleepAction, SocialVisitAction, SocializeAction, StudyAtUniversityAction, TreatAtHospitalAction, WatchCinemaAction, WorkAction.
+- `Actions/*` files: Action, BuyClothingAction, BuyGroceriesAction, EatAtCafeAction, EatAtHomeAction, EatAtRestaurantAction, EatFromInventoryAction, GoToBenchAction, GoToBuildingAction, Needs, RelaxAtBenchAction, RelaxAtHomeAction, RelaxAtParkAction, SleepAction, SocialVisitAction, SocializeAction, StudyAtUniversityAction, TaxiToBuildingAction, TreatAtHospitalAction, WatchCinemaAction, WorkAction.
 - `Simulation/GOAP/*` files: CitizenEducationGoap, CitizenEnergyGoap, CitizenFunGoap, CitizenHealthGoap, CitizenHungerGoap, CitizenSocialGoap, CitizenWorkGoap, GoapAction, GoapPlanner.
 - Overlapping behavior words: work.

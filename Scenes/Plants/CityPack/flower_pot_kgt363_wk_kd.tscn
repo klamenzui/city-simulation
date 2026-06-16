@@ -1,4 +1,4 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://lx1wfrnah62"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gmxjt"]
 resource_name = "VaseFlowerPot4"
@@ -117,5 +117,6 @@ shadow_mesh = SubResource("ArrayMesh_11cjc")
 [node name="FlowerPotKgt363WkKd" type="Node3D" unique_id=553965808]
 
 [node name="FlowerPot4" type="MeshInstance3D" parent="." unique_id=343481058]
+transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
 mesh = SubResource("ArrayMesh_gu5iy")
 skeleton = NodePath("")
