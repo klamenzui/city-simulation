@@ -4,6 +4,7 @@ class_name TaxiService
 signal status_changed(message: String, kind: String, duration_sec: float)
 signal ride_started(vehicle: VehicleAgent, rider: Citizen)
 signal ride_finished(vehicle: VehicleAgent, rider: Citizen, fare: int, paid: bool)
+signal ride_failed(rider: Citizen, message: String)
 
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
@@ -34,12 +35,20 @@ var _planned_destination: Vector3 = Vector3.INF
 var _planned_route: PackedVector3Array = PackedVector3Array()
 var _planned_trip_distance: float = 0.0
 var _planned_fare: int = 0
+var _direct_destination_position: Vector3 = Vector3.INF
+var _direct_destination_parking_position: Vector3 = Vector3.INF
+var _direct_destination_parking_spot: VehicleParkingSpot = null
+var _direct_destination_marker: Node3D = null
+var _direct_destination_building: Building = null
+var _direct_destination_parking_maneuver_active: bool = false
 var _assigned_depot_position: Vector3 = Vector3.INF
 var _assigned_depot_parking_position: Vector3 = Vector3.INF
 var _assigned_parking_spot: VehicleParkingSpot = null
 var _return_depot_position: Vector3 = Vector3.INF
+var _return_access_position: Vector3 = Vector3.INF
 var _pending_pickup_position: Vector3 = Vector3.INF
 var _depot_exit_maneuver_active: bool = false
+var _return_access_exit_maneuver_active: bool = false
 var _depot_parking_maneuver_active: bool = false
 var _billing_suppressed: bool = false
 var _previous_manual_drive_enabled: bool = true
@@ -122,6 +131,69 @@ func request_taxi(player: Citizen) -> Dictionary:
 	return _result(true, "Taxi ist unterwegs.", "info")
 
 
+func request_direct_ride_to_building(
+	rider: Citizen,
+	destination_building: Building,
+	destination_marker_name: String = ""
+) -> Dictionary:
+	if rider == null or not is_instance_valid(rider):
+		return _result(false, "Kein Fahrgast fuer Taxi gefunden.", "warning")
+	if destination_building == null or not is_instance_valid(destination_building):
+		return _result(false, "Kein Taxi-Ziel gefunden.", "warning")
+	if world == null or owner_node == null:
+		return _result(false, "Taxi-System ist noch nicht bereit.", "warning")
+	if rider.has_method("is_inside_building") and rider.is_inside_building():
+		return _result(false, "Taxi kann Fahrgaeste nur draussen abholen.", "warning")
+	if rider.has_method("is_inside_vehicle") and rider.is_inside_vehicle():
+		if _is_active_rider(rider):
+			return _result(true, "Taxi-Fahrt laeuft bereits.", "info")
+		return _result(false, "Fahrgast ist bereits in einem Fahrzeug.", "warning")
+	if _state == STATE_PICKUP:
+		return _result(false, "Taxi ist bereits unterwegs.", "warning")
+	if _state == STATE_RIDE or _state == STATE_DESTINATION_DRIVE:
+		if _is_active_rider(rider):
+			return _result(true, "Taxi-Fahrt laeuft bereits.", "info")
+		return _result(false, "Das Taxi ist gerade belegt.", "warning")
+	if _state == STATE_RETURN_TO_DEPOT:
+		_handoff_active_return_to_trip()
+
+	var destination_marker := _find_direct_destination_marker(destination_building, destination_marker_name)
+	var destination_parking_position := _resolve_direct_destination_parking_position(destination_building, destination_marker)
+	var destination_position := _vehicle_access_point(destination_parking_position)
+	if not _is_finite_vector(destination_position):
+		return _result(false, "Taxi-Ziel hat keine erreichbare Fahrzeugposition.", "warning")
+	var depot_parking_position := _resolve_taxi_depot_parking_position(rider.global_position)
+	if not _is_finite_vector(depot_parking_position):
+		return _result(false, "Kein TaxiVehicleDepot oder TaxiDepot fuer Taxi-Service gefunden.", "warning")
+	_assigned_depot_parking_position = depot_parking_position
+	_assigned_depot_position = _vehicle_access_point(depot_parking_position)
+	if not _ensure_taxi_vehicle(rider.global_position, _assigned_depot_parking_position):
+		_clear_direct_destination()
+		_clear_assigned_depot()
+		return _result(false, "Kein Taxi-Fahrzeug verfuegbar.", "warning")
+	if _taxi_vehicle.current_driver != null:
+		_clear_direct_destination()
+		_clear_assigned_depot()
+		return _result(false, "Das Taxi ist gerade belegt.", "warning")
+
+	_direct_destination_position = destination_position
+	_direct_destination_parking_position = destination_parking_position if destination_marker != null else Vector3.INF
+	_direct_destination_marker = destination_marker
+	_direct_destination_building = destination_building
+	_pickup_player = rider
+	_prepare_taxi_for_service()
+	var pickup_position := _vehicle_access_point(rider.global_position)
+	if _is_vehicle_near_position(pickup_position, _pickup_radius()):
+		_board_pickup_player()
+		return _result(true, "Taxi steht bereit und faehrt zum Ziel.", "success")
+
+	_state = STATE_PICKUP
+	if not _start_empty_pickup_route(pickup_position):
+		_reset_service()
+		return _result(false, "Taxi findet keine Strassenroute zur Abholung.", "warning")
+	return _result(true, "Taxi ist unterwegs.", "info")
+
+
 func select_destination(world_position: Vector3) -> bool:
 	if _state != STATE_RIDE or _taxi_vehicle == null or _rider == null:
 		return false
@@ -145,7 +217,7 @@ func select_destination(world_position: Vector3) -> bool:
 		map_overlay.set_status_text("Fahrt laeuft. Preis beim Aussteigen: %d EUR." % _planned_fare)
 	_state = STATE_DESTINATION_DRIVE
 	_taxi_vehicle.target_building = null
-	if not _taxi_vehicle.start_drive_to(destination, world):
+	if not _taxi_vehicle.start_drive_to_curbside(destination, world):
 		_billing_suppressed = true
 		_state = STATE_RIDE
 		_planned_route = PackedVector3Array()
@@ -375,9 +447,108 @@ func _board_pickup_player() -> void:
 	_return_depot_position = Vector3.INF
 	_depot_parking_maneuver_active = false
 	_billing_suppressed = false
-	_show_ride_map()
 	ride_started.emit(_taxi_vehicle, _rider)
+	if _is_finite_vector(_direct_destination_position):
+		if _start_direct_destination_drive():
+			return
+		_emit_status("Taxi konnte die direkte Fahrt nicht starten.", "warning", 2.4)
+		_abort_boarded_direct_ride("Direkte Taxi-Fahrt konnte nicht gestartet werden.")
+		return
+	_show_ride_map()
 	_emit_status("Taxi bereit. Ziel auf der Map waehlen.", "success", 2.2)
+
+
+func _start_direct_destination_drive() -> bool:
+	if _taxi_vehicle == null or _rider == null:
+		return false
+	if not is_instance_valid(_taxi_vehicle) or not is_instance_valid(_rider):
+		return false
+	var destination := _direct_destination_position
+	var route := _build_route(_taxi_vehicle.global_position, destination)
+	if route.size() < 2:
+		return false
+	_planned_destination = destination
+	_planned_route = route
+	_planned_trip_distance = _route_distance(route)
+	_planned_fare = _calculate_fare(_planned_trip_distance)
+	_billing_suppressed = false
+	_state = STATE_DESTINATION_DRIVE
+	_taxi_vehicle.target_building = _direct_destination_building
+	if _should_use_direct_destination_parking():
+		_ensure_direct_destination_parking_spot()
+		var parking_position := _direct_destination_parking_target()
+		if _is_finite_vector(parking_position) \
+				and _planar_distance(destination, parking_position) <= TAXI_DEPOT_PARKING_MAX_DIRECT_DISTANCE:
+			_direct_destination_parking_maneuver_active = true
+			_emit_status("Taxi faehrt zum Zielparkplatz. Preis: %d EUR." % _planned_fare, "info", 2.0)
+			return _taxi_vehicle.start_drive_to_keep_driver(destination, world)
+		_release_direct_destination_parking_spot()
+	_direct_destination_parking_maneuver_active = false
+	_emit_status("Taxi faehrt zum Ziel. Preis: %d EUR." % _planned_fare, "info", 2.0)
+	return _taxi_vehicle.start_drive_to_curbside(destination, world)
+
+
+func _should_use_direct_destination_parking() -> bool:
+	return _direct_destination_marker != null \
+		and is_instance_valid(_direct_destination_marker) \
+		and _is_finite_vector(_direct_destination_parking_position)
+
+
+func _ensure_direct_destination_parking_spot() -> void:
+	if _direct_destination_parking_spot != null and is_instance_valid(_direct_destination_parking_spot):
+		return
+	if _direct_destination_marker == null or not is_instance_valid(_direct_destination_marker):
+		return
+	var depot := VehicleDepotAccess.find_depot_in(_direct_destination_marker)
+	if depot == null:
+		return
+	_direct_destination_parking_spot = depot.reserve_next_parking_spot(_taxi_vehicle)
+
+
+func _direct_destination_parking_target() -> Vector3:
+	if _direct_destination_parking_spot != null and is_instance_valid(_direct_destination_parking_spot):
+		return _direct_destination_parking_spot.get_parking_transform().origin
+	return _direct_destination_parking_position
+
+
+func _start_direct_destination_parking_maneuver() -> bool:
+	if _taxi_vehicle == null or not is_instance_valid(_taxi_vehicle):
+		return false
+	var parking_position := _direct_destination_parking_target()
+	if not _is_finite_vector(parking_position):
+		return false
+	var distance := _planar_distance(_taxi_vehicle.global_position, parking_position)
+	if distance <= _pickup_radius():
+		_taxi_vehicle.unboard_driver(world, parking_position)
+		return true
+	if distance > TAXI_DEPOT_PARKING_MAX_DIRECT_DISTANCE:
+		return false
+	_taxi_vehicle.target_building = _direct_destination_building
+	return _taxi_vehicle.start_drive_to(parking_position, null)
+
+
+func _release_direct_destination_parking_spot() -> void:
+	if _direct_destination_parking_spot != null and is_instance_valid(_direct_destination_parking_spot):
+		_direct_destination_parking_spot.release(_taxi_vehicle)
+	_direct_destination_parking_spot = null
+
+
+func _clear_direct_destination() -> void:
+	_release_direct_destination_parking_spot()
+	_direct_destination_position = Vector3.INF
+	_direct_destination_parking_position = Vector3.INF
+	_direct_destination_marker = null
+	_direct_destination_building = null
+	_direct_destination_parking_maneuver_active = false
+
+
+func _abort_boarded_direct_ride(message: String) -> void:
+	if _taxi_vehicle != null and is_instance_valid(_taxi_vehicle) and _rider != null and is_instance_valid(_rider):
+		var failed_rider := _rider
+		_rider = null
+		_taxi_vehicle.unboard_driver(world, _taxi_vehicle.get_entry_point_global())
+		ride_failed.emit(failed_rider, message)
+	_reset_service()
 
 
 func _show_ride_map() -> void:
@@ -408,8 +579,21 @@ func _on_taxi_trip_completed(vehicle: VehicleAgent, driver: Citizen, _target_bui
 			_emit_status("Taxi findet keine Strassenroute zur Abholung.", "warning", 2.4)
 		else:
 			_board_pickup_player()
+	elif _state == STATE_DESTINATION_DRIVE and _direct_destination_parking_maneuver_active and driver == _rider:
+		if _start_direct_destination_parking_maneuver():
+			return
+		_direct_destination_parking_maneuver_active = false
+		_release_direct_destination_parking_spot()
+		if _taxi_vehicle != null and is_instance_valid(_taxi_vehicle):
+			_taxi_vehicle.unboard_driver(world, _taxi_vehicle.get_entry_point_global())
 	elif _state == STATE_RETURN_TO_DEPOT and driver == null:
-		if _depot_parking_maneuver_active:
+		if _return_access_exit_maneuver_active:
+			_return_access_exit_maneuver_active = false
+			if _start_return_road_route():
+				return
+			_emit_status("Taxi findet keine Strassenroute zum Depot.", "warning", 2.6)
+			_reset_service()
+		elif _depot_parking_maneuver_active:
 			_finish_return_to_depot()
 		elif not _start_depot_parking_maneuver():
 			_finish_return_to_depot()
@@ -424,7 +608,9 @@ func _on_taxi_driver_exited(vehicle: VehicleAgent, driver: Citizen) -> void:
 	var paid := _charge_fare(driver, fare)
 	if _state == STATE_DESTINATION_DRIVE and vehicle.is_driving():
 		vehicle.stop_vehicle()
+	_release_direct_destination_parking_spot()
 	ride_finished.emit(vehicle, driver, fare, paid)
+	_clear_direct_destination()
 	if fare > 0:
 		var status := "Taxi-Fahrt bezahlt: %d EUR." % fare if paid else "Taxi-Fahrt beendet, aber %d EUR konnten nicht bezahlt werden." % fare
 		_emit_status(status, "success" if paid else "warning", 2.6)
@@ -456,20 +642,50 @@ func _begin_return_to_depot() -> void:
 		return
 	_assigned_depot_parking_position = depot_parking_position
 	_assigned_depot_position = _vehicle_access_point(depot_parking_position)
-	var route := _build_route(_taxi_vehicle.global_position, _assigned_depot_position)
-	if route.size() < 2:
+	if _start_return_access_exit_if_needed():
+		return
+	if not _start_return_road_route():
 		_emit_status("Taxi findet keine Strassenroute zum Depot.", "warning", 2.6)
 		_reset_service()
 		return
+	_emit_status("Taxi faehrt zurueck zum Depot.", "info", 2.0)
+
+
+func _start_return_access_exit_if_needed() -> bool:
+	if _taxi_vehicle == null or not is_instance_valid(_taxi_vehicle):
+		return false
+	var current_access := _vehicle_access_point(_taxi_vehicle.global_position)
+	if not _is_finite_vector(current_access):
+		return false
+	var distance_to_access := _planar_distance(_taxi_vehicle.global_position, current_access)
+	if distance_to_access <= _pickup_radius():
+		return false
+	if distance_to_access > TAXI_DEPOT_PARKING_MAX_DIRECT_DISTANCE:
+		return false
 	_state = STATE_RETURN_TO_DEPOT
 	_depot_parking_maneuver_active = false
+	_return_access_exit_maneuver_active = true
+	_return_access_position = current_access
+	_return_depot_position = _assigned_depot_position
+	_taxi_vehicle.target_building = null
+	return _taxi_vehicle.start_drive_to(current_access, null)
+
+
+func _start_return_road_route() -> bool:
+	if _taxi_vehicle == null or not is_instance_valid(_taxi_vehicle):
+		return false
+	var route := _build_route(_taxi_vehicle.global_position, _assigned_depot_position)
+	if route.size() < 2:
+		return false
+	_state = STATE_RETURN_TO_DEPOT
+	_depot_parking_maneuver_active = false
+	_return_access_exit_maneuver_active = false
+	_return_access_position = Vector3.INF
 	_return_depot_position = _assigned_depot_position
 	_taxi_vehicle.target_building = null
 	if not _taxi_vehicle.start_drive_to(_assigned_depot_position, world):
-		_emit_status("Taxi konnte die Rueckfahrt zum Depot nicht starten.", "warning", 2.6)
-		_reset_service()
-		return
-	_emit_status("Taxi faehrt zurueck zum Depot.", "info", 2.0)
+		return false
+	return true
 
 
 func _start_depot_parking_maneuver() -> bool:
@@ -596,9 +812,12 @@ func _reset_service(restore_vehicle: bool = true) -> void:
 	_planned_route = PackedVector3Array()
 	_planned_trip_distance = 0.0
 	_planned_fare = 0
+	_clear_direct_destination()
 	_clear_assigned_depot()
 	_return_depot_position = Vector3.INF
+	_return_access_position = Vector3.INF
 	_depot_exit_maneuver_active = false
+	_return_access_exit_maneuver_active = false
 	_depot_parking_maneuver_active = false
 	_billing_suppressed = false
 	if map_overlay != null:
@@ -635,6 +854,56 @@ func _resolve_taxi_depot_parking_position(from_pos: Vector3) -> Vector3:
 	var depot := _find_nearest_taxi_depot_building(from_pos)
 	if depot != null:
 		return _vehicle_access_point(depot.get_entrance_pos())
+	return Vector3.INF
+
+
+func _find_direct_destination_marker(destination_building: Building, marker_name: String) -> Node3D:
+	var trimmed_name := marker_name.strip_edges()
+	if trimmed_name.is_empty():
+		return null
+	if owner_node == null or owner_node.get_tree() == null:
+		return null
+	var root := owner_node.get_tree().root
+	if root == null:
+		return null
+	var markers: Array[Node3D] = []
+	_collect_named_markers(root, trimmed_name, markers)
+	if markers.is_empty():
+		return null
+	if markers.size() == 1 or destination_building == null:
+		return markers[0]
+	var best_marker: Node3D = null
+	var best_distance := INF
+	var building_pos := destination_building.global_position
+	for marker in markers:
+		if marker == null or not is_instance_valid(marker):
+			continue
+		var marker_pos := VehicleDepotAccess.get_marker_parking_position(marker)
+		if not _is_finite_vector(marker_pos):
+			continue
+		var distance := _planar_distance(building_pos, marker_pos)
+		if best_marker == null or distance < best_distance:
+			best_marker = marker
+			best_distance = distance
+	return best_marker if best_marker != null else markers[0]
+
+
+func _collect_named_markers(node: Node, marker_name: String, out: Array[Node3D]) -> void:
+	if node == null:
+		return
+	if node is Node3D and String(node.name) == marker_name:
+		out.append(node as Node3D)
+	for child in node.get_children():
+		_collect_named_markers(child, marker_name, out)
+
+
+func _resolve_direct_destination_parking_position(destination_building: Building, marker: Node3D) -> Vector3:
+	if marker != null and is_instance_valid(marker):
+		var marker_position := VehicleDepotAccess.get_marker_parking_position(marker)
+		if _is_finite_vector(marker_position):
+			return marker_position
+	if destination_building != null:
+		return destination_building.get_entrance_pos() if destination_building.has_method("get_entrance_pos") else destination_building.global_position
 	return Vector3.INF
 
 

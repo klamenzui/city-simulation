@@ -1,20 +1,20 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" uid="uid://bbrtbqlqde5u0" path="res://Entities/Buildings/Farm.gd" id="1_farm"]
-[ext_resource type="ArrayMesh" uid="uid://eb2315b2a8ik" path="res://Scenes/FarmAssets/Quaternius/BigBarn.obj" id="2_bigbarn"]
-[ext_resource type="ArrayMesh" uid="uid://lyjs6d7u3q5r" path="res://Scenes/FarmAssets/Quaternius/SmallBarn.obj" id="3_smallbarn"]
-[ext_resource type="ArrayMesh" uid="uid://ca1vtd81e3se4" path="res://Scenes/FarmAssets/Quaternius/Silo.obj" id="4_silo"]
-[ext_resource type="ArrayMesh" uid="uid://x7b4ouylben2" path="res://Scenes/FarmAssets/Quaternius/Well.obj" id="5_well"]
-[ext_resource type="ArrayMesh" uid="uid://dh5bkqoyudi2q" path="res://Scenes/FarmAssets/Quaternius/Fence.obj" id="6_fence"]
+[ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/BigBarn.tscn" id="2_bigbarn"]
+[ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/SmallBarn.tscn" id="3_smallbarn"]
+[ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/Silo.tscn" id="4_silo"]
+[ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/Well.tscn" id="5_well"]
+[ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/Fence.tscn" id="6_fence"]
 [ext_resource type="ArrayMesh" uid="uid://buo3q6sbf8qk1" path="res://Scenes/FarmAssets/FarmPack/farmland_large.obj" id="7_farmland"]
 [ext_resource type="ArrayMesh" uid="uid://csnkf2ch6grci" path="res://Scenes/FarmAssets/FarmPack/wheat.obj" id="8_wheat"]
 [ext_resource type="ArrayMesh" uid="uid://djdf1fqsljmpm" path="res://Scenes/FarmAssets/FarmPack/planted_carrots.obj" id="9_carrots"]
 [ext_resource type="ArrayMesh" uid="uid://dsuyoctsrn7v0" path="res://Scenes/FarmAssets/FarmPack/planted_cabbage.obj" id="10_cabbage"]
 [ext_resource type="ArrayMesh" uid="uid://c5pfi0exr6ktm" path="res://Scenes/FarmAssets/FarmPack/pumpkin.obj" id="11_pumpkin"]
-[ext_resource type="ArrayMesh" path="res://Scenes/FarmAssets/Quaternius/Barn.obj" id="12_barn"]
-[ext_resource type="ArrayMesh" path="res://Scenes/FarmAssets/Quaternius/Windmill.obj" id="13_windmill"]
-[ext_resource type="ArrayMesh" path="res://Scenes/FarmAssets/Quaternius/WaterTower.obj" id="14_watertower"]
-[ext_resource type="ArrayMesh" path="res://Scenes/FarmAssets/Quaternius/Fence2.obj" id="15_fence2"]
+[ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/Barn.tscn" id="12_barn"]
+[ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/Windmill.tscn" id="13_windmill"]
+[ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/WaterTower.tscn" id="14_watertower"]
+[ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/Fence2.tscn" id="15_fence2"]
 
 [sub_resource type="StandardMaterial3D" id="mt_grass"]
 albedo_color = Color(0.33, 0.52, 0.23, 1)
@@ -109,31 +109,25 @@ mesh = SubResource("m_box")
 
 [node name="Buildings" type="Node3D" parent="." unique_id=428045421]
 
-[node name="SmallBarnModel" type="MeshInstance3D" parent="Buildings" unique_id=1207815180]
+[node name="SmallBarnModel" parent="Buildings" unique_id=1207815180 instance=ExtResource("3_smallbarn")]
 transform = Transform3D(0.38, 0, 0, 0, 0.38, 0, 0, 0, 0.38, -2.35, 0, -2.65)
-mesh = ExtResource("3_smallbarn")
 
-[node name="BigBarnModel" type="MeshInstance3D" parent="Buildings" unique_id=549962428]
+[node name="BigBarnModel" parent="Buildings" unique_id=549962428 instance=ExtResource("2_bigbarn")]
 transform = Transform3D(0.34, 0, 0, 0, 0.34, 0, 0, 0, 0.34, 0.35, 0, -2.75)
-mesh = ExtResource("2_bigbarn")
 
-[node name="SiloModel" type="MeshInstance3D" parent="Buildings" unique_id=991172482]
+[node name="SiloModel" parent="Buildings" unique_id=991172482 instance=ExtResource("4_silo")]
 transform = Transform3D(0.32, 0, 0, 0, 0.32, 0, 0, 0, 0.32, 2.85, 0.02, -2.75)
-mesh = ExtResource("4_silo")
 
 [node name="VariantDecor" type="Node3D" parent="." unique_id=111765743]
 
-[node name="WindmillModel" type="MeshInstance3D" parent="VariantDecor" unique_id=1936675537]
+[node name="WindmillModel" parent="VariantDecor" unique_id=1936675537 instance=ExtResource("13_windmill")]
 transform = Transform3D(0.34, 0, 0, 0, 0.34, 0, 0, 0, 0.34, -3.45, 0, -1.55)
-mesh = ExtResource("13_windmill")
 
-[node name="WaterTowerModel" type="MeshInstance3D" parent="VariantDecor" unique_id=433066012]
+[node name="WaterTowerModel" parent="VariantDecor" unique_id=433066012 instance=ExtResource("14_watertower")]
 transform = Transform3D(0.26, 0, 0, 0, 0.26, 0, 0, 0, 0.26, 3.45, 0.02, -0.65)
-mesh = ExtResource("14_watertower")
 
-[node name="SideBarnModel" type="MeshInstance3D" parent="VariantDecor" unique_id=1730661226]
+[node name="SideBarnModel" parent="VariantDecor" unique_id=1730661226 instance=ExtResource("12_barn")]
 transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0.2, 0, -0.75)
-mesh = ExtResource("12_barn")
 
 [node name="Fields" type="Node3D" parent="." unique_id=333459182]
 
@@ -169,59 +163,46 @@ multimesh = SubResource("mm_east_cabbage")
 
 [node name="Fence" type="Node3D" parent="." unique_id=1984403890]
 
-[node name="BackFenceModel" type="MeshInstance3D" parent="Fence" unique_id=1267928044]
+[node name="BackFenceModel" parent="Fence" unique_id=1267928044 instance=ExtResource("6_fence")]
 transform = Transform3D(1.26, 0, 0, 0, 0.4, 0, 0, 0, 0.4, 0, 0, -4.2)
-mesh = ExtResource("6_fence")
 
-[node name="EastFenceModel" type="MeshInstance3D" parent="Fence" unique_id=366940272]
+[node name="EastFenceModel" parent="Fence" unique_id=366940272 instance=ExtResource("6_fence")]
 transform = Transform3D(0, 0, 0.656204, 0, 0.4, 0, -0.4, 0, 0, 3.7, 0, -0.7401347)
-mesh = ExtResource("6_fence")
 
-[node name="WestFenceModel" type="MeshInstance3D" parent="Fence" unique_id=1293093616]
+[node name="WestFenceModel" parent="Fence" unique_id=1293093616 instance=ExtResource("6_fence")]
 transform = Transform3D(0, 0, 0.7066502, 0, 0.4, 0, -0.4, 0, 0, -3.7, 0, -3.0523748)
-mesh = ExtResource("6_fence")
 
-[node name="FrontLeftFenceModel" type="MeshInstance3D" parent="Fence" unique_id=159379823]
+[node name="FrontLeftFenceModel" parent="Fence" unique_id=159379823 instance=ExtResource("6_fence")]
 transform = Transform3D(0.48, 0, 0, 0, 0.4, 0, 0, 0, 0.4, -2.3, 0, 4.2)
-mesh = ExtResource("6_fence")
 
-[node name="FrontRightFenceModel" type="MeshInstance3D" parent="Fence" unique_id=1479919849]
+[node name="FrontRightFenceModel" parent="Fence" unique_id=1479919849 instance=ExtResource("6_fence")]
 transform = Transform3D(0.48, 0, 0, 0, 0.4, 0, 0, 0, 0.4, 2.3, 0, 4.2)
-mesh = ExtResource("6_fence")
 
-[node name="SideGateModel" type="MeshInstance3D" parent="Fence" unique_id=1388933753]
+[node name="SideGateModel" parent="Fence" unique_id=1388933753 instance=ExtResource("15_fence2")]
 transform = Transform3D(0.66, 0, 0, 0, 0.38, 0, 0, 0, 0.38, -0.25, 0, 4.05)
-mesh = ExtResource("15_fence2")
 
-[node name="EastFenceModel2" type="MeshInstance3D" parent="Fence" unique_id=1915778539]
+[node name="EastFenceModel2" parent="Fence" unique_id=1915778539 instance=ExtResource("6_fence")]
 transform = Transform3D(0, 0, 0.656204, 0, 0.4, 0, -0.4, 0, 0, 3.7, 0, -3.0478325)
-mesh = ExtResource("6_fence")
 
-[node name="EastFenceModel3" type="MeshInstance3D" parent="Fence" unique_id=824011173]
+[node name="EastFenceModel3" parent="Fence" unique_id=824011173 instance=ExtResource("6_fence")]
 transform = Transform3D(0, 0, 0.656204, 0, 0.4, 0, -0.4, 0, 0, 3.7, 0, 1.5555098)
-mesh = ExtResource("6_fence")
 
-[node name="EastFenceModel4" type="MeshInstance3D" parent="Fence" unique_id=1953484671]
+[node name="EastFenceModel4" parent="Fence" unique_id=1953484671 instance=ExtResource("6_fence")]
 transform = Transform3D(0, 0, 0.656204, 0, 0.4, 0, -0.4, 0, 0, 3.7, 0, 3.0531852)
-mesh = ExtResource("6_fence")
 
-[node name="WestFenceModel2" type="MeshInstance3D" parent="Fence" unique_id=2126301880]
+[node name="WestFenceModel2" parent="Fence" unique_id=2126301880 instance=ExtResource("6_fence")]
 transform = Transform3D(0, 0, 0.7066502, 0, 0.4, 0, -0.4, 0, 0, -3.7, 0, -0.74044347)
-mesh = ExtResource("6_fence")
 
-[node name="WestFenceModel3" type="MeshInstance3D" parent="Fence" unique_id=1434703202]
+[node name="WestFenceModel3" parent="Fence" unique_id=1434703202 instance=ExtResource("6_fence")]
 transform = Transform3D(0, 0, 0.7066502, 0, 0.4, 0, -0.4, 0, 0, -3.7, 0, 1.5624633)
-mesh = ExtResource("6_fence")
 
-[node name="WestFenceModel4" type="MeshInstance3D" parent="Fence" unique_id=228606544]
+[node name="WestFenceModel4" parent="Fence" unique_id=228606544 instance=ExtResource("6_fence")]
 transform = Transform3D(0, 0, 0.7066502, 0, 0.4, 0, -0.4, 0, 0, -3.7, 0, 3.056997)
-mesh = ExtResource("6_fence")
 
 [node name="Props" type="Node3D" parent="." unique_id=946691504]
 
-[node name="WellModel" type="MeshInstance3D" parent="Props" unique_id=584560012]
+[node name="WellModel" parent="Props" unique_id=584560012 instance=ExtResource("5_well")]
 transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, -2.85, 0, -0.45)
-mesh = ExtResource("5_well")
 
 [node name="Pumpkins" type="Node3D" parent="Props" unique_id=1619069031]
 

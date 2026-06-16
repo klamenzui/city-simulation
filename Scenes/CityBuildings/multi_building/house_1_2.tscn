@@ -406,7 +406,7 @@ data = PackedVector3Array(-1, 0, -0.9, -1, 0.099999994, -1, -1, 0.099999994, -0.
 transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
 
 [node name="DoorExtension-1-2" type="MeshInstance3D" parent="." unique_id=564022568]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.044075012)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.49684525, -0.044075012)
 mesh = SubResource("ArrayMesh_5b16u")
 skeleton = NodePath("")
 
@@ -416,12 +416,12 @@ skeleton = NodePath("")
 shape = SubResource("ConcavePolygonShape3D_74lx7")
 
 [node name="FrontExtension-1-2" type="MeshInstance3D" parent="." unique_id=2092820492]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.383593, 6.937489, 0.032313347)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.3835933, 7.4343348, 0.032313347)
 mesh = SubResource("ArrayMesh_dnngp")
 skeleton = NodePath("")
 
 [node name="Main-1-2" type="MeshInstance3D" parent="." unique_id=1794298560]
-transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846343, 0, 0, 0)
+transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846343, 0, 0.49684525, 0)
 mesh = SubResource("ArrayMesh_5uv4r")
 skeleton = NodePath("")
 
@@ -432,22 +432,22 @@ transform = Transform3D(0.99999994, 0, 0, 0, 0.9999999, 0, 0, 0, 0.9999999, 0, 0
 shape = SubResource("ConcavePolygonShape3D_86dgw")
 
 [node name="RoofWindowBig-1-2" type="MeshInstance3D" parent="." unique_id=3220881]
-transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846343, 0, 0, -0.044075012)
+transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846343, 0, 0.49684525, -0.044075012)
 mesh = SubResource("ArrayMesh_il5af")
 skeleton = NodePath("")
 
 [node name="RoofWindowsFront-1-2" type="MeshInstance3D" parent="." unique_id=2142974439]
-transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846343, 0, 0, 0)
+transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846343, 0, 0.49684525, 0)
 visible = false
 mesh = SubResource("ArrayMesh_lkap0")
 skeleton = NodePath("")
 
 [node name="RoofWindowsSide-1-2" type="MeshInstance3D" parent="." unique_id=1406263188]
-transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846343, 0, 0, 0)
+transform = Transform3D(3.052352, 0, 0, 0, 12.01676, 0, 0, 0, 4.846343, 0, 0.49684525, 0)
 mesh = SubResource("ArrayMesh_etc4a")
 skeleton = NodePath("")
 
-[node name="foundation_residential_01" type="Node3D" parent="." unique_id=1487054142 groups=["buildings", "building_use_residential"]]
+[node name="foundation_residential_01" type="Node3D" parent="." unique_id=1487054142 groups=["building_use_residential", "buildings"]]
 script = ExtResource("2_74lx7")
 building_name = "Residential 01 (Foundation)"
 building_type = 1

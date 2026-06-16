@@ -240,6 +240,11 @@ $availableTests = @(
 		Script = "res://tools/codex_farm_work_scene_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "farmassets"
+		Label = "Quaternius Farm Assets"
+		Script = "res://tools/codex_quaternius_farm_asset_probe.gd"
+	}
+	[pscustomobject]@{
 		Key = "farm"
 		Label = "Farm Scene/Production"
 		Script = "res://tools/codex_farm_scene_probe.gd"

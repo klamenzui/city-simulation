@@ -25,6 +25,8 @@ func _initialize() -> void:
 	_check_vehicle_lane_path()
 	_check_vehicle_route_contract()
 	await _check_vehicle_refuses_large_world_route_snap()
+	await _check_vehicle_curbside_arrival_is_explicit()
+	await _check_route_drive_blocks_static_building_collision()
 	_check_vehicle_impact_audio_contract()
 	await _check_vehicle_waits_at_red_traffic_light()
 	await _check_route_vehicle_keeps_vehicle_gap()
@@ -162,6 +164,102 @@ func _check_vehicle_refuses_large_world_route_snap() -> void:
 
 	vehicle.free()
 	world.free()
+
+
+func _check_vehicle_curbside_arrival_is_explicit() -> void:
+	var world := World.new()
+	root.add_child(world)
+	await process_frame
+	var graph := RoadGraph.new()
+	graph.nodes = [Vector3(0.0, 0.0, 0.0), Vector3(20.0, 0.0, 0.0)]
+	graph.neighbors = {0: [1], 1: [0]}
+	graph._is_ready = true
+	world.road_graph = graph
+
+	var normal_vehicle := VehicleAgent.new()
+	var curb_vehicle := VehicleAgent.new()
+	var left_curb_vehicle := VehicleAgent.new()
+	root.add_child(normal_vehicle)
+	root.add_child(curb_vehicle)
+	root.add_child(left_curb_vehicle)
+	await process_frame
+
+	var start := world.get_vehicle_road_access_point(Vector3.ZERO)
+	normal_vehicle.global_position = start
+	curb_vehicle.global_position = start
+	left_curb_vehicle.global_position = start
+	for vehicle in [normal_vehicle, curb_vehicle, left_curb_vehicle]:
+		vehicle.route_curbside_pullout_offset = 0.9
+		vehicle.route_curbside_pullout_length = 2.0
+
+	if not normal_vehicle.start_drive_to(Vector3(20.0, 0.0, 0.0), world):
+		_errors.append("Normal vehicle route should start on a simple RoadGraph.")
+	else:
+		var normal_route := normal_vehicle.get("last_vehicle_route") as PackedVector3Array
+		var normal_end := normal_route[normal_route.size() - 1]
+		if absf(normal_end.z - 0.45) > 0.05:
+			_errors.append("Normal vehicle route should end on the lane, not at the curbside pullout.")
+
+	if not curb_vehicle.start_drive_to_curbside(Vector3(20.0, 0.0, 0.0), world):
+		_errors.append("Curbside vehicle route should start on a simple RoadGraph.")
+	else:
+		var curb_route := curb_vehicle.get("last_vehicle_route") as PackedVector3Array
+		var curb_end := curb_route[curb_route.size() - 1]
+		if absf(curb_end.z - 1.35) > 0.08:
+			_errors.append("Curbside vehicle route should stop right of the lane at the destination.")
+		if curb_route.size() < 4:
+			_errors.append("Curbside vehicle route should include a merge and a short parallel curb segment.")
+
+	if not left_curb_vehicle.start_drive_to_curbside(Vector3(20.0, 0.0, -4.0), world):
+		_errors.append("Curbside vehicle route should support targets on the left side of the lane.")
+	else:
+		var left_curb_route := left_curb_vehicle.get("last_vehicle_route") as PackedVector3Array
+		var left_curb_end := left_curb_route[left_curb_route.size() - 1]
+		if left_curb_end.z >= -0.05:
+			_errors.append("Curbside vehicle route should pull out toward the target side, not always to the route's right side.")
+
+	normal_vehicle.free()
+	curb_vehicle.free()
+	left_curb_vehicle.free()
+	world.free()
+
+
+func _check_route_drive_blocks_static_building_collision() -> void:
+	var vehicle := VehicleAgent.new()
+	root.add_child(vehicle)
+	await process_frame
+	vehicle.global_position = Vector3.ZERO
+	vehicle.max_speed = 5.0
+	vehicle.acceleration = 20.0
+	vehicle.braking_acceleration = 20.0
+
+	var blocker := StaticBody3D.new()
+	blocker.name = "RouteVehicleBuildingBlocker"
+	blocker.collision_layer = 1
+	blocker.collision_mask = 1
+	blocker.position = Vector3(3.0, 0.45, 0.0)
+	var shape_node := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(1.4, 0.9, 2.0)
+	shape_node.shape = shape
+	blocker.add_child(shape_node)
+	root.add_child(blocker)
+	await process_frame
+
+	if not vehicle.start_drive_to(Vector3(8.0, 0.0, 0.0), null):
+		_errors.append("Route vehicle should start a direct route for static building collision regression.")
+		vehicle.free()
+		blocker.free()
+		return
+
+	for _i in range(80):
+		vehicle.advance_vehicle_simulation(0.1)
+
+	if vehicle.global_position.x > 2.15:
+		_errors.append("Route-driven vehicle should stop before static building/world collisions instead of driving into them.")
+
+	vehicle.free()
+	blocker.free()
 
 
 func _check_vehicle_waits_at_red_traffic_light() -> void:

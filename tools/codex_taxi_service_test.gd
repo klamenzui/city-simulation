@@ -3,6 +3,7 @@ extends SceneTree
 const CitizenScene := preload("res://Entities/Citizens/CitizenNew.tscn")
 const TaxiCarScene := preload("res://Scenes/Vehicles/CityPack/car.tscn")
 const TaxiServiceScript := preload("res://Simulation/Transport/TaxiService.gd")
+const TaxiToBuildingActionScript := preload("res://Actions/TaxiToBuildingAction.gd")
 const WorldMapOverlayScript := preload("res://Simulation/UI/WorldMapOverlay.gd")
 const WorldMapCanvasScript := preload("res://Simulation/UI/WorldMapCanvas.gd")
 
@@ -13,6 +14,7 @@ func _initialize() -> void:
 	await _check_taxi_requires_depot()
 	await _check_taxi_exits_depot_parking_without_snap()
 	await _check_taxi_request_route_and_fare()
+	await _check_direct_hospital_taxi_ride()
 	await _check_taxi_fleet_reserve()
 	if not _errors.is_empty():
 		for error in _errors:
@@ -186,6 +188,13 @@ func _check_taxi_request_route_and_fare() -> void:
 		_errors.append("Taxi should accept a reachable destination from the map.")
 	if taxi_service.get_planned_fare() != 2:
 		_errors.append("Taxi fare should be 2 EUR for a 40-unit route at 1 EUR per 20 units.")
+	var dropoff_route := taxi_car.get("last_vehicle_route") as PackedVector3Array
+	if dropoff_route.size() < 2:
+		_errors.append("Taxi drop-off route should be available after selecting a destination.")
+	else:
+		var dropoff_end := dropoff_route[dropoff_route.size() - 1]
+		if absf(dropoff_end.z - 1.35) > 0.08:
+			_errors.append("Taxi drop-off route should end at the curbside, not in the traffic lane.")
 
 	_advance_vehicle_until_player_exited(taxi_car, player, 360)
 	if player.is_inside_vehicle():
@@ -218,6 +227,105 @@ func _check_taxi_request_route_and_fare() -> void:
 	player.free()
 	taxi_car.free()
 	overlay.free()
+	world.free()
+
+
+func _check_direct_hospital_taxi_ride() -> void:
+	var world := World.new()
+	root.add_child(world)
+	await process_frame
+	_configure_test_roads(world)
+
+	var taxi_depot_marker := Area3D.new()
+	taxi_depot_marker.name = "TaxiVehicleDepot"
+	root.add_child(taxi_depot_marker)
+	taxi_depot_marker.global_position = Vector3(0.0, 0.0, 5.0)
+	var taxi_depot_shape := CollisionShape3D.new()
+	var taxi_depot_box := BoxShape3D.new()
+	taxi_depot_box.size = Vector3(4.0, 1.0, 5.0)
+	taxi_depot_shape.shape = taxi_depot_box
+	taxi_depot_shape.position = Vector3(0.0, 0.0, 1.5)
+	taxi_depot_marker.add_child(taxi_depot_shape)
+
+	var hospital_depot := _create_test_vehicle_depot("HospitalVehicleDepot", Vector3(60.0, 0.0, 5.0))
+	root.add_child(hospital_depot)
+	await process_frame
+
+	var taxi_car := TaxiCarScene.instantiate() as VehicleAgent
+	root.add_child(taxi_car)
+	await process_frame
+	taxi_car.global_position = taxi_depot_shape.global_position
+	taxi_car.manual_drive_enabled = true
+	world.register_vehicle(taxi_car)
+
+	var hospital := Hospital.new()
+	root.add_child(hospital)
+	await process_frame
+	hospital.global_position = Vector3(60.0, 0.0, 5.0)
+	world.register_building(hospital)
+
+	var patient := CitizenScene.instantiate() as Citizen
+	root.add_child(patient)
+	await process_frame
+	patient.set_world_ref(world)
+	patient.wallet.balance = 40
+	patient.global_position = Vector3(20.0, 0.0, 0.0)
+	world.register_citizen(patient)
+
+	var taxi_service := TaxiServiceScript.new()
+	taxi_service.setup(root, world, null)
+	world.set_taxi_service(taxi_service)
+
+	var action = TaxiToBuildingActionScript.new(hospital, "HospitalVehicleDepot", 5)
+	patient.start_action(action, world)
+	if patient.current_action != action:
+		_errors.append("Hospital taxi action should become the patient's current action.")
+
+	var saw_hospital_parking_dropoff := false
+	var hospital_spot := _first_parking_spot_position(hospital_depot)
+	for _i in range(700):
+		taxi_car.advance_vehicle_simulation(0.2)
+		taxi_service.update(0.2, null)
+		if patient != null and not patient.is_inside_vehicle() and patient.current_location == null:
+			if _planar_distance(patient.global_position, hospital_spot) <= 2.0:
+				saw_hospital_parking_dropoff = true
+		_tick_citizen_action(patient, world)
+		if patient.current_location == hospital:
+			break
+
+	if not saw_hospital_parking_dropoff:
+		_errors.append("Direct hospital taxi should drop the patient at HospitalVehicleDepot parking before final building entry.")
+	if patient.current_location != hospital:
+		_errors.append("Direct hospital taxi action should finish with the patient inside the hospital. state=%s action=%s failed=%s pos=%s taxi_state=%s taxi_pos=%s" % [
+			str(action.get("_phase")),
+			patient.current_action.label if patient.current_action != null else "none",
+			str(action.get("_failed")),
+			str(patient.global_position),
+			str(taxi_service.get_state()),
+			str(taxi_car.global_position),
+		])
+	if patient.is_inside_vehicle():
+		_errors.append("Patient should not remain inside the taxi after hospital drop-off.")
+	if patient.wallet.balance >= 40:
+		_errors.append("Direct hospital taxi should charge a fare for the route.")
+	if taxi_service.get_state() != "return_to_depot":
+		_errors.append("Direct hospital taxi should return to depot after patient drop-off. state=%s taxi_pos=%s patient_pos=%s" % [
+			str(taxi_service.get_state()),
+			str(taxi_car.global_position),
+			str(patient.global_position),
+		])
+
+	_advance_vehicle_until_stopped(taxi_car, 480)
+	if taxi_service.get_state() != "idle":
+		_errors.append("Direct hospital taxi should become idle after returning to the taxi depot.")
+	if not taxi_car.manual_drive_enabled:
+		_errors.append("Direct hospital taxi should restore manual driving after depot return.")
+
+	patient.free()
+	hospital.free()
+	taxi_car.free()
+	hospital_depot.free()
+	taxi_depot_marker.free()
 	world.free()
 
 
@@ -340,6 +448,53 @@ func _advance_fleet_until_player_exited(taxi_service, player: Citizen, vehicles:
 		if player != null and not player.is_inside_vehicle():
 			return
 		_advance_fleet(taxi_service, player, vehicles, 1)
+
+
+func _create_test_vehicle_depot(depot_name: String, global_pos: Vector3) -> VehicleDepot:
+	var depot := VehicleDepot.new()
+	depot.name = depot_name
+	depot.position = global_pos
+
+	var parking_area := MeshInstance3D.new()
+	parking_area.name = "ParkingArea"
+	var mesh := PlaneMesh.new()
+	mesh.size = Vector2(2.0, 2.0)
+	parking_area.mesh = mesh
+	depot.add_child(parking_area)
+
+	var spots_root := Node3D.new()
+	spots_root.name = "ParkingSpots"
+	depot.add_child(spots_root)
+
+	var spot := VehicleParkingSpot.new()
+	spot.name = "GeneratedSpot_01_01"
+	spot.position = Vector3.ZERO
+	spots_root.add_child(spot)
+	return depot
+
+
+func _first_parking_spot_position(depot: VehicleDepot) -> Vector3:
+	if depot == null:
+		return Vector3.INF
+	var spots_root := depot.get_node_or_null("ParkingSpots") as Node3D
+	if spots_root == null:
+		return depot.global_position
+	for child in spots_root.get_children():
+		if child is VehicleParkingSpot:
+			return (child as VehicleParkingSpot).global_position
+	return depot.global_position
+
+
+func _tick_citizen_action(citizen: Citizen, world: World) -> void:
+	if citizen == null or citizen.current_action == null:
+		return
+	var action := citizen.current_action
+	action.tick(world, citizen, world.minutes_per_tick)
+	if not action.is_done():
+		return
+	action.finish(world, citizen)
+	if citizen.current_action == action:
+		citizen.current_action = null
 
 
 func _configure_test_roads(world: World) -> void:

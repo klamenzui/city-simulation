@@ -33,6 +33,7 @@
 [ext_resource type="PackedScene" uid="uid://dds0njwpaa2a3" path="res://Scenes/Plants/CityPack/flower_pot.tscn" id="51_vybqf"]
 [ext_resource type="PackedScene" uid="uid://bi0sqqjfi7jse" path="res://Scenes/CityBuildings/multi_building/B2_Base.tscn" id="52_8gn08"]
 [ext_resource type="PackedScene" uid="uid://doaenty10x3ft" path="res://Scenes/Roads/RoadStraightCrossing.tscn" id="55_eho1g"]
+[ext_resource type="PackedScene" uid="uid://cudomd77tfl4k" path="res://Scenes/Plants/CityPack/planter_bushes.tscn" id="55_xkfyu"]
 [ext_resource type="PackedScene" uid="uid://dxc5islvp7qsk" path="res://Scenes/CityBuildings/commercial_building/cafe_shop.tscn" id="60_fbvi6"]
 [ext_resource type="PackedScene" uid="uid://clk7akyrxak6s" path="res://Scenes/CityBuildings/commercial_building/cafe_building.tscn" id="61_h0r08"]
 [ext_resource type="PackedScene" uid="uid://c36j5rohqlgpj" path="res://Scenes/CityBuildings/commercial_building/cinema.tscn" id="62_08030"]
@@ -62,6 +63,7 @@
 [ext_resource type="PackedScene" uid="uid://cwjkrh53hrvjp" path="res://Scenes/CityBuildings/multilayer/multilayer_001_c5dad3d6.tscn" id="89_183p3"]
 [ext_resource type="PackedScene" uid="uid://ny3uxpmhollu" path="res://Scenes/Plants/big_tree.tscn" id="89_llcqu"]
 [ext_resource type="PackedScene" uid="uid://cda3uuqc2xst1" path="res://Scenes/CityBuildings/multi_building/multilayer_002_0503229c.tscn" id="93_mr67e"]
+[ext_resource type="PackedScene" uid="uid://lx1wfrnah62" path="res://Scenes/Plants/CityPack/flower_pot_kgt363_wk_kd.tscn" id="94_6xmvy"]
 [ext_resource type="PackedScene" uid="uid://dan4o7cpbk0f0" path="res://Scenes/CityBuildings/multi_building/multilayer_003_ff38843c.tscn" id="96_6gvty"]
 [ext_resource type="PackedScene" uid="uid://blprlwgfny7m" path="res://Scenes/CityBuildings/multi_building/multilayer_004_d588520f.tscn" id="98_xlpjy"]
 [ext_resource type="PackedScene" uid="uid://c2sjyx3wuxudg" path="res://environment/sky/Cycle.tscn" id="99_deygs"]
@@ -311,6 +313,40 @@ data = PackedVector3Array(-1, 0, -0.9, -1, 0.099999994, -1, -1, 0.099999994, -0.
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_cwp32"]
 size = Vector2(2, 4)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_xkfyu"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_s0vbp"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(0.1, 1, 0.2, 0.35)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ergdg"]
+size = Vector3(0.55, 0.03, 1.25)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_3may0"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(1, 0.2, 0.1, 0.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_obdul"]
+size = Vector3(0.44, 0.06, 0.18)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_aon1w"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(0.1, 1, 0.2, 0.35)
+
+[sub_resource type="BoxMesh" id="BoxMesh_qeds0"]
+size = Vector3(0.55, 0.03, 1.25)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_alj7c"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(1, 0.2, 0.1, 0.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_t7kw1"]
+size = Vector3(0.44, 0.06, 0.18)
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_vybqf"]
 lightmap_size_hint = Vector2i(9, 22)
@@ -3005,6 +3041,48 @@ transform = Transform3D(1, 0, -9.313226e-10, 0, 0.9999998, 0, 4.656613e-10, 0, 1
 script = ExtResource("38_6xmvy")
 metadata/generated_vehicle_spot = true
 
+[node name="HospitalVehicleDepot" type="Node3D" parent="World/City/only_people_nav/only_people/Services" unique_id=21545593]
+transform = Transform3D(-0.0070351395, 0, 0.7964114, 0, 0.9999999, 0, -0.78725165, 0, -0.0071169944, -1.8382149, 0.10897162, 30.901957)
+script = ExtResource("37_imbc2")
+show_debug_parking_spots = true
+
+[node name="ParkingArea" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Services/HospitalVehicleDepot" unique_id=1255056860]
+mesh = SubResource("PlaneMesh_xkfyu")
+
+[node name="ParkingSpots" type="Node3D" parent="World/City/only_people_nav/only_people/Services/HospitalVehicleDepot" unique_id=144859547]
+
+[node name="GeneratedSpot_01_01" type="Node3D" parent="World/City/only_people_nav/only_people/Services/HospitalVehicleDepot/ParkingSpots" unique_id=246636040]
+transform = Transform3D(1.2701912, 0, -2.7939677e-09, 0, 1, 0, 9.313226e-10, 0, 1.2555823, 0.46016693, 0, -0.026923656)
+script = ExtResource("38_6xmvy")
+metadata/generated_vehicle_spot = true
+
+[node name="DebugSpotBody" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Services/HospitalVehicleDepot/ParkingSpots/GeneratedSpot_01_01" unique_id=1211865542]
+material_override = SubResource("StandardMaterial3D_s0vbp")
+mesh = SubResource("BoxMesh_ergdg")
+metadata/generated_vehicle_spot_debug = true
+
+[node name="DebugFrontMarker" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Services/HospitalVehicleDepot/ParkingSpots/GeneratedSpot_01_01" unique_id=679553776]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, -0.475)
+material_override = SubResource("StandardMaterial3D_3may0")
+mesh = SubResource("BoxMesh_obdul")
+metadata/generated_vehicle_spot_debug = true
+
+[node name="GeneratedSpot_01_02" type="Node3D" parent="World/City/only_people_nav/only_people/Services/HospitalVehicleDepot/ParkingSpots" unique_id=878081854]
+transform = Transform3D(1.2701912, 0, -2.7939677e-09, 0, 1, 0, 9.313226e-10, 0, 1.2555823, -0.34005737, 0, -0.026923656)
+script = ExtResource("38_6xmvy")
+metadata/generated_vehicle_spot = true
+
+[node name="DebugSpotBody" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Services/HospitalVehicleDepot/ParkingSpots/GeneratedSpot_01_02" unique_id=1274227164]
+material_override = SubResource("StandardMaterial3D_aon1w")
+mesh = SubResource("BoxMesh_qeds0")
+metadata/generated_vehicle_spot_debug = true
+
+[node name="DebugFrontMarker" type="MeshInstance3D" parent="World/City/only_people_nav/only_people/Services/HospitalVehicleDepot/ParkingSpots/GeneratedSpot_01_02" unique_id=11937982]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, -0.475)
+material_override = SubResource("StandardMaterial3D_alj7c")
+mesh = SubResource("BoxMesh_t7kw1")
+metadata/generated_vehicle_spot_debug = true
+
 [node name="Production" type="Node3D" parent="World/City/only_people_nav/only_people" unique_id=1574422090]
 
 [node name="Farm" parent="World/City/only_people_nav/only_people/Production" unique_id=386220770 instance=ExtResource("15_b1va2")]
@@ -3613,6 +3691,12 @@ shape = SubResource("ConcavePolygonShape3D_baglu")
 [node name="FlowerPot" parent="World/City/only_people_nav/only_people/Multi-building/base1" unique_id=230245858 instance=ExtResource("51_vybqf")]
 transform = Transform3D(-0.2000001, 0, -3.019916e-08, 0, 0.99999994, 0, 3.774899e-08, 0, -0.25, -1.1297238, 0.42290297, 0.4151683)
 
+[node name="PlanterBushes" parent="World/City/only_people_nav/only_people/Multi-building/base1" unique_id=1708643814 instance=ExtResource("55_xkfyu")]
+transform = Transform3D(-8.742271e-09, 0, 0.25000006, 0, 0.99999994, 0, -0.20000002, 0, -1.09278595e-08, -1.3076813, 0.101494394, -0.10969424)
+
+[node name="PlanterBushes2" parent="World/City/only_people_nav/only_people/Multi-building/base1" unique_id=1882505573 instance=ExtResource("55_xkfyu")]
+transform = Transform3D(-8.742278e-09, 0, 0.25000006, 0, 0.99999994, 0, -0.20000003, 0, -1.0927863e-08, -1.3094423, 0.11022123, -0.35391068)
+
 [node name="foundation_residential_01" type="Node3D" parent="World/City/only_people_nav/only_people/Multi-building" unique_id=1763045622 groups=["building_use_residential", "buildings"]]
 transform = Transform3D(1, 0, 0, 0, 0.9999999, 0, 0, 0, 1, 2.5013642, -2.3841858e-07, 4.996533)
 script = ExtResource("64_h7qxs")
@@ -4175,6 +4259,9 @@ skeleton = NodePath("")
 transform = Transform3D(1, 0, -5.9604645e-08, 0, 1, 0, 5.9604645e-08, 0, 1, 5.019574, 0.056886636, 4.461767)
 mesh = SubResource("ArrayMesh_2l42k")
 skeleton = NodePath("")
+
+[node name="FlowerPotKgt363WkKd" parent="World/City/CityPlants/Bush/Plant" unique_id=553965808 instance=ExtResource("94_6xmvy")]
+transform = Transform3D(0.92718315, 0, 0.3746066, 0, 0.9999999, 0, -0.3746066, 0, 0.92718315, 22.89159, 0.40630543, 1.57441)
 
 [node name="Foliage" parent="World/City/CityPlants" unique_id=821145833 instance=ExtResource("129_xkfyu")]
 transform = Transform3D(0.16773412, 0.107272945, 0.018915122, 0, 0.03472964, -0.19696152, -0.10892781, 0.16518585, 0.029126732, 8.233776, 0.36373496, 15.568507)
