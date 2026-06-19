@@ -212,6 +212,9 @@ static func _default_data() -> Dictionary:
 				"training_offer_score_bonus": 420.0,
 				"training_offer_gap_penalty": 120.0,
 				"absence_days_before_fire": 3,
+				"player_reserved_slots_by_building_type": {
+					"FARM": 1,
+				},
 				# Wage progression (player + NPC): education + experience bonuses that
 				# scale with the workplace profit tier. See config/balance.json.md.
 				"wage_progression": {
@@ -275,7 +278,7 @@ static func _default_data() -> Dictionary:
 					"Therapist": ["HOSPITAL"],
 					"Mayor": ["CITY_HALL"],
 					"Janitor": ["UNIVERSITY", "CITY_HALL", "PARK", "HOSPITAL"],
-					"Gardener": ["PARK"],
+					"Gardener": ["PARK", "FARM"],
 					"Fahrer": ["FARM", "FACTORY", "TAXI_DEPOT", "LOGISTICS_DEPOT"],
 					"Mechaniker": ["FACTORY", "FARM", "GAS_STATION", "TAXI_DEPOT", "LOGISTICS_DEPOT"],
 					"Tankwart": ["GAS_STATION"],

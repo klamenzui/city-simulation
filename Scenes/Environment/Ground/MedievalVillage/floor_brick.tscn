@@ -1,0 +1,54 @@
+[gd_scene format=4]
+
+[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/medieval_village/T_Brick_BaseColor.png" id="1_cypgx"]
+[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/medieval_village/T_Brick_Roughness.png" id="2_v8fe2"]
+[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/medieval_village/T_Brick_Normal.png" id="3_x63n2"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_iruoo"]
+resource_name = "MI_Brick"
+cull_mode = 2
+albedo_texture = ExtResource("1_cypgx")
+metallic_texture = ExtResource("2_v8fe2")
+metallic_texture_channel = 2
+roughness_texture = ExtResource("2_v8fe2")
+roughness_texture_channel = 1
+normal_enabled = true
+normal_texture = ExtResource("3_x63n2")
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_cqbea"]
+_surfaces = [{
+"aabb": AABB(-1, -0.010000384, -1, 2, 0.020000376, 2),
+"format": 34896613377,
+"index_count": 12,
+"index_data": PackedByteArray("AAABAAIAAAADAAEABAAFAAYABAAHAAUA"),
+"name": "MI_Brick",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 8,
+"vertex_data": PackedByteArray("////////AAAAAP//AAAAAP////8AAAAAAAD/////AAAAAAAA//8AAP//AgAAAAAAAAAAAAAAAAD//wIA//8AAA==")
+}]
+blend_shape_mode = 0
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_18m66"]
+resource_name = "Floor_Brick_Plane_004"
+_surfaces = [{
+"aabb": AABB(-1, -0.010000384, -1, 2, 0.020000376, 2),
+"attribute_data": PackedByteArray("/////wAAAAD//wAAAAD//wAA/////wAAAAAAAP////8="),
+"format": 34896613399,
+"index_count": 12,
+"index_data": PackedByteArray("AAABAAIAAAADAAEABAAFAAYABAAHAAUA"),
+"material": SubResource("StandardMaterial3D_iruoo"),
+"name": "MI_Brick",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 8,
+"vertex_data": PackedByteArray("/////////78AAP//AAD/v/////8AAP+/AAD//////78AAAAA////P///AgAAAP8/AAAAAAAA/z///wIA////P////3////9/////f////38AAP9/AAD/fwAA/38AAP9/")
+}]
+blend_shape_mode = 0
+shadow_mesh = SubResource("ArrayMesh_cqbea")
+
+[node name="FloorBrick" type="Node3D" unique_id=2116408164]
+
+[node name="Floor_Brick" type="MeshInstance3D" parent="." unique_id=1228079796]
+mesh = SubResource("ArrayMesh_18m66")
+skeleton = NodePath("")

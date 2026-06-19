@@ -79,6 +79,10 @@ func _run() -> void:
 		return
 	owned_building.citizen_owner = owner_citizen
 	owned_building.owner_display_name = owner_citizen.citizen_name
+	if owned_building is CommercialBuilding:
+		var commercial := owned_building as CommercialBuilding
+		commercial.inventory["save_roundtrip_item"] = 3
+		commercial.base_prices["save_roundtrip_item"] = 17
 
 	var save_err := SaveGameServiceScript.save_to_slot(1, world, root, player)
 	if save_err != OK:
@@ -122,6 +126,12 @@ func _run() -> void:
 	expected_workplace._profit_average_seeded = false
 	owned_building.citizen_owner = null
 	owned_building.owner_display_name = ""
+	if owned_building is CommercialBuilding:
+		var commercial := owned_building as CommercialBuilding
+		commercial.inventory["save_roundtrip_item"] = 99
+		commercial.inventory["stale_after_save"] = 12
+		commercial.base_prices["save_roundtrip_item"] = 99
+		commercial.base_prices["stale_after_save"] = 44
 	if not _remove_citizen_for_restore_test(world, owner_citizen):
 		_fail("Could not remove the owner citizen for ownership restore test.")
 		_finish()
@@ -178,6 +188,16 @@ func _run() -> void:
 			owner_name,
 			owned_building.owner_display_name
 		])
+	if owned_building is CommercialBuilding:
+		var restored_commercial := owned_building as CommercialBuilding
+		if int(restored_commercial.inventory.get("save_roundtrip_item", 0)) != 3:
+			_fail("commercial inventory not restored from snapshot.")
+		elif restored_commercial.inventory.has("stale_after_save"):
+			_fail("commercial inventory kept stale keys after snapshot apply.")
+		elif int(restored_commercial.base_prices.get("save_roundtrip_item", 0)) != 17:
+			_fail("commercial base price not restored from snapshot.")
+		elif restored_commercial.base_prices.has("stale_after_save"):
+			_fail("commercial base prices kept stale keys after snapshot apply.")
 
 	# clean up the slot we just wrote so the test does not leave artefacts.
 	var path := SaveGameServiceScript.slot_path(1)

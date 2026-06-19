@@ -57,6 +57,116 @@ func _vehicle_specs() -> Dictionary:
 			"mass": 18.0,
 			"height_bias": 0.04,
 		},
+		"res://Scenes/Vehicles/Ambulances/ambulance_low_poly.tscn": {
+			"target_length": 1.72,
+			"mass": 20.0,
+			"height_bias": 0.04,
+		},
+		"res://Scenes/Vehicles/Ambulances/dodge_ambulance_1957.tscn": {
+			"target_length": 1.76,
+			"mass": 22.0,
+			"height_bias": 0.05,
+		},
+		"res://Scenes/Vehicles/Synty/city_van.tscn": {
+			"target_length": 1.66,
+			"mass": 19.0,
+			"height_bias": 0.04,
+		},
+		"res://Scenes/Vehicles/Synty/city_police_car.tscn": {
+			"target_length": 1.48,
+			"mass": 15.0,
+			"height_bias": 0.02,
+		},
+		"res://Scenes/Vehicles/Synty/city_taxi_car.tscn": {
+			"target_length": 1.48,
+			"mass": 15.0,
+			"height_bias": 0.02,
+		},
+		"res://Scenes/Vehicles/Farm/tractor_yellow.tscn": {
+			"target_length": 1.72,
+			"mass": 24.0,
+			"height_bias": 0.05,
+			"wheelbase_front_factor": 0.30,
+			"wheelbase_rear_factor": 0.31,
+		},
+		"res://Scenes/Vehicles/Farm/tractor_green.tscn": {
+			"target_length": 1.78,
+			"mass": 25.0,
+			"height_bias": 0.05,
+			"wheelbase_front_factor": 0.30,
+			"wheelbase_rear_factor": 0.31,
+		},
+		"res://Scenes/Vehicles/Farm/crop_harvester.tscn": {
+			"target_length": 2.85,
+			"mass": 38.0,
+			"height_bias": 0.08,
+			"wheelbase_front_factor": 0.31,
+			"wheelbase_rear_factor": 0.30,
+		},
+		"res://Scenes/Vehicles/Farm/combine_harvester_a.tscn": {
+			"target_length": 2.80,
+			"mass": 38.0,
+			"height_bias": 0.08,
+			"wheelbase_front_factor": 0.31,
+			"wheelbase_rear_factor": 0.30,
+		},
+		"res://Scenes/Vehicles/Farm/combine_harvester_b.tscn": {
+			"target_length": 2.65,
+			"mass": 36.0,
+			"height_bias": 0.07,
+			"wheelbase_front_factor": 0.31,
+			"wheelbase_rear_factor": 0.30,
+		},
+		"res://Scenes/Vehicles/Farm/combine_harvester_c.tscn": {
+			"target_length": 2.60,
+			"mass": 36.0,
+			"height_bias": 0.07,
+			"wheelbase_front_factor": 0.31,
+			"wheelbase_rear_factor": 0.30,
+		},
+		"res://Scenes/Vehicles/Trucks/truck_box.tscn": {
+			"target_length": 2.55,
+			"mass": 34.0,
+			"height_bias": 0.06,
+			"wheelbase_front_factor": 0.34,
+			"wheelbase_rear_factor": 0.33,
+			"delivery_vehicle": true,
+			"delivery_load_capacity": 10,
+		},
+		"res://Scenes/Vehicles/Trucks/truck_cargo.tscn": {
+			"target_length": 2.42,
+			"mass": 32.0,
+			"height_bias": 0.05,
+			"wheelbase_front_factor": 0.34,
+			"wheelbase_rear_factor": 0.32,
+			"delivery_vehicle": true,
+			"delivery_load_capacity": 8,
+		},
+		"res://Scenes/Vehicles/Trucks/truck_flatbed.tscn": {
+			"target_length": 2.55,
+			"mass": 32.0,
+			"height_bias": 0.04,
+			"wheelbase_front_factor": 0.34,
+			"wheelbase_rear_factor": 0.33,
+			"delivery_vehicle": true,
+			"delivery_load_capacity": 12,
+		},
+		"res://Scenes/Vehicles/Trucks/truck_cab.tscn": {
+			"target_length": 1.58,
+			"mass": 24.0,
+			"height_bias": 0.04,
+			"wheelbase_front_factor": 0.29,
+			"wheelbase_rear_factor": 0.30,
+		},
+		"res://Scenes/Vehicles/Trucks/truck_tanker.tscn": {
+			"target_length": 2.48,
+			"mass": 36.0,
+			"height_bias": 0.06,
+			"wheelbase_front_factor": 0.34,
+			"wheelbase_rear_factor": 0.32,
+			"delivery_vehicle": true,
+			"delivery_load_capacity": 10,
+		},
 	}
 
 
@@ -107,8 +217,8 @@ func _adapt_scene(scene_path: String, spec: Dictionary) -> bool:
 	vehicle.center_of_mass_mode = 1
 	vehicle.center_of_mass = center_of_mass
 	vehicle.set_script(VehicleAgentScript)
-	vehicle.set("delivery_vehicle", false)
-	vehicle.set("delivery_load_capacity", 0)
+	vehicle.set("delivery_vehicle", bool(spec.get("delivery_vehicle", false)))
+	vehicle.set("delivery_load_capacity", int(spec.get("delivery_load_capacity", 0)))
 	vehicle.set("use_balance_vehicle_geometry", false)
 	vehicle.set("vehicle_mass", mass)
 	vehicle.set("center_of_mass_offset", center_of_mass)
@@ -153,12 +263,17 @@ func _adapt_scene(scene_path: String, spec: Dictionary) -> bool:
 	var source_name := source_root.name
 	var source_visual := Node3D.new()
 	source_visual.name = "%sVisual" % source_name
-	source_visual.transform = source_root.transform
 	visual_root.add_child(source_visual)
-	for child in source_root.get_children():
-		source_root.remove_child(child)
-		source_visual.add_child(child)
-	source_root.free()
+	if source_root is MeshInstance3D:
+		source_root.owner = null
+		source_visual.add_child(source_root)
+	else:
+		source_visual.transform = source_root.transform
+		for child in source_root.get_children():
+			source_root.remove_child(child)
+			child.owner = null
+			source_visual.add_child(child)
+		source_root.free()
 
 	var entry := Node3D.new()
 	entry.name = "EntryPoint"

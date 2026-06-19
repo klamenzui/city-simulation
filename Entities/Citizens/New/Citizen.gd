@@ -2467,8 +2467,12 @@ func notify_job_lost(_old_workplace: Building = null, reason: String = "") -> vo
 func _try_reassign_existing_job(world: World, origin: Vector3) -> bool:
 	if job == null:
 		return false
-	if job.workplace != null and job.workplace.has_free_job_slots():
-		return _try_hire_current_job(world)
+	if job.workplace != null:
+		if world != null and world.has_method("can_npc_claim_job_slot"):
+			if world.can_npc_claim_job_slot(job.workplace):
+				return _try_hire_current_job(world)
+		elif job.workplace.has_free_job_slots():
+			return _try_hire_current_job(world)
 	var replacement: Building = null
 	if world != null and world.has_method("find_best_workplace_for_job"):
 		replacement = world.find_best_workplace_for_job(origin, job, self)

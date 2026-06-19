@@ -67,6 +67,11 @@ Purpose: compact decisions that should be checked before architectural edits.
 ## Vehicle Scene Contract
 
 - Four-wheel CityPack vehicle scenes should follow the taxi `VehicleAgent` contract: `VehicleBody3D` root, `VisualRoot`, enabled `CollisionShape3D`, four direct `VehicleWheel3D` nodes, `EntryPoint`, `SeatPoint`, and `EngineSound`. The adapted CityPack four-wheel scenes are `bus`, `van`, `suv`, `police_car`, `sports_car`, `sports_car_gzj704_d_xdr`, and `car_unqqk_u_lt_ru`; keep `bicycle` and `motorcycle` out of this contract until two-wheel physics is defined.
+- Reusable external visual assets are generated as local `.tscn` scenes. Shared GLTF source dependencies belong under `ImportedCitySource/assets`; FBX files and multi-model collections should be normalized to centered, ground-aligned GLBs before Godot scene generation.
+- Medieval floor, vine, and Quaternius corn scenes are visual-only by default. Do not add per-instance mesh collision unless a gameplay use explicitly requires it; keep plant assets suitable for MultiMesh/scatter use.
+- Imported four-wheel ambulances and trucks use the same `VehicleAgent` scene contract. Multi-vehicle source collections must be split into one scene per vehicle before adaptation; delivery capacity is configured per resulting truck scene.
+- Synty city van, police car, and taxi assets are reusable `VehicleAgent` scenes under `Scenes/Vehicles/Synty`. Their visual type does not implicitly register them with taxi, police, traffic, or depot systems; runtime integration remains an explicit separate step.
+- Tractors and harvesters are reusable non-delivery `VehicleAgent` scenes under `Scenes/Vehicles/Farm`. Collection sources must be split per machine, incorrectly oriented source models must have rotation baked into mesh transforms, and showcase scenery such as fields, ground planes, or trees must be removed before export. Importing a farm vehicle does not add it to Farm gameplay or the Farm WorkScene automatically.
 
 ## Multiplayer Ownership Rules
 

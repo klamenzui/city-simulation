@@ -2082,13 +2082,34 @@ func _find_best_job_offer_for_citizen(
 	return best_offer
 
 func _has_available_job_commitment_slot(building: Building) -> bool:
+	return can_npc_claim_job_slot(building)
+
+func can_npc_claim_job_slot(building: Building) -> bool:
 	if building == null:
 		return false
 	if building.job_capacity <= 0:
 		return false
 	if not building.can_accept_workers():
 		return false
-	return _get_committed_job_slots(building) < building.job_capacity
+	return _get_committed_job_slots(building) < _get_npc_job_commitment_limit(building)
+
+func _get_npc_job_commitment_limit(building: Building) -> int:
+	if building == null:
+		return 0
+	var capacity := maxi(int(building.job_capacity), 0)
+	var reserved_for_player := _get_player_reserved_job_slots(building)
+	return maxi(capacity - reserved_for_player, 0)
+
+func _get_player_reserved_job_slots(building: Building) -> int:
+	if building == null:
+		return 0
+	var reserves := BalanceConfig.get_section("economy.jobs.player_reserved_slots_by_building_type")
+	if reserves.is_empty():
+		return 0
+	var use_key := building.get_building_use_id().to_upper()
+	var name_key := building.get_building_type_name().to_upper().replace(" ", "_")
+	var value: Variant = reserves.get(use_key, reserves.get(name_key, 0))
+	return clampi(int(value), 0, maxi(int(building.job_capacity), 0))
 
 func _get_committed_job_slots(building: Building) -> int:
 	if building == null:
@@ -2107,14 +2128,52 @@ func _get_committed_job_slots(building: Building) -> int:
 			committed["worker_%d" % worker.get_instance_id()] = true
 	return committed.size()
 
+func _get_committed_job_title_count(building: Building, job_titles: Array[String]) -> int:
+	if building == null or job_titles.is_empty():
+		return 0
+	var normalized_titles: Dictionary = {}
+	for job_title in job_titles:
+		var normalized_title := _normalize_job_title(job_title)
+		if normalized_title.is_empty():
+			continue
+		normalized_titles[normalized_title] = true
+	if normalized_titles.is_empty():
+		return 0
+
+	var committed: Dictionary = {}
+	for job in jobs:
+		if job == null or job.workplace != building:
+			continue
+		if normalized_titles.has(_normalize_job_title(job.title)):
+			committed[job.get_instance_id()] = true
+	for worker in building.workers:
+		if worker == null or worker.job == null or worker.job.workplace != building:
+			continue
+		if normalized_titles.has(_normalize_job_title(worker.job.title)):
+			committed[worker.job.get_instance_id()] = true
+	return committed.size()
+
+func _has_committed_job_with_title(building: Building, job_titles: Array[String]) -> bool:
+	return _get_committed_job_title_count(building, job_titles) > 0
+
+func _normalize_job_title(job_title: String) -> String:
+	return job_title.strip_edges().to_lower()
+
 func _building_needs_emergency_staffing(building: Building) -> bool:
 	# A staffed-to-operate building that currently has no qualifying staff would
 	# stay non-operational forever if every candidate is blocked by an education
 	# gap (e.g. a University whose only teaching roles now require a degree). In
 	# that case it may take on an under-qualified worker as trainee staff.
-	return building != null \
-		and building.requires_staff_to_operate() \
-		and not building.has_required_staff()
+	if building == null or not building.requires_staff_to_operate() or building.has_required_staff():
+		return false
+
+	match building.building_type:
+		Building.BuildingType.UNIVERSITY:
+			return not _has_committed_job_with_title(building, University.TEACHING_ROLE_TITLES)
+		Building.BuildingType.HOSPITAL:
+			return not _has_committed_job_with_title(building, Hospital.CORE_MEDICAL_ROLE_TITLES)
+		_:
+			return _get_committed_job_slots(building) <= 0
 
 func _build_job_offer_for_citizen(citizen: Citizen, building: Building, job_title: String, from_pos: Vector3) -> Dictionary:
 	if citizen == null or building == null or job_title.is_empty():
@@ -2147,23 +2206,21 @@ func _score_job_offer_for_citizen(
 	education_gap: int
 ) -> float:
 	var distance := from_pos.distance_to(building.get_entrance_pos())
-	var free_slots := maxi(building.job_capacity - _get_committed_job_slots(building), 0)
+	var committed_slots := _get_committed_job_slots(building)
+	var free_slots := maxi(_get_npc_job_commitment_limit(building) - committed_slots, 0)
 	var score := 0.0
 	var university_missing_teaching := false
 	var park_missing_gardener := false
 	var farm_missing_driver := false
 	var hospital_missing_medical := false
 	if building.building_type == Building.BuildingType.UNIVERSITY:
-		var university := building as University
-		university_missing_teaching = university == null or not university.has_teaching_staff()
+		university_missing_teaching = not _has_committed_job_with_title(building, University.TEACHING_ROLE_TITLES)
 	if building.building_type == Building.BuildingType.PARK:
-		park_missing_gardener = building.get_workers_by_titles(["Gardener"]).is_empty()
+		park_missing_gardener = not _has_committed_job_with_title(building, ["Gardener"])
 	if building.building_type == Building.BuildingType.FARM:
-		var farm := building as Farm
-		farm_missing_driver = farm == null or not farm.has_delivery_staff()
+		farm_missing_driver = not _has_committed_job_with_title(building, ["Fahrer"])
 	if building.building_type == Building.BuildingType.HOSPITAL:
-		var hospital: Variant = building
-		hospital_missing_medical = hospital == null or not hospital.has_core_medical_staff()
+		hospital_missing_medical = not _has_committed_job_with_title(building, Hospital.CORE_MEDICAL_ROLE_TITLES)
 
 	score -= distance * 1.6
 	score += float(maxi(free_slots, 1)) * 40.0
@@ -2176,9 +2233,9 @@ func _score_job_offer_for_citizen(
 
 	if building.is_public_building():
 		score += 260.0
-	if building.requires_staff_to_operate() and not building.has_required_staff():
+	if _building_needs_emergency_staffing(building):
 		score += 520.0
-	if building.workers.is_empty():
+	if building.workers.is_empty() and committed_slots <= 0:
 		score += 120.0
 	if building.is_underfunded():
 		score -= 90.0

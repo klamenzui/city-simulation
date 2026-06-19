@@ -1,0 +1,54 @@
+[gd_scene format=4]
+
+[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/medieval_village/T_UnevenBrick_BaseColor.png" id="1_tx2p4"]
+[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/medieval_village/T_UnevenBrick_Roughness.png" id="2_tu2vr"]
+[ext_resource type="Texture2D" path="res://ImportedCitySource/assets/medieval_village/T_UnevenBrick_Normal.png" id="3_87bgj"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bpycc"]
+resource_name = "MI_UnevenBrick"
+cull_mode = 2
+albedo_texture = ExtResource("1_tx2p4")
+metallic_texture = ExtResource("2_tu2vr")
+metallic_texture_channel = 2
+roughness_texture = ExtResource("2_tu2vr")
+roughness_texture_channel = 1
+normal_enabled = true
+normal_texture = ExtResource("3_87bgj")
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_mm2jo"]
+_surfaces = [{
+"aabb": AABB(-1, -0.010000384, -1, 2, 0.020000376, 2),
+"format": 34896613377,
+"index_count": 12,
+"index_data": PackedByteArray("AAABAAIAAAADAAEABAAFAAYABAAHAAUA"),
+"name": "MI_UnevenBrick",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 8,
+"vertex_data": PackedByteArray("////////AAAAAP//AAAAAP////8AAAAAAAD/////AAAAAAAA//8AAP//AgAAAAAAAAAAAAAAAAD//wIA//8AAA==")
+}]
+blend_shape_mode = 0
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_cyk0y"]
+resource_name = "Floor_UnevenBrick_Plane_013"
+_surfaces = [{
+"aabb": AABB(-1, -0.010000384, -1, 2, 0.020000376, 2),
+"attribute_data": PackedByteArray("/////wAAAAD//wAAAAD//wAA/////wAAAAAAAP////8="),
+"format": 34896613399,
+"index_count": 12,
+"index_data": PackedByteArray("AAABAAIAAAADAAEABAAFAAYABAAHAAUA"),
+"material": SubResource("StandardMaterial3D_bpycc"),
+"name": "MI_UnevenBrick",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 8,
+"vertex_data": PackedByteArray("/////////78AAP//AAD/v/////8AAP+/AAD//////78AAAAA////P///AgAAAP8/AAAAAAAA/z///wIA////P////3////9/////f////38AAP9/AAD/fwAA/38AAP9/")
+}]
+blend_shape_mode = 0
+shadow_mesh = SubResource("ArrayMesh_mm2jo")
+
+[node name="FloorUnevenBrick" type="Node3D" unique_id=301466524]
+
+[node name="Floor_UnevenBrick" type="MeshInstance3D" parent="." unique_id=738085467]
+mesh = SubResource("ArrayMesh_cyk0y")
+skeleton = NodePath("")

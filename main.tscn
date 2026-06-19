@@ -13,14 +13,17 @@
 [ext_resource type="Texture2D" uid="uid://c07jlgiwvm37r" path="res://ImportedCitySource/assets/roads/citybits_texture.png" id="12_fbvi6"]
 [ext_resource type="PackedScene" uid="uid://clc4gmqsftxix" path="res://Scenes/Farm.tscn" id="15_b1va2"]
 [ext_resource type="PackedScene" path="res://Scenes/CityHall.tscn" id="15_sx4hl"]
-[ext_resource type="PackedScene" path="res://Scenes/Farm_Windmill.tscn" id="16_farmw"]
-[ext_resource type="PackedScene" path="res://Scenes/Farm_AnimalRanch.tscn" id="16_ranch"]
+[ext_resource type="PackedScene" uid="uid://cijush0vyt85y" path="res://Scenes/Farm_Windmill.tscn" id="16_farmw"]
+[ext_resource type="PackedScene" uid="uid://c1npo6ocw8fid" path="res://Scenes/Farm_AnimalRanch.tscn" id="16_ranch"]
 [ext_resource type="PackedScene" uid="uid://bby4h5xvcfpkj" path="res://Scenes/CityBuildings/services/services_004_b6d7b717.tscn" id="17_xnuy3"]
 [ext_resource type="PackedScene" path="res://Scenes/Plants/City2/foliage2.tscn" id="18_6xmvy"]
 [ext_resource type="PackedScene" uid="uid://d1al3br0tpajn" path="res://Scenes/CityBuildings/multi_building/house_2_1.tscn" id="19_rkgid"]
 [ext_resource type="PackedScene" uid="uid://csq8ah8pjec8y" path="res://Scenes/CityBuildings/services/petrol_station.tscn" id="20_fbvi6"]
 [ext_resource type="PackedScene" uid="uid://cy7ejlinvbnv3" path="res://Scenes/CityBuildings/garages/garages_004_926a0961.tscn" id="24_myh4s"]
 [ext_resource type="PackedScene" uid="uid://crqki0w8ha4l8" path="res://Scenes/CityBuildings/garages/garages_005_99fe1588.tscn" id="25_5qs2s"]
+[ext_resource type="PackedScene" path="res://Scenes/Vehicles/Farm/tractor_yellow.tscn" id="26_h7qxs"]
+[ext_resource type="PackedScene" path="res://Scenes/Vehicles/Farm/combine_harvester_a.tscn" id="28_vq823"]
+[ext_resource type="PackedScene" path="res://Scenes/Vehicles/Farm/tractor_green.tscn" id="29_eho1g"]
 [ext_resource type="PackedScene" uid="uid://bqr5f73uo5wve" path="res://Scenes/Plants/City2/building_red_corner.tscn" id="34_yaiuy"]
 [ext_resource type="PackedScene" uid="uid://bowhsnguim6qn" path="res://Scenes/CityBuildings/city_pack/building_red.tscn" id="35_md2r7"]
 [ext_resource type="PackedScene" uid="uid://bpdrevgbr14g4" path="res://Scenes/CityBuildings/city_pack/big_building.tscn" id="36_gbxmp"]
@@ -3089,9 +3092,18 @@ metadata/generated_vehicle_spot_debug = true
 transform = Transform3D(1, 0, 0, 0, 0.9999999, 0, 0, 0, 1, 15.695374, -0.0101110935, -33.769424)
 building_type = 10
 
+[node name="FarmTractorYellow" parent="World/City/only_people_nav/only_people/Production/Farm" unique_id=962071832 instance=ExtResource("26_h7qxs")]
+transform = Transform3D(1.0000001, 0, 0, 0, 1, 0, 0, 0, 1.0000001, -0.3196373, 0.0101110935, 0.56061554)
+
 [node name="Farm_Windmill" parent="World/City/only_people_nav/only_people/Production" unique_id=1840558034 instance=ExtResource("16_farmw")]
-transform = Transform3D(0.049390197, 0, -0.99877954, 0, 0.9999999, 0, 0.99877954, 0, 0.049390197, 22.170845, -0.0101110935, -24.25)
+transform = Transform3D(0.049390197, 0, -0.99877954, 0, 0.9999999, 0, 0.99877954, 0, 0.049390197, 22.170845, -0.0101110935, -21.489763)
 building_type = 10
+
+[node name="CombineHarvesterA" parent="World/City/only_people_nav/only_people/Production/Farm_Windmill" unique_id=562065996 instance=ExtResource("28_vq823")]
+transform = Transform3D(0.049390204, 0, 0.99877965, 0, 1, 0, -0.99877965, 0, 0.049390204, 4.458454, -0.052686453, 3.5226574)
+
+[node name="FarmTractorGreen" parent="World/City/only_people_nav/only_people/Production/Farm_Windmill" unique_id=1048305351 instance=ExtResource("29_eho1g")]
+transform = Transform3D(0.049390204, 0, 0.99877965, 0, 1, 0, -0.99877965, 0, 0.049390204, 5.560012, 0.014134586, 0.48246956)
 
 [node name="Farm_AnimalRanch" parent="World/City/only_people_nav/only_people/Production" unique_id=2133718541 instance=ExtResource("16_ranch")]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 0.9999999, 0, -1, 0, -4.371139e-08, 7.4098473, -0.0101110935, -21.933569)

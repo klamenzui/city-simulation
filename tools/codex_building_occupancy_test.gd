@@ -11,6 +11,7 @@ const SupermarketScript = preload("res://Entities/Buildings/Supermarket.gd")
 const UniversityScript = preload("res://Entities/Buildings/University.gd")
 const CityHallScript = preload("res://Entities/Buildings/CityHall.gd")
 const HospitalScript = preload("res://Entities/Buildings/Hospital.gd")
+const FarmScript = preload("res://Entities/Buildings/Farm.gd")
 const CitizenScript = preload("res://Entities/Citizens/New/Citizen.gd")
 const WorldScript = preload("res://Simulation/World.gd")
 const CitizenFactoryScript = preload("res://Simulation/Factories/CitizenFactory.gd")
@@ -182,6 +183,7 @@ func _run_all_tests() -> void:
 		"citizen_factory_seeds_university_and_city_hall_staff",
 		"citizen_factory_display_names_stay_unique",
 		"job_offer_prefers_training_and_reserves_slot",
+		"farm_offer_counts_committed_driver_reservation",
 		"study_finish_hires_reserved_trainee",
 		"world_clock_waits_for_runtime_start",
 		"building_travel_accepts_near_access",
@@ -323,6 +325,8 @@ func _run_test(test_name: String) -> String:
 			return _test_citizen_factory_display_names_stay_unique()
 		"job_offer_prefers_training_and_reserves_slot":
 			return _test_job_offer_prefers_training_and_reserves_slot()
+		"farm_offer_counts_committed_driver_reservation":
+			return _test_farm_offer_counts_committed_driver_reservation()
 		"study_finish_hires_reserved_trainee":
 			return _test_study_finish_hires_reserved_trainee()
 		"world_clock_waits_for_runtime_start":
@@ -755,8 +759,9 @@ func _test_owner_profit_pays_to_wallet_on_payday() -> String:
 	var shop: Shop = _new_shop("Profit Shop")
 	world.register_building(shop)
 
-	var owner_citizen: Citizen = _new_citizen("Profit Owner")
-	world.register_citizen(owner_citizen)
+	var owner_citizen: Citizen = CitizenScript.new()
+	owner_citizen.name = "Profit Owner"
+	owner_citizen.citizen_name = "Profit Owner"
 	owner_citizen.wallet.balance = 50
 	shop.citizen_owner = owner_citizen
 	shop.owner_display_name = owner_citizen.citizen_name
@@ -769,6 +774,8 @@ func _test_owner_profit_pays_to_wallet_on_payday() -> String:
 	_expect_eq(shop.account.balance, 0, "owner payout should leave the paid profit out of the building account")
 	_expect_eq(shop.get_profit_today(), 0, "daily finance rollover should reset tracked profit after payday")
 
+	shop.citizen_owner = null
+	owner_citizen.free()
 	_free_world(world)
 	return _current_error
 
@@ -1331,6 +1338,42 @@ func _test_job_offer_prefers_training_and_reserves_slot() -> String:
 	_free_world(world)
 	return _current_error
 
+func _test_farm_offer_counts_committed_driver_reservation() -> String:
+	var world: World = _new_world()
+	var farm := _new_farm("Offer Farm", 3)
+	world.register_building(farm)
+
+	var driver: Citizen = _new_citizen("Reserved Driver")
+	world.register_citizen(driver)
+	var first_offer := world.find_best_job_offer_for_citizen(driver.global_position, driver, true)
+	_expect_eq(first_offer.get("building", null), farm, "first farm offer should target the farm")
+	_expect_eq(first_offer.get("title", ""), "Fahrer", "first farm offer should reserve delivery staff")
+
+	var driver_job := CitizenFactoryScript.build_job_from_offer(first_offer)
+	_expect(driver_job != null, "first farm offer should build a driver job")
+	if driver_job != null:
+		driver.job = driver_job
+		world.register_job(driver_job)
+
+	var field_worker: Citizen = _new_citizen("Field Worker")
+	world.register_citizen(field_worker)
+	var second_offer := world.find_best_job_offer_for_citizen(field_worker.global_position, field_worker, true)
+	_expect_eq(second_offer.get("building", null), farm, "second farm offer should still target the farm while capacity remains")
+	_expect_eq(second_offer.get("title", ""), "Gardener", "committed delivery staff should make the next farm offer prefer field work")
+	var field_job := CitizenFactoryScript.build_job_from_offer(second_offer)
+	_expect(field_job != null, "second farm offer should build a field worker job")
+	if field_job != null:
+		field_worker.job = field_job
+		world.register_job(field_job)
+
+	var npc_overflow: Citizen = _new_citizen("NPC Overflow")
+	world.register_citizen(npc_overflow)
+	var overflow_offer := world.find_best_job_offer_for_citizen(npc_overflow.global_position, npc_overflow, true)
+	_expect(overflow_offer.is_empty(), "farm should keep the final configured slot open for player application")
+
+	_free_world(world)
+	return _current_error
+
 func _test_study_finish_hires_reserved_trainee() -> String:
 	var world: World = _new_world()
 	var university: University = _new_university("Hiring Uni")
@@ -1670,6 +1713,18 @@ func _new_building(building_name: String, worker_capacity: int = 0) -> Building:
 	building.add_child(entrance)
 	_harness_root.add_child(building)
 	return building
+
+func _new_farm(building_name: String, worker_capacity: int = 0) -> Farm:
+	var farm: Farm = FarmScript.new()
+	farm.name = building_name
+	farm.building_name = building_name
+	var entrance := Node3D.new()
+	entrance.name = "Entrance"
+	entrance.position = Vector3(0.0, 0.0, 1.1)
+	farm.add_child(entrance)
+	_harness_root.add_child(farm)
+	farm.job_capacity = worker_capacity
+	return farm
 
 func _test_player_enter_takes_capacity_slot() -> String:
 	var world: World = _new_world()

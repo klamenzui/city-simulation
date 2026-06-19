@@ -299,10 +299,12 @@ static func _apply_commercial_snapshot(commercial: CommercialBuilding, data: Dic
 	if commercial == null:
 		return
 	if data.get("inventory", null) is Dictionary:
+		commercial.inventory.clear()
 		var inventory_data := data.get("inventory", {}) as Dictionary
 		for key in inventory_data.keys():
 			commercial.inventory[str(key)] = maxi(int(inventory_data.get(key, 0)), 0)
 	if data.get("base_prices", null) is Dictionary:
+		commercial.base_prices.clear()
 		var price_data := data.get("base_prices", {}) as Dictionary
 		for key in price_data.keys():
 			commercial.base_prices[str(key)] = maxi(int(price_data.get(key, 1)), 1)

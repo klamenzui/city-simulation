@@ -1,4 +1,4 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://dgqqfy57qrlxi"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2esvw"]
 resource_name = "Brown"
@@ -42,5 +42,6 @@ shadow_mesh = SubResource("ArrayMesh_m5myk")
 [node name="Fence2" type="Node3D" unique_id=1764248753]
 
 [node name="Fence2" type="MeshInstance3D" parent="." unique_id=2024068812]
+transform = Transform3D(0.4, 0, 0, 0, 0.4, 0, 0, 0, 0.4, 0, 0, 0)
 mesh = SubResource("ArrayMesh_ed60l")
 skeleton = NodePath("")
