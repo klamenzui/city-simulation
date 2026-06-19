@@ -280,6 +280,7 @@ func get_player_work_context() -> Dictionary:
 		"stored_food": stored_food,
 		"storage_capacity": storage_capacity,
 		"suggested_harvest_units": suggested_harvest,
+		"crop_growth_total_minutes": get_crop_growth_total_minutes(),
 		"work_minutes": mini(harvest_duration_minutes + 30, 120),
 	}
 

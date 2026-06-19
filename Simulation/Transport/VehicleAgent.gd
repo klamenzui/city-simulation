@@ -755,9 +755,6 @@ func _get_traffic_light_speed_cap(stop_line_distance: float) -> float:
 func _find_blocking_vehicle(direction: Vector3) -> Node3D:
 	if not route_vehicle_avoidance_enabled or not is_inside_tree():
 		return null
-	var tree := get_tree()
-	if tree == null:
-		return null
 	var planar_direction := _normalize_planar(direction)
 	if planar_direction == Vector3.ZERO:
 		return null
@@ -766,7 +763,15 @@ func _find_blocking_vehicle(direction: Vector3) -> Node3D:
 	var best_forward_distance := INF
 	var max_forward := maxf(route_vehicle_detection_distance, route_vehicle_stop_distance)
 	var max_lateral := maxf(route_vehicle_lateral_tolerance, 0.01)
-	for candidate in tree.get_nodes_in_group("vehicles"):
+	var candidates: Array = []
+	if _registered_world != null and is_instance_valid(_registered_world):
+		candidates = _registered_world.vehicles
+	else:
+		var tree := get_tree()
+		if tree == null:
+			return null
+		candidates = tree.get_nodes_in_group("vehicles")
+	for candidate in candidates:
 		if candidate == self or candidate is not Node3D:
 			continue
 		var other_vehicle := candidate as Node3D

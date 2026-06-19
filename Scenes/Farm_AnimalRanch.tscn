@@ -5,7 +5,7 @@
 [ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/SmallBarn.tscn" id="3_smallbarn"]
 [ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/Silo.tscn" id="4_silo"]
 [ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/Well.tscn" id="5_well"]
-[ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/Fence.tscn" id="6_fence"]
+[ext_resource type="PackedScene" uid="uid://dstpxx3nq0uj1" path="res://Scenes/FarmAssets/Quaternius/Fence.tscn" id="6_fence"]
 [ext_resource type="ArrayMesh" uid="uid://buo3q6sbf8qk1" path="res://Scenes/FarmAssets/FarmPack/farmland_large.obj" id="7_farmland"]
 [ext_resource type="ArrayMesh" uid="uid://csnkf2ch6grci" path="res://Scenes/FarmAssets/FarmPack/wheat.obj" id="8_wheat"]
 [ext_resource type="ArrayMesh" uid="uid://djdf1fqsljmpm" path="res://Scenes/FarmAssets/FarmPack/planted_carrots.obj" id="9_carrots"]
@@ -13,7 +13,7 @@
 [ext_resource type="ArrayMesh" uid="uid://c5pfi0exr6ktm" path="res://Scenes/FarmAssets/FarmPack/pumpkin.obj" id="11_pumpkin"]
 [ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/OpenBarn.tscn" id="13_openbarn"]
 [ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/ChickenCoop.tscn" id="14_chickencoop"]
-[ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/Fence2.tscn" id="15_fence2"]
+[ext_resource type="PackedScene" uid="uid://dgqqfy57qrlxi" path="res://Scenes/FarmAssets/Quaternius/Fence2.tscn" id="15_fence2"]
 [ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/Silo_House.tscn" id="16_silohouse"]
 
 [sub_resource type="StandardMaterial3D" id="mt_grass"]
@@ -140,7 +140,7 @@ transform = Transform3D(0.42, 0, 0, 0, 0.42, 0, 0, 0, 0.42, 3.65, 0, -2.75)
 transform = Transform3D(0.36, 0, 0, 0, 0.36, 0, 0, 0, 0.36, -4.15, 0, 1.05)
 
 [node name="FeedBarnModel" parent="AnimalArea" unique_id=1570649474 instance=ExtResource("16_silohouse")]
-transform = Transform3D(0.28, 0, 0, 0, 0.28, 0, 0, 0, 0.28, 0.95, 0, -2.55)
+transform = Transform3D(0.28, 0, 0, 0, 0.28, 0, 0, 0, 0.28, -4.223005, 0, 4.7708726)
 
 [node name="PastureNorthFenceModel" parent="AnimalArea" unique_id=1609591549 instance=ExtResource("15_fence2")]
 transform = Transform3D(0.88, 0, 0, 0, 0.38, 0, 0, 0, 0.38, 3, 0, -0.55)
@@ -245,7 +245,7 @@ transform = Transform3D(0, 0, 0.7066502, 0, 0.4, 0, -0.4, 0, 0, -5.8, 0, 4.55)
 [node name="Props" type="Node3D" parent="." unique_id=946691504]
 
 [node name="WellModel" parent="Props" unique_id=584560012 instance=ExtResource("5_well")]
-transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, -2.85, 0, -0.45)
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 4.959839, 0, 4.958723)
 
 [node name="Pumpkins" type="Node3D" parent="Props" unique_id=1619069031]
 

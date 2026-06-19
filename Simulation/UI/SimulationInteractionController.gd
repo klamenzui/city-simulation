@@ -37,6 +37,10 @@ var _last_player_context_building: Building = null
 var _farm_work_scene: Node = null
 var _farm_work_player: Citizen = null
 var _farm_work_farm: Farm = null
+var _farm_work_layer: CanvasLayer = null
+var _farm_work_viewport: SubViewport = null
+var _farm_work_camera_input_was_locked: bool = false
+var _farm_work_camera_input_locked: bool = false
 var _building_entry_choice_layer: CanvasLayer = null
 var _building_entry_choice_panel: PanelContainer = null
 
@@ -76,6 +80,7 @@ func get_debug_panel() -> DebugPanel:
 	return debug_panel
 
 func update(delta: float) -> void:
+	_sync_farm_work_viewport_size()
 	if taxi_service != null:
 		taxi_service.update(delta, _get_player_citizen())
 	_refresh_player_home_marker()
@@ -184,6 +189,9 @@ func mark_ui_interacted() -> void:
 	_entity_clicked_this_frame = true
 
 func handle_input(event: InputEvent) -> bool:
+	if _is_farm_work_scene_active():
+		_forward_input_to_farm_work_viewport(event)
+		return true
 	var player_control_active: bool = selection_state_controller.is_player_control_active() if selection_state_controller != null else false
 	var player_building_input_active := _is_player_building_input_active()
 	var search_input: LineEdit = hud_overlay_controller.get_search_input() if hud_overlay_controller != null else null
@@ -758,12 +766,14 @@ func handle_debug_panel_player_action_pressed(action_id: String) -> void:
 	_refresh_player_action_ui()
 	_refresh_player_inventory_ui()
 
-func _try_start_farm_work_scene(player: Citizen) -> bool:
+func _try_start_farm_work_scene(player: Citizen, farm_override: Farm = null) -> bool:
 	if player == null or owner_node == null:
 		return false
 	if _farm_work_scene != null and is_instance_valid(_farm_work_scene):
 		return true
-	var farm := player._get_player_current_building() as Farm
+	var farm: Farm = farm_override
+	if farm == null:
+		farm = player._get_player_current_building() as Farm
 	if farm == null:
 		return false
 	if not player._player_has_accepted_job_at(farm):
@@ -784,8 +794,19 @@ func _try_start_farm_work_scene(player: Citizen) -> bool:
 	_farm_work_player = player
 	_farm_work_farm = farm
 	scene.connect("session_finished", Callable(self, "_on_farm_work_scene_finished").bind(scene))
-	owner_node.add_child(scene)
+	_mount_farm_work_scene(scene)
 	return true
+
+func _is_windmill_work_farm(farm: Farm) -> bool:
+	if farm == null:
+		return false
+	if farm.name.to_lower().contains("windmill"):
+		return true
+	if farm.get_node_or_null("TowerWindmill") != null:
+		return true
+	if farm.get_node_or_null("VariantDecor/WindmillModel") != null:
+		return true
+	return farm.has_method("get_product_commodity") and str(farm.get_product_commodity()).strip_edges() == "bread"
 
 func _on_farm_work_scene_finished(result: Dictionary, scene: Node) -> void:
 	if scene != _farm_work_scene:
@@ -801,6 +822,7 @@ func _on_farm_work_scene_finished(result: Dictionary, scene: Node) -> void:
 		farm.finish_player_work_session(player)
 	if scene != null and is_instance_valid(scene):
 		scene.queue_free()
+	_release_farm_work_scene_host()
 	_farm_work_scene = null
 	_farm_work_player = null
 	_farm_work_farm = null
@@ -823,6 +845,83 @@ func _show_farm_work_result_toast(result: Dictionary, applied: Dictionary) -> vo
 	if harvest <= 0 and growth > 0:
 		main_part = "Pflege +%d Wachstumsminuten, %d min, %d%% Qualitaet" % [growth, minutes, quality]
 	_show_toast("Farm-Schicht fertig: %s" % main_part, "success", 3.0)
+
+func _is_farm_work_scene_active() -> bool:
+	return _farm_work_scene != null and is_instance_valid(_farm_work_scene)
+
+func _mount_farm_work_scene(scene: Node) -> void:
+	_release_farm_work_scene_host()
+	var layer := CanvasLayer.new()
+	layer.name = "FarmWorkSceneLayer"
+	layer.layer = 80
+
+	var container := SubViewportContainer.new()
+	container.name = "FarmWorkSceneViewportContainer"
+	container.set_anchors_preset(Control.PRESET_FULL_RECT)
+	container.mouse_filter = Control.MOUSE_FILTER_STOP
+	container.focus_mode = Control.FOCUS_ALL
+	container.stretch = true
+
+	var viewport := SubViewport.new()
+	viewport.name = "FarmWorkSceneViewport"
+	viewport.disable_3d = false
+	viewport.transparent_bg = false
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	viewport.world_3d = World3D.new()
+
+	owner_node.add_child(layer)
+	layer.add_child(container)
+	container.add_child(viewport)
+	_farm_work_layer = layer
+	_farm_work_viewport = viewport
+	_sync_farm_work_viewport_size()
+	viewport.add_child(scene)
+	container.grab_focus()
+	_lock_city_camera_input_for_farm_work()
+
+func _release_farm_work_scene_host() -> void:
+	if _farm_work_layer != null and is_instance_valid(_farm_work_layer):
+		_farm_work_layer.queue_free()
+	elif _farm_work_viewport != null and is_instance_valid(_farm_work_viewport):
+		_farm_work_viewport.queue_free()
+	_farm_work_layer = null
+	_farm_work_viewport = null
+	_restore_city_camera_input_after_farm_work()
+
+func _sync_farm_work_viewport_size() -> void:
+	if _farm_work_viewport == null or not is_instance_valid(_farm_work_viewport):
+		return
+	if owner_node == null:
+		return
+	var root_viewport := owner_node.get_viewport()
+	if root_viewport == null:
+		return
+	var rect := root_viewport.get_visible_rect()
+	var next_size := Vector2i(maxi(1, int(round(rect.size.x))), maxi(1, int(round(rect.size.y))))
+	if _farm_work_viewport.size != next_size:
+		_farm_work_viewport.size = next_size
+
+func _forward_input_to_farm_work_viewport(event: InputEvent) -> void:
+	if _farm_work_viewport == null or not is_instance_valid(_farm_work_viewport):
+		return
+	_farm_work_viewport.push_input(event, false)
+
+func _lock_city_camera_input_for_farm_work() -> void:
+	if camera_mode_manager == null or not camera_mode_manager.has_method("set_input_locked"):
+		return
+	_farm_work_camera_input_was_locked = false
+	if camera_mode_manager.has_method("is_input_locked"):
+		_farm_work_camera_input_was_locked = bool(camera_mode_manager.call("is_input_locked"))
+	camera_mode_manager.call("set_input_locked", true)
+	_farm_work_camera_input_locked = true
+
+func _restore_city_camera_input_after_farm_work() -> void:
+	if not _farm_work_camera_input_locked:
+		return
+	_farm_work_camera_input_locked = false
+	if camera_mode_manager == null or not camera_mode_manager.has_method("set_input_locked"):
+		return
+	camera_mode_manager.call("set_input_locked", _farm_work_camera_input_was_locked)
 
 func _refresh_selected_player_details(player: Citizen) -> void:
 	if debug_panel == null or player == null:
@@ -1023,6 +1122,11 @@ func _enter_player_building_target(player: Citizen, building: Building) -> bool:
 	if not is_instance_valid(building):
 		return false
 	_clear_building_entry_choices()
+	if not _is_network_session_active() and building is Farm:
+		var farm := building as Farm
+		if _is_windmill_work_farm(farm) and _try_start_farm_work_scene(player, farm):
+			_show_toast("Windmuehlenfarm betreten", "success", 1.8)
+			return true
 	if _is_network_session_active():
 		if multiplayer_session == null or not multiplayer_session.has_method("request_entity_interaction"):
 			return false

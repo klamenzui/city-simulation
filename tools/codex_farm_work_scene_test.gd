@@ -2,12 +2,22 @@ extends SceneTree
 
 const FarmWorkSceneResource = preload("res://Scenes/WorkScenes/Farm/FarmWorkScene.tscn")
 const CitizenScene = preload("res://Entities/Citizens/CitizenNew.tscn")
+const SimulationInteractionControllerScript = preload("res://Simulation/UI/SimulationInteractionController.gd")
 
 const ACTION_PLANT := "plant"
 const ACTION_WATER := "water"
 const ACTION_WEED := "weed"
 const ACTION_HARVEST := "harvest"
 const ACTION_DELIVER := "deliver"
+const LIVE_TAKE_WHEAT_SEEDS := "take_wheat_seeds"
+const LIVE_SOW_FIELD := "sow_field"
+const LIVE_WATER_FIELD := "water_field"
+const LIVE_HARVEST_FIELD := "harvest_field"
+const LIVE_STORE_GRAIN_SILO := "store_grain_silo"
+const LIVE_START_WINDMILL := "start_windmill"
+const LIVE_COLLECT_FLOUR := "collect_flour"
+const LIVE_STORE_FLOUR_BARN := "store_flour_barn"
+const LIVE_LOAD_PICKUP := "load_pickup"
 
 
 func _initialize() -> void:
@@ -47,6 +57,21 @@ func _initialize() -> void:
 	root.add_child(game)
 	await process_frame
 	game.call("start_session")
+	_expect(game is Node3D, "FarmWorkScene should be a 3D scene root", failures)
+	_expect(game.get_node_or_null("WindmillFarm3D/Player") != null, "FarmWorkScene should spawn a walkable player", failures)
+	_expect(game.get_node_or_null("WindmillFarm3D") != null, "FarmWorkScene should build a 3D farm world", failures)
+	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/Buildings/BigBarnModel") != null, "FarmWorkScene should reuse the existing big barn", failures)
+	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/Buildings/SiloModel") != null, "FarmWorkScene should reuse the existing silo", failures)
+	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/TowerWindmill") != null, "FarmWorkScene should reuse the existing tower windmill", failures)
+	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldWest/FarmlandModel") != null, "FarmWorkScene should reuse the existing west field", failures)
+	_expect(game.get_node_or_null("WindmillFarm3D/MainPath") == null, "FarmWorkScene should not generate a primitive replacement path", failures)
+	_expect(game.get_node_or_null("WindmillFarm3D/FenceBack") == null, "FarmWorkScene should not generate replacement fences", failures)
+	for interactable_id in ["field_wheat", "field_corn", "barn", "shed", "silo", "windmill", "machine_yard", "gate"]:
+		_expect(game.call("_find_interactable", interactable_id) != null, "FarmWorkScene should bind existing interaction: %s" % interactable_id, failures)
+	var barn_interactable = game.call("_find_interactable", "barn")
+	game.call("_open_context_for", barn_interactable)
+	var context_menu := game.get_node_or_null("FarmWorkHud/HudRoot/ContextMenu") as Control
+	_expect(context_menu != null and context_menu.visible, "clicking an existing farm object should open its context UI", failures)
 
 	_expect_eq(game.call("get_recommended_action_for_plot", 1), ACTION_HARVEST, "plot 1 should start harvestable", failures)
 	var harvest_one := game.call("debug_perform_action", 1, ACTION_HARVEST) as Dictionary
@@ -92,8 +117,56 @@ func _initialize() -> void:
 	_expect(farm.crop_growth_minutes > growth_before, "maintenance work should advance farm growth", failures)
 	_expect(not farm.has_player_work_session_in_progress(), "maintenance session should release", failures)
 
+	farm.crop_state = Farm.CropState.GROWING
+	farm.crop_growth_minutes = 0
+	farm.set_product_inventory_amount(farm.get_product_commodity(), 0)
+	_expect(farm.begin_player_work_session(player), "live 3D session should start", failures)
+	var live := FarmWorkSceneResource.instantiate()
+	live.set("auto_start", false)
+	_expect(bool(live.call("configure_for_farm", farm, 1)), "live 3D scene should configure for Farm", failures)
+	root.add_child(live)
+	await process_frame
+	live.call("start_session")
+	_expect(bool((live.call("debug_perform_live_action", "shed", LIVE_TAKE_WHEAT_SEEDS) as Dictionary).get("correct", false)), "live flow should take wheat seeds", failures)
+	_expect(bool((live.call("debug_perform_live_action", "field_wheat", LIVE_SOW_FIELD) as Dictionary).get("correct", false)), "live flow should sow wheat", failures)
+	_expect(bool((live.call("debug_perform_live_action", "field_wheat", LIVE_WATER_FIELD) as Dictionary).get("correct", false)), "live flow should water wheat", failures)
+	live.call("debug_tick_live", 9.0)
+	var wheat_field := live.call("debug_get_field_snapshot", "field_wheat") as Dictionary
+	_expect_eq(str(wheat_field.get("state_label", "")), "mature", "live wheat should mature after test time", failures)
+	_expect(bool((live.call("debug_perform_live_action", "field_wheat", LIVE_HARVEST_FIELD) as Dictionary).get("correct", false)), "live flow should harvest wheat", failures)
+	_expect(bool((live.call("debug_perform_live_action", "silo", LIVE_STORE_GRAIN_SILO) as Dictionary).get("correct", false)), "live flow should store wheat in silo", failures)
+	_expect(bool((live.call("debug_perform_live_action", "windmill", LIVE_START_WINDMILL) as Dictionary).get("correct", false)), "live flow should start windmill", failures)
+	live.call("debug_tick_live", 9.0)
+	_expect(bool((live.call("debug_perform_live_action", "windmill", LIVE_COLLECT_FLOUR) as Dictionary).get("correct", false)), "live flow should collect flour sacks", failures)
+	_expect(bool((live.call("debug_perform_live_action", "barn", LIVE_STORE_FLOUR_BARN) as Dictionary).get("correct", false)), "live flow should store flour sacks", failures)
+	_expect(bool((live.call("debug_perform_live_action", "machine_yard", LIVE_LOAD_PICKUP) as Dictionary).get("correct", false)), "live flow should load pickup", failures)
+	var pickup_inventory := live.call("debug_get_inventory_snapshot", "pickup") as Dictionary
+	_expect(int(pickup_inventory.get("flour_sack", 0)) > 0, "pickup should receive flour sacks", failures)
+	var live_result := live.call("get_result") as Dictionary
+	_expect(int(live_result.get("harvested_amount", 0)) > 0, "live result should include harvested wheat", failures)
+	_expect(int(live_result.get("goods_delivered", 0)) > 0, "live result should include loaded flour sacks", failures)
+	var live_applied: Dictionary = farm.apply_player_work_result(world, player, live_result)
+	_expect(bool(live_applied.get("accepted", false)), "live 3D result should apply", failures)
+	_expect(int(live_applied.get("harvested_amount", 0)) > 0, "live 3D result should store output on Farm", failures)
+	_expect(not farm.has_player_work_session_in_progress(), "live 3D session should release", failures)
+
+	var interaction = SimulationInteractionControllerScript.new()
+	interaction.setup(root, world)
+	_expect(bool(interaction.call("_try_start_farm_work_scene", player, farm)), "controller should start FarmWorkScene", failures)
+	await process_frame
+	var mounted_scene := interaction.get("_farm_work_scene") as Node
+	var mounted_viewport := mounted_scene.get_viewport() if mounted_scene != null else null
+	_expect(mounted_viewport is SubViewport, "controller should mount FarmWorkScene in an isolated SubViewport", failures)
+	_expect(mounted_scene != null and mounted_scene.get_parent() == mounted_viewport, "FarmWorkScene should be a child of the work viewport", failures)
+	if mounted_viewport is SubViewport:
+		_expect((mounted_viewport as SubViewport).world_3d != root.get_world_3d(), "FarmWorkScene viewport should not share the city World3D", failures)
+	if mounted_scene != null and mounted_scene.has_method("finish_session"):
+		mounted_scene.call("finish_session")
+	await process_frame
+
 	game.queue_free()
 	maintenance.queue_free()
+	live.queue_free()
 	player.queue_free()
 	farm.queue_free()
 	world.queue_free()

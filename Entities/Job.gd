@@ -18,10 +18,15 @@ var preferred_workplace: Building = null
 func resolve_nearest(root: Node, from_pos: Vector3) -> void:
 	if root == null:
 		return
-	if workplace != null and workplace.has_free_job_slots():
-		return
 
 	var world := _resolve_world(root)
+	if workplace != null:
+		if world != null and world.has_method("can_npc_claim_job_slot"):
+			if world.can_npc_claim_job_slot(workplace):
+				return
+		elif workplace.has_free_job_slots():
+			return
+
 	if world != null and world.has_method("find_best_workplace_for_job"):
 		workplace = world.find_best_workplace_for_job(from_pos, self)
 		if workplace != null:
@@ -58,6 +63,7 @@ func allows_building(building: Building) -> bool:
 func _auto_find_workplace(root: Node, from_pos: Vector3) -> Building:
 	var best: Building = null
 	var best_dist := INF
+	var world := _resolve_world(root)
 
 	for node in root.get_tree().get_nodes_in_group("buildings"):
 		if not (node is Building):
@@ -65,7 +71,10 @@ func _auto_find_workplace(root: Node, from_pos: Vector3) -> Building:
 		var building := node as Building
 		if not allows_building(building):
 			continue
-		if not building.has_free_job_slots():
+		if world != null and world.has_method("can_npc_claim_job_slot"):
+			if not world.can_npc_claim_job_slot(building):
+				continue
+		elif not building.has_free_job_slots():
 			continue
 
 		var dist := from_pos.distance_to(building.global_position)

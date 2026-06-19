@@ -113,7 +113,11 @@ Runtime and debug scenes/resources.
 | Scenes/Minigames/ServiceFlow/ServiceFlowMinigame.gd | ServiceFlowMinigame | Control |
 | Scenes/Minigames/TeacherLesson/TeacherLessonMinigame.gd | TeacherLessonMinigame | Control |
 | Scenes/Minigames/WarehouseStack/WarehouseStackMinigame.gd | WarehouseStackMinigame | Control |
-| Scenes/WorkScenes/Farm/FarmWorkScene.gd | FarmWorkScene | Control |
+| Scenes/WorkScenes/Farm/FarmWorkFieldData.gd | FarmWorkFieldData | RefCounted |
+| Scenes/WorkScenes/Farm/FarmWorkInteractable.gd | FarmWorkInteractable | Area3D |
+| Scenes/WorkScenes/Farm/FarmWorkInventory.gd | FarmWorkInventory | RefCounted |
+| Scenes/WorkScenes/Farm/FarmWorkProductionState.gd | FarmWorkProductionState | RefCounted |
+| Scenes/WorkScenes/Farm/FarmWorkScene.gd | FarmWorkScene | Node3D |
 
 ## Simulation
 
@@ -191,6 +195,7 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_economy_test.gd | - | SceneTree |
 | tools/codex_emotion_test.gd | - | SceneTree |
 | tools/codex_exterior_grass_scene_probe.gd | - | SceneTree |
+| tools/codex_external_asset_probe.gd | - | SceneTree |
 | tools/codex_facade_caller_drift_test.gd | - | SceneTree |
 | tools/codex_factory_delivery_test.gd | - | SceneTree |
 | tools/codex_farm_live_delivery_test.gd | - | SceneTree |
@@ -212,4 +217,3 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_multiplayer_two_process_test.gd | - | SceneTree |
 | tools/codex_navigation_edge_step_test.gd | - | SceneTree |
 | tools/codex_navigation_route_test.gd | - | SceneTree |
-| tools/codex_null_material_audit.gd | - | SceneTree |

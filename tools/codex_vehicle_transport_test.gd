@@ -163,7 +163,7 @@ func _check_vehicle_refuses_large_world_route_snap() -> void:
 		_errors.append("Vehicle should not teleport toward a far RoadGraph route start.")
 
 	vehicle.free()
-	world.free()
+	_free_world(world)
 
 
 func _check_vehicle_curbside_arrival_is_explicit() -> void:
@@ -221,7 +221,7 @@ func _check_vehicle_curbside_arrival_is_explicit() -> void:
 	normal_vehicle.free()
 	curb_vehicle.free()
 	left_curb_vehicle.free()
-	world.free()
+	_free_world(world)
 
 
 func _check_route_drive_blocks_static_building_collision() -> void:
@@ -773,6 +773,18 @@ func _add_vehicle_test_ground(ground_name: String) -> StaticBody3D:
 	ground_shape_node.shape = ground_shape
 	ground.add_child(ground_shape_node)
 	return ground
+
+
+func _free_world(world: World) -> void:
+	if world == null or not is_instance_valid(world):
+		return
+	if world.time != null and is_instance_valid(world.time):
+		world.time.free()
+		world.time = null
+	if world.economy != null and is_instance_valid(world.economy):
+		world.economy.free()
+		world.economy = null
+	world.free()
 
 
 func _count_vehicle_wheels(vehicle: Node) -> int:
