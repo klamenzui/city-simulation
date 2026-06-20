@@ -953,6 +953,8 @@ func _handle_player_inventory_panel_action(action_id: String, player: Citizen) -
 			_player_inventory_mode = "" if _player_inventory_mode == "player" else "player"
 		"shop":
 			_player_inventory_mode = "shop"
+		"building_inventory":
+			_player_inventory_mode = "building"
 		"inventory_close":
 			_player_inventory_mode = ""
 		_:
@@ -1339,7 +1341,9 @@ func _show_player_building_context(player: Citizen, building: Building) -> void:
 			debug_panel.visible = true
 	if building is Shop:
 		_player_inventory_mode = "shop"
-	elif _player_inventory_mode == "shop":
+	elif building is CommercialBuilding:
+		_player_inventory_mode = "building"
+	elif _player_inventory_mode == "shop" or _player_inventory_mode == "building":
 		_player_inventory_mode = ""
 	_refresh_selected_player_details(player)
 	_refresh_player_action_ui()
@@ -1347,7 +1351,7 @@ func _show_player_building_context(player: Citizen, building: Building) -> void:
 
 func _hide_building_specific_player_context(player: Citizen) -> void:
 	_last_player_context_building = null
-	if _player_inventory_mode == "shop":
+	if _player_inventory_mode == "shop" or _player_inventory_mode == "building":
 		_player_inventory_mode = ""
 	if player != null:
 		_refresh_selected_player_details(player)
@@ -1368,7 +1372,7 @@ func _sync_player_building_context_from_location() -> void:
 		building = null
 	var last_valid := _last_player_context_building != null and is_instance_valid(_last_player_context_building)
 	if building == null:
-		if last_valid or _player_inventory_mode == "shop":
+		if last_valid or _player_inventory_mode == "shop" or _player_inventory_mode == "building":
 			_hide_building_specific_player_context(player)
 		return
 	if last_valid and _last_player_context_building == building:

@@ -19,6 +19,7 @@ const RESOURCES := [
 	"res://Simulation/World.gd",
 	"res://Simulation/Config/BalanceConfig.gd",
 	"res://Simulation/Localization/LocaleService.gd",
+	"res://Simulation/UI/ItemIconCatalog.gd",
 	"res://Simulation/UI/MainMenuController.gd",
 	"res://Scenes/Minigames/RetailWorkSort/RetailWorkSortMinigame.gd",
 	"res://Scenes/Minigames/RetailWorkSort/RetailWorkSortMinigame.tscn",

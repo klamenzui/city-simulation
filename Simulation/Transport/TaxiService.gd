@@ -9,8 +9,9 @@ signal ride_failed(rider: Citizen, message: String)
 const BalanceConfig = preload("res://Simulation/Config/BalanceConfig.gd")
 const SimLogger = preload("res://Simulation/Logging/SimLogger.gd")
 const TaxiReturnTripScript = preload("res://Simulation/Transport/TaxiReturnTrip.gd")
-const TAXI_VEHICLE_SCENE_PATH := "res://Scenes/Vehicles/CityPack/car.tscn"
-const TaxiVehicleScene = preload("res://Scenes/Vehicles/CityPack/car.tscn")
+const TAXI_VEHICLE_SCENE_PATH := "res://Scenes/Vehicles/Synty/city_taxi_car.tscn"
+const LEGACY_TAXI_VEHICLE_SCENE_PATH := "res://Scenes/Vehicles/CityPack/car.tscn"
+const TaxiVehicleScene = preload("res://Scenes/Vehicles/Synty/city_taxi_car.tscn")
 
 const STATE_IDLE := "idle"
 const STATE_PICKUP := "pickup"
@@ -376,11 +377,18 @@ func _scene_has_taxi_candidate() -> bool:
 func _is_supported_taxi_scene(vehicle: VehicleAgent) -> bool:
 	if vehicle == null:
 		return false
-	if vehicle.scene_file_path == TAXI_VEHICLE_SCENE_PATH:
+	if vehicle.scene_file_path in [
+		TAXI_VEHICLE_SCENE_PATH,
+		LEGACY_TAXI_VEHICLE_SCENE_PATH,
+	]:
 		return true
 	if vehicle.scene_file_path.ends_with("/car.tscn"):
 		return true
-	return vehicle.name.contains("TaxiVehicle_Car") or vehicle.name == "Car"
+	return (
+		vehicle.name.contains("TaxiVehicle")
+		or vehicle.name.contains("TaxiCar")
+		or vehicle.name == "Car"
+	)
 
 
 func _connect_vehicle_signals(vehicle: VehicleAgent) -> void:

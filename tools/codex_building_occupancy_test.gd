@@ -2017,6 +2017,18 @@ func _test_inventory_window_keeps_shop_buttons_clickable() -> String:
 	_expect(_find_label_by_text(window, LocaleServiceScript.t("player_disabled.not_enough_money_price") % 18) != null,
 			"disabled shop items should show the unavailable reason in the window")
 
+	var food_state := state.duplicate(true)
+	food_state["categories"][0]["id"] = "food"
+	food_state["categories"][0]["items"][0]["id"] = "food"
+	food_state["categories"][0]["items"][0]["label"] = "Food"
+	food_state["categories"][0]["items"][0]["action_id"] = "buy_groceries"
+	window.show_for_state(food_state)
+	var rendered_food_icon := window.find_child("InventoryIcon", true, false) as TextureRect
+	_expect(
+		rendered_food_icon != null and rendered_food_icon.texture != null,
+		"inventory window should render the shared food texture"
+	)
+
 	return _current_error
 
 func _test_player_action_buttons_and_manual_actions() -> String:
@@ -2116,8 +2128,10 @@ func _test_player_action_buttons_and_manual_actions() -> String:
 
 	var shop: Shop = _new_shop("Player Inventory Shop", Vector3(6.0, 0.0, 0.0))
 	var market: Supermarket = _new_supermarket("Player Inventory Market", Vector3(8.0, 0.0, 0.0))
+	var cafe: Cafe = _new_cafe("Player Inventory Cafe", Vector3(10.0, 0.0, 0.0))
 	world.register_building(shop)
 	world.register_building(market)
+	world.register_building(cafe)
 	world.time.minutes_total = 10 * 60
 	player.wallet.balance = 120
 	player.needs.fun = 30.0
@@ -2174,6 +2188,21 @@ func _test_player_action_buttons_and_manual_actions() -> String:
 			"eating from inventory should reduce player hunger")
 	player.cancel_player_action(world)
 	_expect(player.player_exit_building(world), "player should leave the market before park actions")
+
+	_expect(player.player_enter_building(cafe, world), "player should enter the cafe as a visitor")
+	var cafe_action_state := player.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(cafe_action_state, "building_inventory"),
+			"cafe action bar should allow reopening building inventory")
+	var cafe_inventory_state := player.get_player_inventory_ui_state(world, "building")
+	_expect_eq(str(cafe_inventory_state.get("mode", "")), "building",
+			"cafe inventory should use read-only building mode")
+	_expect(_inventory_container_has_slot(cafe_inventory_state, "building", "drink"),
+			"cafe building inventory should show drinks")
+	_expect(_inventory_container_has_slot(cafe_inventory_state, "building", "snack"),
+			"cafe building inventory should show snacks")
+	_expect((cafe_inventory_state.get("categories", []) as Array).is_empty(),
+			"read-only cafe inventory should not expose shop purchase categories")
+	_expect(player.player_exit_building(world), "player should leave cafe before going home")
 
 	_expect(player.player_enter_building(home, world), "player should enter home to store carried inventory")
 	var carried_before_deposit := player.get_carried_inventory_count("food")

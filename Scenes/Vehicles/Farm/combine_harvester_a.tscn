@@ -1,7 +1,7 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://cd6i8g3cbkuoa"]
 
-[ext_resource type="Script" path="res://Simulation/Transport/VehicleAgent.gd" id="1_rdjmx"]
-[ext_resource type="AudioStream" path="res://environment/audio/vehicles/engine.wav" id="2_807uk"]
+[ext_resource type="Script" uid="uid://cd1nnk30w7t4c" path="res://Simulation/Transport/VehicleAgent.gd" id="1_rdjmx"]
+[ext_resource type="AudioStream" uid="uid://cb7wvsd6vygd3" path="res://environment/audio/vehicles/engine.wav" id="2_807uk"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_qqng4"]
 size = Vector3(1.4277614, 0.85744715, 2.856)
@@ -4572,701 +4572,6 @@ suspension_stiffness = 34.0
 damping_compression = 0.9
 damping_relaxation = 1.6
 
-[node name="VisualRoot" type="Node3D" parent="." unique_id=285888480]
-transform = Transform3D(0.003430961, 0, 0, 0, 0.003430961, 0, 0, 0, 0.003430961, 2.0074022, 0.1393867, -0.6178284)
-
-[node name="CombineHarvesterAVisual" type="Node3D" parent="VisualRoot" unique_id=2142153525]
-
-[node name="Cube_000_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=467351230]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -400.45505, 123.442474, 221.03574)
-mesh = SubResource("ArrayMesh_yb2j7")
-skeleton = NodePath("")
-
-[node name="Cube_001_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=153155181]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 181.83553, 239.59496)
-mesh = SubResource("ArrayMesh_rsypx")
-skeleton = NodePath("")
-
-[node name="Cube_001_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=835673971]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 181.83553, 239.59496)
-mesh = SubResource("ArrayMesh_ryi4u")
-skeleton = NodePath("")
-
-[node name="Cube_001_Window_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=532901204]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 181.83553, 239.59496)
-mesh = SubResource("ArrayMesh_vfnyu")
-skeleton = NodePath("")
-
-[node name="Cube_002_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=764627528]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 169.11702, -13.255966)
-mesh = SubResource("ArrayMesh_qp66l")
-skeleton = NodePath("")
-
-[node name="Cube_002_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1842626884]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 169.11702, -13.255966)
-mesh = SubResource("ArrayMesh_s0de0")
-skeleton = NodePath("")
-
-[node name="Cube_003_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=514478834]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 143.84752, 150.08315)
-mesh = SubResource("ArrayMesh_1xx4f")
-skeleton = NodePath("")
-
-[node name="Cube_003_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=81073895]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 143.84752, 150.08315)
-mesh = SubResource("ArrayMesh_df6si")
-skeleton = NodePath("")
-
-[node name="Cube_004_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=163622329]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 48.49092, 22.868973)
-mesh = SubResource("ArrayMesh_oxbhh")
-skeleton = NodePath("")
-
-[node name="Cube_005_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1868458857]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -675.1184, 41.97905, 0.101119995)
-mesh = SubResource("ArrayMesh_par5g")
-skeleton = NodePath("")
-
-[node name="Cube_006_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=969776573]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -490.558, 41.97905, 0.101119995)
-mesh = SubResource("ArrayMesh_1b2r5")
-skeleton = NodePath("")
-
-[node name="Cube_007_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1800894847]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -507.1247, 63.853027, 243.11119)
-mesh = SubResource("ArrayMesh_r8wbk")
-skeleton = NodePath("")
-
-[node name="Cube_008_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=800347574]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -434.60284, 58.336395, 243.61188)
-mesh = SubResource("ArrayMesh_vfgb3")
-skeleton = NodePath("")
-
-[node name="Cube_009_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1585430024]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -675.34314, 58.336395, 243.61188)
-mesh = SubResource("ArrayMesh_el8qr")
-skeleton = NodePath("")
-
-[node name="Cube_010_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=721128223]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -731.8036, 58.336395, 243.61188)
-mesh = SubResource("ArrayMesh_hapg6")
-skeleton = NodePath("")
-
-[node name="Cube_011_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=295553437]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 76.38163, 67.978874)
-mesh = SubResource("ArrayMesh_ka0rv")
-skeleton = NodePath("")
-
-[node name="Cube_012_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=477900564]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 55.827576, 253.90825)
-mesh = SubResource("ArrayMesh_f083q")
-skeleton = NodePath("")
-
-[node name="Cube_013_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=578748786]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -508.5741, 51.68187, 73.75038)
-mesh = SubResource("ArrayMesh_1inxd")
-skeleton = NodePath("")
-
-[node name="Cube_014_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=738991028]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -543.61255, 44.310425, 73.6583)
-mesh = SubResource("ArrayMesh_wsm0q")
-skeleton = NodePath("")
-
-[node name="Cube_015_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2067746626]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -628.79553, 44.310425, 73.6583)
-mesh = SubResource("ArrayMesh_edotg")
-skeleton = NodePath("")
-
-[node name="Cube_016_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=647813820]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -543.61255, 44.00347, 98.23259)
-mesh = SubResource("ArrayMesh_2a0r8")
-skeleton = NodePath("")
-
-[node name="Cube_017_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=12114330]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -627.45856, 44.00347, 98.23259)
-mesh = SubResource("ArrayMesh_nmhfi")
-skeleton = NodePath("")
-
-[node name="Cube_018_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1805770312]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -656.458, 51.68187, 73.75038)
-mesh = SubResource("ArrayMesh_4rncy")
-skeleton = NodePath("")
-
-[node name="Cube_019_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1401568126]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -537.7434, 55.24298, -0.01889038)
-mesh = SubResource("ArrayMesh_g8dxq")
-skeleton = NodePath("")
-
-[node name="Cube_020_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2021705624]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -628.065, 55.24298, -0.01889038)
-mesh = SubResource("ArrayMesh_h1juk")
-skeleton = NodePath("")
-
-[node name="Cube_021_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1468432263]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -641.11, 40.067352, -3.6076508)
-mesh = SubResource("ArrayMesh_jn8os")
-skeleton = NodePath("")
-
-[node name="Cube_022_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=781087918]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -524.56635, 40.067352, -3.6076508)
-mesh = SubResource("ArrayMesh_irtv1")
-skeleton = NodePath("")
-
-[node name="Cube_023_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=682093547]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 41.451805, -2.4819336)
-mesh = SubResource("ArrayMesh_q865n")
-skeleton = NodePath("")
-
-[node name="Cube_024_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2080745714]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 189.80492, -99.82687)
-mesh = SubResource("ArrayMesh_rkk80")
-skeleton = NodePath("")
-
-[node name="Cube_025_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1654729717]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 153.97705, -102.42679)
-mesh = SubResource("ArrayMesh_tywgi")
-skeleton = NodePath("")
-
-[node name="Cube_027_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1815893198]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -510.45947, 172.24275, -81.16681)
-mesh = SubResource("ArrayMesh_h6cmo")
-skeleton = NodePath("")
-
-[node name="Cube_028_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=502361015]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -510.45947, 172.65884, -114.47821)
-mesh = SubResource("ArrayMesh_d4bci")
-skeleton = NodePath("")
-
-[node name="Cube_029_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2021033826]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -637.9219, 172.7492, -121.71246)
-mesh = SubResource("ArrayMesh_cf5p6")
-skeleton = NodePath("")
-
-[node name="Cube_030_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1271286931]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -530.8967, 172.7492, -121.71246)
-mesh = SubResource("ArrayMesh_7ia7p")
-skeleton = NodePath("")
-
-[node name="Cube_031_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1496347620]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -565.7021, 172.8524, -121.58435)
-mesh = SubResource("ArrayMesh_yevop")
-skeleton = NodePath("")
-
-[node name="Cube_032_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1684749692]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -600.95215, 172.8524, -121.58435)
-mesh = SubResource("ArrayMesh_tsmjv")
-skeleton = NodePath("")
-
-[node name="Cube_033_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1811955886]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 132.63899, -84.927795)
-mesh = SubResource("ArrayMesh_5rbey")
-skeleton = NodePath("")
-
-[node name="Cube_034_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=594951011]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -658.8524, 172.24275, -81.16681)
-mesh = SubResource("ArrayMesh_u6124")
-skeleton = NodePath("")
-
-[node name="Cube_035_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1018257217]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -658.8524, 172.65887, -114.47821)
-mesh = SubResource("ArrayMesh_1iqhh")
-skeleton = NodePath("")
-
-[node name="Cube_036_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=999417335]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 205.7079, -52.331757)
-mesh = SubResource("ArrayMesh_j384b")
-skeleton = NodePath("")
-
-[node name="Cube_037_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=215119187]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 207.205, 154.507)
-mesh = SubResource("ArrayMesh_d24b8")
-skeleton = NodePath("")
-
-[node name="Cube_038_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=995384301]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 262.29718, 154.04913)
-mesh = SubResource("ArrayMesh_t7e6j")
-skeleton = NodePath("")
-
-[node name="Cube_039_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1988492372]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -581.62415, 130.24287, 232.66931)
-mesh = SubResource("ArrayMesh_ghx6i")
-skeleton = NodePath("")
-
-[node name="Cube_039_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=458995366]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -581.62415, 130.24287, 232.66931)
-mesh = SubResource("ArrayMesh_mv8lk")
-skeleton = NodePath("")
-
-[node name="Cube_040_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1437378938]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -491.97504, 233.11194, 65.576546)
-mesh = SubResource("ArrayMesh_gnhi5")
-skeleton = NodePath("")
-
-[node name="Cube_040_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=774496609]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -491.97504, 233.11194, 65.576546)
-mesh = SubResource("ArrayMesh_jf50p")
-skeleton = NodePath("")
-
-[node name="Cube_041_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=78266932]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -490.29355, 241.19754, -192.29141)
-mesh = SubResource("ArrayMesh_xi08a")
-skeleton = NodePath("")
-
-[node name="Cube_042_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2026760009]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -473.1688, 234.45743, 142.83531)
-mesh = SubResource("ArrayMesh_emqxo")
-skeleton = NodePath("")
-
-[node name="Cube_043_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=479101668]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.2438, 148.94426, 189.20782)
-mesh = SubResource("ArrayMesh_2opcw")
-skeleton = NodePath("")
-
-[node name="Cube_044_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1597684585]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -422.931, 58.336426, 243.61188)
-mesh = SubResource("ArrayMesh_7jph6")
-skeleton = NodePath("")
-
-[node name="Cube_045_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1450204838]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -480.9348, 41.979034, 0.10105896)
-mesh = SubResource("ArrayMesh_aij1r")
-skeleton = NodePath("")
-
-[node name="Cube_046_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=378453218]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -684.74164, 41.979034, 0.10105896)
-mesh = SubResource("ArrayMesh_kej5w")
-skeleton = NodePath("")
-
-[node name="Cube_047_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=280584594]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -687.01495, 58.336433, 243.61183)
-mesh = SubResource("ArrayMesh_hsl8g")
-skeleton = NodePath("")
-
-[node name="Cube_048_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2075254161]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -743.47534, 58.336426, 243.61183)
-mesh = SubResource("ArrayMesh_v2myw")
-skeleton = NodePath("")
-
-[node name="Cube_049_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=32814104]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -495.57086, 58.336433, 243.61183)
-mesh = SubResource("ArrayMesh_66ho4")
-skeleton = NodePath("")
-
-[node name="Cube_050_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=297033757]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -430.64407, 37.549004, 243.35222)
-mesh = SubResource("ArrayMesh_3cm8u")
-skeleton = NodePath("")
-
-[node name="Cube_051_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1646369477]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -481.11133, 41.97905, 0.10108948)
-mesh = SubResource("ArrayMesh_cbgmt")
-skeleton = NodePath("")
-
-[node name="Cube_052_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1600093682]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.2941, 56.114243, 0.27760315)
-mesh = SubResource("ArrayMesh_m156n")
-skeleton = NodePath("")
-
-[node name="Cube_053_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1816581753]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.2941, 41.80249, 14.236252)
-mesh = SubResource("ArrayMesh_elldu")
-skeleton = NodePath("")
-
-[node name="Cube_054_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=204930658]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.2941, 27.843842, -0.07550049)
-mesh = SubResource("ArrayMesh_nwxcy")
-skeleton = NodePath("")
-
-[node name="Cube_055_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1690801771]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.2941, 42.15561, -14.034149)
-mesh = SubResource("ArrayMesh_g2ibx")
-skeleton = NodePath("")
-
-[node name="Cube_056_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1307642000]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.2941, 51.849304, 10.221039)
-mesh = SubResource("ArrayMesh_jvwva")
-skeleton = NodePath("")
-
-[node name="Cube_057_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1132740203]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.2941, 31.85907, 9.971313)
-mesh = SubResource("ArrayMesh_asfq2")
-skeleton = NodePath("")
-
-[node name="Cube_058_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=789897954]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.2941, 32.10878, -10.018906)
-mesh = SubResource("ArrayMesh_3neys")
-skeleton = NodePath("")
-
-[node name="Cube_059_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=346475514]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.2941, 52.09897, -9.76918)
-mesh = SubResource("ArrayMesh_netrt")
-skeleton = NodePath("")
-
-[node name="Cube_060_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=368444905]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -684.56506, 41.97905, 0.10108948)
-mesh = SubResource("ArrayMesh_a4bla")
-skeleton = NodePath("")
-
-[node name="Cube_061_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1112119881]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -678.3823, 56.114243, 0.27760315)
-mesh = SubResource("ArrayMesh_n5b0r")
-skeleton = NodePath("")
-
-[node name="Cube_062_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=287884289]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -678.3823, 41.80249, 14.236252)
-mesh = SubResource("ArrayMesh_tjn85")
-skeleton = NodePath("")
-
-[node name="Cube_063_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=438870471]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -678.3823, 27.843842, -0.07550049)
-mesh = SubResource("ArrayMesh_pf0sx")
-skeleton = NodePath("")
-
-[node name="Cube_064_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1528654054]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -678.3823, 42.15561, -14.034149)
-mesh = SubResource("ArrayMesh_5o5kg")
-skeleton = NodePath("")
-
-[node name="Cube_065_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1442396171]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -678.3823, 51.849304, 10.221008)
-mesh = SubResource("ArrayMesh_rfjwu")
-skeleton = NodePath("")
-
-[node name="Cube_066_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=228010821]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -678.3823, 31.85907, 9.971313)
-mesh = SubResource("ArrayMesh_jdv4r")
-skeleton = NodePath("")
-
-[node name="Cube_067_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1793924394]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -678.3823, 32.10878, -10.018906)
-mesh = SubResource("ArrayMesh_13a52")
-skeleton = NodePath("")
-
-[node name="Cube_068_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1293891186]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -678.3823, 52.09897, -9.76918)
-mesh = SubResource("ArrayMesh_dhthg")
-skeleton = NodePath("")
-
-[node name="Cube_069_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=88531872]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -479.60568, 58.336395, 243.61188)
-mesh = SubResource("ArrayMesh_cs77g")
-skeleton = NodePath("")
-
-[node name="Cube_070_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1800811971]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.10455, 79.12375, 243.87155)
-mesh = SubResource("ArrayMesh_slmn4")
-skeleton = NodePath("")
-
-[node name="Cube_071_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1388101922]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.10455, 58.076714, 264.3993)
-mesh = SubResource("ArrayMesh_8bv3n")
-skeleton = NodePath("")
-
-[node name="Cube_072_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1238065207]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.10455, 37.548973, 243.35223)
-mesh = SubResource("ArrayMesh_5tjpp")
-skeleton = NodePath("")
-
-[node name="Cube_073_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1643786693]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.10455, 58.59603, 222.8245)
-mesh = SubResource("ArrayMesh_tqrb7")
-skeleton = NodePath("")
-
-[node name="Cube_074_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=934032427]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.10455, 72.85168, 258.49445)
-mesh = SubResource("ArrayMesh_mawpu")
-skeleton = NodePath("")
-
-[node name="Cube_075_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1498048514]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.10455, 43.453835, 258.12723)
-mesh = SubResource("ArrayMesh_lcp78")
-skeleton = NodePath("")
-
-[node name="Cube_076_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2081614864]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.10455, 43.821075, 228.7294)
-mesh = SubResource("ArrayMesh_83i1f")
-skeleton = NodePath("")
-
-[node name="Cube_077_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=201155825]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -487.10455, 73.21889, 229.09662)
-mesh = SubResource("ArrayMesh_ud8hf")
-skeleton = NodePath("")
-
-[node name="Cube_078_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1870153777]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -423.1452, 58.336395, 243.61188)
-mesh = SubResource("ArrayMesh_ofqtt")
-skeleton = NodePath("")
-
-[node name="Cube_079_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2127020152]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -430.64407, 58.076714, 264.3993)
-mesh = SubResource("ArrayMesh_uc2oq")
-skeleton = NodePath("")
-
-[node name="Cube_080_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1686388001]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -430.64407, 58.59603, 222.8245)
-mesh = SubResource("ArrayMesh_6ds1e")
-skeleton = NodePath("")
-
-[node name="Cube_081_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1528396469]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -430.64407, 72.85168, 258.49445)
-mesh = SubResource("ArrayMesh_lrjoi")
-skeleton = NodePath("")
-
-[node name="Cube_082_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1689589539]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -430.64407, 43.453835, 258.12723)
-mesh = SubResource("ArrayMesh_spu71")
-skeleton = NodePath("")
-
-[node name="Cube_083_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=979536129]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -430.64407, 43.821053, 228.7294)
-mesh = SubResource("ArrayMesh_jbmlh")
-skeleton = NodePath("")
-
-[node name="Cube_084_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1988972379]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -430.64407, 73.21889, 229.09663)
-mesh = SubResource("ArrayMesh_2ebuf")
-skeleton = NodePath("")
-
-[node name="Cube_085_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1473985465]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -686.80084, 58.336395, 243.61188)
-mesh = SubResource("ArrayMesh_dwjmf")
-skeleton = NodePath("")
-
-[node name="Cube_086_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1567222026]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -679.30194, 79.12375, 243.8715)
-mesh = SubResource("ArrayMesh_qlcj6")
-skeleton = NodePath("")
-
-[node name="Cube_087_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1250533818]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -679.30194, 58.076714, 264.39926)
-mesh = SubResource("ArrayMesh_dy16y")
-skeleton = NodePath("")
-
-[node name="Cube_088_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=452690007]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -679.30194, 37.548973, 243.35223)
-mesh = SubResource("ArrayMesh_j3l3n")
-skeleton = NodePath("")
-
-[node name="Cube_089_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=746490093]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -679.30194, 58.59603, 222.82448)
-mesh = SubResource("ArrayMesh_pamco")
-skeleton = NodePath("")
-
-[node name="Cube_090_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=866788478]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -679.30194, 72.85168, 258.49445)
-mesh = SubResource("ArrayMesh_l7w4t")
-skeleton = NodePath("")
-
-[node name="Cube_091_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=403907302]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -679.30194, 43.453835, 258.12723)
-mesh = SubResource("ArrayMesh_wvvn7")
-skeleton = NodePath("")
-
-[node name="Cube_092_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1401424384]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -679.30194, 43.821053, 228.7294)
-mesh = SubResource("ArrayMesh_i7shu")
-skeleton = NodePath("")
-
-[node name="Cube_093_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=465813090]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -679.30194, 73.21889, 229.09662)
-mesh = SubResource("ArrayMesh_i2a73")
-skeleton = NodePath("")
-
-[node name="Cube_094_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1146206844]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -743.26135, 58.336395, 243.61188)
-mesh = SubResource("ArrayMesh_cr2iy")
-skeleton = NodePath("")
-
-[node name="Cube_095_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1211534448]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -735.76245, 79.12375, 243.87155)
-mesh = SubResource("ArrayMesh_rco2h")
-skeleton = NodePath("")
-
-[node name="Cube_096_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1589816816]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -735.76245, 58.076714, 264.3993)
-mesh = SubResource("ArrayMesh_vxeok")
-skeleton = NodePath("")
-
-[node name="Cube_097_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=397838580]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -735.76245, 37.548973, 243.35223)
-mesh = SubResource("ArrayMesh_af7x8")
-skeleton = NodePath("")
-
-[node name="Cube_098_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=140898215]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -735.76245, 58.59603, 222.8245)
-mesh = SubResource("ArrayMesh_ixqf6")
-skeleton = NodePath("")
-
-[node name="Cube_099_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=321293844]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -735.76245, 72.85168, 258.49445)
-mesh = SubResource("ArrayMesh_3p28p")
-skeleton = NodePath("")
-
-[node name="Cube_100_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1802474739]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -735.76245, 43.453835, 258.12723)
-mesh = SubResource("ArrayMesh_p4q44")
-skeleton = NodePath("")
-
-[node name="Cube_101_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1180468139]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -735.76245, 43.821053, 228.7294)
-mesh = SubResource("ArrayMesh_70bp7")
-skeleton = NodePath("")
-
-[node name="Cube_102_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2052213664]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -735.76245, 73.21889, 229.09663)
-mesh = SubResource("ArrayMesh_3epjw")
-skeleton = NodePath("")
-
-[node name="Cube_103_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=795478288]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -430.64407, 79.12376, 243.87155)
-mesh = SubResource("ArrayMesh_8b60k")
-skeleton = NodePath("")
-
-[node name="Cube_104_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=885088815]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.08466, 89.47355, 333.5481)
-mesh = SubResource("ArrayMesh_02wrg")
-skeleton = NodePath("")
-
-[node name="Cube_105_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1818442697]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.08466, 42.86905, 338.44516)
-mesh = SubResource("ArrayMesh_cvvfs")
-skeleton = NodePath("")
-
-[node name="Cube_106_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=682923116]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.08466, 46.198578, 362.17978)
-mesh = SubResource("ArrayMesh_n3qxn")
-skeleton = NodePath("")
-
-[node name="Cube_107_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1047240406]
-transform = Transform3D(50.34262, 0, 0, 0, 1.595866, 45.87154, 0, -127.760574, 0.5729845, -585.08466, 105.98184, 365.65488)
-mesh = SubResource("ArrayMesh_6uun3")
-skeleton = NodePath("")
-
-[node name="Cube_108_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1397766769]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.08466, 94.252396, 353.54312)
-mesh = SubResource("ArrayMesh_1d2v1")
-skeleton = NodePath("")
-
-[node name="Cube_109_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=417987575]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -825.83386, 83.531456, 388.4938)
-mesh = SubResource("ArrayMesh_phmdp")
-skeleton = NodePath("")
-
-[node name="Cube_110_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=828065709]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -344.33517, 83.53134, 388.4943)
-mesh = SubResource("ArrayMesh_cptbh")
-skeleton = NodePath("")
-
-[node name="Cube_111_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=468921489]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.08453, 107.72974, 333.76694)
-mesh = SubResource("ArrayMesh_b0ne8")
-skeleton = NodePath("")
-
-[node name="Cube_112_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=943487558]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -826.2794, 53.95793, 345.40652)
-mesh = SubResource("ArrayMesh_nkem1")
-skeleton = NodePath("")
-
-[node name="Cube_113_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1845192041]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -343.88974, 53.95793, 345.40652)
-mesh = SubResource("ArrayMesh_twnt1")
-skeleton = NodePath("")
-
-[node name="Cube_124_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1425540691]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -522.50476, 244.22238, 298.48)
-mesh = SubResource("ArrayMesh_wis07")
-skeleton = NodePath("")
-
-[node name="Cube_125_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1949934793]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -482.63467, 233.212, 297.49313)
-mesh = SubResource("ArrayMesh_lxpqo")
-skeleton = NodePath("")
-
-[node name="Cube_126_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1149768818]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -646.7219, 244.22034, 298.6438)
-mesh = SubResource("ArrayMesh_itat3")
-skeleton = NodePath("")
-
-[node name="Cube_127_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=520573024]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -686.592, 233.20999, 297.65692)
-mesh = SubResource("ArrayMesh_bo8mv")
-skeleton = NodePath("")
-
-[node name="Cube_128_Material_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=899293801]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -698.67065, 233.15118, 302.3635)
-mesh = SubResource("ArrayMesh_2omtj")
-skeleton = NodePath("")
-
-[node name="Cube_129_Material_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=187006125]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -497.4484, 233.15323, 302.19977)
-mesh = SubResource("ArrayMesh_y37pk")
-skeleton = NodePath("")
-
-[node name="Cube_130_Material_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1178858930]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -470.55597, 233.15323, 302.19977)
-mesh = SubResource("ArrayMesh_tt6m2")
-skeleton = NodePath("")
-
-[node name="Cube_131_Material_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=103196525]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -671.77826, 233.15118, 302.3635)
-mesh = SubResource("ArrayMesh_elgbf")
-skeleton = NodePath("")
-
-[node name="Cube_132_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1811325081]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -394.02362, 35.01454, 219.93117)
-mesh = SubResource("ArrayMesh_qvdgt")
-skeleton = NodePath("")
-
-[node name="Cube_133_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=209332327]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.7992, 154.67728, 256.42856)
-mesh = SubResource("ArrayMesh_f1fa6")
-skeleton = NodePath("")
-
-[node name="Cube_134_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=276106121]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -585.7992, 155.44418, 195.03421)
-mesh = SubResource("ArrayMesh_bcgav")
-skeleton = NodePath("")
-
-[node name="Cube_135_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1131863952]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -394.02362, 81.63929, 239.62325)
-mesh = SubResource("ArrayMesh_s18ud")
-skeleton = NodePath("")
-
-[node name="Cube_136_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=425238142]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -394.02362, 82.116615, 201.40987)
-mesh = SubResource("ArrayMesh_22bcx")
-skeleton = NodePath("")
-
-[node name="Cube_137_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1530466855]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -394.02362, 116.35959, 220.94727)
-mesh = SubResource("ArrayMesh_w6u4q")
-skeleton = NodePath("")
-
-[node name="Cube_138_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=295179577]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -394.02362, 90.69475, 220.6267)
-mesh = SubResource("ArrayMesh_c6qey")
-skeleton = NodePath("")
-
-[node name="Cube_139_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1476593315]
-transform = Transform3D(50.34262, 0, 0, 0, 0.62878114, 45.871536, 0, -50.338703, 0.5729817, -394.02362, 63.342735, 220.28503)
-mesh = SubResource("ArrayMesh_cv8x5")
-skeleton = NodePath("")
-
-[node name="Cube_145_Metal_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=928069248]
-transform = Transform3D(22.38019, 0, 0, 0, 8.145104, 22.050398, 0, -46.919056, 3.8279283, -777.6484, 31.184265, 394.58865)
-mesh = SubResource("ArrayMesh_x30bx")
-skeleton = NodePath("")
-
-[node name="Cube_146_Red_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=500049243]
-transform = Transform3D(29.476583, 0, 0, 0, 5.7166524, 32.930202, 0, -32.930202, 5.7166524, -777.6484, 23.103477, 441.1371)
-mesh = SubResource("ArrayMesh_b7ju2")
-skeleton = NodePath("")
-
-[node name="Cube_153_Black_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1570495085]
-transform = Transform3D(242.76302, 0, 0, 0, 0.40686584, 17.971521, 0, -32.572697, 0.22448243, -584.03143, 30.553146, 395.57843)
-mesh = SubResource("ArrayMesh_hconq")
-skeleton = NodePath("")
-
 [node name="EntryPoint" type="Node3D" parent="." unique_id=1904660938]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.0279882, 0.03, 0.02)
 
@@ -5278,3 +4583,698 @@ stream = ExtResource("2_807uk")
 volume_db = -28.0
 pitch_scale = 0.05
 attenuation_filter_cutoff_hz = 20500.0
+
+[node name="VisualRoot" type="Node3D" parent="." unique_id=1752906515]
+
+[node name="CombineHarvesterAVisual" type="Node3D" parent="VisualRoot" unique_id=3516876]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0, 0)
+
+[node name="Cube_000_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=467351230]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.6334566, 0.562913, 0.14053655)
+mesh = SubResource("ArrayMesh_yb2j7")
+skeleton = NodePath("")
+
+[node name="Cube_001_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=153155181]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.7632573, 0.20421249)
+mesh = SubResource("ArrayMesh_rsypx")
+skeleton = NodePath("")
+
+[node name="Cube_001_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=835673971]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.7632573, 0.20421249)
+mesh = SubResource("ArrayMesh_ryi4u")
+skeleton = NodePath("")
+
+[node name="Cube_001_Window_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=532901204]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.7632573, 0.20421249)
+mesh = SubResource("ArrayMesh_vfnyu")
+skeleton = NodePath("")
+
+[node name="Cube_002_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=764627528]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.7196206, -0.66330916)
+mesh = SubResource("ArrayMesh_qp66l")
+skeleton = NodePath("")
+
+[node name="Cube_002_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1842626884]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.7196206, -0.66330916)
+mesh = SubResource("ArrayMesh_s0de0")
+skeleton = NodePath("")
+
+[node name="Cube_003_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=514478834]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.63292193, -0.102899015)
+mesh = SubResource("ArrayMesh_1xx4f")
+skeleton = NodePath("")
+
+[node name="Cube_003_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=81073895]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.63292193, -0.102899015)
+mesh = SubResource("ArrayMesh_df6si")
+skeleton = NodePath("")
+
+[node name="Cube_004_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=163622329]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.30575716, -0.5393659)
+mesh = SubResource("ArrayMesh_oxbhh")
+skeleton = NodePath("")
+
+[node name="Cube_005_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1868458857]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.30890274, 0.2834152, -0.61748147)
+mesh = SubResource("ArrayMesh_par5g")
+skeleton = NodePath("")
+
+[node name="Cube_006_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=969776573]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.32431686, 0.2834152, -0.61748147)
+mesh = SubResource("ArrayMesh_1b2r5")
+skeleton = NodePath("")
+
+[node name="Cube_007_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1800894847]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.26747715, 0.35846394, 0.21627659)
+mesh = SubResource("ArrayMesh_r8wbk")
+skeleton = NodePath("")
+
+[node name="Cube_008_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=800347574]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.51629674, 0.3395366, 0.21799439)
+mesh = SubResource("ArrayMesh_vfgb3")
+skeleton = NodePath("")
+
+[node name="Cube_009_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1585430024]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.3096738, 0.3395366, 0.21799439)
+mesh = SubResource("ArrayMesh_el8qr")
+skeleton = NodePath("")
+
+[node name="Cube_010_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=721128223]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.50338745, 0.3395366, 0.21799439)
+mesh = SubResource("ArrayMesh_hapg6")
+skeleton = NodePath("")
+
+[node name="Cube_011_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=295553437]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.40144908, -0.38459557)
+mesh = SubResource("ArrayMesh_ka0rv")
+skeleton = NodePath("")
+
+[node name="Cube_012_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=477900564]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.33092892, 0.25332087)
+mesh = SubResource("ArrayMesh_f083q")
+skeleton = NodePath("")
+
+[node name="Cube_013_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=578748786]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.26250434, 0.31670517, -0.36479375)
+mesh = SubResource("ArrayMesh_1inxd")
+skeleton = NodePath("")
+
+[node name="Cube_014_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=738991028]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.1422888, 0.29141402, -0.36510968)
+mesh = SubResource("ArrayMesh_wsm0q")
+skeleton = NodePath("")
+
+[node name="Cube_015_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2067746626]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.14997077, 0.29141402, -0.36510968)
+mesh = SubResource("ArrayMesh_edotg")
+skeleton = NodePath("")
+
+[node name="Cube_016_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=647813820]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.1422888, 0.29036087, -0.28079626)
+mesh = SubResource("ArrayMesh_2a0r8")
+skeleton = NodePath("")
+
+[node name="Cube_017_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=12114330]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.1453836, 0.29036087, -0.28079626)
+mesh = SubResource("ArrayMesh_nmhfi")
+skeleton = NodePath("")
+
+[node name="Cube_018_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1805770312]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.24487948, 0.31670517, -0.36479375)
+mesh = SubResource("ArrayMesh_4rncy")
+skeleton = NodePath("")
+
+[node name="Cube_019_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1401568126]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.16242552, 0.32892323, -0.6178932)
+mesh = SubResource("ArrayMesh_g8dxq")
+skeleton = NodePath("")
+
+[node name="Cube_020_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2021705624]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.14746428, 0.32892323, -0.6178932)
+mesh = SubResource("ArrayMesh_h1juk")
+skeleton = NodePath("")
+
+[node name="Cube_021_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1468432263]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.19222116, 0.2768562, -0.6302061)
+mesh = SubResource("ArrayMesh_jn8os")
+skeleton = NodePath("")
+
+[node name="Cube_022_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=781087918]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.20763552, 0.2768562, -0.6302061)
+mesh = SubResource("ArrayMesh_irtv1")
+skeleton = NodePath("")
+
+[node name="Cube_023_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=682093547]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.28160623, -0.62634385)
+mesh = SubResource("ArrayMesh_q865n")
+skeleton = NodePath("")
+
+[node name="Cube_024_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2080745714]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.79059994, -0.96033055)
+mesh = SubResource("ArrayMesh_rkk80")
+skeleton = NodePath("")
+
+[node name="Cube_025_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1654729717]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.667676, -0.96925074)
+mesh = SubResource("ArrayMesh_tywgi")
+skeleton = NodePath("")
+
+[node name="Cube_027_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1815893198]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.2560357, 0.7303449, -0.89630854)
+mesh = SubResource("ArrayMesh_h6cmo")
+skeleton = NodePath("")
+
+[node name="Cube_028_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=502361015]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.2560357, 0.7317725, -1.0105987)
+mesh = SubResource("ArrayMesh_d4bci")
+skeleton = NodePath("")
+
+[node name="Cube_029_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2021033826]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.18128276, 0.7320825, -1.0354191)
+mesh = SubResource("ArrayMesh_cf5p6")
+skeleton = NodePath("")
+
+[node name="Cube_030_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1271286931]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.1859163, 0.7320825, -1.0354191)
+mesh = SubResource("ArrayMesh_7ia7p")
+skeleton = NodePath("")
+
+[node name="Cube_031_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1496347620]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.066500425, 0.73243654, -1.0349796)
+mesh = SubResource("ArrayMesh_yevop")
+skeleton = NodePath("")
+
+[node name="Cube_032_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1684749692]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.054441214, 0.73243654, -1.0349796)
+mesh = SubResource("ArrayMesh_tsmjv")
+skeleton = NodePath("")
+
+[node name="Cube_033_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1811955886]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.5944659, -0.90921235)
+mesh = SubResource("ArrayMesh_5rbey")
+skeleton = NodePath("")
+
+[node name="Cube_034_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=594951011]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.25309467, 0.7303449, -0.89630854)
+mesh = SubResource("ArrayMesh_u6124")
+skeleton = NodePath("")
+
+[node name="Cube_035_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1018257217]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.25309467, 0.73177254, -1.0105987)
+mesh = SubResource("ArrayMesh_1iqhh")
+skeleton = NodePath("")
+
+[node name="Cube_036_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=999417335]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.8451625, -0.79737663)
+mesh = SubResource("ArrayMesh_j384b")
+skeleton = NodePath("")
+
+[node name="Cube_037_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=215119187]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.850299, -0.08772093)
+mesh = SubResource("ArrayMesh_d24b8")
+skeleton = NodePath("")
+
+[node name="Cube_038_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=995384301]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 1.0393181, -0.08929187)
+mesh = SubResource("ArrayMesh_t7e6j")
+skeleton = NodePath("")
+
+[node name="Cube_039_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1988492372]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.011872411, 0.58624494, 0.18045092)
+mesh = SubResource("ArrayMesh_ghx6i")
+skeleton = NodePath("")
+
+[node name="Cube_039_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=458995366]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.011872411, 0.58624494, 0.18045092)
+mesh = SubResource("ArrayMesh_mv8lk")
+skeleton = NodePath("")
+
+[node name="Cube_040_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1437378938]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.31945503, 0.93918467, -0.39283788)
+mesh = SubResource("ArrayMesh_gnhi5")
+skeleton = NodePath("")
+
+[node name="Cube_040_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=774496609]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.31945503, 0.93918467, -0.39283788)
+mesh = SubResource("ArrayMesh_jf50p")
+skeleton = NodePath("")
+
+[node name="Cube_041_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=78266932]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.32522416, 0.96692604, -1.2775728)
+mesh = SubResource("ArrayMesh_xi08a")
+skeleton = NodePath("")
+
+[node name="Cube_042_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2026760009]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.3839785, 0.943801, -0.12776604)
+mesh = SubResource("ArrayMesh_emqxo")
+skeleton = NodePath("")
+
+[node name="Cube_043_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=479101668]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0005464554, 0.6504086, 0.031336248)
+mesh = SubResource("ArrayMesh_2opcw")
+skeleton = NodePath("")
+
+[node name="Cube_044_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1597684585]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.5563425, 0.3395367, 0.21799439)
+mesh = SubResource("ArrayMesh_7jph6")
+skeleton = NodePath("")
+
+[node name="Cube_045_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1450204838]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.35733366, 0.28341514, -0.6174817)
+mesh = SubResource("ArrayMesh_aij1r")
+skeleton = NodePath("")
+
+[node name="Cube_046_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=378453218]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.34191966, 0.28341514, -0.6174817)
+mesh = SubResource("ArrayMesh_kej5w")
+skeleton = NodePath("")
+
+[node name="Cube_047_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=280584594]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.3497193, 0.33953673, 0.21799427)
+mesh = SubResource("ArrayMesh_hsl8g")
+skeleton = NodePath("")
+
+[node name="Cube_048_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2075254161]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.5434327, 0.3395367, 0.21799427)
+mesh = SubResource("ArrayMesh_v2myw")
+skeleton = NodePath("")
+
+[node name="Cube_049_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=32814104]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.30711794, 0.33953673, 0.21799427)
+mesh = SubResource("ArrayMesh_66ho4")
+skeleton = NodePath("")
+
+[node name="Cube_050_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=297033757]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.5298792, 0.26821586, 0.21710354)
+mesh = SubResource("ArrayMesh_3cm8u")
+skeleton = NodePath("")
+
+[node name="Cube_051_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1646369477]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.35672796, 0.2834152, -0.6174816)
+mesh = SubResource("ArrayMesh_cbgmt")
+skeleton = NodePath("")
+
+[node name="Cube_052_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1600093682]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33551514, 0.33191246, -0.616876)
+mesh = SubResource("ArrayMesh_m156n")
+skeleton = NodePath("")
+
+[node name="Cube_053_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1816581753]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33551514, 0.2828094, -0.5689844)
+mesh = SubResource("ArrayMesh_elldu")
+skeleton = NodePath("")
+
+[node name="Cube_054_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=204930658]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33551514, 0.23491783, -0.6180875)
+mesh = SubResource("ArrayMesh_nwxcy")
+skeleton = NodePath("")
+
+[node name="Cube_055_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1690801771]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33551514, 0.28402096, -0.665979)
+mesh = SubResource("ArrayMesh_g2ibx")
+skeleton = NodePath("")
+
+[node name="Cube_056_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1307642000]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33551514, 0.31727964, -0.58276045)
+mesh = SubResource("ArrayMesh_jvwva")
+skeleton = NodePath("")
+
+[node name="Cube_057_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1132740203]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33551514, 0.24869391, -0.5836172)
+mesh = SubResource("ArrayMesh_asfq2")
+skeleton = NodePath("")
+
+[node name="Cube_058_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=789897954]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33551514, 0.24955067, -0.6522029)
+mesh = SubResource("ArrayMesh_3neys")
+skeleton = NodePath("")
+
+[node name="Cube_059_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=346475514]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33551514, 0.31813622, -0.6513461)
+mesh = SubResource("ArrayMesh_netrt")
+skeleton = NodePath("")
+
+[node name="Cube_060_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=368444905]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.34131384, 0.2834152, -0.6174816)
+mesh = SubResource("ArrayMesh_a4bla")
+skeleton = NodePath("")
+
+[node name="Cube_061_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1112119881]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32010102, 0.33191246, -0.616876)
+mesh = SubResource("ArrayMesh_n5b0r")
+skeleton = NodePath("")
+
+[node name="Cube_062_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=287884289]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32010102, 0.2828094, -0.5689844)
+mesh = SubResource("ArrayMesh_tjn85")
+skeleton = NodePath("")
+
+[node name="Cube_063_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=438870471]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32010102, 0.23491783, -0.6180875)
+mesh = SubResource("ArrayMesh_pf0sx")
+skeleton = NodePath("")
+
+[node name="Cube_064_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1528654054]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32010102, 0.28402096, -0.665979)
+mesh = SubResource("ArrayMesh_5o5kg")
+skeleton = NodePath("")
+
+[node name="Cube_065_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1442396171]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32010102, 0.31727964, -0.5827606)
+mesh = SubResource("ArrayMesh_rfjwu")
+skeleton = NodePath("")
+
+[node name="Cube_066_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=228010821]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32010102, 0.24869391, -0.5836172)
+mesh = SubResource("ArrayMesh_jdv4r")
+skeleton = NodePath("")
+
+[node name="Cube_067_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1793924394]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32010102, 0.24955067, -0.6522029)
+mesh = SubResource("ArrayMesh_13a52")
+skeleton = NodePath("")
+
+[node name="Cube_068_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1293891186]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32010102, 0.31813622, -0.6513461)
+mesh = SubResource("ArrayMesh_dhthg")
+skeleton = NodePath("")
+
+[node name="Cube_069_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=88531872]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.36189377, 0.3395366, 0.21799439)
+mesh = SubResource("ArrayMesh_cs77g")
+skeleton = NodePath("")
+
+[node name="Cube_070_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1800811971]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33616555, 0.4108572, 0.21888536)
+mesh = SubResource("ArrayMesh_slmn4")
+skeleton = NodePath("")
+
+[node name="Cube_071_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1388101922]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33616555, 0.33864564, 0.28931522)
+mesh = SubResource("ArrayMesh_8bv3n")
+skeleton = NodePath("")
+
+[node name="Cube_072_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1238065207]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33616555, 0.26821578, 0.2171036)
+mesh = SubResource("ArrayMesh_5tjpp")
+skeleton = NodePath("")
+
+[node name="Cube_073_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1643786693]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33616555, 0.3404274, 0.14667368)
+mesh = SubResource("ArrayMesh_tqrb7")
+skeleton = NodePath("")
+
+[node name="Cube_074_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=934032427]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33616555, 0.38933796, 0.2690559)
+mesh = SubResource("ArrayMesh_mawpu")
+skeleton = NodePath("")
+
+[node name="Cube_075_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1498048514]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33616555, 0.2884751, 0.26779598)
+mesh = SubResource("ArrayMesh_lcp78")
+skeleton = NodePath("")
+
+[node name="Cube_076_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2081614864]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33616555, 0.28973508, 0.16693324)
+mesh = SubResource("ArrayMesh_83i1f")
+skeleton = NodePath("")
+
+[node name="Cube_077_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=201155825]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.33616555, 0.39059782, 0.1681931)
+mesh = SubResource("ArrayMesh_ud8hf")
+skeleton = NodePath("")
+
+[node name="Cube_078_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1870153777]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.55560756, 0.3395366, 0.21799439)
+mesh = SubResource("ArrayMesh_ofqtt")
+skeleton = NodePath("")
+
+[node name="Cube_079_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2127020152]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.5298792, 0.33864564, 0.28931522)
+mesh = SubResource("ArrayMesh_uc2oq")
+skeleton = NodePath("")
+
+[node name="Cube_080_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1686388001]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.5298792, 0.3404274, 0.14667368)
+mesh = SubResource("ArrayMesh_6ds1e")
+skeleton = NodePath("")
+
+[node name="Cube_081_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1528396469]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.5298792, 0.38933796, 0.2690559)
+mesh = SubResource("ArrayMesh_lrjoi")
+skeleton = NodePath("")
+
+[node name="Cube_082_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1689589539]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.5298792, 0.2884751, 0.26779598)
+mesh = SubResource("ArrayMesh_spu71")
+skeleton = NodePath("")
+
+[node name="Cube_083_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=979536129]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.5298792, 0.28973502, 0.16693324)
+mesh = SubResource("ArrayMesh_jbmlh")
+skeleton = NodePath("")
+
+[node name="Cube_084_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1988972379]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.5298792, 0.39059782, 0.16819316)
+mesh = SubResource("ArrayMesh_2ebuf")
+skeleton = NodePath("")
+
+[node name="Cube_085_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1473985465]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.34898472, 0.3395366, 0.21799439)
+mesh = SubResource("ArrayMesh_dwjmf")
+skeleton = NodePath("")
+
+[node name="Cube_086_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1567222026]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32325625, 0.4108572, 0.21888518)
+mesh = SubResource("ArrayMesh_qlcj6")
+skeleton = NodePath("")
+
+[node name="Cube_087_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1250533818]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32325625, 0.33864564, 0.2893151)
+mesh = SubResource("ArrayMesh_dy16y")
+skeleton = NodePath("")
+
+[node name="Cube_088_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=452690007]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32325625, 0.26821578, 0.2171036)
+mesh = SubResource("ArrayMesh_j3l3n")
+skeleton = NodePath("")
+
+[node name="Cube_089_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=746490093]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32325625, 0.3404274, 0.14667368)
+mesh = SubResource("ArrayMesh_pamco")
+skeleton = NodePath("")
+
+[node name="Cube_090_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=866788478]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32325625, 0.38933796, 0.2690559)
+mesh = SubResource("ArrayMesh_l7w4t")
+skeleton = NodePath("")
+
+[node name="Cube_091_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=403907302]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32325625, 0.2884751, 0.26779598)
+mesh = SubResource("ArrayMesh_wvvn7")
+skeleton = NodePath("")
+
+[node name="Cube_092_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1401424384]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32325625, 0.28973502, 0.16693324)
+mesh = SubResource("ArrayMesh_i7shu")
+skeleton = NodePath("")
+
+[node name="Cube_093_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=465813090]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.32325625, 0.39059782, 0.1681931)
+mesh = SubResource("ArrayMesh_i2a73")
+skeleton = NodePath("")
+
+[node name="Cube_094_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1146206844]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.5426984, 0.3395366, 0.21799439)
+mesh = SubResource("ArrayMesh_cr2iy")
+skeleton = NodePath("")
+
+[node name="Cube_095_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1211534448]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.51697016, 0.4108572, 0.21888536)
+mesh = SubResource("ArrayMesh_rco2h")
+skeleton = NodePath("")
+
+[node name="Cube_096_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1589816816]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.51697016, 0.33864564, 0.28931522)
+mesh = SubResource("ArrayMesh_vxeok")
+skeleton = NodePath("")
+
+[node name="Cube_097_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=397838580]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.51697016, 0.26821578, 0.2171036)
+mesh = SubResource("ArrayMesh_af7x8")
+skeleton = NodePath("")
+
+[node name="Cube_098_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=140898215]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.51697016, 0.3404274, 0.14667368)
+mesh = SubResource("ArrayMesh_ixqf6")
+skeleton = NodePath("")
+
+[node name="Cube_099_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=321293844]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.51697016, 0.38933796, 0.2690559)
+mesh = SubResource("ArrayMesh_3p28p")
+skeleton = NodePath("")
+
+[node name="Cube_100_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1802474739]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.51697016, 0.2884751, 0.26779598)
+mesh = SubResource("ArrayMesh_p4q44")
+skeleton = NodePath("")
+
+[node name="Cube_101_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1180468139]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.51697016, 0.28973502, 0.16693324)
+mesh = SubResource("ArrayMesh_70bp7")
+skeleton = NodePath("")
+
+[node name="Cube_102_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=2052213664]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.51697016, 0.39059782, 0.16819316)
+mesh = SubResource("ArrayMesh_3epjw")
+skeleton = NodePath("")
+
+[node name="Cube_103_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=795478288]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.5298792, 0.4108572, 0.21888536)
+mesh = SubResource("ArrayMesh_8b60k")
+skeleton = NodePath("")
+
+[node name="Cube_104_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=885088815]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -4.7683716e-07, 0.44636697, 0.52656204)
+mesh = SubResource("ArrayMesh_02wrg")
+skeleton = NodePath("")
+
+[node name="Cube_105_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1818442697]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -4.7683716e-07, 0.28646874, 0.54336375)
+mesh = SubResource("ArrayMesh_cvvfs")
+skeleton = NodePath("")
+
+[node name="Cube_106_Metal_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=682923116]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -4.7683716e-07, 0.2978922, 0.6247962)
+mesh = SubResource("ArrayMesh_n3qxn")
+skeleton = NodePath("")
+
+[node name="Cube_107_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1047240406]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.005475354, 0.15738346, 0, -0.43834153, 0.0019658874, -4.7683716e-07, 0.5030063, 0.63671917)
+mesh = SubResource("ArrayMesh_6uun3")
+skeleton = NodePath("")
+
+[node name="Cube_108_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1397766769]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -4.7683716e-07, 0.462763, 0.59516424)
+mesh = SubResource("ArrayMesh_1d2v1")
+skeleton = NodePath("")
+
+[node name="Cube_109_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=417987575]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.82600164, 0.42597985, 0.71507865)
+mesh = SubResource("ArrayMesh_phmdp")
+skeleton = NodePath("")
+
+[node name="Cube_110_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=828065709]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.82600164, 0.4259795, 0.7150803)
+mesh = SubResource("ArrayMesh_cptbh")
+skeleton = NodePath("")
+
+[node name="Cube_111_Red_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=468921489]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0, 0.5090032, 0.52731293)
+mesh = SubResource("ArrayMesh_b0ne8")
+skeleton = NodePath("")
+
+[node name="Cube_112_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=943487558]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.82753015, 0.32451427, 0.5672478)
+mesh = SubResource("ArrayMesh_nkem1")
+skeleton = NodePath("")
+
+[node name="Cube_113_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1845192041]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.8275299, 0.32451427, 0.5672478)
+mesh = SubResource("ArrayMesh_twnt1")
+skeleton = NodePath("")
+
+[node name="Cube_124_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1425540691]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.2147088, 0.97730416, 0.4062448)
+mesh = SubResource("ArrayMesh_wis07")
+skeleton = NodePath("")
+
+[node name="Cube_125_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1949934793]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.35150146, 0.939528, 0.4028589)
+mesh = SubResource("ArrayMesh_lxpqo")
+skeleton = NodePath("")
+
+[node name="Cube_126_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1149768818]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.21147537, 0.9772971, 0.40680677)
+mesh = SubResource("ArrayMesh_itat3")
+skeleton = NodePath("")
+
+[node name="Cube_127_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=520573024]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.34826803, 0.9395211, 0.40342087)
+mesh = SubResource("ArrayMesh_bo8mv")
+skeleton = NodePath("")
+
+[node name="Cube_128_Material_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=899293801]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.38970947, 0.9393193, 0.41956896)
+mesh = SubResource("ArrayMesh_2omtj")
+skeleton = NodePath("")
+
+[node name="Cube_129_Material_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=187006125]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.30067623, 0.93932635, 0.41900712)
+mesh = SubResource("ArrayMesh_y37pk")
+skeleton = NodePath("")
+
+[node name="Cube_130_Material_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1178858930]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.39294302, 0.93932635, 0.41900712)
+mesh = SubResource("ArrayMesh_tt6m2")
+skeleton = NodePath("")
+
+[node name="Cube_131_Material_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=103196525]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.29744267, 0.9393193, 0.41956896)
+mesh = SubResource("ArrayMesh_elgbf")
+skeleton = NodePath("")
+
+[node name="Cube_132_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1811325081]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.6555226, 0.25952023, 0.13674682)
+mesh = SubResource("ArrayMesh_qvdgt")
+skeleton = NodePath("")
+
+[node name="Cube_133_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=209332327]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0024518967, 0.6700784, 0.26196796)
+mesh = SubResource("ArrayMesh_f1fa6")
+skeleton = NodePath("")
+
+[node name="Cube_134_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=276106121]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, -0.0024518967, 0.67270964, 0.051326334)
+mesh = SubResource("ArrayMesh_bcgav")
+skeleton = NodePath("")
+
+[node name="Cube_135_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1131863952]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.6555226, 0.4194879, 0.20430958)
+mesh = SubResource("ArrayMesh_s18ud")
+skeleton = NodePath("")
+
+[node name="Cube_136_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=425238142]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.6555226, 0.4211256, 0.07320094)
+mesh = SubResource("ArrayMesh_22bcx")
+skeleton = NodePath("")
+
+[node name="Cube_137_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1530466855]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.6555226, 0.5386119, 0.14023298)
+mesh = SubResource("ArrayMesh_w6u4q")
+skeleton = NodePath("")
+
+[node name="Cube_138_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=295179577]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.6555226, 0.4505568, 0.13913316)
+mesh = SubResource("ArrayMesh_c6qey")
+skeleton = NodePath("")
+
+[node name="Cube_139_Black_002_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1476593315]
+transform = Transform3D(0.17272356, 0, 0, 0, 0.0021573235, 0.15738344, 0, -0.17271012, 0.0019658778, 0.6555226, 0.35671315, 0.13796091)
+mesh = SubResource("ArrayMesh_cv8x5")
+skeleton = NodePath("")
+
+[node name="Cube_145_Metal_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=928069248]
+transform = Transform3D(0.07678556, 0, 0, 0, 0.027945535, 0.07565405, 0, -0.16097745, 0.013133473, -0.6606791, 0.24637869, 0.73598987)
+mesh = SubResource("ArrayMesh_x30bx")
+skeleton = NodePath("")
+
+[node name="Cube_146_Red_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=500049243]
+transform = Transform3D(0.101133004, 0, 0, 0, 0.01961361, 0.112982236, 0, -0.112982236, 0.01961361, -0.6606791, 0.21865383, 0.8956956)
+mesh = SubResource("ArrayMesh_b7ju2")
+skeleton = NodePath("")
+
+[node name="Cube_153_Black_0" type="MeshInstance3D" parent="VisualRoot/CombineHarvesterAVisual" unique_id=1570495085]
+transform = Transform3D(0.8329104, 0, 0, 0, 0.0013959408, 0.06165959, 0, -0.11175565, 0.00077019044, 0.0036132336, 0.24421334, 0.73938566)
+mesh = SubResource("ArrayMesh_hconq")
+skeleton = NodePath("")

@@ -128,6 +128,12 @@ static func _append_location_actions(
 
 	if location is Shop:
 		buttons.append(_make_button("shop", LocaleServiceScript.t("action.shop"), true))
+	elif location is CommercialBuilding:
+		buttons.append(_make_button(
+			"building_inventory",
+			LocaleServiceScript.t("inventory.container_building", "Building inventory"),
+			true
+		))
 
 	if int(location.job_capacity) > 0:
 		_append_work_actions(citizen, world, location, buttons, status_lines, active_id, action_running)

@@ -7,10 +7,10 @@ const FARM_SCENE_PATHS := [
 ]
 const FARM_VARIANT_REQUIRED_NODES := {
 	"res://Scenes/Farm_Windmill.tscn": [
-		"VariantDecor/WindmillModel",
 		"VariantDecor/WaterTowerModel",
 		"VariantDecor/SideBarnModel",
 		"Fence/SideGateModel",
+		"TowerWindmill",
 	],
 	"res://Scenes/Farm_AnimalRanch.tscn": [
 		"AnimalArea/OpenBarnModel",
@@ -23,6 +23,8 @@ const FARM_VARIANT_REQUIRED_NODES := {
 	],
 }
 const CitizenScene := preload("res://Entities/Citizens/CitizenNew.tscn")
+const ProbeDeliveryVehicleScene := preload("res://Scenes/Vehicles/CityPack/pickup_truck.tscn")
+const VehicleDepotAccessScript := preload("res://Simulation/Transport/VehicleDepotAccess.gd")
 
 
 func _initialize() -> void:
@@ -80,6 +82,7 @@ func _check_scene_contract(farm: Node, scene_path: String, errors: Array[String]
 		"Entrance",
 		"HarvestPoint",
 		"StoragePoint",
+		"DeliveryLoadingDepot/ParkingArea",
 		"ClickArea/CollisionShape3D",
 		"Buildings/SmallBarnModel",
 		"Buildings/BigBarnModel",
@@ -180,6 +183,11 @@ func _check_daily_production(farm: Farm, errors: Array[String]) -> void:
 	world.name = "FarmProbeWorld"
 	root.add_child(world)
 	await process_frame
+	var delivery_depot := _create_probe_delivery_depot(world, farm)
+	if delivery_depot == null:
+		errors.append("Could not create central DeliveryVehicleDepot fixture.")
+		world.free()
+		return
 
 	var product_key := farm.get_product_commodity()
 	var delivery_item := farm.get_supermarket_delivery_item()
@@ -262,7 +270,7 @@ func _check_daily_production(farm: Farm, errors: Array[String]) -> void:
 
 	var supermarket := Supermarket.new()
 	supermarket.name = "FarmDeliveryProbeSupermarket"
-	supermarket.position = Vector3(8.0, 0.0, 0.0)
+	supermarket.position = Vector3(12.0, 0.0, 8.0)
 	root.add_child(supermarket)
 	await process_frame
 	world.buildings.append(supermarket)
@@ -325,15 +333,18 @@ func _check_daily_production(farm: Farm, errors: Array[String]) -> void:
 		delivery_action.tick(world, driver, 5)
 		if not driver.has_method("is_inside_vehicle") or not driver.is_inside_vehicle():
 			errors.append("Farm Fahrer should enter the delivery truck before driving.")
+		# Depot/loading/target legs are separate phases. Complete each vehicle
+		# movement before advancing the work state to the next phase.
 		_advance_vehicle_until_stopped(truck)
 		delivery_action.tick(world, driver, 5)
-		for _i in range(3):
+		_advance_vehicle_until_stopped(truck)
+		delivery_action.tick(world, driver, 5)
+		for _i in range(4):
 			delivery_action.tick(world, driver, 5)
 		_advance_vehicle_until_stopped(truck)
 		delivery_action.tick(world, driver, 5)
-
-	driver.global_position = supermarket.get_entrance_pos()
-	driver.stop_travel()
+		for _i in range(4):
+			delivery_action.tick(world, driver, 5)
 
 	if supermarket.get_stock(delivery_item) <= delivery_stock_before:
 		errors.append("Farm Fahrer should increase supermarket %s stock from farm inventory." % delivery_item)
@@ -373,6 +384,7 @@ func _check_daily_production(farm: Farm, errors: Array[String]) -> void:
 	supermarket.free()
 	driver.free()
 	worker.free()
+	delivery_depot.free()
 	world.free()
 	_clear_delivery_vehicles()
 
@@ -389,25 +401,70 @@ func _clear_delivery_vehicles() -> void:
 			node.free()
 
 
+func _create_probe_delivery_depot(world: World, farm: Farm) -> Area3D:
+	if world == null or farm == null:
+		return null
+
+	var depot := Area3D.new()
+	depot.name = "DeliveryVehicleDepot"
+	depot.collision_layer = 0
+	depot.collision_mask = 0
+	depot.monitoring = false
+	depot.monitorable = false
+	root.add_child(depot)
+	depot.global_position = farm.global_position + Vector3(-8.0, 0.1, 8.0)
+
+	var shape_node := CollisionShape3D.new()
+	shape_node.name = "ParkingArea"
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(3.0, 0.2, 4.0)
+	shape_node.shape = shape
+	shape_node.disabled = true
+	depot.add_child(shape_node)
+
+	var vehicle := ProbeDeliveryVehicleScene.instantiate() as VehicleAgent
+	if vehicle == null:
+		depot.free()
+		return null
+	root.add_child(vehicle)
+	vehicle.global_position = shape_node.global_position
+	vehicle.delivery_vehicle = true
+	if not vehicle.is_in_group("delivery_vehicles"):
+		vehicle.add_to_group("delivery_vehicles")
+	world.register_vehicle(vehicle)
+	return depot
+
+
 func _configure_probe_vehicle_road_graph(world: World, farm: Farm, supermarket: Supermarket) -> void:
 	if world == null or farm == null or supermarket == null:
 		return
-	var start := farm.get_storage_point_global()
-	var end := supermarket.get_entrance_pos()
-	start.y = 0.0
-	end.y = 0.0
-	var corner := Vector3(end.x, 0.0, start.z)
-	var road_nodes: Array[Vector3] = [start, corner, end]
+	var depot := VehicleDepotAccessScript.resolve_marker_parking_position(farm, "DeliveryVehicleDepot")
+	var loading := VehicleDepotAccessScript.resolve_marker_parking_position(farm, "DeliveryLoadingDepot")
+	var target := supermarket.get_entrance_pos()
+	depot.y = 0.0
+	loading.y = 0.0
+	target.y = 0.0
+	var depot_corner := Vector3(-4.0, 0.0, 8.0)
+	var loading_outer := Vector3(loading.x, 0.0, 8.0)
+	var road_nodes: Array[Vector3] = [
+		depot,
+		depot_corner,
+		loading_outer,
+		loading,
+		target,
+	]
 	world.road_graph.nodes = road_nodes
 	world.road_graph.neighbors = {
 		0: [1],
 		1: [0, 2],
-		2: [1],
+		2: [1, 3, 4],
+		3: [2],
+		4: [2],
 	}
 	world.road_graph._is_ready = true
 
 
-func _advance_vehicle_until_stopped(vehicle: Node, max_steps: int = 160) -> void:
+func _advance_vehicle_until_stopped(vehicle: Node, max_steps: int = 1200) -> void:
 	if vehicle == null:
 		return
 	for _i in range(max_steps):

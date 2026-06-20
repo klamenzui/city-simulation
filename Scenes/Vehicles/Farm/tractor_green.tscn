@@ -1,7 +1,7 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://cxii2n31g1nee"]
 
-[ext_resource type="Script" path="res://Simulation/Transport/VehicleAgent.gd" id="1_hwyy4"]
-[ext_resource type="AudioStream" path="res://environment/audio/vehicles/engine.wav" id="2_c7sfv"]
+[ext_resource type="Script" uid="uid://cd1nnk30w7t4c" path="res://Simulation/Transport/VehicleAgent.gd" id="1_hwyy4"]
+[ext_resource type="AudioStream" uid="uid://cb7wvsd6vygd3" path="res://environment/audio/vehicles/engine.wav" id="2_c7sfv"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_15o1r"]
 size = Vector3(0.7730707, 0.99260026, 1.8155999)
@@ -818,116 +818,6 @@ suspension_stiffness = 34.0
 damping_compression = 0.9
 damping_relaxation = 1.6
 
-[node name="VisualRoot" type="Node3D" parent="." unique_id=1210231714]
-transform = Transform3D(0.30586874, 0, 0, 0, 0.30586874, 0, 0, 0, 0.30586874, 1.6361265, -0.004023013, 2.4290729)
-
-[node name="FarmTractorGreenVisual" type="Node3D" parent="VisualRoot" unique_id=325633769]
-
-[node name="������_001_Material_001_0" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=2003863376]
-transform = Transform3D(3.5762787e-07, 0.99999994, 7.5497915e-08, 0.99999994, -3.5762787e-07, -7.549794e-08, -7.5497915e-08, 7.549794e-08, -1, -4.3901043, 1.5903485, -7.751829)
-mesh = SubResource("ArrayMesh_mk7dn")
-skeleton = NodePath("")
-
-[node name="������_001_������������" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=78383687]
-transform = Transform3D(3.5762787e-07, 0.99999994, 7.5497915e-08, 0.99999994, -3.5762787e-07, -7.549794e-08, -7.5497915e-08, 7.549794e-08, -1, -4.3901043, 1.5903485, -7.751829)
-mesh = SubResource("ArrayMesh_1y26b")
-skeleton = NodePath("")
-
-[node name="������_001_�������������" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=291540516]
-transform = Transform3D(3.5762787e-07, 0.99999994, 7.5497915e-08, 0.99999994, -3.5762787e-07, -7.549794e-08, -7.5497915e-08, 7.549794e-08, -1, -4.3901043, 1.5903485, -7.751829)
-mesh = SubResource("ArrayMesh_emocn")
-skeleton = NodePath("")
-
-[node name="������_003_�������������" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1091538977]
-transform = Transform3D(0.00285995, 0.9998961, 0.014129061, 0.9908288, -0.00092470646, -0.13511983, -0.13509272, 0.014385916, -0.9907286, -5.3601975, 1.8773019, -10.499145)
-mesh = SubResource("ArrayMesh_kngn0")
-skeleton = NodePath("")
-
-[node name="������_009_�������������" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=2053800278]
-transform = Transform3D(1, 0, 0, 0, -3.5762787e-07, 0.99999994, 0, -0.99999994, -3.5762787e-07, -4.5042677, 2.6576087, -8.151041)
-mesh = SubResource("ArrayMesh_mi5j6")
-skeleton = NodePath("")
-
-[node name="������_021_�������������" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1267438125]
-transform = Transform3D(1, 0, 0, 0, -3.5762787e-07, 0.99999994, 0, -0.99999994, -3.5762787e-07, -4.9645014, 2.6555793, -7.3667016)
-mesh = SubResource("ArrayMesh_yarwm")
-skeleton = NodePath("")
-
-[node name="������_023_�������������" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=784086444]
-transform = Transform3D(-1, 0, 0, 0, 3.576279e-07, 1, 0, -1, 3.576279e-07, -5.754788, 2.6555793, -7.3667016)
-mesh = SubResource("ArrayMesh_hygfh")
-skeleton = NodePath("")
-
-[node name="������_025_������������" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1236871668]
-transform = Transform3D(-1.192093e-07, -1.4452603, 3.031883e-07, 0.9720867, -2.7028736e-07, -0.23462188, 0.23462188, 3.8553216e-07, 0.9720867, -4.3986416, 2.0691726, -5.5939054)
-mesh = SubResource("ArrayMesh_foulx")
-skeleton = NodePath("")
-
-[node name="������_025_������������_001" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=750651105]
-transform = Transform3D(-1.192093e-07, -1.4452603, 3.031883e-07, 0.9720867, -2.7028736e-07, -0.23462188, 0.23462188, 3.8553216e-07, 0.9720867, -4.3986416, 2.0691726, -5.5939054)
-mesh = SubResource("ArrayMesh_amfe6")
-skeleton = NodePath("")
-
-[node name="������_025_�������������" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=588742975]
-transform = Transform3D(-1.192093e-07, -1.4452603, 3.031883e-07, 0.9720867, -2.7028736e-07, -0.23462188, 0.23462188, 3.8553216e-07, 0.9720867, -4.3986416, 2.0691726, -5.5939054)
-mesh = SubResource("ArrayMesh_bhqx8")
-skeleton = NodePath("")
-
-[node name="������_026_Material_001_0" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=257138035]
-transform = Transform3D(1, 0, 0, 0, -3.5762787e-07, 0.99999994, 0, -0.99999994, -3.5762787e-07, -5.271583, 1.5176287, -5.3126545)
-mesh = SubResource("ArrayMesh_0dto6")
-skeleton = NodePath("")
-
-[node name="������_033_������������" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1947533405]
-transform = Transform3D(0, -1.5984093, 2.2548976e-07, 1.2911173, -1.4698705e-07, -0.40781596, 0.5766717, 3.2909108e-07, 0.9130641, -4.5404577, 3.9714365, -7.7728486)
-mesh = SubResource("ArrayMesh_og1bg")
-skeleton = NodePath("")
-
-[node name="������_033_�������������" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=742998284]
-transform = Transform3D(0, -1.5984093, 2.2548976e-07, 1.2911173, -1.4698705e-07, -0.40781596, 0.5766717, 3.2909108e-07, 0.9130641, -4.5404577, 3.9714365, -7.7728486)
-mesh = SubResource("ArrayMesh_cgmyr")
-skeleton = NodePath("")
-
-[node name="������_041_�������������" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1843191547]
-transform = Transform3D(0.9999919, 4.353933e-08, 0.004027589, -0.0040273825, 0.010142624, 0.99994045, -4.0806597e-05, -0.99994856, 0.010142505, -4.471826, 3.8853345, -8.074808)
-mesh = SubResource("ArrayMesh_8wnsd")
-skeleton = NodePath("")
-
-[node name="������_Material_001_0" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1272470215]
-transform = Transform3D(1, 0, 0, 0, -3.5762787e-07, 0.99999994, 0, -0.99999994, -3.5762787e-07, -5.3553605, 1.8612247, -6.5874777)
-mesh = SubResource("ArrayMesh_v37b5")
-skeleton = NodePath("")
-
-[node name="������_��������������" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1853944502]
-transform = Transform3D(1, 0, 0, 0, -3.5762787e-07, 0.99999994, 0, -0.99999994, -3.5762787e-07, -5.3553605, 1.8612247, -6.5874777)
-mesh = SubResource("ArrayMesh_me3ud")
-skeleton = NodePath("")
-
-[node name="��������������_002_Material_001_0" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=324592593]
-transform = Transform3D(0, 0, 0.52, -0.8917202, 0, 0, 0, -0.8917202, 0, -4.692519, 0.9750053, -6.0036287)
-mesh = SubResource("ArrayMesh_5le1r")
-skeleton = NodePath("")
-
-[node name="��������������_002_�����" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1174172919]
-transform = Transform3D(0, 0, 0.52, -0.8917202, 0, 0, 0, -0.8917202, 0, -4.692519, 0.9750053, -6.0036287)
-mesh = SubResource("ArrayMesh_xubb0")
-skeleton = NodePath("")
-
-[node name="��������������_009_�����" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1511154139]
-transform = Transform3D(0, 0, 0.049999993, -0.25000003, 0, 0, 0, -0.29999986, 0, -4.9353447, 1.3057413, -9.66027)
-mesh = SubResource("ArrayMesh_ruyal")
-skeleton = NodePath("")
-
-[node name="��������������_012_�����" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=372470172]
-transform = Transform3D(0.049999848, 0, 0, 0, -1.788134e-08, 0.099999845, 0, -0.049999848, -3.5762735e-08, -5.7424603, 2.472301, -6.9840083)
-mesh = SubResource("ArrayMesh_j54e0")
-skeleton = NodePath("")
-
-[node name="��������������_014_�����" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=478890352]
-transform = Transform3D(0.099999845, 0, 0, 0, -3.5762735e-08, 0.049999848, 0, -0.099999845, -1.788134e-08, -4.4936686, 4.173064, -7.9378686)
-mesh = SubResource("ArrayMesh_k3i8f")
-skeleton = NodePath("")
-
 [node name="EntryPoint" type="Node3D" parent="." unique_id=1303717583]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5566109, 0.03, 0.02)
 
@@ -939,3 +829,113 @@ stream = ExtResource("2_c7sfv")
 volume_db = -28.0
 pitch_scale = 0.05
 attenuation_filter_cutoff_hz = 20500.0
+
+[node name="VisualRoot" type="Node3D" parent="." unique_id=2040327369]
+
+[node name="FarmTractorGreenVisual" type="Node3D" parent="VisualRoot" unique_id=1130067720]
+transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 0, 0, 0)
+
+[node name="001_Material_001_0" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=2003863376]
+transform = Transform3D(1.0938719e-07, 0.30586872, 2.3092452e-08, 0.30586872, -1.0938719e-07, -2.309246e-08, -2.3092452e-08, 2.309246e-08, -0.30586874, 0.2933308, 0.48241487, 0.058030605)
+mesh = SubResource("ArrayMesh_mk7dn")
+skeleton = NodePath("")
+
+[node name="001" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=78383687]
+transform = Transform3D(1.0938719e-07, 0.30586872, 2.3092452e-08, 0.30586872, -1.0938719e-07, -2.309246e-08, -2.3092452e-08, 2.309246e-08, -0.30586874, 0.2933308, 0.48241487, 0.058030605)
+mesh = SubResource("ArrayMesh_1y26b")
+skeleton = NodePath("")
+
+[node name="002" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=291540516]
+transform = Transform3D(1.0938719e-07, 0.30586872, 2.3092452e-08, 0.30586872, -1.0938719e-07, -2.309246e-08, -2.3092452e-08, 2.309246e-08, -0.30586874, 0.2933308, 0.48241487, 0.058030605)
+mesh = SubResource("ArrayMesh_emocn")
+skeleton = NodePath("")
+
+[node name="003" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1091538977]
+transform = Transform3D(0.00087476935, 0.30583698, 0.004321638, 0.30306357, -0.0002828388, -0.041328933, -0.04132064, 0.004400202, -0.3030329, -0.0033904314, 0.57018495, -0.78228736)
+mesh = SubResource("ArrayMesh_kngn0")
+skeleton = NodePath("")
+
+[node name="009" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=2053800278]
+transform = Transform3D(0.30586874, 0, 0, 0, -1.0938719e-07, 0.30586872, 0, -0.30586872, -1.0938719e-07, 0.25841177, 0.8088564, -0.06407595)
+mesh = SubResource("ArrayMesh_mi5j6")
+skeleton = NodePath("")
+
+[node name="021" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1267438125]
+transform = Transform3D(0.30586874, 0, 0, 0, -1.0938719e-07, 0.30586872, 0, -0.30586872, -1.0938719e-07, 0.11764073, 0.8082357, 0.17582917)
+mesh = SubResource("ArrayMesh_yarwm")
+skeleton = NodePath("")
+
+[node name="023" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=784086444]
+transform = Transform3D(-0.30586874, 0, 0, 0, 1.09387194e-07, 0.30586874, 0, -0.30586874, 1.09387194e-07, -0.12408328, 0.8082357, 0.17582917)
+mesh = SubResource("ArrayMesh_hygfh")
+skeleton = NodePath("")
+
+[node name="026" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1236871668]
+transform = Transform3D(-3.64624e-08, -0.44205996, 9.2735824e-08, 0.29733095, -8.267246e-08, -0.0717635, 0.0717635, 1.1792224e-07, 0.29733095, 0.2907195, 0.6288722, 0.71807206)
+mesh = SubResource("ArrayMesh_foulx")
+skeleton = NodePath("")
+
+[node name="025_001" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=750651105]
+transform = Transform3D(-3.64624e-08, -0.44205996, 9.2735824e-08, 0.29733095, -8.267246e-08, -0.0717635, 0.0717635, 1.1792224e-07, 0.29733095, 0.2907195, 0.6288722, 0.71807206)
+mesh = SubResource("ArrayMesh_amfe6")
+skeleton = NodePath("")
+
+[node name="025" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=588742975]
+transform = Transform3D(-3.64624e-08, -0.44205996, 9.2735824e-08, 0.29733095, -8.267246e-08, -0.0717635, 0.0717635, 1.1792224e-07, 0.29733095, 0.2907195, 0.6288722, 0.71807206)
+mesh = SubResource("ArrayMesh_bhqx8")
+skeleton = NodePath("")
+
+[node name="026_Material_001_0" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=257138035]
+transform = Transform3D(0.30586874, 0, 0, 0, -1.0938719e-07, 0.30586872, 0, -0.30586872, -1.0938719e-07, 0.023714066, 0.46017215, 0.8040979)
+mesh = SubResource("ArrayMesh_0dto6")
+skeleton = NodePath("")
+
+[node name="034" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1947533405]
+transform = Transform3D(0, -0.48890343, 6.8970266e-08, 0.39491242, -4.4958743e-08, -0.12473816, 0.17638585, 1.00658674e-07, 0.27927777, 0.24734247, 1.2107153, 0.05160141)
+mesh = SubResource("ArrayMesh_og1bg")
+skeleton = NodePath("")
+
+[node name="033" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=742998284]
+transform = Transform3D(0, -0.48890343, 6.8970266e-08, 0.39491242, -4.4958743e-08, -0.12473816, 0.17638585, 1.00658674e-07, 0.27927777, 0.24734247, 1.2107153, 0.05160141)
+mesh = SubResource("ArrayMesh_cgmyr")
+skeleton = NodePath("")
+
+[node name="041" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1843191547]
+transform = Transform3D(0.30586627, 1.3317321e-08, 0.0012319137, -0.0012318505, 0.0031023119, 0.30585054, -1.2481462e-05, -0.305853, 0.0031022753, 0.26833475, 1.1843795, -0.04075861)
+mesh = SubResource("ArrayMesh_8wnsd")
+skeleton = NodePath("")
+
+[node name="_Material_001_0" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1272470215]
+transform = Transform3D(0.30586874, 0, 0, 0, -1.0938719e-07, 0.30586872, 0, -0.30586872, -1.0938719e-07, -0.0019109249, 0.56526744, 0.4141693)
+mesh = SubResource("ArrayMesh_v37b5")
+skeleton = NodePath("")
+
+[node name="_" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1853944502]
+transform = Transform3D(0.30586874, 0, 0, 0, -1.0938719e-07, 0.30586872, 0, -0.30586872, -1.0938719e-07, -0.0019109249, 0.56526744, 0.4141693)
+mesh = SubResource("ArrayMesh_me3ud")
+skeleton = NodePath("")
+
+[node name="002_Material_001_0" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=324592593]
+transform = Transform3D(0, 0, 0.15905175, -0.27274933, 0, 0, 0, -0.27274933, 0, 0.20083153, 0.29420063, 0.59275043)
+mesh = SubResource("ArrayMesh_5le1r")
+skeleton = NodePath("")
+
+[node name="004" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1174172919]
+transform = Transform3D(0, 0, 0.15905175, -0.27274933, 0, 0, 0, -0.27274933, 0, 0.20083153, 0.29420063, 0.59275043)
+mesh = SubResource("ArrayMesh_xubb0")
+skeleton = NodePath("")
+
+[node name="010" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=1511154139]
+transform = Transform3D(0, 0, 0.015293435, -0.07646719, 0, 0, 0, -0.09176058, 0, 0.12655878, 0.39536244, -0.52570176)
+mesh = SubResource("ArrayMesh_ruyal")
+skeleton = NodePath("")
+
+[node name="012" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=372470172]
+transform = Transform3D(0.0152933905, 0, 0, 0, -5.469343e-09, 0.030586828, 0, -0.0152933905, -1.0938703e-08, -0.12031257, 0.7521766, 0.29288292)
+mesh = SubResource("ArrayMesh_j54e0")
+skeleton = NodePath("")
+
+[node name="014" type="MeshInstance3D" parent="VisualRoot/FarmTractorGreenVisual" unique_id=478890352]
+transform = Transform3D(0.030586828, 0, 0, 0, -1.0938703e-08, 0.0152933905, 0, -0.030586828, -5.469343e-09, 0.26165378, 1.2723869, 0.0011270046)
+mesh = SubResource("ArrayMesh_k3i8f")
+skeleton = NodePath("")

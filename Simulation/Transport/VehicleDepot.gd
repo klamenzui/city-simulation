@@ -2,8 +2,26 @@
 extends Node3D
 class_name VehicleDepot
 
-@onready var parking_area_mesh: MeshInstance3D = $ParkingArea
+enum VehicleRole {
+	GENERIC,
+	TAXI,
+	DELIVERY,
+}
+
+const TAXI_VEHICLE_GROUP := "taxi_vehicle"
+const DELIVERY_VEHICLE_GROUP := "delivery_vehicles"
+const PARKING_SPOT_META := "vehicle_parking_spot"
+const GENERATED_VEHICLE_META := "generated_depot_vehicle"
+const VEHICLE_ROLE_META := "depot_vehicle_role"
+
+@export_group("Fleet")
+@export var vehicle_scene: PackedScene = null
+@export_enum("Generic", "Taxi", "Delivery") var vehicle_role: int = VehicleRole.GENERIC
+@export var spawn_vehicles_on_ready: bool = true
 @export var parking_spots_root_path: NodePath = ^"ParkingSpots"
+@export var generated_vehicles_root_path: NodePath = ^"GeneratedVehicles"
+
+@onready var parking_area_mesh: MeshInstance3D = $ParkingArea
 
 @export_group("Parking Spot Layout")
 @export var spot_width: float = 0.55
@@ -36,10 +54,17 @@ class_name VehicleDepot
 
 
 func _ready() -> void:
-	if not Engine.is_editor_hint() and not show_debug_parking_spots:
+	if Engine.is_editor_hint():
+		_clear_generated_vehicles()
+		_remove_empty_generated_vehicles_root()
+		return
+
+	if not show_debug_parking_spots:
 		_clear_debug_spot_visuals()
-	if not Engine.is_editor_hint() and regenerate_on_ready:
+	if regenerate_on_ready:
 		generate_parking_spots()
+	elif spawn_vehicles_on_ready:
+		rebuild_generated_fleet()
 
 func generate_parking_spots() -> void:
 	if parking_area_mesh == null:
@@ -56,6 +81,7 @@ func generate_parking_spots() -> void:
 		push_warning("VehicleDepot: ParkingSpots root could not be created.")
 		return
 
+	_clear_generated_vehicles()
 	_clear_generated_spots(spots_root)
 
 	var aabb: AABB = parking_area_mesh.get_aabb()
@@ -114,13 +140,87 @@ func generate_parking_spots() -> void:
 		z += z_step
 
 	print("VehicleDepot: Generated %d vehicle parking spots." % created_count)
+	if not Engine.is_editor_hint() and vehicle_scene != null:
+		rebuild_generated_fleet()
+
+
+func rebuild_generated_fleet() -> void:
+	_clear_generated_vehicles()
+	if Engine.is_editor_hint():
+		_remove_empty_generated_vehicles_root()
+		return
+	if vehicle_scene == null:
+		return
+
+	var spots_root := get_node_or_null(parking_spots_root_path) as Node3D
+	if spots_root == null:
+		push_warning("VehicleDepot: Cannot spawn vehicles without a ParkingSpots root.")
+		return
+
+	var vehicles_root := _get_or_create_generated_vehicles_root()
+	if vehicles_root == null:
+		push_warning("VehicleDepot: GeneratedVehicles root could not be created.")
+		return
+
+	var spawned_count := 0
+	for child in spots_root.get_children():
+		var spot := child as VehicleParkingSpot
+		if spot == null:
+			continue
+
+		var instance := vehicle_scene.instantiate()
+		var vehicle := instance as VehicleAgent
+		if vehicle == null:
+			if instance != null:
+				instance.free()
+			push_warning("VehicleDepot: vehicle_scene must instantiate a VehicleAgent.")
+			break
+
+		_configure_vehicle_role(vehicle)
+		vehicle.name = "GeneratedVehicle_%02d" % (spawned_count + 1)
+		vehicle.set_meta(GENERATED_VEHICLE_META, true)
+		vehicles_root.add_child(vehicle)
+
+		vehicle.global_transform = spot.get_parking_transform()
+		spot.occupy(vehicle)
+		vehicle.set_meta(PARKING_SPOT_META, spot)
+		spawned_count += 1
+
+	print("VehicleDepot: Spawned %d depot vehicles." % spawned_count)
+
+
+func _configure_vehicle_role(vehicle: VehicleAgent) -> void:
+	vehicle.remove_from_group(TAXI_VEHICLE_GROUP)
+	vehicle.remove_from_group(DELIVERY_VEHICLE_GROUP)
+	vehicle.set_meta(VEHICLE_ROLE_META, _vehicle_role_name())
+
+	match vehicle_role:
+		VehicleRole.TAXI:
+			vehicle.delivery_vehicle = false
+			vehicle.add_to_group(TAXI_VEHICLE_GROUP)
+		VehicleRole.DELIVERY:
+			vehicle.delivery_vehicle = true
+			vehicle.add_to_group(DELIVERY_VEHICLE_GROUP)
+		_:
+			vehicle.delivery_vehicle = false
+
+
+func _vehicle_role_name() -> StringName:
+	match vehicle_role:
+		VehicleRole.TAXI:
+			return &"taxi"
+		VehicleRole.DELIVERY:
+			return &"delivery"
+		_:
+			return &"generic"
+
 
 func _create_generated_spot(
 	spots_root: Node3D,
 	local_pos: Vector3,
 	row_index: int,
 	col_index: int
-) -> void:
+) -> VehicleParkingSpot:
 	var spot := VehicleParkingSpot.new()
 	spot.name = "GeneratedSpot_%02d_%02d" % [row_index + 1, col_index + 1]
 	spot.set_meta("generated_vehicle_spot", true)
@@ -139,6 +239,7 @@ func _create_generated_spot(
 
 	if show_debug_parking_spots:
 		_add_debug_spot_visual(spot)
+	return spot
 
 func _get_or_create_parking_spots_root() -> Node3D:
 	var root := get_node_or_null(parking_spots_root_path) as Node3D
@@ -151,6 +252,40 @@ func _get_or_create_parking_spots_root() -> Node3D:
 	_set_editor_owner(root)
 
 	return root
+
+
+func _get_or_create_generated_vehicles_root() -> Node3D:
+	var root := get_node_or_null(generated_vehicles_root_path) as Node3D
+	if root != null:
+		return root
+
+	root = Node3D.new()
+	root.name = "GeneratedVehicles"
+	add_child(root)
+	return root
+
+
+func _clear_generated_vehicles() -> void:
+	var vehicles_root := get_node_or_null(generated_vehicles_root_path) as Node3D
+	if vehicles_root == null:
+		return
+
+	for child in vehicles_root.get_children():
+		if not child.has_meta(GENERATED_VEHICLE_META):
+			continue
+		if child.has_meta(PARKING_SPOT_META):
+			var spot_value: Variant = child.get_meta(PARKING_SPOT_META)
+			if spot_value is VehicleParkingSpot and is_instance_valid(spot_value):
+				(spot_value as VehicleParkingSpot).release(child)
+			child.remove_meta(PARKING_SPOT_META)
+		child.free()
+
+
+func _remove_empty_generated_vehicles_root() -> void:
+	var vehicles_root := get_node_or_null(generated_vehicles_root_path) as Node3D
+	if vehicles_root != null and vehicles_root.get_child_count() == 0:
+		vehicles_root.free()
+
 
 func _clear_generated_spots(spots_root: Node3D) -> void:
 	for child in spots_root.get_children():

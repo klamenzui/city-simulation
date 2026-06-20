@@ -1,6 +1,7 @@
 extends SceneTree
 
 const CityInventoryAdapterScript = preload("res://Simulation/Inventory/CityInventoryAdapter.gd")
+const ItemIconCatalogScript = preload("res://Simulation/UI/ItemIconCatalog.gd")
 
 
 func _initialize() -> void:
@@ -15,6 +16,17 @@ func _initialize() -> void:
 
 	_expect(FileAccess.file_exists("res://addons/gloot/plugin.cfg"), "GLoot plugin should be installed", failures)
 	_expect(FileAccess.file_exists(CityInventoryAdapterScript.PROTOSET_PATH), "city inventory protoset should exist", failures)
+	for item_id in ["food", "grocery_bundle", "bread", "drink", "snack", "meal", "flour_sack"]:
+		_expect(
+			ItemIconCatalogScript.get_texture(item_id) != null,
+			"shared item icon should load: %s" % item_id,
+			failures
+		)
+	_expect(
+		ItemIconCatalogScript.get_texture("clothing") == null,
+		"missing clothing icon should keep the text fallback",
+		failures
+	)
 
 	if failures.is_empty():
 		print("INVENTORY_ADAPTER_TEST OK")

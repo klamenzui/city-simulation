@@ -1,7 +1,7 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://c647e0rkoamns"]
 
-[ext_resource type="Script" path="res://Simulation/Transport/VehicleAgent.gd" id="1_yk5mi"]
-[ext_resource type="AudioStream" path="res://environment/audio/vehicles/engine.wav" id="2_7ac17"]
+[ext_resource type="Script" uid="uid://cd1nnk30w7t4c" path="res://Simulation/Transport/VehicleAgent.gd" id="1_yk5mi"]
+[ext_resource type="AudioStream" uid="uid://cb7wvsd6vygd3" path="res://environment/audio/vehicles/engine.wav" id="2_7ac17"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_dupei"]
 size = Vector3(0.4808237, 0.4275188, 1.7952)
@@ -58,7 +58,7 @@ delivery_load_capacity = 0
 use_balance_vehicle_geometry = false
 vehicle_mass = 22.0
 center_of_mass_offset = Vector3(0, 0.09405414, 0)
-wheel_track_half_width = 0.16348005652427675
+wheel_track_half_width = 0.16348005652427677
 wheel_front_z = 0.4488
 wheel_rear_z = -0.5026559972763062
 wheel_mount_y = 0.09405413925647736
@@ -128,7 +128,7 @@ transform = Transform3D(0.00032342767, 0, 0, 0, 0.00032342767, 0, 0, 0, 0.000323
 [node name="DodgeAmbulance1957Visual" type="Node3D" parent="VisualRoot" unique_id=1408689245]
 
 [node name="Object_2" type="MeshInstance3D" parent="VisualRoot/DodgeAmbulance1957Visual" unique_id=1023964680]
-transform = Transform3D(1, 0, 0, 0, -3.5762787e-07, 0.99999994, 0, -0.99999994, -3.5762787e-07, 0, 0, 0)
+transform = Transform3D(0.7, 0, 0, 0, -3.059797e-08, 0.7, 0, -0.7, -3.059797e-08, 0, 0, 0)
 mesh = SubResource("ArrayMesh_q3hn6")
 skeleton = NodePath("")
 

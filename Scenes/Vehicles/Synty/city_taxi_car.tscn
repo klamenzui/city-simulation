@@ -1,8 +1,8 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://coge6exr3f77c"]
 
-[ext_resource type="Texture2D" path="res://Scenes/Vehicles/Synty/GLB/city_taxi_car_Image_0.png" id="1_i7alp"]
-[ext_resource type="Script" path="res://Simulation/Transport/VehicleAgent.gd" id="1_icrmk"]
-[ext_resource type="AudioStream" path="res://environment/audio/vehicles/engine.wav" id="3_liktr"]
+[ext_resource type="Texture2D" uid="uid://6gac05asdr1x" path="res://Scenes/Vehicles/Synty/GLB/city_taxi_car_Image_0.png" id="1_i7alp"]
+[ext_resource type="Script" uid="uid://cd1nnk30w7t4c" path="res://Simulation/Transport/VehicleAgent.gd" id="1_icrmk"]
+[ext_resource type="AudioStream" uid="uid://cb7wvsd6vygd3" path="res://environment/audio/vehicles/engine.wav" id="3_liktr"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_fjfci"]
 size = Vector3(0.5092994, 0.3746072, 1.5095999)
@@ -372,9 +372,10 @@ damping_compression = 0.9
 damping_relaxation = 1.6
 
 [node name="VisualRoot" type="Node3D" parent="." unique_id=594769544]
-transform = Transform3D(0.2859393, 0, 0, 0, 0.2859393, 0, 0, 0, 0.2859393, 0, 0.02, -0.034261215)
+transform = Transform3D(-0.28593928, 0, -2.4997606e-08, 0, 0.28593925, 0, 2.4997606e-08, 0, -0.28593928, 0, 0.02, -0.034261215)
 
 [node name="SyntyCityTaxiCarVisual" type="Node3D" parent="VisualRoot" unique_id=1062963017]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0, 0, 0)
 
 [node name="SM_Veh_Car_Taxi_01_PolygonCity_Texture_01_A_0" type="MeshInstance3D" parent="VisualRoot/SyntyCityTaxiCarVisual" unique_id=805966184]
 transform = Transform3D(0.01, 0, 0, 0, 0.010000002, 0, 0, 0, 0.010000002, 0, 0, 0)

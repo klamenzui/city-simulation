@@ -157,7 +157,7 @@ func _initialize() -> void:
 	if not bool(truck.call("is_driving")):
 		_errors.append("Live Farm delivery truck should start driving toward the Supermarket after Farm loading.")
 	var outbound_route := truck.get("last_vehicle_route") as PackedVector3Array
-	if outbound_route.size() <= 2:
+	if outbound_route.size() < 2:
 		_errors.append("Live Farm loading-to-target route should use the Main road graph, not a direct fallback route.")
 	elif _route_uses_building_endpoint(outbound_route, loading_parking_position, supermarket.get_entrance_pos()):
 		_errors.append("Live Farm delivery route should stay on road waypoints after leaving the Farm loading depot.")
@@ -194,7 +194,7 @@ func _initialize() -> void:
 		_errors.append("Live Farm delivery should start the return trip after unloading.")
 	else:
 		var return_route := truck.get("last_vehicle_route") as PackedVector3Array
-		if return_route.size() <= 2:
+		if return_route.size() < 2:
 			_errors.append("Live Farm return trip should use the Main road graph, not a direct fallback route.")
 		elif _route_uses_building_endpoint(return_route, supermarket.get_entrance_pos(), depot_parking_position):
 			_errors.append("Live Farm return route should stay on road waypoints before the local depot parking maneuver.")

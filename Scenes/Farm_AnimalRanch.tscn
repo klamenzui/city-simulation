@@ -97,6 +97,9 @@ size = Vector3(3.8, 0.45, 0.1)
 [sub_resource type="BoxShape3D" id="s_storage"]
 size = Vector3(1.2, 0.7, 1)
 
+[sub_resource type="BoxShape3D" id="s_delivery_loading"]
+size = Vector3(2.4, 0.2, 3.2)
+
 [sub_resource type="BoxShape3D" id="s_click"]
 size = Vector3(12.4, 2.6, 13)
 
@@ -329,3 +332,19 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.9, 0, 1.2)
 
 [node name="StoragePoint" type="Node3D" parent="." unique_id=2102548439]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0, -2.45)
+
+[node name="DeliveryLoadingDepot" type="Area3D" parent="." groups=["delivery_loading_depots"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.9, 0.1, 7)
+collision_layer = 0
+collision_mask = 0
+monitoring = false
+monitorable = false
+
+[node name="ParkingPad" type="MeshInstance3D" parent="DeliveryLoadingDepot"]
+transform = Transform3D(1.2, 0, 0, 0, 0.03, 0, 0, 0, 1.6, 0, -0.08, 0)
+material_override = SubResource("mt_path")
+mesh = SubResource("m_box")
+
+[node name="ParkingArea" type="CollisionShape3D" parent="DeliveryLoadingDepot"]
+shape = SubResource("s_delivery_loading")
+disabled = true

@@ -1,8 +1,8 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://d18nhj13rathx"]
 
-[ext_resource type="Script" path="res://Simulation/Transport/VehicleAgent.gd" id="1_n363b"]
-[ext_resource type="Texture2D" path="res://Scenes/Vehicles/Trucks/GLB/truck_box_Image_0.jpg" id="1_qjsfe"]
-[ext_resource type="AudioStream" path="res://environment/audio/vehicles/engine.wav" id="3_6v2rj"]
+[ext_resource type="Script" uid="uid://cd1nnk30w7t4c" path="res://Simulation/Transport/VehicleAgent.gd" id="1_n363b"]
+[ext_resource type="Texture2D" uid="uid://d1tabaxxd6p1p" path="res://Scenes/Vehicles/Trucks/GLB/truck_box_Image_0.jpg" id="1_qjsfe"]
+[ext_resource type="AudioStream" uid="uid://cb7wvsd6vygd3" path="res://environment/audio/vehicles/engine.wav" id="3_6v2rj"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_n8dix"]
 size = Vector3(0.7289026, 0.86155784, 2.6009998)
@@ -875,7 +875,7 @@ delivery_load_capacity = 10
 use_balance_vehicle_geometry = false
 vehicle_mass = 34.0
 center_of_mass_offset = Vector3(0, 0.105, 0)
-wheel_track_half_width = 0.24782687664031985
+wheel_track_half_width = 0.24782687664031983
 wheel_front_z = 0.8843399429321289
 wheel_rear_z = -0.8583299446105958
 wheel_mount_y = 0.105
@@ -939,136 +939,6 @@ suspension_stiffness = 34.0
 damping_compression = 0.9
 damping_relaxation = 1.6
 
-[node name="VisualRoot" type="Node3D" parent="." unique_id=2055174231]
-transform = Transform3D(0.0017552018, 0, 0, 0, 0.0017552018, 0, 0, 0, 0.0017552018, 2.4196198, 0.03440865, 0.89293396)
-
-[node name="TruckBoxVisual" type="Node3D" parent="VisualRoot" unique_id=640163551]
-
-[node name="Truck_body_003_Emission_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=377371943]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1378.5421, 95.84221, 30.869751)
-mesh = SubResource("ArrayMesh_lmmnr")
-skeleton = NodePath("")
-
-[node name="Truck_body_003_Glass_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1991868386]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1378.5421, 95.84221, 30.869751)
-mesh = SubResource("ArrayMesh_mhssm")
-skeleton = NodePath("")
-
-[node name="Truck_body_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1442895021]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1378.5421, 95.84221, 30.869751)
-mesh = SubResource("ArrayMesh_rftep")
-skeleton = NodePath("")
-
-[node name="Truck_body_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=2076097334]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1378.5421, 95.84221, 30.869751)
-mesh = SubResource("ArrayMesh_3urpx")
-skeleton = NodePath("")
-
-[node name="Truck_Bumper_003_Emission_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1652212998]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1378.5421, 104.552444, -1168.2539)
-mesh = SubResource("ArrayMesh_8otvd")
-skeleton = NodePath("")
-
-[node name="Truck_Bumper_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1623747018]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1378.5421, 104.552444, -1168.2539)
-mesh = SubResource("ArrayMesh_w5cq3")
-skeleton = NodePath("")
-
-[node name="Truck_Chassy_Short_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=867605287]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1378.5421, 95.84221, 30.869751)
-mesh = SubResource("ArrayMesh_v4pdl")
-skeleton = NodePath("")
-
-[node name="Truck_Door_left_003_Glass_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=14768072]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1182.4073, 314.63474, -60.972443)
-mesh = SubResource("ArrayMesh_vnkh2")
-skeleton = NodePath("")
-
-[node name="Truck_Door_left_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=351497401]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1182.4073, 314.63474, -60.972443)
-mesh = SubResource("ArrayMesh_1oqxm")
-skeleton = NodePath("")
-
-[node name="Truck_Door_left_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=657679867]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1182.4073, 314.63474, -60.972443)
-mesh = SubResource("ArrayMesh_iel7s")
-skeleton = NodePath("")
-
-[node name="Truck_Door_right_003_Glass_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1624760121]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1574.6769, 316.23883, -60.972443)
-mesh = SubResource("ArrayMesh_jyq4n")
-skeleton = NodePath("")
-
-[node name="Truck_Door_right_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1879322707]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1574.6769, 316.23883, -60.972443)
-mesh = SubResource("ArrayMesh_w4nk7")
-skeleton = NodePath("")
-
-[node name="Truck_Engine_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=2050322848]
-transform = Transform3D(0, 0, -172.13799, -11.736893, 0, 0, 0, -11.736893, 0, -1378.5421, 95.84221, 30.869751)
-mesh = SubResource("ArrayMesh_m1je0")
-skeleton = NodePath("")
-
-[node name="Truck_Steering_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1165732022]
-transform = Transform3D(9.461582, 0, 0, 0, -6.764169, 32.88115, 0, -6.615713, -33.619, -1278.5569, 305.64645, -57.740845)
-mesh = SubResource("ArrayMesh_4ylc0")
-skeleton = NodePath("")
-
-[node name="Truck_Trailer3_001_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=393945023]
-transform = Transform3D(-100.000046, 1.9470728e-05, -1.9470728e-05, -1.9470728e-05, 0, 100.00005, 1.9470728e-05, 100.00005, 3.7910907e-12, -1380.1826, 104.40918, -851.33716)
-mesh = SubResource("ArrayMesh_ufaa8")
-skeleton = NodePath("")
-
-[node name="Truck_Wheel_Back_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=16264501]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1380.1826, 104.40918, -851.33716)
-mesh = SubResource("ArrayMesh_3ulc6")
-skeleton = NodePath("")
-
-[node name="Truck_Wheel_Back_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1077937452]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1380.1826, 104.40918, -851.33716)
-mesh = SubResource("ArrayMesh_onp4o")
-skeleton = NodePath("")
-
-[node name="Truck_Wheel_Front_left_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1208888146]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1207.7125, 96.77727, 28.79065)
-mesh = SubResource("ArrayMesh_bklko")
-skeleton = NodePath("")
-
-[node name="Truck_Wheel_Front_left_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=493364734]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1207.7125, 96.77727, 28.79065)
-mesh = SubResource("ArrayMesh_vx82t")
-skeleton = NodePath("")
-
-[node name="Truck_Wheel_Front_right_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1532249420]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1549.3713, 96.777435, 28.79065)
-mesh = SubResource("ArrayMesh_kcj2c")
-skeleton = NodePath("")
-
-[node name="Truck_Wheel_Front_right_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1511749237]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1549.3713, 96.777435, 28.79065)
-mesh = SubResource("ArrayMesh_04uqb")
-skeleton = NodePath("")
-
-[node name="Truck_WheelCover_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=109221559]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1380.1826, 104.40918, -851.33716)
-mesh = SubResource("ArrayMesh_u3qj3")
-skeleton = NodePath("")
-
-[node name="Truck_WheelCover_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1268465616]
-transform = Transform3D(100, 0, 0, 0, -3.57628e-05, 100.00003, 0, -100.00003, -3.57628e-05, -1380.1826, 104.40918, -851.33716)
-mesh = SubResource("ArrayMesh_5x2ik")
-skeleton = NodePath("")
-
-[node name="TruckModule_OilTank_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=2087228546]
-transform = Transform3D(-62.667362, 0, 0, 0, 4.1903422e-05, 42.309273, 0, -117.170456, 1.5130976e-05, -1378.5421, 157.1261, -497.50092)
-mesh = SubResource("ArrayMesh_cudlm")
-skeleton = NodePath("")
-
-[node name="TruckModule_OilTank_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1795410512]
-transform = Transform3D(-62.667362, 0, 0, 0, 4.1903422e-05, 42.309273, 0, -117.170456, 1.5130976e-05, -1378.5421, 157.1261, -497.50092)
-mesh = SubResource("ArrayMesh_qh55o")
-skeleton = NodePath("")
-
 [node name="EntryPoint" type="Node3D" parent="." unique_id=648766149]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.52480984, 0.03, 0.02)
 
@@ -1080,3 +950,133 @@ stream = ExtResource("3_6v2rj")
 volume_db = -28.0
 pitch_scale = 0.05
 attenuation_filter_cutoff_hz = 20500.0
+
+[node name="VisualRoot" type="Node3D" parent="." unique_id=1405814525]
+
+[node name="TruckBoxVisual" type="Node3D" parent="VisualRoot" unique_id=983931919]
+transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 0, 0, 0)
+
+[node name="Truck_body_003_Emission_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=377371943]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, 2.3841858e-07, 0.20263109, 0.9471166)
+mesh = SubResource("ArrayMesh_lmmnr")
+skeleton = NodePath("")
+
+[node name="Truck_body_003_Glass_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1991868386]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, 2.3841858e-07, 0.20263109, 0.9471166)
+mesh = SubResource("ArrayMesh_mhssm")
+skeleton = NodePath("")
+
+[node name="Truck_body_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1442895021]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, 2.3841858e-07, 0.20263109, 0.9471166)
+mesh = SubResource("ArrayMesh_rftep")
+skeleton = NodePath("")
+
+[node name="Truck_body_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=2076097334]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, 2.3841858e-07, 0.20263109, 0.9471166)
+mesh = SubResource("ArrayMesh_3urpx")
+skeleton = NodePath("")
+
+[node name="Truck_Bumper_003_Emission_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1652212998]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, 2.3841858e-07, 0.21791929, -1.1575874)
+mesh = SubResource("ArrayMesh_8otvd")
+skeleton = NodePath("")
+
+[node name="Truck_Bumper_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1623747018]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, 2.3841858e-07, 0.21791929, -1.1575874)
+mesh = SubResource("ArrayMesh_w5cq3")
+skeleton = NodePath("")
+
+[node name="Truck_Chassy_Short_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=867605287]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, 2.3841858e-07, 0.20263109, 0.9471166)
+mesh = SubResource("ArrayMesh_v4pdl")
+skeleton = NodePath("")
+
+[node name="Truck_Door_left_003_Glass_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=14768072]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, 0.34425616, 0.5866561, 0.785915)
+mesh = SubResource("ArrayMesh_vnkh2")
+skeleton = NodePath("")
+
+[node name="Truck_Door_left_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=351497401]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, 0.34425616, 0.5866561, 0.785915)
+mesh = SubResource("ArrayMesh_1oqxm")
+skeleton = NodePath("")
+
+[node name="Truck_Door_left_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=657679867]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, 0.34425616, 0.5866561, 0.785915)
+mesh = SubResource("ArrayMesh_iel7s")
+skeleton = NodePath("")
+
+[node name="Truck_Door_right_003_Glass_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1624760121]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, -0.34425592, 0.5894716, 0.785915)
+mesh = SubResource("ArrayMesh_jyq4n")
+skeleton = NodePath("")
+
+[node name="Truck_Door_right_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1879322707]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, -0.34425592, 0.5894716, 0.785915)
+mesh = SubResource("ArrayMesh_w4nk7")
+skeleton = NodePath("")
+
+[node name="Truck_Engine_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=2050322848]
+transform = Transform3D(0, 0, -0.3021369, -0.020600615, 0, 0, 0, -0.020600615, 0, 2.3841858e-07, 0.20263109, 0.9471166)
+mesh = SubResource("ArrayMesh_m1je0")
+skeleton = NodePath("")
+
+[node name="Truck_Steering_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1165732022]
+transform = Transform3D(0.016606987, 0, 0, 0, -0.0118724825, 0.057713054, 0, -0.0116119115, -0.05900813, 0.17549443, 0.5708799, 0.7915871)
+mesh = SubResource("ArrayMesh_4ylc0")
+skeleton = NodePath("")
+
+[node name="Truck_Trailer3_001_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=393945023]
+transform = Transform3D(-0.17552027, 3.417506e-08, -3.417506e-08, -3.417506e-08, 0, 0.17552027, 3.417506e-08, 0.17552027, 6.6541295e-15, -0.0028793812, 0.21766785, -0.6013346)
+mesh = SubResource("ArrayMesh_ufaa8")
+skeleton = NodePath("")
+
+[node name="Truck_Wheel_Back_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=16264501]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, -0.0028793812, 0.21766785, -0.6013346)
+mesh = SubResource("ArrayMesh_3ulc6")
+skeleton = NodePath("")
+
+[node name="Truck_Wheel_Back_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1077937452]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, -0.0028793812, 0.21766785, -0.6013346)
+mesh = SubResource("ArrayMesh_onp4o")
+skeleton = NodePath("")
+
+[node name="Truck_Wheel_Front_left_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1208888146]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, 0.29984045, 0.2042723, 0.9434674)
+mesh = SubResource("ArrayMesh_bklko")
+skeleton = NodePath("")
+
+[node name="Truck_Wheel_Front_left_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=493364734]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, 0.29984045, 0.2042723, 0.9434674)
+mesh = SubResource("ArrayMesh_vx82t")
+skeleton = NodePath("")
+
+[node name="Truck_Wheel_Front_right_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1532249420]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, -0.29983974, 0.2042726, 0.9434674)
+mesh = SubResource("ArrayMesh_kcj2c")
+skeleton = NodePath("")
+
+[node name="Truck_Wheel_Front_right_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1511749237]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, -0.29983974, 0.2042726, 0.9434674)
+mesh = SubResource("ArrayMesh_04uqb")
+skeleton = NodePath("")
+
+[node name="Truck_WheelCover_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=109221559]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, -0.0028793812, 0.21766785, -0.6013346)
+mesh = SubResource("ArrayMesh_u3qj3")
+skeleton = NodePath("")
+
+[node name="Truck_WheelCover_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1268465616]
+transform = Transform3D(0.17552018, 0, 0, 0, -6.277094e-08, 0.17552024, 0, -0.17552024, -6.277094e-08, -0.0028793812, 0.21766785, -0.6013346)
+mesh = SubResource("ArrayMesh_5x2ik")
+skeleton = NodePath("")
+
+[node name="TruckModule_OilTank_003_Metal_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=2087228546]
+transform = Transform3D(-0.10999387, 0, 0, 0, 7.354896e-08, 0.074261315, 0, -0.2056578, 2.6557917e-08, 2.3841858e-07, 0.31019667, 0.019719422)
+mesh = SubResource("ArrayMesh_cudlm")
+skeleton = NodePath("")
+
+[node name="TruckModule_OilTank_003_Rough_0" type="MeshInstance3D" parent="VisualRoot/TruckBoxVisual" unique_id=1795410512]
+transform = Transform3D(-0.10999387, 0, 0, 0, 7.354896e-08, 0.074261315, 0, -0.2056578, 2.6557917e-08, 2.3841858e-07, 0.31019667, 0.019719422)
+mesh = SubResource("ArrayMesh_qh55o")
+skeleton = NodePath("")

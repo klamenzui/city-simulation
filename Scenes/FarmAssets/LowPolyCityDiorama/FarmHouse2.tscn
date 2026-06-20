@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/FarmAssets/LowPolyCityDiorama/farm_house_2_source.tscn" id="1_source"]
+
+[node name="FarmHouse2" type="Node3D"]
+
+[node name="Visual" parent="." instance=ExtResource("1_source")]
+transform = Transform3D(0.13, 0, 0, 0, 0.13, 0, 0, 0, 0.13, 0, 0, 7.5196013)

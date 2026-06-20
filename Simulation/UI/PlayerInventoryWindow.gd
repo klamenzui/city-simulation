@@ -16,6 +16,7 @@ class_name PlayerInventoryWindow
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 const PlayerInventoryCatalogScript = preload("res://Simulation/UI/PlayerInventoryCatalog.gd")
+const ItemIconCatalogScript = preload("res://Simulation/UI/ItemIconCatalog.gd")
 const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 
 signal action_pressed(action_id: String)
@@ -327,13 +328,10 @@ func _build_container_slot_row(slot: Dictionary) -> Control:
 	row.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
 	row.custom_minimum_size = Vector2(0, 42)
 
-	var icon_label := Label.new()
-	icon_label.text = str(slot.get("icon", "[]"))
-	icon_label.custom_minimum_size = Vector2(34, 34)
-	icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	icon_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	icon_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_BODY)
-	row.add_child(icon_label)
+	row.add_child(_make_compact_icon(
+		str(slot.get("id", "")),
+		str(slot.get("icon", "[]"))
+	))
 
 	var text_box := VBoxContainer.new()
 	text_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -377,7 +375,10 @@ func _build_player_slot_card(slot: Dictionary) -> Control:
 	vbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
 	card.add_child(vbox)
 
-	vbox.add_child(_make_icon_block(str(slot.get("icon", ""))))
+	vbox.add_child(_make_icon_block(
+		str(slot.get("id", "")),
+		str(slot.get("icon", ""))
+	))
 
 	var name_label := Label.new()
 	name_label.text = str(slot.get("label", ""))
@@ -410,7 +411,10 @@ func _build_shop_item_card(item: Dictionary) -> Control:
 	vbox.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
 	card.add_child(vbox)
 
-	vbox.add_child(_make_icon_block(str(item.get("icon", ""))))
+	vbox.add_child(_make_icon_block(
+		str(item.get("id", "")),
+		str(item.get("icon", ""))
+	))
 
 	var name_label := Label.new()
 	name_label.text = str(item.get("label", ""))
@@ -486,7 +490,7 @@ func _make_card_container() -> PanelContainer:
 
 # Square icon "tile" — placeholder visuals until real textures replace it.
 # A colored rect with the catalog glyph (emoji or letters) centered on top.
-func _make_icon_block(glyph: String) -> Control:
+func _make_icon_block(item_id: String, glyph: String) -> Control:
 	var holder := Control.new()
 	holder.custom_minimum_size = Vector2(96, 72)
 	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -496,12 +500,60 @@ func _make_icon_block(glyph: String) -> Control:
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	holder.add_child(bg)
 
+	var texture := ItemIconCatalogScript.get_texture(item_id)
+	if texture != null:
+		var icon := TextureRect.new()
+		icon.name = "InventoryIcon"
+		icon.texture = texture
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = (
+			CanvasItem.TEXTURE_FILTER_LINEAR
+			if ItemIconCatalogScript.uses_linear_filter(item_id)
+			else CanvasItem.TEXTURE_FILTER_NEAREST
+		)
+		icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		icon.offset_left = 8
+		icon.offset_top = 4
+		icon.offset_right = -8
+		icon.offset_bottom = -4
+		holder.add_child(icon)
+		return holder
+
 	var glyph_label := Label.new()
 	glyph_label.text = glyph
 	glyph_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	glyph_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	glyph_label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	glyph_label.add_theme_font_size_override("font_size", 36)
+	holder.add_child(glyph_label)
+	return holder
+
+
+func _make_compact_icon(item_id: String, glyph: String) -> Control:
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(34, 34)
+	var texture := ItemIconCatalogScript.get_texture(item_id)
+	if texture != null:
+		var icon := TextureRect.new()
+		icon.name = "InventoryIcon"
+		icon.texture = texture
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = (
+			CanvasItem.TEXTURE_FILTER_LINEAR
+			if ItemIconCatalogScript.uses_linear_filter(item_id)
+			else CanvasItem.TEXTURE_FILTER_NEAREST
+		)
+		icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		holder.add_child(icon)
+		return holder
+	var glyph_label := Label.new()
+	glyph_label.text = glyph
+	glyph_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	glyph_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	glyph_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	glyph_label.add_theme_font_size_override("font_size", UiThemeScript.FONT_SIZE_BODY)
 	holder.add_child(glyph_label)
 	return holder
 

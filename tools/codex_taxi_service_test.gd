@@ -1,7 +1,7 @@
 extends SceneTree
 
 const CitizenScene := preload("res://Entities/Citizens/CitizenNew.tscn")
-const TaxiCarScene := preload("res://Scenes/Vehicles/CityPack/car.tscn")
+const TaxiCarScene := preload("res://Scenes/Vehicles/Synty/city_taxi_car.tscn")
 const TaxiServiceScript := preload("res://Simulation/Transport/TaxiService.gd")
 const TaxiToBuildingActionScript := preload("res://Actions/TaxiToBuildingAction.gd")
 const WorldMapOverlayScript := preload("res://Simulation/UI/WorldMapOverlay.gd")
@@ -11,6 +11,7 @@ var _errors: Array[String] = []
 
 
 func _initialize() -> void:
+	await _check_vehicle_depot_spawns_typed_taxi_fleet()
 	await _check_taxi_requires_depot()
 	await _check_taxi_exits_depot_parking_without_snap()
 	await _check_taxi_request_route_and_fare()
@@ -23,6 +24,84 @@ func _initialize() -> void:
 		return
 	print("TAXI_SERVICE_TEST OK")
 	quit(OK)
+
+
+func _check_vehicle_depot_spawns_typed_taxi_fleet() -> void:
+	var world := World.new()
+	root.add_child(world)
+	await process_frame
+
+	var depot := VehicleDepot.new()
+	depot.name = "TaxiVehicleDepot"
+	depot.vehicle_scene = TaxiCarScene
+	depot.vehicle_role = VehicleDepot.VehicleRole.TAXI
+
+	var parking_area := MeshInstance3D.new()
+	parking_area.name = "ParkingArea"
+	var mesh := PlaneMesh.new()
+	mesh.size = Vector2(2.0, 2.0)
+	parking_area.mesh = mesh
+	depot.add_child(parking_area)
+
+	var spots_root := Node3D.new()
+	spots_root.name = "ParkingSpots"
+	depot.add_child(spots_root)
+	for index in 2:
+		var spot := VehicleParkingSpot.new()
+		spot.name = "GeneratedSpot_01_%02d" % (index + 1)
+		spot.position = Vector3(float(index), 0.0, 0.0)
+		spots_root.add_child(spot)
+
+	root.add_child(depot)
+	await process_frame
+	await process_frame
+
+	var vehicles_root := depot.get_node_or_null("GeneratedVehicles") as Node3D
+	if vehicles_root == null or vehicles_root.get_child_count() != 2:
+		_errors.append("VehicleDepot should spawn one taxi per parking spot.")
+	else:
+		var first_vehicle := vehicles_root.get_child(0) as VehicleAgent
+		var first_spot := spots_root.get_child(0) as VehicleParkingSpot
+		if first_vehicle == null or not first_vehicle.is_in_group("taxi_vehicle"):
+			_errors.append("VehicleDepot taxi role should assign the taxi_vehicle group.")
+		elif first_vehicle.delivery_vehicle:
+			_errors.append("VehicleDepot taxi role must not mark taxis as delivery vehicles.")
+		elif not first_vehicle.has_meta("vehicle_parking_spot"):
+			_errors.append("Spawned depot taxi should track its occupied parking spot.")
+		else:
+			VehicleDepotAccess.release_vehicle_spot(first_vehicle)
+			if not first_spot.is_free():
+				_errors.append("Releasing a spawned depot taxi should free its parking spot.")
+
+		depot.rebuild_generated_fleet()
+		if vehicles_root.get_child_count() != 2:
+			_errors.append("Rebuilding a depot fleet should replace vehicles without duplicates.")
+
+		depot.vehicle_role = VehicleDepot.VehicleRole.GENERIC
+		depot.rebuild_generated_fleet()
+		var generic_vehicle := vehicles_root.get_child(0) as VehicleAgent
+		if (
+			generic_vehicle == null
+			or generic_vehicle.delivery_vehicle
+			or generic_vehicle.is_in_group("taxi_vehicle")
+			or generic_vehicle.is_in_group("delivery_vehicles")
+		):
+			_errors.append("VehicleDepot generic role should create an unassigned standard vehicle.")
+
+		depot.vehicle_role = VehicleDepot.VehicleRole.DELIVERY
+		depot.rebuild_generated_fleet()
+		var delivery_vehicle := vehicles_root.get_child(0) as VehicleAgent
+		if (
+			delivery_vehicle == null
+			or not delivery_vehicle.delivery_vehicle
+			or not delivery_vehicle.is_in_group("delivery_vehicles")
+			or delivery_vehicle.is_in_group("taxi_vehicle")
+		):
+			_errors.append("VehicleDepot delivery role should assign the delivery vehicle contract.")
+
+	depot.free()
+	world.free()
+	await process_frame
 
 
 func _check_taxi_requires_depot() -> void:
@@ -163,7 +242,7 @@ func _check_taxi_request_route_and_fare() -> void:
 	if not bool(result.get("accepted", false)):
 		_errors.append("Taxi request should be accepted in a simple road graph.")
 	if taxi_service.get_taxi_vehicle() != taxi_car:
-		_errors.append("Taxi service should reuse the existing CityPack car instead of spawning another car.")
+		_errors.append("Taxi service should reuse the existing Synty taxi instead of spawning another car.")
 	if taxi_car.manual_drive_enabled:
 		_errors.append("Taxi service should disable manual driving while the taxi car is in taxi service.")
 

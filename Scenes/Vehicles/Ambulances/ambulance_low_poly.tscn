@@ -1,8 +1,8 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://w3dj2nj7leq3"]
 
-[ext_resource type="Texture2D" path="res://Scenes/Vehicles/Ambulances/GLB/ambulance_low_poly_Image_0.png" id="1_507q5"]
-[ext_resource type="Script" path="res://Simulation/Transport/VehicleAgent.gd" id="1_wjqv6"]
-[ext_resource type="AudioStream" path="res://environment/audio/vehicles/engine.wav" id="3_rbn8v"]
+[ext_resource type="Texture2D" uid="uid://57ktcnn6h3qd" path="res://Scenes/Vehicles/Ambulances/GLB/ambulance_low_poly_Image_0.png" id="1_507q5"]
+[ext_resource type="Script" uid="uid://cd1nnk30w7t4c" path="res://Simulation/Transport/VehicleAgent.gd" id="1_wjqv6"]
+[ext_resource type="AudioStream" uid="uid://cb7wvsd6vygd3" path="res://environment/audio/vehicles/engine.wav" id="3_rbn8v"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_6dyvw"]
 size = Vector3(0.6873835, 0.69964975, 1.7543999)
@@ -130,7 +130,7 @@ transform = Transform3D(0.30515927, 0, 0, 0, 0.30515927, 0, 0, 0, 0.30515927, 0,
 [node name="AmbulanceLowPolyVisual" type="Node3D" parent="VisualRoot" unique_id=689394168]
 
 [node name="Object_2" type="MeshInstance3D" parent="VisualRoot/AmbulanceLowPolyVisual" unique_id=202952267]
-transform = Transform3D(1, 0, 0, 0, -3.5762787e-07, 0.99999994, 0, -0.99999994, -3.5762787e-07, 0, 0, 0)
+transform = Transform3D(0.7, 0, 0, 0, -3.059797e-08, 0.7, 0, -0.7, -3.059797e-08, 0, 0, 0)
 mesh = SubResource("ArrayMesh_fhj27")
 skeleton = NodePath("")
 

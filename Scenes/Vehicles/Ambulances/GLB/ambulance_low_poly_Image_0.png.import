@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://57ktcnn6h3qd"
-path="res://.godot/imported/ambulance_low_poly_Image_0.png-5b3b2e3d5b870ad47ed2c23b68eeadb3.ctex"
+path.s3tc="res://.godot/imported/ambulance_low_poly_Image_0.png-5b3b2e3d5b870ad47ed2c23b68eeadb3.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "c06dc6379d111b18fa66b2c55d9e69f4"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://Scenes/Vehicles/Ambulances/GLB/ambulance_low_poly_Image_0.png"
-dest_files=["res://.godot/imported/ambulance_low_poly_Image_0.png-5b3b2e3d5b870ad47ed2c23b68eeadb3.ctex"]
+dest_files=["res://.godot/imported/ambulance_low_poly_Image_0.png-5b3b2e3d5b870ad47ed2c23b68eeadb3.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

@@ -15,14 +15,15 @@ static func build(citizen: Citizen, world: Node = null, mode: String = "player")
 	var resolved_world := citizen._resolve_world_arg(world)
 	var location := citizen._get_player_current_building()
 	var show_shop := clean_mode == "shop" and location is Shop
-	var resolved_mode := "shop" if show_shop else "player"
+	var show_building := clean_mode == "building" and location is CommercialBuilding
+	var resolved_mode := "shop" if show_shop else ("building" if show_building else "player")
 	var status_lines: PackedStringArray = []
 	status_lines.append(LocaleServiceScript.t("player.money") % (citizen.wallet.balance if citizen.wallet != null else 0))
-	if show_shop:
-		var shop_for_status := location as Shop
-		status_lines.append(LocaleServiceScript.t("player.shop") % citizen._building_label(shop_for_status))
+	if show_shop or show_building:
+		var commercial_for_status := location as CommercialBuilding
+		status_lines.append(LocaleServiceScript.t("player.shop") % citizen._building_label(commercial_for_status))
 		if resolved_world != null:
-			status_lines.append(LocaleServiceScript.t("player.status") % shop_for_status.get_open_status_display_label(resolved_world.time.get_hour()))
+			status_lines.append(LocaleServiceScript.t("player.status") % commercial_for_status.get_open_status_display_label(resolved_world.time.get_hour()))
 	else:
 		status_lines.append(LocaleServiceScript.t("player.status_location") % (citizen._building_label(location) if location != null else LocaleServiceScript.t("player.location_travelling")))
 	if not citizen.get_player_action_notice().is_empty():
@@ -31,6 +32,11 @@ static func build(citizen: Citizen, world: Node = null, mode: String = "player")
 	var title := LocaleServiceScript.t("player.shop_title") if show_shop else LocaleServiceScript.t("player.inventory_title")
 	if show_shop:
 		title = LocaleServiceScript.t("player.shop_title_named") % citizen._building_label(location)
+	elif show_building:
+		title = "%s - %s" % [
+			citizen._building_label(location),
+			LocaleServiceScript.t("inventory.container_building", "Building inventory"),
+		]
 
 	return {
 		"visible": true,
@@ -38,7 +44,7 @@ static func build(citizen: Citizen, world: Node = null, mode: String = "player")
 		"title": title,
 		"status_text": "\n".join(status_lines),
 		"player_slots": _build_player_inventory_slots(citizen),
-		"containers": _build_inventory_containers(citizen, location, resolved_world, show_shop),
+		"containers": _build_inventory_containers(citizen, location, resolved_world, show_shop or show_building),
 		"categories": _build_shop_inventory_categories(citizen, location, resolved_world) if show_shop else [],
 	}
 
@@ -57,9 +63,9 @@ static func _build_player_inventory_slots(citizen: Citizen) -> Array:
 	return slots
 
 
-static func _build_inventory_containers(citizen: Citizen, location: Building, resolved_world: Node, show_shop: bool) -> Array:
+static func _build_inventory_containers(citizen: Citizen, location: Building, resolved_world: Node, show_building: bool) -> Array:
 	var containers: Array = []
-	if show_shop and location is CommercialBuilding:
+	if show_building and location is CommercialBuilding:
 		containers.append(_build_building_inventory_container(citizen, location as CommercialBuilding, resolved_world))
 	containers.append({
 		"id": "player",

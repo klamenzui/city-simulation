@@ -1,4 +1,4 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://be5wocjh28mxl"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wy7ha"]
 resource_name = "DarkRed"
@@ -156,5 +156,6 @@ shadow_mesh = SubResource("ArrayMesh_maunn")
 [node name="OpenBarn" type="Node3D" unique_id=1034248043]
 
 [node name="OpenBarn" type="MeshInstance3D" parent="." unique_id=687354183]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0)
 mesh = SubResource("ArrayMesh_hsgvi")
 skeleton = NodePath("")

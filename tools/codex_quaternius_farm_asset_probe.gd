@@ -18,20 +18,18 @@ const ASSET_SCENE_PATHS := [
 
 const FARM_MODEL_NODES := {
 	"res://Scenes/Farm.tscn": [
-		"Buildings/SmallBarnModel",
 		"Buildings/BigBarnModel",
 		"Buildings/SiloModel",
 		"Fence/BackFenceModel",
 		"Props/WellModel",
 	],
 	"res://Scenes/Farm_Windmill.tscn": [
-		"Buildings/SmallBarnModel",
 		"Buildings/BigBarnModel",
 		"Buildings/SiloModel",
-		"VariantDecor/WindmillModel",
 		"VariantDecor/WaterTowerModel",
 		"VariantDecor/SideBarnModel",
 		"Fence/SideGateModel",
+		"TowerWindmill",
 	],
 	"res://Scenes/Farm_AnimalRanch.tscn": [
 		"Buildings/SmallBarnModel",

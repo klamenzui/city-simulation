@@ -72,6 +72,41 @@ func _initialize() -> void:
 	game.call("_open_context_for", barn_interactable)
 	var context_menu := game.get_node_or_null("FarmWorkHud/HudRoot/ContextMenu") as Control
 	_expect(context_menu != null and context_menu.visible, "clicking an existing farm object should open its context UI", failures)
+	_expect_eq(str(barn_interactable.display_name), "Farm inventory", "barn interaction should open the farm inventory", failures)
+	var barn_context_lines := game.call("_get_context_lines", barn_interactable) as PackedStringArray
+	_expect(barn_context_lines.has("Stored products"), "farm inventory should show stored products", failures)
+	_expect(barn_context_lines.has("Seeds"), "farm inventory should show seed stock", failures)
+	var initial_seed_inventory := game.call("debug_get_inventory_snapshot", "seeds") as Dictionary
+	_expect(int(initial_seed_inventory.get("wheat_seed", 0)) > 0, "farm inventory should start with wheat seeds", failures)
+	_expect(int(initial_seed_inventory.get("corn_seed", 0)) > 0, "farm inventory should start with corn seeds", failures)
+	_expect(int(initial_seed_inventory.get("sunflower_seed", 0)) > 0, "farm inventory should start with sunflower seeds", failures)
+	var seed_grid := context_menu.find_child("SeedsGrid", true, false) as GridContainer
+	var product_grid := context_menu.find_child("StoredproductsGrid", true, false) as GridContainer
+	_expect(seed_grid != null and seed_grid.get_child_count() == 3, "farm inventory should render three seed slots", failures)
+	_expect(product_grid != null and product_grid.get_child_count() == 4, "farm inventory should render four product slots", failures)
+	var wheat_seed_slot := context_menu.find_child("FarmInventorySlot_wheat_seed", true, false) as Button
+	var flour_slot := context_menu.find_child("FarmInventorySlot_flour_sack", true, false) as Button
+	_expect(wheat_seed_slot != null and not wheat_seed_slot.disabled, "stocked seed slot should be clickable", failures)
+	_expect(flour_slot != null and flour_slot.disabled, "empty product slot should stay visible and disabled", failures)
+	var wheat_seed_icon := wheat_seed_slot.find_child("Icon", true, false) as TextureRect if wheat_seed_slot != null else null
+	var flour_icon := flour_slot.find_child("Icon", true, false) as TextureRect if flour_slot != null else null
+	_expect(wheat_seed_icon != null and wheat_seed_icon.texture != null, "seed slot should render its farm icon", failures)
+	_expect(flour_icon != null and flour_icon.texture != null, "empty flour slot should keep its farm icon visible", failures)
+	var corn_seed_slot := context_menu.find_child("FarmInventorySlot_corn_seed", true, false) as Button
+	var corn_grain_slot := context_menu.find_child("FarmInventorySlot_corn_grain", true, false) as Button
+	var corn_seed_icon := corn_seed_slot.find_child("Icon", true, false) as TextureRect if corn_seed_slot != null else null
+	var corn_grain_icon := corn_grain_slot.find_child("Icon", true, false) as TextureRect if corn_grain_slot != null else null
+	_expect(
+		corn_seed_icon != null and corn_grain_icon != null
+			and corn_seed_icon.texture != corn_grain_icon.texture,
+		"corn seed and harvested corn should use distinct icons",
+		failures
+	)
+	if wheat_seed_slot != null:
+		var wheat_before_click := int(initial_seed_inventory.get("wheat_seed", 0))
+		wheat_seed_slot.pressed.emit()
+		var wheat_after_click := int((game.call("debug_get_inventory_snapshot", "seeds") as Dictionary).get("wheat_seed", 0))
+		_expect_eq(wheat_after_click, wheat_before_click - 4, "clicking a seed slot should withdraw one seed stack", failures)
 
 	_expect_eq(game.call("get_recommended_action_for_plot", 1), ACTION_HARVEST, "plot 1 should start harvestable", failures)
 	var harvest_one := game.call("debug_perform_action", 1, ACTION_HARVEST) as Dictionary
@@ -127,7 +162,11 @@ func _initialize() -> void:
 	root.add_child(live)
 	await process_frame
 	live.call("start_session")
+	var wheat_seed_stock_before := int((live.call("debug_get_inventory_snapshot", "seeds") as Dictionary).get("wheat_seed", 0))
 	_expect(bool((live.call("debug_perform_live_action", "shed", LIVE_TAKE_WHEAT_SEEDS) as Dictionary).get("correct", false)), "live flow should take wheat seeds", failures)
+	var wheat_seed_stock_after := int((live.call("debug_get_inventory_snapshot", "seeds") as Dictionary).get("wheat_seed", 0))
+	_expect_eq(wheat_seed_stock_after, wheat_seed_stock_before - 4, "taking seeds should reduce farm seed stock", failures)
+	_expect_eq(int((live.call("debug_get_inventory_snapshot", "player") as Dictionary).get("wheat_seed", 0)), 4, "taken seeds should enter player inventory", failures)
 	_expect(bool((live.call("debug_perform_live_action", "field_wheat", LIVE_SOW_FIELD) as Dictionary).get("correct", false)), "live flow should sow wheat", failures)
 	_expect(bool((live.call("debug_perform_live_action", "field_wheat", LIVE_WATER_FIELD) as Dictionary).get("correct", false)), "live flow should water wheat", failures)
 	live.call("debug_tick_live", 9.0)

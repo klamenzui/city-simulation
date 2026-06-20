@@ -2,6 +2,8 @@
 
 [ext_resource type="Script" uid="uid://bbrtbqlqde5u0" path="res://Entities/Buildings/Farm.gd" id="1_farm"]
 [ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/BigBarn.tscn" id="2_bigbarn"]
+[ext_resource type="PackedScene" path="res://Scenes/FarmAssets/LowPolyCityDiorama/FarmHouse2.tscn" id="3_smallbarn"]
+[ext_resource type="PackedScene" uid="uid://cxii2n31g1nee" path="res://Scenes/Vehicles/Farm/tractor_green.tscn" id="4_aups6"]
 [ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/Silo.tscn" id="4_silo"]
 [ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/Well.tscn" id="5_well"]
 [ext_resource type="PackedScene" uid="uid://dstpxx3nq0uj1" path="res://Scenes/FarmAssets/Quaternius/Fence.tscn" id="6_fence"]
@@ -14,6 +16,8 @@
 [ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/WaterTower.tscn" id="14_watertower"]
 [ext_resource type="PackedScene" uid="uid://dgqqfy57qrlxi" path="res://Scenes/FarmAssets/Quaternius/Fence2.tscn" id="15_fence2"]
 [ext_resource type="PackedScene" uid="uid://dxq0xi5l1ms63" path="res://Scenes/FarmAssets/Quaternius/TowerWindmill.tscn" id="16_aups6"]
+[ext_resource type="PackedScene" uid="uid://cd6i8g3cbkuoa" path="res://Scenes/Vehicles/Farm/combine_harvester_a.tscn" id="16_nfvje"]
+[ext_resource type="PackedScene" uid="uid://be5wocjh28mxl" path="res://Scenes/FarmAssets/Quaternius/OpenBarn.tscn" id="17_nfvje"]
 
 [sub_resource type="StandardMaterial3D" id="mt_grass"]
 albedo_color = Color(0.33, 0.52, 0.23, 1)
@@ -59,6 +63,40 @@ instance_count = 16
 mesh = ExtResource("10_cabbage")
 buffer = PackedFloat32Array(2.2, 0, 0, 1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, 2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, 2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, 3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, 1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, 2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, 2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, 3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, 1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, 2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, 2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, 3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, 1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8, 2.2, 0, 0, 2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8, 2.2, 0, 0, 2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8, 2.2, 0, 0, 3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8)
 
+[sub_resource type="BoxShape3D" id="s_house"]
+size = Vector3(2.76, 2.24, 2.37)
+
+[sub_resource type="BoxShape3D" id="s_barn"]
+size = Vector3(2.86, 2.69, 2.73)
+
+[sub_resource type="CylinderShape3D" id="s_silo"]
+height = 2.91
+radius = 0.81
+
+[sub_resource type="CylinderShape3D" id="s_well"]
+height = 1.19
+radius = 0.42
+
+[sub_resource type="BoxShape3D" id="s_storage"]
+size = Vector3(1.2, 0.7, 1)
+
+[sub_resource type="BoxShape3D" id="s_side_barn"]
+size = Vector3(2.53, 1.81, 2.42)
+
+[sub_resource type="CylinderShape3D" id="s_windmill"]
+height = 4.5
+radius = 1.15
+
+[sub_resource type="CylinderShape3D" id="s_water_tower"]
+height = 2.2
+radius = 0.36
+
+[sub_resource type="BoxShape3D" id="s_open_barn"]
+size = Vector3(3.15, 2.38, 2.94)
+
+[sub_resource type="BoxShape3D" id="s_delivery_loading"]
+size = Vector3(2.4, 0.2, 3)
+
 [sub_resource type="BoxShape3D" id="s_click"]
 size = Vector3(9.2, 2.6, 8.4)
 
@@ -71,35 +109,42 @@ building_name = "Windmill Farm"
 job_capacity = 6
 
 [node name="Ground" type="MeshInstance3D" parent="." unique_id=1667693276]
-transform = Transform3D(14.762775, 0, 0, 0, 0.16, 0, 0, 0, 8.4, 0, -0.08, 0)
+transform = Transform3D(17.575, 0, 0, 0, 0.191, 0, 0, 0, 10, 0, -0.08, 0)
 material_override = SubResource("mt_grass")
 mesh = SubResource("m_box")
 
 [node name="Path" type="MeshInstance3D" parent="." unique_id=814400092]
-transform = Transform3D(1.1, 0, 0, 0, 0.05, 0, 0, 0, 4.35, -0.015056372, -0.022526346, -1.9404252)
+transform = Transform3D(1.1, 0, 0, 0, 0.05, 0, 0, 0, 4.35, -3.0439475, -0.022526346, -1.9404252)
 material_override = SubResource("mt_path")
 mesh = SubResource("m_box")
 
 [node name="Buildings" type="Node3D" parent="." unique_id=428045421]
 
+[node name="SmallBarnModel" parent="Buildings" unique_id=891288893 instance=ExtResource("3_smallbarn")]
+transform = Transform3D(-0.010890633, 0, -0.9999407, 0, 1, 0, 0.9999407, 0, -0.010890633, 6.507436, 0, 3.3676832)
+
 [node name="BigBarnModel" parent="Buildings" unique_id=549962428 instance=ExtResource("2_bigbarn")]
-transform = Transform3D(-0.011664174, 0, -0.33979985, 0, 0.34, 0, 0.33979985, 0, -0.011664174, 0.7388966, 0, 1.5551355)
+transform = Transform3D(-0.012150517, 0, 0.33978283, 0, 0.34000006, 0, -0.33978283, 0, -0.012150517, -5.819235, 0, 2.9365795)
 
 [node name="SiloModel" parent="Buildings" unique_id=991172482 instance=ExtResource("4_silo")]
-transform = Transform3D(0.008069542, 0, -0.31989825, 0, 0.32, 0, 0.31989825, 0, 0.008069542, -3.5425746, 0.02, 0.5834248)
+transform = Transform3D(0.18503292, 0, -0.2610801, 0, 0.31999996, 0, 0.2610801, 0, 0.18503292, -6.6300526, 0.02, 1.0009434)
+
+[node name="FarmTractorGreen" parent="Buildings" unique_id=1048305351 instance=ExtResource("4_aups6")]
+transform = Transform3D(-0.0102274865, 0, -0.9999478, 0, 1, 0, 0.9999478, 0, -0.0102274865, 1.8348162, 0.068537265, 3.131672)
 
 [node name="VariantDecor" type="Node3D" parent="." unique_id=111765743]
 
 [node name="WaterTowerModel" parent="VariantDecor" unique_id=433066012 instance=ExtResource("14_watertower")]
-transform = Transform3D(0.26, 0, 0, 0, 0.26, 0, 0, 0, 0.26, 6.5806394, 0.02, -3.797162)
+transform = Transform3D(-0.014735596, 0, -0.25958207, 0, 0.26, 0, 0.25958207, 0, -0.014735596, 7.978949, 0.02, -4.4415164)
 
 [node name="SideBarnModel" parent="VariantDecor" unique_id=1730661226 instance=ExtResource("12_barn")]
-transform = Transform3D(-0.0043195435, 0, 0.2999689, 0, 0.29999998, 0, -0.2999689, 0, -0.0043195435, -3.0765572, 0, 2.7323525)
+transform = Transform3D(-0.011380285, 0, 0.29978403, 0, 0.29999995, 0, -0.29978403, 0, -0.011380285, -5.952928, 0, -0.88300776)
 
 [node name="Fields" type="Node3D" parent="." unique_id=333459182]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.08636892, 0, 0)
 
 [node name="FieldWest" type="Node3D" parent="Fields" unique_id=420499292]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.4214706, 0, -3.5079904)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.0989113, 0, -3.7091084)
 
 [node name="FarmlandModel" type="MeshInstance3D" parent="Fields/FieldWest" unique_id=1091205674]
 transform = Transform3D(2.9, 0, 0, 0, 1, 0, 0, 0, 3.8, -2.3, 0, 1.6)
@@ -115,10 +160,10 @@ multimesh = SubResource("mm_west_carrots")
 multimesh = SubResource("mm_west_cabbage")
 
 [node name="FieldEast" type="Node3D" parent="Fields" unique_id=735316847]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.5079904)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.3851252, 0, -3.5610938)
 
 [node name="FarmlandModel" type="MeshInstance3D" parent="Fields/FieldEast" unique_id=1488055558]
-transform = Transform3D(2.9, 0, 0, 0, 1, 0, 0, 0, 3.8, 2.3, 0, 1.6)
+transform = Transform3D(2.9, 0, 0, 0, 1, 0, 0, 0, 3.8, 2.3, 0, 1.453083)
 mesh = ExtResource("7_farmland")
 
 [node name="CropStemInstances" type="MultiMeshInstance3D" parent="Fields/FieldEast" unique_id=112336689]
@@ -130,13 +175,29 @@ multimesh = SubResource("mm_east_carrots")
 [node name="CropLeafBInstances" type="MultiMeshInstance3D" parent="Fields/FieldEast" unique_id=298994894]
 multimesh = SubResource("mm_east_cabbage")
 
+[node name="FieldMiddle" type="Node3D" parent="Fields" unique_id=305582488]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.408667, 0, -3.6982932)
+
+[node name="FarmlandModel" type="MeshInstance3D" parent="Fields/FieldMiddle" unique_id=1661744941]
+transform = Transform3D(2.9, 0, 0, 0, 1, 0, 0, 0, 3.8, 2.3, 0, 1.6)
+mesh = ExtResource("7_farmland")
+
+[node name="CropStemInstances" type="MultiMeshInstance3D" parent="Fields/FieldMiddle" unique_id=1322233301]
+multimesh = SubResource("mm_east_wheat")
+
+[node name="CropLeafAInstances" type="MultiMeshInstance3D" parent="Fields/FieldMiddle" unique_id=1222013725]
+multimesh = SubResource("mm_east_carrots")
+
+[node name="CropLeafBInstances" type="MultiMeshInstance3D" parent="Fields/FieldMiddle" unique_id=1927498221]
+multimesh = SubResource("mm_east_cabbage")
+
 [node name="Fence" type="Node3D" parent="." unique_id=1984403890]
 
 [node name="BackFenceModel" parent="Fence" unique_id=1267928044 instance=ExtResource("6_fence")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -4.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -4.962292)
 
 [node name="EastFenceModel" parent="Fence" unique_id=366940272 instance=ExtResource("6_fence")]
-transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 7.325611, 0, -1.5751415)
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 8.699082, 0, -1.5751415)
 
 [node name="WestFenceModel" parent="Fence" unique_id=1293093616 instance=ExtResource("6_fence")]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -7.2812104, 0, -3.0523748)
@@ -145,19 +206,19 @@ transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -7.2
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.063738, 0, 4.2)
 
 [node name="FrontRightFenceModel" parent="Fence" unique_id=1479919849 instance=ExtResource("6_fence")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.4006066, 0, 4.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.4006066, 0, 4.8028007)
 
 [node name="SideGateModel" parent="Fence" unique_id=1388933753 instance=ExtResource("15_fence2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.0830321, 0, 4.2085633)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.0830321, 0, 4.8000417)
 
 [node name="EastFenceModel2" parent="Fence" unique_id=1915778539 instance=ExtResource("6_fence")]
-transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 7.324678, 0, -3.0478325)
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 8.715223, 0, -3.8591752)
 
 [node name="EastFenceModel3" parent="Fence" unique_id=824011173 instance=ExtResource("6_fence")]
-transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 7.3507447, 0, 0.75562406)
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 8.709459, 0, 0.75562406)
 
 [node name="EastFenceModel4" parent="Fence" unique_id=1953484671 instance=ExtResource("6_fence")]
-transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 7.345482, 0, 3.0531852)
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 8.691089, 0, 3.0531852)
 
 [node name="WestFenceModel2" parent="Fence" unique_id=2126301880 instance=ExtResource("6_fence")]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -7.2795362, 0, -0.74044347)
@@ -171,7 +232,7 @@ transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -7.2
 [node name="Props" type="Node3D" parent="." unique_id=946691504]
 
 [node name="WellModel" parent="Props" unique_id=584560012 instance=ExtResource("5_well")]
-transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, -6.7689567, 0, 3.663331)
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 7.8893647, 0, 0.159233)
 
 [node name="Pumpkins" type="Node3D" parent="Props" unique_id=1619069031]
 
@@ -186,6 +247,44 @@ mesh = ExtResource("11_pumpkin")
 [node name="PumpkinC" type="MeshInstance3D" parent="Props/Pumpkins" unique_id=1776059487]
 transform = Transform3D(1.8, 0, 0, 0, 1.8, 0, 0, 0, 1.8, 1.48, 0.03, -0.25)
 mesh = ExtResource("11_pumpkin")
+
+[node name="Obstacles" type="StaticBody3D" parent="."]
+
+[node name="HouseShape" type="CollisionShape3D" parent="Obstacles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5074296, 1.115068, 3.3683026)
+shape = SubResource("s_house")
+
+[node name="BarnShape" type="CollisionShape3D" parent="Obstacles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.8178973, 1.3393894, 2.9370465)
+shape = SubResource("s_barn")
+
+[node name="SiloShape" type="CollisionShape3D" parent="Obstacles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.6382065, 1.455158, 1.039485)
+shape = SubResource("s_silo")
+
+[node name="WellShape" type="CollisionShape3D" parent="Obstacles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8893647, 0.586076, 0.190502)
+shape = SubResource("s_well")
+
+[node name="StorageShape" type="CollisionShape3D" parent="Obstacles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0.35, -1.45)
+shape = SubResource("s_storage")
+
+[node name="SideBarnShape" type="CollisionShape3D" parent="Obstacles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.930545, 0.9018885, -0.883725)
+shape = SubResource("s_side_barn")
+
+[node name="WindmillShape" type="CollisionShape3D" parent="Obstacles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.8894005, 2.236574, -3.32912)
+shape = SubResource("s_windmill")
+
+[node name="WaterTowerShape" type="CollisionShape3D" parent="Obstacles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.977873, 1.09711, -4.4225626)
+shape = SubResource("s_water_tower")
+
+[node name="OpenBarnShape" type="CollisionShape3D" parent="Obstacles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.2803786, 1.1677635, 2.5410516)
+shape = SubResource("s_open_barn")
 
 [node name="ClickArea" type="Area3D" parent="." unique_id=1627996486]
 
@@ -202,5 +301,27 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.9, 0, 1.2)
 [node name="StoragePoint" type="Node3D" parent="." unique_id=2102548439]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0, -1.45)
 
+[node name="DeliveryLoadingDepot" type="Area3D" parent="." groups=["delivery_loading_depots"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 0.1, 5.8)
+collision_layer = 0
+collision_mask = 0
+monitoring = false
+monitorable = false
+
+[node name="ParkingPad" type="MeshInstance3D" parent="DeliveryLoadingDepot"]
+transform = Transform3D(1.2, 0, 0, 0, 0.03, 0, 0, 0, 1.5, 0, -0.08, 0)
+material_override = SubResource("mt_path")
+mesh = SubResource("m_box")
+
+[node name="ParkingArea" type="CollisionShape3D" parent="DeliveryLoadingDepot"]
+shape = SubResource("s_delivery_loading")
+disabled = true
+
 [node name="TowerWindmill" parent="." unique_id=250427632 instance=ExtResource("16_aups6")]
-transform = Transform3D(0.8768862, 0, 0.480698, 0, 1, 0, -0.480698, 0, 0.8768862, -6.146185, 0, 1.8216088)
+transform = Transform3D(0.2912699, 0, 0.95664096, 0, 1, 0, -0.95664096, 0, 0.2912699, -5.854806, 0, -3.32912)
+
+[node name="CombineHarvesterA" parent="." unique_id=562065996 instance=ExtResource("16_nfvje")]
+transform = Transform3D(-0.024571732, 0, 0.99969804, 0, 1, 0, -0.99969804, 0, -0.024571732, -3.0993066, 0, 1.8310609)
+
+[node name="OpenBarn" parent="." unique_id=1034248043 instance=ExtResource("17_nfvje")]
+transform = Transform3D(0.018778661, 0, -0.99982375, 0, 1, 0, 0.99982375, 0, 0.018778661, 2.2800722, -0.018576741, 2.524777)

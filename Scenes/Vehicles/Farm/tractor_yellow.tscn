@@ -1,7 +1,7 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://cnnfhcidqoedm"]
 
-[ext_resource type="Script" path="res://Simulation/Transport/VehicleAgent.gd" id="1_d3osa"]
-[ext_resource type="AudioStream" path="res://environment/audio/vehicles/engine.wav" id="2_o00os"]
+[ext_resource type="Script" uid="uid://cd1nnk30w7t4c" path="res://Simulation/Transport/VehicleAgent.gd" id="1_d3osa"]
+[ext_resource type="AudioStream" uid="uid://cb7wvsd6vygd3" path="res://environment/audio/vehicles/engine.wav" id="2_o00os"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_qxhvi"]
 size = Vector3(0.75780374, 0.93726134, 1.7543999)
@@ -316,6 +316,7 @@ damping_relaxation = 1.6
 transform = Transform3D(0.00233273, 0, 0, 0, 0.00233273, 0, 0, 0, 0.00233273, 3.5594635e-08, 0.075335756, 0.03202478)
 
 [node name="FarmTractorYellowVisual" type="Node3D" parent="VisualRoot" unique_id=2024740562]
+transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 0, 0, 0)
 
 [node name="Plane_BLACk_0" type="MeshInstance3D" parent="VisualRoot/FarmTractorYellowVisual" unique_id=1189513606]
 transform = Transform3D(1.7881392e-05, 2.6077037e-06, 100.00004, 4.533102, 99.89722, -3.4156055e-06, -99.8972, 4.5331025, 1.7744807e-05, 0, -8.426775, -8.147167)

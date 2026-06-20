@@ -38,6 +38,10 @@ const ITEMS: Dictionary = {
 const STOCK_TO_ITEM: Dictionary = {
 	"clothing": "clothing",
 	"grocery_bundle": "food",
+	"bread": "bread",
+	"drink": "drink",
+	"snack": "snack",
+	"meal": "meal",
 }
 
 
@@ -49,6 +53,8 @@ static func item_ids() -> Array:
 
 static func get_label(id: String) -> String:
 	var item: Dictionary = ITEMS.get(id, {})
+	if item.is_empty():
+		return id.replace("_", " ").capitalize()
 	return LocaleServiceScript.t(str(item.get("label_key", "")), str(item.get("label", id)))
 
 
