@@ -22,7 +22,22 @@ func _init() -> void:
 	var celestial_bodies := main.get_node_or_null("EnhancedSky/CelestialBodies") as CelestialBodies
 	var ocean := main.get_node_or_null("World/Ocean") as MeshInstance3D
 	if world == null or world_environment == null or directional_light == null or sky_bridge == null or sky_time_manager == null or celestial_bodies == null or ocean == null:
-		push_error("Sky probe missing required nodes")
+		var missing: Array[String] = []
+		if world == null:
+			missing.append("World")
+		if world_environment == null:
+			missing.append("EnhancedSky/WorldEnvironment")
+		if directional_light == null:
+			missing.append("EnhancedSky/DirectionalLight3D")
+		if sky_bridge == null:
+			missing.append("SkyBridge")
+		if sky_time_manager == null:
+			missing.append("EnhancedSky/SkyTimeManager")
+		if celestial_bodies == null:
+			missing.append("EnhancedSky/CelestialBodies")
+		if ocean == null:
+			missing.append("World/Ocean")
+		push_error("Sky probe missing required nodes: %s" % ", ".join(missing))
 		quit(1)
 		return
 
@@ -53,6 +68,4 @@ func _init() -> void:
 	await process_frame
 	print("SKY_PROBE resumed time_scale=", snapped(sky_time_manager.time_scale, 0.01), " current_day=", snapped(celestial_bodies.current_day, 0.01))
 
-	main.queue_free()
-	await process_frame
 	quit()

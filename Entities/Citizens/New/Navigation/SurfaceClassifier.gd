@@ -34,12 +34,31 @@ static func _is_park_blocker_name(name_lower: String, path_lower: String) -> boo
 	return name_lower.begins_with("park_wall") or path_lower.contains("/park_wall_")
 
 
+static func _is_non_walkable_building_collider(node: Node) -> bool:
+	var current: Node = node
+	var has_building_ancestor := false
+	while current != null:
+		var current_name := current.name.to_lower()
+		if current.is_in_group("walkable_surface") \
+				or current_name.begins_with("park_road"):
+			return false
+		if current_name.begins_with("park_wall"):
+			return true
+		if current.is_in_group("buildings"):
+			has_building_ancestor = true
+		current = current.get_parent()
+	return has_building_ancestor
+
+
 ## Walks the parent chain and returns the first match.
 ##
 ## Priority order matters — see inline comments.  In particular "pedestrian"
 ## must win over "crosswalk" for assets like `Road_straight_crossing` whose
 ## root name would otherwise false-match the crosswalk keyword.
 static func classify_node(node: Node) -> String:
+	if _is_non_walkable_building_collider(node):
+		return KIND_UNKNOWN
+
 	var current: Node = node
 	while current != null:
 		var current_path := ""

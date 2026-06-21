@@ -297,9 +297,8 @@ func _compute_building_spawn_preview(entrance_pos: Vector3, access_pos: Vector3)
 	else:
 		outward = outward.normalized()
 
-	var spawn_base := entrance_pos.lerp(access_pos, 0.55)
-	var spawn_pos := spawn_base + outward * 0.02
-	spawn_pos.y = spawn_base.y
+	var spawn_pos := access_pos + outward * 0.02
+	spawn_pos.y = access_pos.y
 	return spawn_pos
 
 func _draw_building_nav_triplet(

@@ -23,6 +23,7 @@ function Resolve-GodotConsoleExe {
 	}
 
 	$candidates = @(
+		"C:\dev\projects\Godot\Godot_v4.7-stable_win64\Godot_v4.7-stable_win64_console.exe",
 		"C:\dev\projects\Godot\Godot_v4.6.3-stable_win64\Godot_v4.6.3-stable_win64_console.exe",
 		"C:\dev\projects\Godot\Godot_v4.6.1-stable_win64\Godot_v4.6.1-stable_win64_console.exe",
 		"C:\dev\projects\Godot\Godot_v4.6.1-stable_win64.exe\Godot_v4.6.1-stable_win64_console.exe"
@@ -67,10 +68,14 @@ function Invoke-GodotScript {
 		[string]$ProjectPath,
 		[string]$ScriptPath,
 		[int]$TimeoutSec,
-		[bool]$UseVerbose
+		[bool]$UseVerbose,
+		[bool]$UseHeadless
 	)
 
-	$arguments = @("--headless")
+	$arguments = @()
+	if ($UseHeadless) {
+		$arguments += "--headless"
+	}
 	if ($UseVerbose) {
 		$arguments += "--verbose"
 	}
@@ -343,6 +348,12 @@ $availableTests = @(
 		Script = "res://tools/codex_building_entry_travel_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "entryregression"
+		Label = "Building Entry Regression"
+		Script = "res://tools/codex_building_entry_regression_test.gd"
+		TimeoutSec = 240
+	}
+	[pscustomobject]@{
 		Key = "selection"
 		Label = "Selection Hit Test"
 		Script = "res://tools/codex_selection_hit_test.gd"
@@ -398,6 +409,11 @@ $availableTests = @(
 		Script = "res://tools/codex_work_rules_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "travelsafety"
+		Label = "Travel Safety"
+		Script = "res://tools/codex_travel_safety_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "socialneed"
 		Label = "Social Need"
 		Script = "res://tools/codex_social_need_test.gd"
@@ -438,6 +454,7 @@ $availableTests = @(
 		Label = "Sky Probe"
 		Script = "res://tools/codex_sky_probe.gd"
 		Optional = $true
+		Headless = $false
 	}
 )
 
@@ -472,7 +489,11 @@ foreach ($test in $selectedTests) {
 	if ($TestTimeoutSec -gt 0 -and $null -ne $test.PSObject.Properties["TimeoutSec"]) {
 		$timeoutSec = [Math]::Max($TestTimeoutSec, [int]$test.TimeoutSec)
 	}
-	$result = Invoke-GodotScript -Executable $godotConsole -ProjectPath $projectPath -ScriptPath $test.Script -TimeoutSec $timeoutSec -UseVerbose:$VerboseGodot.IsPresent
+	$useHeadless = $true
+	if ($null -ne $test.PSObject.Properties["Headless"]) {
+		$useHeadless = [bool]$test.Headless
+	}
+	$result = Invoke-GodotScript -Executable $godotConsole -ProjectPath $projectPath -ScriptPath $test.Script -TimeoutSec $timeoutSec -UseVerbose:$VerboseGodot.IsPresent -UseHeadless:$useHeadless
 	$ok = (-not $result.TimedOut) -and ($result.ExitCode -eq 0) -and (Test-GodotOutputHealthy -OutputLines $result.Output)
 	$results.Add([pscustomobject]@{
 		Key = $test.Key

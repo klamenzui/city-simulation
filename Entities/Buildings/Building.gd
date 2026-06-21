@@ -2061,9 +2061,12 @@ func _compute_navigation_spawn_point(
 		outward = outward.normalized()
 
 	var lateral := Vector3(-outward.z, 0.0, outward.x)
-	var spawn_base := entrance_pos.lerp(access_pos, 0.55)
-	var spawn_pos := spawn_base + lateral * lateral_lane_offset + outward * 0.02
-	spawn_pos.y = spawn_base.y
+	# The pedestrian access point is the first position guaranteed to be on
+	# the sidewalk graph. Interpolating back toward the entrance can put the
+	# ground probe inside the building footprint and snap citizens onto roofs
+	# or foundations when they leave.
+	var spawn_pos := access_pos + lateral * lateral_lane_offset + outward * 0.02
+	spawn_pos.y = access_pos.y
 	return spawn_pos
 
 func get_navigation_debug_summary(world = null) -> String:

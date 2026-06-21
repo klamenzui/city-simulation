@@ -529,7 +529,14 @@ func _apply_citizen_crowd_push() -> void:
 
 	var radius_sq := crowd_push_radius * crowd_push_radius
 	var push := Vector3.ZERO
-	for node in tree.get_nodes_in_group("citizens"):
+	var candidates: Array = []
+	if _ctx != null:
+		var world_node := _ctx.get_world_node()
+		if world_node != null and world_node.has_method("get_crowd_push_candidates"):
+			candidates = world_node.get_crowd_push_candidates()
+	if candidates.is_empty():
+		candidates = tree.get_nodes_in_group("citizens")
+	for node in candidates:
 		if node == self or node is not Node3D:
 			continue
 		var other := node as Node3D

@@ -11,6 +11,7 @@ const FARM_VARIANT_REQUIRED_NODES := {
 		"VariantDecor/SideBarnModel",
 		"Fence/SideGateModel",
 		"TowerWindmill",
+		"Obstacles/GroundShape",
 	],
 	"res://Scenes/Farm_AnimalRanch.tscn": [
 		"AnimalArea/OpenBarnModel",

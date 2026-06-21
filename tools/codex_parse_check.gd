@@ -75,6 +75,15 @@ const RESOURCES := [
 	"res://tools/codex_locale_test.gd",
 ]
 
+const SCRIPT_ROOTS := [
+	"res://Actions",
+	"res://Entities",
+	"res://Scenes",
+	"res://Simulation",
+	"res://environment",
+	"res://tools",
+]
+
 const JSON_CONFIGS := [
 	"res://config/balance.json",
 	"res://config/city_districts.json",
@@ -87,10 +96,14 @@ const JSON_CONFIGS := [
 
 func _initialize() -> void:
 	var failed: Array[String] = []
-	for path in RESOURCES:
+	var checked_paths := _collect_checked_resource_paths(failed)
+	for path in checked_paths:
 		var resource := load(path)
 		if resource == null:
 			push_error("Failed to load %s" % path)
+			failed.append(path)
+		elif resource is GDScript and not (resource as GDScript).can_instantiate():
+			push_error("Script cannot instantiate %s" % path)
 			failed.append(path)
 	for config_path in JSON_CONFIGS:
 		var config_text := FileAccess.get_file_as_string(config_path)
@@ -103,8 +116,50 @@ func _initialize() -> void:
 			push_error("Invalid JSON in %s" % config_path)
 			failed.append(config_path)
 	if failed.is_empty():
-		print("Parse check OK (%d resources, %d json configs)." % [RESOURCES.size(), JSON_CONFIGS.size()])
+		print("Parse check OK (%d resources/scripts, %d json configs)." % [
+			checked_paths.size(),
+			JSON_CONFIGS.size(),
+		])
 		quit(0)
 		return
 	print("Parse check failed: %s" % ", ".join(failed))
 	quit(1)
+
+
+func _collect_checked_resource_paths(failed: Array[String]) -> Array[String]:
+	var unique: Dictionary = {}
+	for path in RESOURCES:
+		unique[path] = true
+	unique["res://main.gd"] = true
+	for root_path in SCRIPT_ROOTS:
+		_collect_gdscript_paths(root_path, unique, failed)
+	var paths: Array[String] = []
+	for path in unique.keys():
+		paths.append(str(path))
+	paths.sort()
+	return paths
+
+
+func _collect_gdscript_paths(
+		dir_path: String,
+		out: Dictionary,
+		failed: Array[String]
+) -> void:
+	var dir := DirAccess.open(dir_path)
+	if dir == null:
+		push_error("Failed to scan script directory %s" % dir_path)
+		failed.append(dir_path)
+		return
+	dir.list_dir_begin()
+	while true:
+		var name := dir.get_next()
+		if name.is_empty():
+			break
+		if name.begins_with("."):
+			continue
+		var path := dir_path.path_join(name)
+		if dir.current_is_dir():
+			_collect_gdscript_paths(path, out, failed)
+		elif name.ends_with(".gd"):
+			out[path] = true
+	dir.list_dir_end()

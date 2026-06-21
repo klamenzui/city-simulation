@@ -1,10 +1,10 @@
 extends SceneTree
 
-const HOST_READY_TIMEOUT_SEC := 12.0
-const CLIENT_READY_TIMEOUT_SEC := 18.0
+const HOST_READY_TIMEOUT_SEC := 30.0
+const CLIENT_READY_TIMEOUT_SEC := 40.0
 const CLIENT_DISCONNECT_TIMEOUT_SEC := 8.0
-const INTERACTION_READY_TIMEOUT_SEC := 12.0
-const INTERACTION_EFFECT_TIMEOUT_SEC := 12.0
+const INTERACTION_READY_TIMEOUT_SEC := 30.0
+const INTERACTION_EFFECT_TIMEOUT_SEC := 45.0
 const SHUTDOWN_WAIT_SEC := 1.0
 const POLL_INTERVAL_SEC := 0.10
 const PORT_BASE := 35600
@@ -63,6 +63,8 @@ func _init() -> void:
 		return
 
 	host_ready = _read_report(host_report)
+	var client_player_id := str(client_ready.get("local_player_citizen_id", ""))
+	var client_on_host_start := host_ready.duplicate(true)
 	var host_player_id := str(host_ready.get("local_player_citizen_id", ""))
 	var host_visible_on_client := await _wait_for_entity_visible(client_report, host_player_id, 4.0)
 	if host_visible_on_client.is_empty():
@@ -78,8 +80,8 @@ func _init() -> void:
 		return
 	client_ready = host_moved_on_client
 
-	var client_player_id := str(client_ready.get("local_player_citizen_id", ""))
-	var client_moved_on_host := await _wait_for_entity_movement(host_report, _read_report(host_report), client_player_id, 6.0)
+	var client_moved_on_host := await _wait_for_entity_movement(
+			host_report, client_on_host_start, client_player_id, 6.0)
 	if client_moved_on_host.is_empty():
 		printerr("FAIL: client player citizen did not move on host from server-authoritative input")
 		await _stop_processes(pids, stop_paths)

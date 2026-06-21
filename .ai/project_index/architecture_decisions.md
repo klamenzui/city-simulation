@@ -12,6 +12,7 @@ Purpose: compact decisions that should be checked before architectural edits.
 - Use Qdrant for short searchable facts, not full files.
 - Use Obsidian for narrative decisions and architecture notes. Do not duplicate all project index data there.
 - Use `C:\dev\projects\ai_brain\30_Projects\Godot City Sim` as the Obsidian project-memory folder.
+- Store project-side runtime and test logs under `res://logs/`; use `user://logs/` only as the write fallback. Do not create log files in the project root.
 
 ## Citizen Ownership Rules
 
@@ -33,6 +34,9 @@ Purpose: compact decisions that should be checked before architectural edits.
 - Citizens should use pedestrian routing and crosswalk-aware transitions, not general road-surface routing.
 - Surface classification and local perception should be allocation-conscious because they run frequently.
 - Building travel treats Citizens already inside direct planar arrival tolerance of a building access point as arrived. Do not emit route failures for sub-meter entrance hops; keep this limited to building destinations.
+- Normal building entry/exit spawns use the pedestrian graph access point, then require projection onto a walkable navigation surface. Do not interpolate spawn positions back into the building footprint.
+- A collider below a `Building` ancestor is non-walkable unless an explicit `walkable_surface` or park-road ancestor overrides it. Container paths such as `/only_people_nav/` are not sufficient evidence for roofs, foundations, or blockers.
+- Long building travel uses no-progress/repath watchdogs and explicit abort reasons. Critical health, hunger, or energy may interrupt non-player travel when the current target cannot resolve that need.
 
 ## Economy Ownership Rules
 
@@ -83,6 +87,7 @@ Purpose: compact decisions that should be checked before architectural edits.
 - Clients receive snapshots and may send command dictionaries; command execution must be validated on the host/server.
 - Client-owned player replicas may use local prediction, but authoritative snapshots should reconcile softly and avoid hard per-snapshot correction unless drift is large.
 - Server-authorized Citizen interactions must not depend only on a stale approach point; live direct range to moving Citizen targets can complete the interaction.
+- Every manually or network-controlled Citizen is forced into LOD focus. Remote players must never lose physics or visibility because only the local host player was considered relevant.
 
 ## Camera Ownership Rules
 

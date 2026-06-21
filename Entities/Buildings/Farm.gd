@@ -66,6 +66,7 @@ var _delivery_phase: String = DELIVERY_PHASE_NONE
 var _delivery_quantity: int = 0
 var _delivery_minutes_left: int = 0
 var _delivery_vehicle = null
+var _delivery_vehicle_unavailable_logged: bool = false
 var _delivery_depot_parking_position: Vector3 = Vector3.INF
 var _delivery_depot_road_access_position: Vector3 = Vector3.INF
 var _delivery_parking_spot: VehicleParkingSpot = null
@@ -893,8 +894,11 @@ func _ensure_delivery_vehicle(world: World) -> bool:
 		return true
 	var vehicle := VehicleDepotAccessScript.find_available_delivery_vehicle(self, world)
 	if vehicle == null:
-		push_warning("Farm: No free delivery vehicle available at depot.")
+		if not _delivery_vehicle_unavailable_logged:
+			SimLogger.log("[Farm %s] No free delivery vehicle available at depot." % get_display_name())
+			_delivery_vehicle_unavailable_logged = true
 		return false
+	_delivery_vehicle_unavailable_logged = false
 	_delivery_vehicle = vehicle
 	_delivery_vehicle.add_to_group(VehicleDepotAccessScript.DELIVERY_VEHICLE_ASSIGNED_GROUP)
 	if world != null and world.has_method("register_vehicle"):

@@ -2168,7 +2168,7 @@ func enter_building(building: Building, world: Node = null, emit_log: bool = tru
 		_sim.location.clear_inside_building()
 	else:
 		if nav_points.has("spawn"):
-			_set_position_grounded(nav_points["spawn"] as Vector3)
+			_set_position_grounded(nav_points["spawn"] as Vector3, true)
 		_sim.location.set_inside_building(building)
 	if not skip_occupancy_callback and building.has_method("on_citizen_entered"):
 		# Use dynamic call() to bypass the legacy `Citizen` typed parameter on
@@ -2252,7 +2252,7 @@ func leave_current_location(world: Node = null, emit_log: bool = true) -> void:
 	var exit_pos: Vector3 = nav_points.get("spawn",
 			nav_points.get("access", global_position)) as Vector3
 	if is_outdoor:
-		_set_position_grounded(exit_pos)
+		_set_position_grounded(exit_pos, true)
 	current_location = null
 	if exit_building.has_method("on_citizen_exited"):
 		exit_building.call("on_citizen_exited", self)
@@ -2280,7 +2280,7 @@ func exit_current_building(world: Node = null) -> void:
 	if exit_building.has_method("on_citizen_exited"):
 		exit_building.call("on_citizen_exited", self)
 	_set_interior_presence(false)
-	_set_position_grounded(exit_pos)
+	_set_position_grounded(exit_pos, true)
 	if SimLoggerScript != null:
 		SimLoggerScript.log("[Citizen %s] Exited %s at %s" % [
 				_get_log_name(),
@@ -2308,11 +2308,12 @@ func _set_interior_presence(hidden: bool) -> void:
 	_apply_combined_presence_state()
 
 
-func _set_position_grounded(pos: Vector3) -> void:
+func _set_position_grounded(pos: Vector3, require_walkable_surface: bool = false) -> void:
 	# Keep teleports/exits on the walkable floor; otherwise failed short
 	# routes can leave the body falling in place at building entrances.
 	if is_inside_tree():
-		global_position = _project_navigation_target_to_ground(pos)
+		global_position = _resolve_navigation_target(pos) \
+				if require_walkable_surface else _project_navigation_target_to_ground(pos)
 	else:
 		global_position = pos
 	velocity = Vector3.ZERO

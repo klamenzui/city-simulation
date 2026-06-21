@@ -567,7 +567,8 @@ func _build_existing_farm_environment() -> void:
 func _build_environment_collisions() -> void:
 	if _farm_environment == null:
 		return
-	_add_static_collision_for_visual(_farm_environment.get_node_or_null("Ground") as Node3D, "GroundCollision", 0.0)
+	if _farm_environment.get_node_or_null("Obstacles/GroundShape") == null:
+		_add_static_collision_for_visual(_farm_environment.get_node_or_null("Ground") as Node3D, "GroundCollision", 0.0)
 	for node_path in [
 		"Buildings/BigBarnModel",
 		"Buildings/SiloModel",

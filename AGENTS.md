@@ -24,7 +24,7 @@ Save tokens, avoid duplicated logic, remove unused files/methods when proven saf
 
 ## Project Context
 
-- This is a Godot 4.6.1 or later city simulation project.
+- This is a Godot 4.7 or later city simulation project.
 - Use typed GDScript wherever practical.
 - Do not load unnecessary context.
 - Do not improvise whole-project PowerShell or `rg` scans when a project script can answer the question.

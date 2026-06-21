@@ -59,6 +59,7 @@ var _simulation_tick_counter: int = 0
 var _focus_citizens: Array[Citizen] = []
 var _active_citizens: Array[Citizen] = []
 var _coarse_citizens: Array[Citizen] = []
+var _physics_citizens: Array[Citizen] = []
 var _coarse_schedule: Dictionary = {}
 var _citizen_last_sim_tick_minute: Dictionary = {}
 var _cached_city_bench_nodes: Array[Node3D] = []
@@ -535,6 +536,9 @@ func _register_citizen_lod_state(citizen: Citizen) -> void:
 	var bucket := _get_citizen_bucket_for_tier(tier)
 	if not bucket.has(citizen):
 		bucket.append(citizen)
+	if tier == "focus" or tier == "active":
+		if not _physics_citizens.has(citizen):
+			_physics_citizens.append(citizen)
 	if tier != "coarse":
 		return
 	var interval_ticks := _get_citizen_simulation_interval_ticks(citizen)
@@ -552,6 +556,7 @@ func _unregister_citizen_lod_state(citizen: Citizen) -> void:
 	_focus_citizens.erase(citizen)
 	_active_citizens.erase(citizen)
 	_coarse_citizens.erase(citizen)
+	_physics_citizens.erase(citizen)
 	var interval_keys: Array = _coarse_schedule.keys()
 	for interval_key in interval_keys:
 		var slots: Variant = _coarse_schedule.get(interval_key, {})
@@ -1069,6 +1074,11 @@ func get_population_refill_pending_count() -> int:
 
 func get_active_citizen_count() -> int:
 	return _count_active_citizens()
+
+
+func get_crowd_push_candidates() -> Array[Citizen]:
+	return _physics_citizens
+
 
 func get_total_deaths() -> int:
 	return _total_deaths

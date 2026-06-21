@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ccrbfjo2mg4rj"
-path.s3tc="res://.godot/imported/Palette_Green.png-00da66b3b66de6a2131ec4352603e9be.s3tc.ctex"
+path.s3tc="res://.godot/imported/Palette_Green.png-c750714aa06be955aa714f48acacd49f.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://ImportedCitySource/assets/vehicles/Textures/Palette_Green.png"
-dest_files=["res://.godot/imported/Palette_Green.png-00da66b3b66de6a2131ec4352603e9be.s3tc.ctex"]
+source_file="res://ImportedCitySource/assets/vehicles/textures/Palette_Green.png"
+dest_files=["res://.godot/imported/Palette_Green.png-c750714aa06be955aa714f48acacd49f.s3tc.ctex"]
 
 [params]
 

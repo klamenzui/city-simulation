@@ -183,6 +183,7 @@ Headless probes, parse checks, audits, and regression tests.
 | Path | class_name | extends |
 | --- | --- | --- |
 | tools/codex_adapt_citypack_vehicles.gd | - | SceneTree |
+| tools/codex_building_entry_regression_test.gd | - | SceneTree |
 | tools/codex_building_entry_travel_test.gd | - | SceneTree |
 | tools/codex_building_occupancy_test.gd | - | SceneTree, RefCounted, RefCounted, RefCounted, RefCounted |
 | tools/codex_church_scene_probe.gd | - | SceneTree |
@@ -216,4 +217,3 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_multiplayer_host_connect_test.gd | - | SceneTree |
 | tools/codex_multiplayer_process_probe.gd | - | SceneTree |
 | tools/codex_multiplayer_two_process_test.gd | - | SceneTree |
-| tools/codex_navigation_edge_step_test.gd | - | SceneTree |

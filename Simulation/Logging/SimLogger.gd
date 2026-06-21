@@ -1,10 +1,10 @@
 extends RefCounted
 class_name SimLogger
 
-const PROJECT_LOG_PATH := "res://logs.log"
-const FALLBACK_LOG_PATH := "user://logs.log"
-const PROJECT_AI_LOG_PATH := "res://ai.log"
-const FALLBACK_AI_LOG_PATH := "user://ai.log"
+const PROJECT_LOG_PATH := "res://logs/logs.log"
+const FALLBACK_LOG_PATH := "user://logs/logs.log"
+const PROJECT_AI_LOG_PATH := "res://logs/ai.log"
+const FALLBACK_AI_LOG_PATH := "user://logs/ai.log"
 const LOG_SUFFIX_ENV := "CITY_SIM_LOG_SUFFIX"
 
 static var _log_path: String = PROJECT_LOG_PATH
@@ -44,7 +44,7 @@ static func get_ai_log_path() -> String:
 	return ProjectSettings.globalize_path(_ai_log_path)
 
 static func _resolve_log_path(preferred_path: String, fallback_path: String) -> String:
-	var project_file := FileAccess.open(preferred_path, FileAccess.WRITE)
+	var project_file := _open_for_write(preferred_path)
 	if project_file != null:
 		project_file.close()
 		return preferred_path
@@ -74,7 +74,7 @@ static func _sanitize_log_suffix(raw_suffix: String) -> String:
 	return suffix.left(64)
 
 static func _initialize_log_file(path: String, title: String, absolute_path: String) -> FileAccess:
-	var file := FileAccess.open(path, FileAccess.WRITE)
+	var file := _open_for_write(path)
 	if file == null:
 		return null
 	file.store_string("=== %s ===\n" % title)
@@ -83,6 +83,16 @@ static func _initialize_log_file(path: String, title: String, absolute_path: Str
 	file.store_string("Path: %s\n\n" % absolute_path)
 	file.flush()
 	return file
+
+static func _open_for_write(path: String) -> FileAccess:
+	var directory_path := path.get_base_dir()
+	if not directory_path.is_empty():
+		var directory_error := DirAccess.make_dir_recursive_absolute(
+			ProjectSettings.globalize_path(directory_path)
+		)
+		if directory_error != OK and directory_error != ERR_ALREADY_EXISTS:
+			return null
+	return FileAccess.open(path, FileAccess.WRITE)
 
 static func _write_message(path: String, message: String) -> void:
 	if _mirror_to_stdout:

@@ -192,7 +192,7 @@ Ingame:
 Es gibt zwei wichtige Debug-Kanaele:
 
 - Visuell in der Szene: Pfadlinien, Gebaeude-Navigation, Entrance/Access/Spawn-Marker fuer ausgewaehlte Entities
-- Datei-Logs: `logs.log` im Projekt-Root
+- Datei-Logs: `logs/logs.log` und `logs/ai.log`
 
 Die Logdatei enthaelt unter anderem:
 
@@ -307,7 +307,8 @@ Ausfuehrliche Beschreibung, Parameter und direkte Nutzung von `run_tests.ps1` st
 
 ## Wichtige Runtime-Dateien
 
-- `logs.log`: aktuelle Simulationslogs
+- `logs/logs.log`: aktuelle Simulationslogs
+- `logs/ai.log`: aktuelle KI- und Dialoglogs
 - `TESTING.md`: Testdokumentation
 - Analyse-Dokument im Projekt-Root: bisherige Problem-/Fix-Notizen
 

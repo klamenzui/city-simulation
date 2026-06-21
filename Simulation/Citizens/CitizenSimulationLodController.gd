@@ -74,6 +74,12 @@ func _apply_lod_tiers() -> void:
 			citizen.clear_expired_lod_commitments(world)
 		if citizen.has_method("is_safe_home_rotation_candidate"):
 			citizen.is_safe_home_rotation_candidate(world)
+		var is_manual_player := citizen.has_method("is_manual_control_enabled") \
+				and citizen.is_manual_control_enabled()
+		var is_network_player := citizen.has_method("is_network_manual_controlled") \
+				and citizen.is_network_manual_controlled()
+		if is_manual_player or is_network_player:
+			forced_focus[citizen.get_instance_id()] = true
 		scored.append({
 			"citizen": citizen,
 			"score": _score_citizen(citizen, relevance_context, selected_citizen, player_avatar)

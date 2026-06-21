@@ -33,7 +33,7 @@ nachweislich sicher.
    pflegen.
 
 ## Projektkontext
-- Godot 4.6.1+ City-Simulation. Typed GDScript wo praktikabel.
+- Godot 4.7+ City-Simulation. Typed GDScript wo praktikabel.
 - Keinen unnötigen Kontext laden.
 - Systeme getrennt halten: Simulation, Economy, Navigation, Citizens, UI,
   Logging und Tooling dürfen nicht ineinander bluten.

@@ -24,7 +24,6 @@ Purpose: likely duplication areas to inspect before adding new code.
 | fence_end | 2 | Scenes/Environment/CityProps/CityPack/fence_end.tscn<br>Scenes/Environment/CityProps/fence_end.tscn |
 | hospital | 2 | Entities/Buildings/Hospital.gd<br>Scenes/CityBuildings/services/Hospital.tscn |
 | main | 2 | main.gd<br>Main.tscn |
-| new_array_mesh | 2 | Scenes/Plants/new_array_mesh.tres<br>Simulation/Bootstrap/new_array_mesh.tres |
 | plant | 2 | ImportedCitySource/Plant.tscn<br>ImportedCitySource/scripts/plant/plant.gd |
 | retailworksortminigame | 2 | Scenes/Minigames/RetailWorkSort/RetailWorkSortMinigame.gd<br>Scenes/Minigames/RetailWorkSort/RetailWorkSortMinigame.tscn |
 | serviceflowminigame | 2 | Scenes/Minigames/ServiceFlow/ServiceFlowMinigame.gd<br>Scenes/Minigames/ServiceFlow/ServiceFlowMinigame.tscn |

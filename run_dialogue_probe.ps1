@@ -24,6 +24,7 @@ function Resolve-GodotConsoleExe {
 	}
 
 	$candidates = @(
+		"C:\dev\projects\Godot\Godot_v4.7-stable_win64\Godot_v4.7-stable_win64_console.exe",
 		"C:\dev\projects\Godot\Godot_v4.6.1-stable_win64\Godot_v4.6.1-stable_win64_console.exe",
 		"C:\dev\projects\Godot\Godot_v4.6.1-stable_win64.exe\Godot_v4.6.1-stable_win64_console.exe"
 	)
@@ -89,7 +90,7 @@ if ($stderr) {
 	$stderr -split "`r?`n" | Where-Object { $_ -ne "" } | ForEach-Object { Write-Host $_ }
 }
 
-$aiLogPath = Join-Path $projectPath "ai.log"
+$aiLogPath = Join-Path $projectPath "logs\ai.log"
 if (Test-Path $aiLogPath) {
 	Write-Host ""
 	Write-Host "AI log tail ($AiTail lines)"

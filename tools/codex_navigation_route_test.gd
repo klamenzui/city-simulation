@@ -10,7 +10,7 @@ extends SceneTree
 ## CoordinatePickerController). They represent a real-world route on the
 ## current map that includes:
 ##   - park-side walkway start (Z ≈ 18.65)
-##   - crosswalk transit at ≈ Vector3(18.87, 0.16, 17.78)
+##   - crosswalk transit at ≈ Vector3(12.13, 0.00, 9.86)
 ##   - building target on the south side
 ##
 ## Pass criteria are derived from the live citizen.log baseline (52 s,
@@ -27,7 +27,7 @@ const INDICATOR_WAYPOINTS: Array[Dictionary] = [
 	# Mid-walkway alongside the park, near start.
 	{"label": "park-walk midpoint", "pos": Vector3(11.45, 0.16, 18.65), "expect_within": 0.6},
 	# Crosswalk transit point.
-	{"label": "crosswalk transit", "pos": Vector3(18.87, 0.16, 17.78), "expect_within": 1.0},
+	{"label": "crosswalk transit", "pos": Vector3(12.13, 0.00, 9.86), "expect_within": 1.0},
 ]
 const POSITION_SAMPLE_INTERVAL_FRAMES: int = 4  # ~15 Hz at 60 Hz physics
 

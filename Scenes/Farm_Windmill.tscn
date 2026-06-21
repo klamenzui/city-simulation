@@ -66,6 +66,9 @@ buffer = PackedFloat32Array(2.2, 0, 0, 1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.
 [sub_resource type="BoxShape3D" id="s_house"]
 size = Vector3(2.76, 2.24, 2.37)
 
+[sub_resource type="BoxShape3D" id="s_ground"]
+size = Vector3(17.575, 0.2, 10)
+
 [sub_resource type="BoxShape3D" id="s_barn"]
 size = Vector3(2.86, 2.69, 2.73)
 
@@ -249,6 +252,10 @@ transform = Transform3D(1.8, 0, 0, 0, 1.8, 0, 0, 0, 1.8, 1.48, 0.03, -0.25)
 mesh = ExtResource("11_pumpkin")
 
 [node name="Obstacles" type="StaticBody3D" parent="."]
+
+[node name="GroundShape" type="CollisionShape3D" parent="Obstacles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.08, 0)
+shape = SubResource("s_ground")
 
 [node name="HouseShape" type="CollisionShape3D" parent="Obstacles"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5074296, 1.115068, 3.3683026)

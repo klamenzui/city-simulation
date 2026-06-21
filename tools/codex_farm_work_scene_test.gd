@@ -64,6 +64,8 @@ func _initialize() -> void:
 	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/Buildings/SiloModel") != null, "FarmWorkScene should reuse the existing silo", failures)
 	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/TowerWindmill") != null, "FarmWorkScene should reuse the existing tower windmill", failures)
 	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldWest/FarmlandModel") != null, "FarmWorkScene should reuse the existing west field", failures)
+	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/Obstacles/GroundShape") != null, "FarmWorkScene should reuse the Windmill Farm ground collider", failures)
+	_expect(game.get_node_or_null("WindmillFarm3D/GroundCollision") == null, "FarmWorkScene should not duplicate the Windmill Farm ground collider", failures)
 	_expect(game.get_node_or_null("WindmillFarm3D/MainPath") == null, "FarmWorkScene should not generate a primitive replacement path", failures)
 	_expect(game.get_node_or_null("WindmillFarm3D/FenceBack") == null, "FarmWorkScene should not generate replacement fences", failures)
 	for interactable_id in ["field_wheat", "field_corn", "barn", "shed", "silo", "windmill", "machine_yard", "gate"]:
@@ -199,6 +201,13 @@ func _initialize() -> void:
 	_expect(mounted_scene != null and mounted_scene.get_parent() == mounted_viewport, "FarmWorkScene should be a child of the work viewport", failures)
 	if mounted_viewport is SubViewport:
 		_expect((mounted_viewport as SubViewport).world_3d != root.get_world_3d(), "FarmWorkScene viewport should not share the city World3D", failures)
+	var mounted_player := mounted_scene.get_node_or_null("WindmillFarm3D/Player") as CharacterBody3D if mounted_scene != null else null
+	_expect(mounted_player != null, "mounted FarmWorkScene should create its player", failures)
+	if mounted_player != null:
+		for frame in range(30):
+			await physics_frame
+		_expect(mounted_player.global_position.y > -0.5, "FarmWorkScene player should remain above the farm ground", failures)
+		_expect(mounted_player.is_on_floor(), "FarmWorkScene player should settle on the farm ground", failures)
 	if mounted_scene != null and mounted_scene.has_method("finish_session"):
 		mounted_scene.call("finish_session")
 	await process_frame

@@ -20,6 +20,7 @@ function Resolve-GodotConsoleExe {
 	}
 
 	$candidates = @(
+		"C:\dev\projects\Godot\Godot_v4.7-stable_win64\Godot_v4.7-stable_win64_console.exe",
 		"C:\dev\projects\Godot\Godot_v4.6.1-stable_win64\Godot_v4.6.1-stable_win64_console.exe",
 		"C:\dev\projects\Godot\Godot_v4.6.1-stable_win64.exe\Godot_v4.6.1-stable_win64_console.exe"
 	)

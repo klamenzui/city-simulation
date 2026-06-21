@@ -11,9 +11,8 @@ extends SceneTree
 ##      whether the method exists.
 ##   3. Produces a present/missing report.
 ##
-## **Soft-fail behaviour**: this test exits 0 even when methods are missing.
-## This remains a tracker rather than a wall because inherited engine methods
-## are not visible through this source-only scan.
+## Engine-provided methods are listed explicitly because GDScript's
+## `get_script_method_list()` only reports script methods.
 ##
 ## A method goes from "missing" to "present" by either:
 ##   - implementing it on `Citizen` (forwards to a Sim component), or
@@ -38,6 +37,11 @@ const INTENTIONALLY_MISSING: Dictionary = {
 	"get_debug_source_building": "Building-Discovery refactor pending",
 	"reset_travel_debug_state": "travel-debug-state pending",
 }
+
+const ENGINE_PROVIDED_METHODS: Array[String] = [
+	"is_on_floor",
+	"is_processing_physics",
+]
 
 
 func _init() -> void:
@@ -84,10 +88,8 @@ func _init() -> void:
 	for m in missing_unintentional:
 		printerr("  MISS  %s" % m)
 	print()
-	# Soft-fail: print the list but exit 0 so the suite stays green during
-	# migration. Flip to `quit(1)` when migration is complete.
-	print("RESULT: PASS (soft — see misses above)")
-	quit(0)
+	print("RESULT: FAIL")
+	quit(1)
 
 
 func _scan_callers_for_has_method() -> Array[String]:
@@ -139,4 +141,6 @@ func _collect_facade_methods() -> Dictionary:
 			methods[str(m.get("name", ""))] = true
 		var base = script.get_base_script()
 		script = base if base is GDScript else null
+	for method_name in ENGINE_PROVIDED_METHODS:
+		methods[method_name] = true
 	return methods

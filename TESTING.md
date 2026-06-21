@@ -9,13 +9,14 @@ Dieses Projekt hat drei kleine PowerShell-Runner fuer die wichtigsten Headless-G
 
 Standardpfade, die der Runner automatisch probiert:
 
+- `C:\dev\projects\Godot\Godot_v4.7-stable_win64\Godot_v4.7-stable_win64_console.exe`
 - `C:\dev\projects\Godot\Godot_v4.6.1-stable_win64\Godot_v4.6.1-stable_win64_console.exe`
 - `C:\dev\projects\Godot\Godot_v4.6.1-stable_win64.exe\Godot_v4.6.1-stable_win64_console.exe`
 
 Optional kannst du Godot explizit setzen:
 
 ```powershell
-$env:GODOT_CONSOLE_EXE = "C:\path\to\Godot_v4.6.1-stable_win64_console.exe"
+$env:GODOT_CONSOLE_EXE = "C:\dev\projects\Godot\Godot_v4.7-stable_win64\Godot_v4.7-stable_win64_console.exe"
 ```
 
 ## Schnelltest
@@ -77,6 +78,8 @@ powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\r
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only farm_live_delivery
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only first_day_delivery
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only workrules
+powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only travelsafety
+powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only entryregression
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only route,crosswalk
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only mp2process
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -IncludeSky
@@ -86,7 +89,7 @@ powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\r
 
 Optionale Parameter:
 
-- `-GodotExe "C:\path\to\Godot_v4.6.1-stable_win64_console.exe"`
+- `-GodotExe "C:\path\to\Godot_v4.7-stable_win64_console.exe"`
 - `-Only parse,economy,route,crosswalk,sky`
 - `-Only parse,economy,occupancy,route,crosswalk,sky`
 - `-TestTimeoutSec 180` setzt den Standard-Timeout pro Godot-Test; `0` deaktiviert den Timeout
@@ -96,7 +99,7 @@ Optionale Parameter:
 
 `run_tests.ps1` beendet haengende Godot-Prozesse nach dem Timeout und markiert den Test als `FAIL`.
 Einige laengere Tests haben einen eigenen hoeheren Timeout im Runner.
-Headless-Tests schreiben ihre Session-Logs in `logs_test_*.log` und `ai_test_*.log`, damit eine laufende Editor-Session nicht ueberschrieben wird.
+Headless-Tests schreiben ihre Session-Logs in `logs/logs_test_*.log` und `logs/ai_test_*.log`, damit eine laufende Editor-Session nicht ueberschrieben wird.
 
 ## Erwartete Ausgabe
 
@@ -123,7 +126,9 @@ Wenn ein Check fehlschlaegt, beendet sich der Runner mit Exit-Code `1`.
 - `tools/codex_factory_delivery_test.gd`: Factory-Fahrer-Lieferung per Truck zu Shop-/Retail-Bestand
 - `tools/codex_first_day_delivery_seed_test.gd`: Startwelt hat Farm-Lagerbestand, Fahrer, Supermarkt-Bedarf und erreichbare LKW-Route
 - `tools/codex_work_rules_test.gd`: gemeinsame Arbeitsplanungsregeln inklusive krankheitsbedingtem Work-Skip
+- `tools/codex_travel_safety_test.gd`: No-Progress-Watchdog und Survival-Unterbrechung laufender Reisen
 - `tools/codex_building_occupancy_test.gd`: Besucher-/Worker-Zaehlung in Gebaeuden
+- `tools/codex_building_entry_regression_test.gd`: Hospital-zu-naechstem-Residential-01-Arrival-Regression
 - `tools/codex_multiplayer_two_process_test.gd`: echter Host/Client-Zwei-Prozess-Smoke
 - `tools/codex_route_probe.gd`: Pfad-/Crosswalk-Probes
 - `tools/codex_crosswalk_audit.gd`: Graph-Audit fuer Strassenquerungen

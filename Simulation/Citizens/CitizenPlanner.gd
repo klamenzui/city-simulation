@@ -95,6 +95,32 @@ var _goal_cooldown_until: Dictionary = {}
 var _emotion_enabled: bool = BalanceConfig.get_bool("planner.emotion.enabled", true)
 var _emotion_cfg: Dictionary = BalanceConfig.get_section("planner.emotion")
 
+
+func get_travel_interrupt_reason(citizen, target: Building) -> String:
+	if citizen == null or not "needs" in citizen or citizen.needs == null:
+		return ""
+	if citizen.needs.health <= _critical_health:
+		return "" if target is Hospital else "critical_health"
+	if citizen.needs.hunger >= _critical_hunger:
+		return "" if _travel_target_can_resolve_hunger(citizen, target) else "critical_hunger"
+	if citizen.needs.energy <= _critical_energy:
+		var home: Building = citizen.home if "home" in citizen else null
+		return "" if target == home and home != null else "critical_energy"
+	return ""
+
+
+func _travel_target_can_resolve_hunger(citizen, target: Building) -> bool:
+	if target == null:
+		return false
+	if target is Restaurant or target is Cafe or target is Supermarket:
+		return true
+	if not "home" in citizen or target != citizen.home:
+		return false
+	if not citizen.has_method("get_home_inventory_count"):
+		return false
+	return int(citizen.get_home_inventory_count("food")) > 0
+
+
 func plan_next_action(world, citizen) -> bool:
 	if world == null or citizen == null:
 		return false

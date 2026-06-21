@@ -5,9 +5,14 @@ from __future__ import annotations
 
 import argparse
 import re
+import sys
 from pathlib import Path
 
 from citysim_common import TEXT_EXTENSIONS, iter_project_files, resolve_project_root, safe_read_text
+
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
 def build_needles(root: Path, symbol: str) -> list[str]:

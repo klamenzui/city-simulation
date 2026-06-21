@@ -91,6 +91,12 @@ func _tick_current_action(citizen, world, tick_minutes: int = -1) -> void:
 	var action = citizen.current_action
 	if action == null:
 		return
+	if _interrupt_travel_for_survival(citizen, action):
+		action.finish(world, citizen)
+		if citizen.current_action == action:
+			citizen.current_action = null
+		_clear_stale_rest_pose(citizen, world)
+		return
 	action.tick(world, citizen, maxi(tick_minutes, world.minutes_per_tick))
 	if citizen.current_action != action:
 		return
@@ -180,6 +186,12 @@ func _tick_coarse_travel_action(citizen, world, tick_minutes: int) -> void:
 	var action = citizen.current_action
 	if action == null:
 		return
+	if _interrupt_travel_for_survival(citizen, action):
+		action.finish(world, citizen)
+		if citizen.current_action == action:
+			citizen.current_action = null
+		_clear_stale_rest_pose(citizen, world)
+		return
 	_advance_coarse_travel(citizen, world, tick_minutes)
 	action.tick(world, citizen, tick_minutes)
 	if citizen.current_action != action:
@@ -190,6 +202,20 @@ func _tick_coarse_travel_action(citizen, world, tick_minutes: int) -> void:
 	if citizen.current_action == action:
 		citizen.current_action = null
 	_clear_stale_rest_pose(citizen, world)
+
+
+func _interrupt_travel_for_survival(citizen, action) -> bool:
+	if action is not GoToBuildingActionScript:
+		return false
+	if citizen != null and citizen.has_method("is_player_action_active") \
+			and citizen.is_player_action_active():
+		return false
+	var reason := planner.get_travel_interrupt_reason(citizen, action.target)
+	if reason.is_empty():
+		return false
+	action.interrupt_for_replan(reason)
+	return true
+
 
 func _advance_coarse_travel(citizen, world, tick_minutes: int = -1) -> void:
 	if citizen == null or world == null:

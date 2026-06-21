@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://0cnkk2pg4mr"
-path="res://.godot/imported/Palette_Purple.png-2eb09fa4e614253cf63cae0886b4379a.ctex"
+path="res://.godot/imported/Palette_Purple.png-74728da2e5cbe3073962054476c77984.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://ImportedCitySource/assets/vehicles/Textures/Palette_Purple.png"
-dest_files=["res://.godot/imported/Palette_Purple.png-2eb09fa4e614253cf63cae0886b4379a.ctex"]
+source_file="res://ImportedCitySource/assets/vehicles/textures/Palette_Purple.png"
+dest_files=["res://.godot/imported/Palette_Purple.png-74728da2e5cbe3073962054476c77984.ctex"]
 
 [params]
 

@@ -55,8 +55,8 @@ func _initialize() -> void:
 	await physics_frame
 
 	var action: GoToBuildingAction = GoToBuildingActionScript.new(target, 20)
-	citizen.current_action = action
-	action.start(world, citizen)
+	citizen.enter_building(source, world, false, true)
+	citizen.start_action(action, world)
 	if action.is_done():
 		printerr("FAIL: GoTo action finished during start")
 		_print_debug(citizen, source, target, route)

@@ -13,6 +13,7 @@ var _start_repath_count: int = 0
 var _last_progress_pos: Vector3 = Vector3.ZERO
 var _no_progress_minutes: int = 0
 var _reroute_attempts: int = 0
+var _abort_reason: String = ""
 
 const MAX_TRAVEL_SIM_MIN := 240
 const MAX_DYNAMIC_REROUTES := 2
@@ -29,6 +30,7 @@ func start(world: World, citizen: Citizen) -> void:
 	super.start(world, citizen)
 	_travel_failed = false
 	_no_progress_minutes = 0
+	_abort_reason = ""
 	if target == null:
 		finished = true
 		return
@@ -104,12 +106,20 @@ func tick(world: World, citizen: Citizen, dt: int) -> void:
 		finished = true
 		return
 	if _should_abort_for_unreachable(citizen):
+		_abort_reason = "unreachable: repaths=%d no_progress=%dmin" % [
+			maxi(citizen._debug_repath_count - _start_repath_count, 0),
+			_no_progress_minutes,
+		]
 		if _attempt_dynamic_reroute(world, citizen):
 			return
 		_travel_failed = true
 		finished = true
 		return
 	if elapsed_minutes >= MAX_TRAVEL_SIM_MIN:
+		_abort_reason = "travel_timeout_%dmin" % MAX_TRAVEL_SIM_MIN
+		_travel_failed = true
+		if citizen != null and citizen.has_method("handle_unreachable_target"):
+			citizen.handle_unreachable_target(target, world, _abort_reason)
 		finished = true
 
 func finish(world: World, citizen: Citizen) -> void:
@@ -119,6 +129,12 @@ func finish(world: World, citizen: Citizen) -> void:
 		citizen.stop_travel()
 		citizen.decision_cooldown_left = 0
 		_release_reserved_park_bench(citizen, target)
+		if not _abort_reason.is_empty():
+			SimLogger.log("[Citizen %s] GoTo aborted target=%s reason=%s" % [
+				citizen.citizen_name,
+				target.get_display_name(),
+				_abort_reason,
+			])
 		return
 	var reached_target := _has_arrived_at_destination(citizen)
 	citizen.stop_travel()
@@ -133,6 +149,12 @@ func finish(world: World, citizen: Citizen) -> void:
 		citizen.decision_cooldown_left = 0
 		return
 	citizen.decision_cooldown_left = 0
+
+
+func interrupt_for_replan(reason: String) -> void:
+	_abort_reason = reason
+	_travel_failed = true
+	finished = true
 
 func _update_progress_state(citizen: Citizen, dt: int) -> void:
 	if citizen == null:
@@ -151,8 +173,10 @@ func _should_abort_for_unreachable(citizen: Citizen) -> bool:
 	if citizen.did_debug_last_travel_fail():
 		return true
 	var repaths_used := maxi(citizen._debug_repath_count - _start_repath_count, 0)
-	return repaths_used >= citizen.unreachable_target_retry_limit \
-		and _no_progress_minutes >= citizen.unreachable_target_no_progress_minutes
+	var no_progress_limit := maxi(citizen.unreachable_target_no_progress_minutes, 1)
+	if repaths_used >= citizen.unreachable_target_retry_limit:
+		return _no_progress_minutes >= maxi(no_progress_limit / 2, 1)
+	return _no_progress_minutes >= no_progress_limit
 
 func _attempt_dynamic_reroute(world: World, citizen: Citizen) -> bool:
 	if citizen == null or target == null:
