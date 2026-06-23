@@ -267,6 +267,7 @@
 		"education_rejected": "%s benötigt Bildung %d/%d.",
 		"hiring_full": "%s ist voll.",
 		"accepted_job": "Angenommen als %s bei %s.",
+		"accepted_job_replaced": "Angenommen als %s bei %s. %s wurde ersetzt.",
 		"apply_first": "Bewirb dich zuerst bei %s.",
 		"relax_home_or_park": "Entspannen geht zuhause oder im Park.",
 		"socialize_park": "Sozialisieren geht nur im Park.",

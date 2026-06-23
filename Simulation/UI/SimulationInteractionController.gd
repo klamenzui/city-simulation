@@ -3,6 +3,7 @@ class_name SimulationInteractionController
 
 const NetworkRoleScript = preload("res://Simulation/Multiplayer/shared/NetworkRole.gd")
 const PlayerInventoryWindowScript = preload("res://Simulation/UI/PlayerInventoryWindow.gd")
+const FarmDemandWindowScript = preload("res://Simulation/UI/FarmDemandWindow.gd")
 const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 const FarmWorkSceneScene = preload("res://Scenes/WorkScenes/Farm/FarmWorkScene.tscn")
 const TaxiServiceScript = preload("res://Simulation/Transport/TaxiService.gd")
@@ -24,6 +25,7 @@ var multiplayer_session = null
 var camera_mode_manager = null
 var toast_controller = null
 var inventory_window: PlayerInventoryWindow = null
+var farm_demand_window: Node = null
 var taxi_service = null
 var world_map_overlay = null
 
@@ -54,6 +56,7 @@ func setup(owner_ref: Node, world_ref: World, multiplayer_session_ref = null) ->
 	_ensure_overview_input_actions()
 	_build_debug_panel()
 	_build_inventory_window()
+	_build_farm_demand_window()
 	_build_world_map_overlay()
 	_setup_taxi_service()
 
@@ -104,7 +107,10 @@ func update(delta: float) -> void:
 
 	var selected_building: Building = selection_state_controller.get_selected_building()
 	if selected_building != null:
-		selected_building.refresh_info_panel(world)
+		if selected_building.has_method("get_info_sections_for_viewer"):
+			debug_panel.update_sections(selected_building.get_info_sections_for_viewer(world, _get_player_citizen()))
+		else:
+			selected_building.refresh_info_panel(world)
 		return
 
 	# A selected citizen normally self-refreshes via its sim tick, but a
@@ -135,9 +141,17 @@ func handle_building_clicked(building: Building) -> void:
 		building = world.get_canonical_building(building)
 	if building == null:
 		return
+	var player := _get_player_citizen()
+	if building is ResidentialBuilding and (player == null or player.home != building):
+		if selection_state_controller.get_selected_building() != null:
+			selection_state_controller.deselect()
+		_show_toast("Wohnungen sind privat.", "warning", 1.8)
+		return
 
 	selection_state_controller.handle_building_clicked(building)
 	if selection_state_controller.get_selected_building() != null:
+		if debug_panel != null and building.has_method("get_info_sections_for_viewer"):
+			debug_panel.update_sections(building.get_info_sections_for_viewer(world, player))
 		_close_overview_windows()
 		_panel_refresh_left = 0.0
 
@@ -381,6 +395,15 @@ func _build_inventory_window() -> void:
 	inventory_window.action_pressed.connect(_on_inventory_window_action_pressed)
 	inventory_window.closed.connect(_on_inventory_window_closed)
 
+func _build_farm_demand_window() -> void:
+	if owner_node == null or farm_demand_window != null:
+		return
+	farm_demand_window = FarmDemandWindowScript.new()
+	farm_demand_window.name = "FarmDemandWindow"
+	owner_node.add_child(farm_demand_window)
+	farm_demand_window.ui_interacted.connect(mark_ui_interacted)
+	farm_demand_window.delivery_requested.connect(_on_farm_delivery_requested)
+
 func _build_world_map_overlay() -> void:
 	if owner_node == null or world_map_overlay != null:
 		return
@@ -419,6 +442,31 @@ func _on_inventory_window_closed() -> void:
 	var player := _get_player_citizen()
 	if player != null:
 		_refresh_selected_player_details(player)
+	_refresh_player_action_ui()
+	_refresh_player_inventory_ui()
+
+func _on_farm_delivery_requested(request_id: String) -> void:
+	mark_ui_interacted()
+	var player := _get_player_citizen()
+	if player == null or world == null:
+		return
+	if _is_network_session_active():
+		_show_toast("Manuelle Farmlieferung ist im Netzwerkmodus noch nicht freigeschaltet.", "warning", 2.6)
+		return
+	var farm := player._get_player_current_building() as Farm
+	if farm == null:
+		_show_toast("Du bist nicht auf einer Farm.", "warning", 1.8)
+		return
+	var result := farm.begin_manual_delivery(world, player, request_id)
+	if not bool(result.get("accepted", false)):
+		_show_toast("Lieferung konnte nicht gestartet werden: %s" % str(result.get("reason", "unbekannt")), "warning", 2.4)
+		return
+	if farm_demand_window != null:
+		farm_demand_window.hide_window()
+	_show_toast("%d Einheiten für %s geladen. Fahre zum Zielgeschäft." % [
+		int(result.get("quantity", 0)),
+		str(result.get("target_name", "Ziel")),
+	], "success", 3.0)
 	_refresh_player_action_ui()
 	_refresh_player_inventory_ui()
 
@@ -699,6 +747,15 @@ func handle_debug_panel_player_action_pressed(action_id: String) -> void:
 		return
 	if _handle_player_inventory_panel_action(action_id, player):
 		return
+	if action_id == "farm_demand":
+		_toggle_farm_demand_window(player)
+		return
+	if action_id == "complete_farm_delivery":
+		_complete_player_farm_delivery(player)
+		return
+	if action_id == "cancel_farm_delivery":
+		_cancel_player_farm_delivery(player)
+		return
 	if _is_network_session_active():
 		if _request_network_player_action(action_id):
 			if action_id == "buy_shop_item" or action_id == "buy_groceries":
@@ -766,6 +823,59 @@ func handle_debug_panel_player_action_pressed(action_id: String) -> void:
 	_refresh_player_action_ui()
 	_refresh_player_inventory_ui()
 
+func _toggle_farm_demand_window(player: Citizen) -> void:
+	if player == null or farm_demand_window == null:
+		return
+	var farm := player._get_player_current_building() as Farm
+	if farm == null or not farm.can_actor_view_demand(player):
+		_show_toast("Keine Farmnachfrage verfügbar.", "warning", 1.8)
+		return
+	if farm_demand_window.is_open_for(farm, player):
+		farm_demand_window.hide_window()
+		return
+	_player_inventory_mode = ""
+	if inventory_window != null:
+		inventory_window.hide_window()
+	farm_demand_window.show_for(farm, player, world)
+
+func _complete_player_farm_delivery(player: Citizen) -> void:
+	if _is_network_session_active():
+		_show_toast("Manuelle Farmlieferung ist im Netzwerkmodus noch nicht freigeschaltet.", "warning", 2.6)
+		return
+	var farm := _find_manual_delivery_farm(player)
+	if farm == null:
+		_show_toast("Keine aktive Farmlieferung.", "warning", 1.8)
+		return
+	var result := farm.complete_manual_delivery(world, player)
+	if bool(result.get("accepted", false)):
+		_show_toast("Lieferung abgeschlossen: %d Einheiten, %d EUR Umsatz." % [
+			int(result.get("delivered", 0)),
+			int(result.get("revenue", 0)),
+		], "success", 3.0)
+	else:
+		_show_toast("Abladen nicht möglich: %s" % str(result.get("reason", "unbekannt")), "warning", 2.2)
+	_refresh_player_action_ui()
+
+func _cancel_player_farm_delivery(player: Citizen) -> void:
+	if _is_network_session_active():
+		_show_toast("Manuelle Farmlieferung ist im Netzwerkmodus noch nicht freigeschaltet.", "warning", 2.6)
+		return
+	var farm := _find_manual_delivery_farm(player)
+	if farm == null or not farm.cancel_manual_delivery(player):
+		_show_toast("Keine aktive Farmlieferung.", "warning", 1.8)
+		return
+	_show_toast("Farmlieferung abgebrochen.", "info", 1.8)
+	_refresh_player_action_ui()
+
+func _find_manual_delivery_farm(player: Citizen) -> Farm:
+	if player == null or world == null:
+		return null
+	for building in world.buildings:
+		var farm := building as Farm
+		if farm != null and farm.has_manual_delivery_for(player):
+			return farm
+	return null
+
 func _try_start_farm_work_scene(player: Citizen, farm_override: Farm = null) -> bool:
 	if player == null or owner_node == null:
 		return false
@@ -776,7 +886,7 @@ func _try_start_farm_work_scene(player: Citizen, farm_override: Farm = null) -> 
 		farm = player._get_player_current_building() as Farm
 	if farm == null:
 		return false
-	if not player._player_has_accepted_job_at(farm):
+	if not farm.can_actor_perform_work(player):
 		return false
 	if player.current_action != null:
 		return false
@@ -786,7 +896,13 @@ func _try_start_farm_work_scene(player: Citizen, farm_override: Farm = null) -> 
 	if scene == null:
 		farm.finish_player_work_session(player)
 		return false
-	if not scene.has_method("configure_for_farm") or not bool(scene.call("configure_for_farm", farm, player.education_level)):
+	if not scene.has_method("configure_for_farm") or not bool(scene.call(
+		"configure_for_farm",
+		farm,
+		player.education_level,
+		world,
+		player
+	)):
 		farm.finish_player_work_session(player)
 		scene.queue_free()
 		return false
@@ -1341,7 +1457,7 @@ func _show_player_building_context(player: Citizen, building: Building) -> void:
 			debug_panel.visible = true
 	if building is Shop:
 		_player_inventory_mode = "shop"
-	elif building is CommercialBuilding:
+	elif building is CommercialBuilding and (building.is_worker(player) or building.is_owned_by(player)):
 		_player_inventory_mode = "building"
 	elif _player_inventory_mode == "shop" or _player_inventory_mode == "building":
 		_player_inventory_mode = ""

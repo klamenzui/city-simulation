@@ -245,6 +245,11 @@ $availableTests = @(
 		Script = "res://tools/codex_farm_work_scene_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "farm_ui_flow"
+		Label = "Farm UI Worker/Owner Flow"
+		Script = "res://tools/codex_farm_ui_flow_test.gd"
+	}
+	[pscustomobject]@{
 		Key = "farmassets"
 		Label = "Quaternius Farm Assets"
 		Script = "res://tools/codex_quaternius_farm_asset_probe.gd"

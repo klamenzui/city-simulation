@@ -1051,9 +1051,6 @@ func player_apply_for_work(world: Node = null) -> bool:
 	if job != null and job.workplace != null and job.workplace != workplace:
 		_player_action_notice = LocaleServiceScript.t("player_notice.already_has_job") % _building_label(job.workplace)
 		return false
-	if not _workplace_has_open_application_slot(workplace, resolved_world):
-		_player_action_notice = LocaleServiceScript.t("player_notice.application_full") % _building_label(workplace)
-		return false
 
 	var candidate_job := _build_player_job_for_workplace(workplace)
 	if candidate_job == null:
@@ -1071,14 +1068,22 @@ func player_apply_for_work(world: Node = null) -> bool:
 		])
 		return false
 	job = candidate_job
-	if not _ensure_player_hired_for_current_job(resolved_world):
+	var hire_result := _ensure_player_hired_for_current_job(resolved_world)
+	if not bool(hire_result.get("accepted", false)):
 		job = null
-		_player_action_notice = LocaleServiceScript.t("player_notice.hiring_full") % _building_label(workplace)
+		_player_action_notice = LocaleServiceScript.t("player_notice.application_full") % _building_label(workplace)
 		return false
-	_player_action_notice = LocaleServiceScript.t("player_notice.accepted_job") % [
-		Building.get_job_title_display_label(job.title),
-		_building_label(workplace),
-	]
+	if bool(hire_result.get("displaced", false)):
+		_player_action_notice = LocaleServiceScript.t("player_notice.accepted_job_replaced") % [
+			Building.get_job_title_display_label(job.title),
+			_building_label(workplace),
+			str(hire_result.get("displaced_name", "")),
+		]
+	else:
+		_player_action_notice = LocaleServiceScript.t("player_notice.accepted_job") % [
+			Building.get_job_title_display_label(job.title),
+			_building_label(workplace),
+		]
 	return true
 
 
@@ -1604,18 +1609,29 @@ func _is_player_home_location(building: Building) -> bool:
 	return building is ResidentialBuilding and _player_slot_building == building and _player_slot_kind == "tenant"
 
 
-func _ensure_player_hired_for_current_job(world: World) -> bool:
+func _ensure_player_hired_for_current_job(world: World) -> Dictionary:
+	var result := {
+		"accepted": false,
+		"reason": "invalid",
+		"displaced": false,
+		"displaced_name": "",
+	}
 	if job == null or job.workplace == null:
-		return false
-	if not job.try_get_employed(self):
-		return false
+		return result
+	if world != null and world.has_method("try_hire_player_job"):
+		result = world.try_hire_player_job(self, job)
+	elif job.try_get_employed(self):
+		result["accepted"] = true
+		result["reason"] = "open_slot"
+	if not bool(result.get("accepted", false)):
+		return result
 	if _player_slot_building == job.workplace and _player_slot_kind == "visitor":
 		if job.workplace.has_method("remove_visitor"):
 			job.workplace.remove_visitor(self)
 		_player_slot_kind = "worker"
-	if world != null and world.has_method("register_job"):
+	if world != null and world.has_method("register_job") and not world.jobs.has(job):
 		world.register_job(job)
-	return true
+	return result
 
 
 func _player_has_accepted_job_at(workplace: Building) -> bool:
@@ -1627,29 +1643,6 @@ func _player_has_accepted_job_at(workplace: Building) -> bool:
 		and job != null \
 		and job.workplace == workplace \
 		and workplace.workers.has(self)
-
-
-func _workplace_has_open_application_slot(workplace: Building, world: World) -> bool:
-	if workplace == null:
-		return false
-	if not workplace.can_accept_workers():
-		return false
-	if workplace.workers.has(self):
-		return true
-	var committed: Dictionary = {}
-	if world != null and "jobs" in world:
-		for existing_job in world.jobs:
-			if existing_job == null or existing_job.workplace != workplace:
-				continue
-			committed[existing_job.get_instance_id()] = true
-	for worker in workplace.workers:
-		if worker == null:
-			continue
-		if worker.job != null and worker.job.workplace == workplace:
-			committed[worker.job.get_instance_id()] = true
-		else:
-			committed["worker_%d" % worker.get_instance_id()] = true
-	return committed.size() < int(workplace.job_capacity)
 
 
 func _build_player_job_for_workplace(workplace: Building) -> Job:
@@ -2204,6 +2197,9 @@ func player_enter_building(building: Building, world: Node = null) -> bool:
 		else:
 			ok = true
 			kind = "residential_visit"
+	elif building.is_owned_by(self):
+		ok = true
+		kind = "owner"
 	elif job != null and job.workplace == building and building.workers.has(self):
 		ok = true
 		kind = "worker"
@@ -2451,6 +2447,9 @@ func sim_tick(p_world: Node, tick_minutes: int = -1, force_lod_due: bool = false
 func notify_job_lost(_old_workplace: Building = null, reason: String = "") -> void:
 	var world := _resolve_world_ref()
 	var origin := global_position if is_inside_tree() else position
+	if current_action is WorkActionScript:
+		current_action.finish(world, self)
+		current_action = null
 
 	if _try_reassign_existing_job(world, origin):
 		return

@@ -3,6 +3,7 @@ extends SceneTree
 const MainScene := preload("res://Main.tscn")
 const WorkActionScript := preload("res://Actions/WorkAction.gd")
 const VehicleDepotAccessScript := preload("res://Simulation/Transport/VehicleDepotAccess.gd")
+const CitizenScene := preload("res://Entities/Citizens/CitizenNew.tscn")
 
 const PICKUP_TRUCK_SCENE_PATH := "res://scenes/vehicles/citypack/pickup_truck.tscn"
 const SETTLE_PROCESS_FRAMES := 12
@@ -222,6 +223,8 @@ func _initialize() -> void:
 	if truck.is_in_group(VehicleDepotAccessScript.DELIVERY_VEHICLE_ASSIGNED_GROUP):
 		_errors.append("Live Farm delivery truck should be released back to the depot fleet after the return trip.")
 
+	await _check_owner_manual_delivery(world, farm, supermarket)
+
 	_finish(main, action, world, driver)
 
 
@@ -313,12 +316,18 @@ func _prepare_buildings_for_delivery(world: World, farm: Farm, target_market: Su
 	var product_key := farm.get_product_commodity()
 	var delivery_item := farm.get_supermarket_delivery_item()
 	for building in world.buildings:
-		var market := building as Supermarket
-		if market == null:
+		var business := building as CommercialBuilding
+		if business == null or business == farm:
 			continue
-		market.restock_enabled = market == target_market
-		if market != target_market and market.inventory.has(delivery_item):
-			market.inventory[delivery_item] = int(market.restock_targets.get(delivery_item, market.get_stock(delivery_item)))
+		var consumes_product := false
+		for item_var in business.source_commodities.keys():
+			if str(business.source_commodities.get(item_var, "")) == product_key:
+				consumes_product = true
+				break
+		if consumes_product:
+			business.restock_enabled = business == target_market
+		if business is Supermarket and business != target_market and business.inventory.has(delivery_item):
+			business.inventory[delivery_item] = int(business.restock_targets.get(delivery_item, business.get_stock(delivery_item)))
 
 	farm.account.balance = maxi(farm.account.balance, 2000)
 	target_market.account.balance = maxi(target_market.account.balance, 2000)
@@ -335,6 +344,82 @@ func _prepare_buildings_for_delivery(world: World, farm: Farm, target_market: Su
 	farm.market_exported_food_today = 0
 	target_market.restock_enabled = true
 	target_market.inventory[delivery_item] = 0
+
+
+func _check_owner_manual_delivery(world: World, farm: Farm, target: Supermarket) -> void:
+	var owner := CitizenScene.instantiate() as Citizen
+	if owner == null:
+		_errors.append("Could not instantiate Farm owner for manual delivery test.")
+		return
+	root.add_child(owner)
+	await process_frame
+	owner.citizen_name = "Manual Farm Owner"
+	owner.set_world_ref(world)
+	owner.autonomous_simulation_enabled = false
+	owner.needs.hunger = 0.0
+	owner.needs.energy = 100.0
+	owner.needs.health = 100.0
+	farm.citizen_owner = owner
+	farm.owner_display_name = owner.citizen_name
+	farm.set_product_inventory_amount(
+		farm.get_product_commodity(),
+		maxi(farm.get_product_inventory_amount(), 20)
+	)
+	target.restock_enabled = true
+	target.account.balance = maxi(target.account.balance, 2000)
+	var delivery_item := farm.get_supermarket_delivery_item()
+	target.inventory[delivery_item] = 0
+	owner.enter_building(farm, world, false, true)
+
+	if not farm.can_actor_perform_work(owner):
+		_errors.append("Farm owner should be authorized to work without an employment contract.")
+	var requests := farm.get_delivery_demand_snapshot(world, owner, true)
+	var request: Dictionary = {}
+	for entry_var in requests:
+		var entry := entry_var as Dictionary
+		if str(entry.get("target_name", "")) == target.get_display_name() \
+				and str(entry.get("target_item", "")) == delivery_item:
+			request = entry
+			break
+	if request.is_empty():
+		_errors.append("Farm owner should see the reachable Supermarket demand.")
+		owner.queue_free()
+		return
+	if not request.has("expected_revenue"):
+		_errors.append("Farm owner demand data should include expected revenue.")
+
+	var stock_before := farm.get_product_inventory_amount()
+	var income_before := farm.income_today
+	var result := farm.begin_manual_delivery(world, owner, str(request.get("request_id", "")))
+	if not bool(result.get("accepted", false)):
+		_errors.append("Farm owner should start a self-delivery: %s." % str(result.get("reason", "")))
+		owner.queue_free()
+		return
+	if owner.job != null:
+		_errors.append("Farm owner self-delivery should not require an employment job.")
+	var manual_vehicle := owner.current_vehicle as VehicleAgent
+	if manual_vehicle == null:
+		_errors.append("Farm owner self-delivery should board a depot vehicle.")
+		farm.cancel_manual_delivery(owner)
+		owner.queue_free()
+		return
+	if not manual_vehicle.is_in_group(VehicleDepotAccessScript.DELIVERY_VEHICLE_ASSIGNED_GROUP):
+		_errors.append("Farm owner self-delivery should reserve the selected vehicle.")
+	manual_vehicle.global_position = target.get_entrance_pos()
+	var completion := farm.complete_manual_delivery(world, owner)
+	if not bool(completion.get("accepted", false)):
+		_errors.append("Farm owner should unload a self-delivery at the target: %s." % str(completion.get("reason", "")))
+	if farm.get_product_inventory_amount() >= stock_before:
+		_errors.append("Farm owner self-delivery should consume reserved Farm stock.")
+	if farm.income_today <= income_before:
+		_errors.append("Farm owner self-delivery should add revenue to the Farm account.")
+	if farm.owner_work_minutes_today <= 0:
+		_errors.append("Farm owner self-delivery should record unpaid owner work time.")
+	if manual_vehicle.is_in_group(VehicleDepotAccessScript.DELIVERY_VEHICLE_ASSIGNED_GROUP):
+		_errors.append("Completed owner self-delivery should release the vehicle claim.")
+	if owner.is_inside_vehicle():
+		manual_vehicle.unboard_driver(world, manual_vehicle.get_entry_point_global())
+	owner.queue_free()
 
 
 func _clear_driver_state(world: World, driver: Citizen) -> void:

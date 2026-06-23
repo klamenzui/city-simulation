@@ -2103,6 +2103,125 @@ func can_npc_claim_job_slot(building: Building) -> bool:
 		return false
 	return _get_committed_job_slots(building) < _get_npc_job_commitment_limit(building)
 
+## Hires a player into a workplace, replacing a suitable NPC commitment when
+## every slot is occupied or reserved. Replacement stays within the same role.
+## Lower education is replaced first; equal education uses shortest tenure.
+func try_hire_player_job(player: Citizen, player_job: Job) -> Dictionary:
+	var result := {
+		"accepted": false,
+		"reason": "invalid",
+		"displaced": false,
+		"displaced_name": "",
+	}
+	if player == null or player_job == null or player_job.workplace == null:
+		return result
+	var workplace := player_job.workplace
+	if workplace.job_capacity <= 0 or not workplace.can_accept_workers():
+		result["reason"] = "workplace_unavailable"
+		return result
+	if not player_job.meets_requirements(player) or not player_job.allows_building(workplace):
+		result["reason"] = "requirements"
+		return result
+	if workplace.workers.has(player):
+		register_job(player_job)
+		result["accepted"] = true
+		result["reason"] = "already_hired"
+		return result
+
+	if _get_committed_job_slots(workplace) < int(workplace.job_capacity):
+		if not player_job.try_get_employed(player):
+			result["reason"] = "hire_failed"
+			return result
+		register_job(player_job)
+		result["accepted"] = true
+		result["reason"] = "open_slot"
+		return result
+
+	var displaced := _find_player_job_displacement_candidate(player, player_job)
+	if displaced == null:
+		result["reason"] = "no_replaceable_worker"
+		return result
+
+	var displaced_job := displaced.job
+	var saved_tenure := displaced.job_tenure_days
+	var saved_absence := displaced.job_absence_days
+	var saved_experience := displaced.experience_wage_bonus
+	workplace.fire(displaced)
+	unregister_job(displaced_job)
+
+	if not player_job.try_get_employed(player):
+		displaced_job.workplace = workplace
+		if workplace.try_hire(displaced, false):
+			displaced.job_tenure_days = saved_tenure
+			displaced.job_absence_days = saved_absence
+			displaced.experience_wage_bonus = saved_experience
+			register_job(displaced_job)
+		result["reason"] = "hire_failed"
+		return result
+
+	register_job(player_job)
+	result["accepted"] = true
+	result["reason"] = "npc_replaced"
+	result["displaced"] = true
+	result["displaced_name"] = displaced.citizen_name
+	displaced.notify_job_lost(workplace, "player application")
+	return result
+
+func _find_player_job_displacement_candidate(player: Citizen, player_job: Job) -> Citizen:
+	if player == null or player_job == null or player_job.workplace == null:
+		return null
+	var workplace := player_job.workplace
+	var candidates: Dictionary = {}
+	for citizen in citizens:
+		if citizen != null and citizen.job != null and citizen.job.workplace == workplace:
+			candidates[citizen.get_instance_id()] = citizen
+	for worker in workplace.workers:
+		if worker != null:
+			candidates[worker.get_instance_id()] = worker
+
+	var best: Citizen = null
+	for value in candidates.values():
+		var candidate := value as Citizen
+		if not _can_player_displace_job_holder(player, player_job, candidate):
+			continue
+		if best == null \
+				or candidate.education_level < best.education_level \
+				or (
+					candidate.education_level == best.education_level
+					and candidate.job_tenure_days < best.job_tenure_days
+				) \
+				or (
+					candidate.education_level == best.education_level
+					and candidate.job_tenure_days == best.job_tenure_days
+					and candidate.get_instance_id() < best.get_instance_id()
+				):
+			best = candidate
+	return best
+
+func _can_player_displace_job_holder(player: Citizen, player_job: Job, candidate: Citizen) -> bool:
+	if candidate == null or candidate == player or candidate.job == null:
+		return false
+	if candidate.job.workplace != player_job.workplace:
+		return false
+	if _normalize_job_title(candidate.job.title) != _normalize_job_title(player_job.title):
+		return false
+	if candidate.education_level > player.education_level:
+		return false
+	if player_job.workplace.is_owned_by(candidate):
+		return false
+	if _is_player_controlled_citizen(candidate):
+		return false
+	return true
+
+func _is_player_controlled_citizen(citizen: Citizen) -> bool:
+	if citizen == null:
+		return false
+	if citizen.has_method("is_keyboard_control_enabled") and citizen.is_keyboard_control_enabled():
+		return true
+	if citizen.has_method("is_manual_control_enabled") and citizen.is_manual_control_enabled():
+		return true
+	return citizen.has_method("is_network_manual_controlled") and citizen.is_network_manual_controlled()
+
 func _get_npc_job_commitment_limit(building: Building) -> int:
 	if building == null:
 		return 0

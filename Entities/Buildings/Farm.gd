@@ -26,7 +26,10 @@ const DELIVERY_PHASE_PARKING_DEPOT := "parking_depot"
 const DELIVERY_DEPOT_MARKER_NAME := "DeliveryVehicleDepot"
 const DELIVERY_LOADING_DEPOT_MARKER_NAME := "DeliveryLoadingDepot"
 const DELIVERY_DEPOT_MAX_LOCAL_MANEUVER_DISTANCE := 16.0
+const MANUAL_DELIVERY_ARRIVAL_RADIUS := 6.0
+const OWNER_MAX_WORK_MINUTES_PER_DAY := 8 * 60
 const VehicleDepotAccessScript := preload("res://Simulation/Transport/VehicleDepotAccess.gd")
+const NetworkEntityRegistryScript := preload("res://Simulation/Multiplayer/shared/NetworkEntityRegistry.gd")
 
 @export var base_food_output_per_day: int = 60
 @export var production_cost_per_unit: int = 1
@@ -49,6 +52,7 @@ var output_today: int = 0
 var shipped_food_today: int = 0
 var delivered_food_today: int = 0
 var market_exported_food_today: int = 0
+var owner_work_minutes_today: int = 0
 var stored_food: int = 0
 var crop_growth_minutes: int = 0
 var crop_state: CropState = CropState.GROWING
@@ -61,7 +65,8 @@ var _harvest_worker: Citizen = null
 var _harvest_phase: String = HARVEST_PHASE_NONE
 var _harvest_minutes_left: int = 0
 var _delivery_worker: Citizen = null
-var _delivery_target: Supermarket = null
+var _delivery_target: CommercialBuilding = null
+var _delivery_target_item: String = ""
 var _delivery_phase: String = DELIVERY_PHASE_NONE
 var _delivery_quantity: int = 0
 var _delivery_minutes_left: int = 0
@@ -74,6 +79,12 @@ var _delivery_loading_parking_position: Vector3 = Vector3.INF
 var _delivery_loading_road_access_position: Vector3 = Vector3.INF
 var _delivery_loading_spot: VehicleParkingSpot = null
 var _player_work_session_citizen_ids: Dictionary = {}
+var _manual_delivery_actor: Citizen = null
+var _manual_delivery_target: CommercialBuilding = null
+var _manual_delivery_target_item: String = ""
+var _manual_delivery_quantity: int = 0
+var _manual_delivery_vehicle: VehicleAgent = null
+var _manual_delivery_started_minute: int = 0
 
 func _ready() -> void:
 	super._ready()
@@ -104,6 +115,29 @@ func _ready() -> void:
 
 func get_service_type() -> String:
 	return "production_food"
+
+func can_actor_view_demand(actor: Citizen) -> bool:
+	var role := get_access_role(actor)
+	return role == AccessRole.WORKER or role == AccessRole.OWNER
+
+func can_actor_perform_work(actor: Citizen) -> bool:
+	if actor == null or not is_instance_valid(actor):
+		return false
+	if is_financially_closed():
+		return false
+	return can_actor_view_demand(actor)
+
+func can_actor_manage_business(actor: Citizen) -> bool:
+	return get_access_role(actor) == AccessRole.OWNER
+
+func get_actor_role_key(actor: Citizen) -> String:
+	match get_access_role(actor):
+		AccessRole.OWNER:
+			return "owner"
+		AccessRole.WORKER:
+			return "worker"
+		_:
+			return "visitor"
 
 func get_product_commodity() -> String:
 	if product_commodity.strip_edges().is_empty():
@@ -156,7 +190,7 @@ func run_daily_production(world: World) -> void:
 	if requires_staff_to_operate() and not has_required_staff():
 		return
 	if market_export_enabled:
-		if direct_supermarket_delivery_enabled and has_delivery_staff() and not _find_supermarket_delivery_targets(world).is_empty():
+		if direct_supermarket_delivery_enabled and has_delivery_staff() and not get_delivery_demand_snapshot(world, null, true).is_empty():
 			return
 		_export_stored_food_to_market(world)
 
@@ -166,6 +200,7 @@ func begin_new_day() -> void:
 	shipped_food_today = 0
 	delivered_food_today = 0
 	market_exported_food_today = 0
+	owner_work_minutes_today = 0
 
 func advance_crop_growth(minutes: int) -> void:
 	if minutes <= 0:
@@ -266,9 +301,10 @@ func get_farm_state_snapshot() -> Dictionary:
 		"shipped_food_today": shipped_food_today,
 		"delivered_food_today": delivered_food_today,
 		"market_exported_food_today": market_exported_food_today,
+		"owner_work_minutes_today": owner_work_minutes_today,
 	}
 
-func get_player_work_context() -> Dictionary:
+func get_player_work_context(world: World = null, actor: Citizen = null) -> Dictionary:
 	_sync_active_product_from_legacy()
 	var storage_space := _get_available_storage()
 	var suggested_harvest := mini(_compute_harvest_yield(), storage_space) if is_crop_ready() else 0
@@ -283,12 +319,14 @@ func get_player_work_context() -> Dictionary:
 		"suggested_harvest_units": suggested_harvest,
 		"crop_growth_total_minutes": get_crop_growth_total_minutes(),
 		"work_minutes": mini(harvest_duration_minutes + 30, 120),
+		"actor_role": get_actor_role_key(actor),
+		"demand_entries": get_delivery_demand_snapshot(world, actor) if world != null and can_actor_view_demand(actor) else [],
 	}
 
 func begin_player_work_session(citizen: Citizen) -> bool:
 	if citizen == null or not is_instance_valid(citizen):
 		return false
-	if citizen.job == null or citizen.job.workplace != self:
+	if not can_actor_perform_work(citizen):
 		return false
 	_prune_player_work_sessions()
 	_player_work_session_citizen_ids[int(citizen.get_instance_id())] = weakref(citizen)
@@ -321,17 +359,25 @@ func apply_player_work_result(world: World, citizen: Citizen, result: Dictionary
 		applied["reason"] = "missing_citizen"
 		finish_player_work_session(citizen)
 		return applied
-	if citizen.job == null or citizen.job.workplace != self:
+	if not can_actor_perform_work(citizen):
 		applied["reason"] = "wrong_workplace"
 		finish_player_work_session(citizen)
 		return applied
 
 	var quality := clampf(float(result.get("quality_score", 0.0)), 0.0, 1.0)
-	var worked_minutes := clampi(int(result.get("work_minutes", 0)), 0, int(citizen.job.shift_hours * 60))
+	var owns_farm := is_owned_by(citizen)
+	var max_work_minutes := OWNER_MAX_WORK_MINUTES_PER_DAY
+	if not owns_farm and citizen.job != null:
+		max_work_minutes = int(citizen.job.shift_hours * 60)
+	var worked_minutes := clampi(int(result.get("work_minutes", 0)), 0, max_work_minutes)
 	if worked_minutes > 0:
-		var remaining_minutes := maxi(int(citizen.job.shift_hours * 60) - citizen.work_minutes_today, 0)
+		var already_worked := owner_work_minutes_today if owns_farm else citizen.work_minutes_today
+		var remaining_minutes := maxi(max_work_minutes - already_worked, 0)
 		var applied_minutes := mini(worked_minutes, remaining_minutes)
-		citizen.work_minutes_today += applied_minutes
+		if owns_farm:
+			owner_work_minutes_today += applied_minutes
+		else:
+			citizen.work_minutes_today += applied_minutes
 		_apply_player_work_needs_cost(citizen, applied_minutes)
 		applied["work_minutes"] = applied_minutes
 
@@ -388,8 +434,10 @@ func apply_farm_state_snapshot(data: Dictionary) -> void:
 	shipped_food_today = maxi(int(data.get("shipped_food_today", shipped_food_today)), 0)
 	delivered_food_today = maxi(int(data.get("delivered_food_today", delivered_food_today)), 0)
 	market_exported_food_today = maxi(int(data.get("market_exported_food_today", market_exported_food_today)), 0)
+	owner_work_minutes_today = maxi(int(data.get("owner_work_minutes_today", owner_work_minutes_today)), 0)
 	_release_harvest_worker()
 	_release_delivery_worker()
+	_clear_manual_delivery()
 	_refresh_crop_visuals(true)
 
 func _compute_harvest_yield() -> int:
@@ -459,18 +507,21 @@ func _tick_delivery_activity(world: World, citizen: Citizen, tick_minutes: int) 
 		return
 	if _delivery_worker != null and _delivery_worker != citizen:
 		return
-	if _delivery_worker == null and get_product_inventory_amount() <= 0:
+	if _delivery_worker == null and get_product_inventory_amount() - _get_manual_reserved_quantity() <= 0:
 		return
 	if _delivery_worker == null:
-		var target := _select_delivery_target(world)
-		if target == null:
+		var request := _select_delivery_request(world)
+		var target := request.get("target", null) as CommercialBuilding
+		var target_item := str(request.get("target_item", ""))
+		if target == null or target_item.is_empty():
 			return
-		_assign_delivery_worker(world, citizen, target)
+		_assign_delivery_worker(world, citizen, target, target_item)
 	_tick_delivery_worker(world, citizen, tick_minutes)
 
-func _assign_delivery_worker(world: World, citizen: Citizen, target: Supermarket) -> void:
+func _assign_delivery_worker(world: World, citizen: Citizen, target: CommercialBuilding, target_item: String = "") -> void:
 	_delivery_worker = citizen
 	_delivery_target = target
+	_delivery_target_item = target_item if not target_item.strip_edges().is_empty() else _get_target_item_for_commodity(target)
 	_delivery_phase = DELIVERY_PHASE_TO_STORAGE
 	_delivery_quantity = 0
 	_delivery_minutes_left = 0
@@ -571,7 +622,7 @@ func _tick_delivery_worker(world: World, citizen: Citizen, tick_minutes: int) ->
 				return
 			if citizen.has_method("clear_rest_pose"):
 				citizen.clear_rest_pose(true)
-			_complete_delivery_to_supermarket(world, _delivery_target, _delivery_quantity)
+			_complete_delivery_to_business(world, _delivery_target, _delivery_target_item, _delivery_quantity)
 			_delivery_quantity = 0
 			if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
 				_release_delivery_worker()
@@ -669,7 +720,12 @@ func _finish_delivery_loading(world: World, citizen: Citizen) -> bool:
 			_delivery_vehicle,
 			direct_delivery_batch_per_supermarket
 		)
-		_delivery_quantity = _calculate_delivery_quantity(world, _delivery_target, load_capacity)
+		_delivery_quantity = _calculate_delivery_quantity(
+			world,
+			_delivery_target,
+			_delivery_target_item,
+			load_capacity
+		)
 	else:
 		_delivery_quantity = 0
 	if _delivery_vehicle.has_method("set_delivery_cargo_visible"):
@@ -838,24 +894,36 @@ func _vehicle_arrival_radius() -> float:
 			return maxf(float(radius_value), 0.45)
 	return 0.45
 
-func _complete_delivery_to_supermarket(world: World, market: Supermarket, requested_qty: int) -> int:
-	if world == null or market == null or not is_instance_valid(market):
+func _complete_delivery_to_business(
+	world: World,
+	target: CommercialBuilding,
+	target_item: String,
+	requested_qty: int,
+	use_manual_reservation: bool = false
+) -> int:
+	if world == null or target == null or not is_instance_valid(target):
 		return 0
-	var qty := _calculate_delivery_quantity(world, market, requested_qty)
+	var qty := _calculate_delivery_quantity(
+		world,
+		target,
+		target_item,
+		requested_qty,
+		use_manual_reservation
+	)
 	if qty <= 0:
 		return 0
 
 	var unit_price := _get_direct_delivery_unit_price(world)
 	var total_cost := qty * unit_price
-	if not world.economy.transfer(market.account, account, total_cost):
+	if not world.economy.transfer(target.account, account, total_cost):
 		return 0
-	var accepted := market.receive_direct_supply(get_supermarket_delivery_item(), qty, total_cost)
+	var accepted := target.receive_direct_supply(target_item, qty, total_cost)
 	if accepted <= 0:
-		world.economy.transfer(account, market.account, total_cost)
+		world.economy.transfer(account, target.account, total_cost)
 		return 0
 	if accepted < qty:
 		var refund := (qty - accepted) * unit_price
-		world.economy.transfer(account, market.account, refund)
+		world.economy.transfer(account, target.account, refund)
 		total_cost = accepted * unit_price
 
 	_remove_product_from_inventory(get_product_commodity(), accepted)
@@ -864,22 +932,53 @@ func _complete_delivery_to_supermarket(world: World, market: Supermarket, reques
 	record_income(total_cost)
 	return accepted
 
-func _select_delivery_target(world: World) -> Supermarket:
-	var targets := _find_supermarket_delivery_targets(world)
-	if targets.is_empty():
-		return null
-	return targets[0]
+func _complete_delivery_to_supermarket(world: World, market: Supermarket, requested_qty: int) -> int:
+	return _complete_delivery_to_business(
+		world,
+		market,
+		get_supermarket_delivery_item(),
+		requested_qty
+	)
 
-func _calculate_delivery_quantity(world: World, market: Supermarket, max_qty: int = -1) -> int:
-	if world == null or market == null or not is_instance_valid(market):
+func _select_delivery_request(world: World) -> Dictionary:
+	var requests := get_delivery_demand_snapshot(world, null, true)
+	if requests.is_empty():
+		return {}
+	var first := requests[0] as Dictionary
+	var target := _find_delivery_target_by_id(world, str(first.get("target_id", "")))
+	if target == null:
+		return {}
+	return {
+		"target": target,
+		"target_item": str(first.get("target_item", "")),
+	}
+
+func _select_delivery_target(world: World) -> CommercialBuilding:
+	return _select_delivery_request(world).get("target", null) as CommercialBuilding
+
+func _calculate_delivery_quantity(
+	world: World,
+	target: CommercialBuilding,
+	target_item: String = "",
+	max_qty: int = -1,
+	use_manual_reservation: bool = false
+) -> int:
+	if world == null or target == null or not is_instance_valid(target):
 		return 0
-	var need := market.get_restock_need(get_supermarket_delivery_item())
+	var resolved_item := target_item.strip_edges()
+	if resolved_item.is_empty():
+		resolved_item = _get_target_item_for_commodity(target)
+	if resolved_item.is_empty():
+		return 0
+	var need := target.get_restock_need(resolved_item)
 	if need <= 0:
 		return 0
 	var limit := direct_delivery_batch_per_supermarket if max_qty < 0 else mini(max_qty, direct_delivery_batch_per_supermarket)
 	var unit_price := _get_direct_delivery_unit_price(world)
-	var affordable_qty: int = market.account.balance / unit_price
+	var affordable_qty: int = target.account.balance / unit_price
 	var available_stock := get_product_inventory_amount()
+	if not use_manual_reservation:
+		available_stock = maxi(available_stock - _get_manual_reserved_quantity(), 0)
 	return maxi(mini(available_stock, mini(need, mini(limit, affordable_qty))), 0)
 
 func _get_delivery_target_position() -> Vector3:
@@ -909,23 +1008,346 @@ func _find_supermarket_delivery_targets(world: World) -> Array[Supermarket]:
 	var targets: Array[Supermarket] = []
 	if world == null:
 		return targets
-	for building in world.buildings:
-		var market := building as Supermarket
-		if market == null or not is_instance_valid(market):
-			continue
-		if market.is_financially_closed():
-			continue
-		if not market.restock_enabled:
-			continue
-		if market.get_restock_need(get_supermarket_delivery_item()) <= 0:
-			continue
-		if not _has_vehicle_route_to(world, market):
-			continue
-		targets.append(market)
+	for entry_var in get_delivery_demand_snapshot(world, null, true):
+		var entry := entry_var as Dictionary
+		var target := _find_delivery_target_by_id(world, str(entry.get("target_id", "")))
+		if target is Supermarket and not targets.has(target):
+			targets.append(target as Supermarket)
 	targets.sort_custom(func(a: Supermarket, b: Supermarket) -> bool:
 		return global_position.distance_squared_to(a.global_position) < global_position.distance_squared_to(b.global_position)
 	)
 	return targets
+
+func get_delivery_demand_snapshot(
+	world: World,
+	actor: Citizen = null,
+	routable_only: bool = false
+) -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	if world == null:
+		return entries
+	if actor != null and not can_actor_view_demand(actor):
+		return entries
+	var product_key := get_product_commodity()
+	var available_stock := maxi(get_product_inventory_amount(product_key) - _get_manual_reserved_quantity(), 0)
+	var unit_price := _get_direct_delivery_unit_price(world)
+	var show_finance := actor == null or can_actor_manage_business(actor)
+
+	for building in world.buildings:
+		var target := building as CommercialBuilding
+		if target == null or target == self or not is_instance_valid(target):
+			continue
+		if target.is_financially_closed() or not target.restock_enabled:
+			continue
+		var route_available := _has_delivery_infrastructure() and _has_vehicle_route_to(world, target)
+		if routable_only and not route_available:
+			continue
+		for item_var in target.source_commodities.keys():
+			var target_item := str(item_var).strip_edges()
+			if target_item.is_empty():
+				continue
+			if str(target.source_commodities.get(target_item, "")).strip_edges() != product_key:
+				continue
+			var need := target.get_restock_need(target_item)
+			if need <= 0:
+				continue
+			var target_stock := target.get_stock(target_item)
+			var target_capacity := maxi(int(target.restock_targets.get(target_item, target_stock + need)), 1)
+			var affordable_qty := target.account.balance / unit_price
+			var deliverable := maxi(mini(
+				available_stock,
+				mini(need, mini(direct_delivery_batch_per_supermarket, affordable_qty))
+			), 0)
+			if not route_available:
+				deliverable = 0
+			var target_id := _get_delivery_target_id(target)
+			var distance_m := global_position.distance_to(target.global_position)
+			var urgency := clampf(float(need) / float(target_capacity), 0.0, 1.0)
+			var entry := {
+				"request_id": "%s|%s" % [target_id, target_item],
+				"target_id": target_id,
+				"target_name": target.get_display_name(),
+				"target_type": target.get_building_type_display_label(),
+				"target_item": target_item,
+				"target_item_label": _delivery_item_display_label(target_item),
+				"source_commodity": product_key,
+				"stock": target_stock,
+				"restock_target": target_capacity,
+				"need": need,
+				"deliverable": deliverable,
+				"distance_m": distance_m,
+				"urgency_score": urgency,
+				"urgency": _demand_urgency_key(urgency),
+				"affordable": affordable_qty > 0,
+				"route_available": route_available,
+			}
+			if show_finance:
+				entry["unit_price"] = unit_price
+				entry["expected_revenue"] = deliverable * unit_price
+			entries.append(entry)
+
+	entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var urgency_a := float(a.get("urgency_score", 0.0))
+		var urgency_b := float(b.get("urgency_score", 0.0))
+		if not is_equal_approx(urgency_a, urgency_b):
+			return urgency_a > urgency_b
+		return float(a.get("distance_m", INF)) < float(b.get("distance_m", INF))
+	)
+	return entries
+
+func begin_manual_delivery(world: World, actor: Citizen, request_id: String) -> Dictionary:
+	var result := {
+		"accepted": false,
+		"reason": "",
+		"quantity": 0,
+		"target_name": "",
+		"target_item": "",
+	}
+	if world == null or actor == null or not is_instance_valid(actor):
+		result["reason"] = "missing_context"
+		return result
+	if not can_actor_perform_work(actor):
+		result["reason"] = "not_authorized"
+		return result
+	if actor.current_action != null:
+		result["reason"] = "action_running"
+		return result
+	if actor._get_player_current_building() != self:
+		result["reason"] = "actor_not_at_farm"
+		return result
+	if has_manual_delivery_in_progress():
+		result["reason"] = "manual_delivery_busy"
+		return result
+	if has_delivery_in_progress():
+		result["reason"] = "delivery_busy"
+		return result
+
+	var request := _find_delivery_request(world, actor, request_id)
+	if request.is_empty():
+		result["reason"] = "demand_unavailable"
+		return result
+	var target := _find_delivery_target_by_id(world, str(request.get("target_id", "")))
+	var target_item := str(request.get("target_item", ""))
+	if target == null or target_item.is_empty():
+		result["reason"] = "target_unavailable"
+		return result
+
+	var vehicle := VehicleDepotAccessScript.find_available_delivery_vehicle(self, world)
+	if vehicle == null:
+		result["reason"] = "no_delivery_vehicle"
+		return result
+	var capacity := VehicleDepotAccessScript.get_delivery_vehicle_load_capacity(
+		vehicle,
+		direct_delivery_batch_per_supermarket
+	)
+	var quantity := _calculate_delivery_quantity(world, target, target_item, capacity)
+	if quantity <= 0:
+		result["reason"] = "nothing_deliverable"
+		return result
+
+	_manual_delivery_actor = actor
+	_manual_delivery_target = target
+	_manual_delivery_target_item = target_item
+	_manual_delivery_quantity = quantity
+	_manual_delivery_vehicle = vehicle
+	_manual_delivery_started_minute = world.time.minutes_total if world.time != null else 0
+	vehicle.add_to_group(VehicleDepotAccessScript.DELIVERY_VEHICLE_ASSIGNED_GROUP)
+	VehicleDepotAccessScript.release_vehicle_spot(vehicle)
+	if actor.has_method("player_exit_building"):
+		actor.player_exit_building(world)
+	actor.global_position = vehicle.get_entry_point_global()
+	if not vehicle.board_driver(actor):
+		_clear_manual_delivery()
+		result["reason"] = "vehicle_entry_failed"
+		return result
+	vehicle.set_delivery_cargo_visible(true)
+	result["accepted"] = true
+	result["reason"] = "ok"
+	result["quantity"] = quantity
+	result["target_name"] = target.get_display_name()
+	result["target_item"] = target_item
+	return result
+
+func complete_manual_delivery(world: World, actor: Citizen) -> Dictionary:
+	var result := {
+		"accepted": false,
+		"reason": "",
+		"delivered": 0,
+		"revenue": 0,
+	}
+	if world == null or not has_manual_delivery_for(actor):
+		result["reason"] = "no_manual_delivery"
+		return result
+	if not is_manual_delivery_at_target(actor):
+		result["reason"] = "not_at_target"
+		return result
+	var unit_price := _get_direct_delivery_unit_price(world)
+	var delivered := _complete_delivery_to_business(
+		world,
+		_manual_delivery_target,
+		_manual_delivery_target_item,
+		_manual_delivery_quantity,
+		true
+	)
+	if delivered <= 0:
+		result["reason"] = "delivery_rejected"
+		_clear_manual_delivery()
+		return result
+	_apply_manual_delivery_work_time(world, actor)
+	result["accepted"] = true
+	result["reason"] = "ok"
+	result["delivered"] = delivered
+	result["revenue"] = delivered * unit_price
+	_clear_manual_delivery()
+	return result
+
+func cancel_manual_delivery(actor: Citizen) -> bool:
+	if not has_manual_delivery_for(actor):
+		return false
+	_clear_manual_delivery()
+	return true
+
+func has_manual_delivery_in_progress() -> bool:
+	_prune_manual_delivery()
+	return _manual_delivery_actor != null
+
+func has_manual_delivery_for(actor: Citizen) -> bool:
+	_prune_manual_delivery()
+	return actor != null and _manual_delivery_actor == actor
+
+func is_manual_delivery_at_target(actor: Citizen) -> bool:
+	if not has_manual_delivery_for(actor):
+		return false
+	if _manual_delivery_target == null or not is_instance_valid(_manual_delivery_target):
+		return false
+	var actor_position := actor.global_position
+	if _manual_delivery_vehicle != null and is_instance_valid(_manual_delivery_vehicle):
+		actor_position = _manual_delivery_vehicle.global_position
+	return Vector2(
+		actor_position.x - _manual_delivery_target.get_entrance_pos().x,
+		actor_position.z - _manual_delivery_target.get_entrance_pos().z
+	).length() <= MANUAL_DELIVERY_ARRIVAL_RADIUS
+
+func get_manual_delivery_status(actor: Citizen) -> Dictionary:
+	if not has_manual_delivery_for(actor):
+		return {}
+	return {
+		"farm_name": get_display_name(),
+		"target_name": _manual_delivery_target.get_display_name() if _manual_delivery_target != null else "",
+		"target_item": _manual_delivery_target_item,
+		"quantity": _manual_delivery_quantity,
+		"at_target": is_manual_delivery_at_target(actor),
+	}
+
+func _find_delivery_request(world: World, actor: Citizen, request_id: String) -> Dictionary:
+	for entry_var in get_delivery_demand_snapshot(world, actor, true):
+		var entry := entry_var as Dictionary
+		if str(entry.get("request_id", "")) == request_id:
+			return entry
+	return {}
+
+func _find_delivery_target_by_id(world: World, target_id: String) -> CommercialBuilding:
+	if world == null or target_id.strip_edges().is_empty():
+		return null
+	for building in world.buildings:
+		var target := building as CommercialBuilding
+		if target == null or not is_instance_valid(target):
+			continue
+		if _get_delivery_target_id(target) == target_id:
+			return target
+	return null
+
+func _get_delivery_target_id(target: CommercialBuilding) -> String:
+	if target == null:
+		return ""
+	var network_id := NetworkEntityRegistryScript.get_entity_id(target)
+	if not network_id.is_empty():
+		return network_id
+	return "instance:%d" % int(target.get_instance_id())
+
+func _get_target_item_for_commodity(target: CommercialBuilding) -> String:
+	if target == null:
+		return ""
+	var product_key := get_product_commodity()
+	for item_var in target.source_commodities.keys():
+		var item_key := str(item_var).strip_edges()
+		if str(target.source_commodities.get(item_key, "")).strip_edges() == product_key:
+			return item_key
+	return ""
+
+func _demand_urgency_key(urgency: float) -> String:
+	if urgency >= 0.70:
+		return "critical"
+	if urgency >= 0.40:
+		return "high"
+	return "normal"
+
+func _demand_urgency_display_label(urgency_key: String) -> String:
+	match urgency_key:
+		"critical":
+			return "kritisch"
+		"high":
+			return "hoch"
+		_:
+			return "normal"
+
+func _delivery_item_display_label(item_id: String) -> String:
+	match item_id.strip_edges():
+		"grocery_bundle":
+			return "Lebensmittel"
+		"bread":
+			return "Brot"
+		"meal":
+			return "Mahlzeiten"
+		"snack":
+			return "Snacks"
+		"drink":
+			return "Getränke"
+	return item_id.replace("_", " ").capitalize()
+
+func _get_manual_reserved_quantity() -> int:
+	_prune_manual_delivery()
+	return maxi(_manual_delivery_quantity, 0) if _manual_delivery_actor != null else 0
+
+func _prune_manual_delivery() -> void:
+	if _manual_delivery_actor == null:
+		return
+	if not is_instance_valid(_manual_delivery_actor) \
+			or _manual_delivery_target == null \
+			or not is_instance_valid(_manual_delivery_target):
+		_clear_manual_delivery()
+
+func _clear_manual_delivery() -> void:
+	if _manual_delivery_vehicle != null and is_instance_valid(_manual_delivery_vehicle):
+		_manual_delivery_vehicle.set_delivery_cargo_visible(false)
+		if _manual_delivery_vehicle.is_in_group(VehicleDepotAccessScript.DELIVERY_VEHICLE_ASSIGNED_GROUP):
+			_manual_delivery_vehicle.remove_from_group(VehicleDepotAccessScript.DELIVERY_VEHICLE_ASSIGNED_GROUP)
+	_manual_delivery_actor = null
+	_manual_delivery_target = null
+	_manual_delivery_target_item = ""
+	_manual_delivery_quantity = 0
+	_manual_delivery_vehicle = null
+	_manual_delivery_started_minute = 0
+
+func _apply_manual_delivery_work_time(world: World, actor: Citizen) -> void:
+	if world == null or actor == null:
+		return
+	var elapsed := 15
+	if world.time != null:
+		elapsed = maxi(world.time.minutes_total - _manual_delivery_started_minute, 5)
+	if is_owned_by(actor):
+		var owner_remaining := maxi(OWNER_MAX_WORK_MINUTES_PER_DAY - owner_work_minutes_today, 0)
+		var owner_minutes := mini(elapsed, owner_remaining)
+		owner_work_minutes_today += owner_minutes
+		_apply_player_work_needs_cost(actor, owner_minutes)
+		return
+	if not is_worker(actor) or actor.job == null:
+		return
+	var max_minutes := int(actor.job.shift_hours * 60)
+	var remaining := maxi(max_minutes - actor.work_minutes_today, 0)
+	var paid_minutes := mini(elapsed, remaining)
+	actor.work_minutes_today += paid_minutes
+	_apply_player_work_needs_cost(actor, paid_minutes)
 
 func _has_vehicle_route_to(world: World, target: Building) -> bool:
 	if world == null or target == null:
@@ -948,6 +1370,19 @@ func _has_vehicle_route_to(world: World, target: Building) -> bool:
 	var return_route: PackedVector3Array = world.get_vehicle_road_path(target.get_entrance_pos(), _delivery_depot_road_access_position)
 	return return_route.size() >= 2
 
+func _has_delivery_infrastructure() -> bool:
+	var depot_position := VehicleDepotAccessScript.resolve_marker_parking_position(
+		self,
+		DELIVERY_DEPOT_MARKER_NAME
+	)
+	if not VehicleDepotAccessScript.is_finite_vector(depot_position):
+		return false
+	var loading_position := VehicleDepotAccessScript.resolve_marker_parking_position(
+		self,
+		DELIVERY_LOADING_DEPOT_MARKER_NAME
+	)
+	return VehicleDepotAccessScript.is_finite_vector(loading_position)
+
 func _get_direct_delivery_unit_price(world: World) -> int:
 	if world == null or world.economy == null:
 		return 1
@@ -956,7 +1391,10 @@ func _get_direct_delivery_unit_price(world: World) -> int:
 
 func _export_stored_food_to_market(world: World) -> void:
 	var product_key := get_product_commodity()
-	var available_stock := get_product_inventory_amount(product_key)
+	var available_stock := maxi(
+		get_product_inventory_amount(product_key) - _get_manual_reserved_quantity(),
+		0
+	)
 	if available_stock <= 0:
 		return
 	var offered := available_stock
@@ -1026,7 +1464,7 @@ func _prune_player_work_sessions() -> void:
 		if citizen == null or not is_instance_valid(citizen):
 			_player_work_session_citizen_ids.erase(session_key)
 			continue
-		if citizen.job == null or citizen.job.workplace != self:
+		if not can_actor_perform_work(citizen):
 			_player_work_session_citizen_ids.erase(session_key)
 
 func _apply_player_harvest(world: World, requested_harvest: int) -> int:
@@ -1074,6 +1512,7 @@ func _release_delivery_worker() -> void:
 	_release_delivery_vehicle_claim()
 	_delivery_worker = null
 	_delivery_target = null
+	_delivery_target_item = ""
 	_delivery_phase = DELIVERY_PHASE_NONE
 	_delivery_quantity = 0
 	_delivery_minutes_left = 0
@@ -1216,6 +1655,56 @@ func _apply_crop_nodes_stage(nodes: Array[Node3D], visible: bool, scale_value: f
 		node.visible = visible
 		if visible:
 			node.scale = Vector3.ONE * maxf(scale_value, 0.01)
+
+func _get_extra_info_sections_for_viewer(
+	world = null,
+	viewer: Citizen = null,
+	role: AccessRole = AccessRole.VISITOR
+) -> Array:
+	if role == AccessRole.VISITOR:
+		return []
+	var product_name := get_product_display_name()
+	var role_label := "Besitzer" if role == AccessRole.OWNER else "Arbeiter"
+	var sections: Array = [
+		{
+			"title": "Farmbetrieb",
+			"rows": [
+				{"label": "Rolle", "value": role_label},
+				{"label": "Feld", "value": "erntereif" if crop_state == CropState.READY else "Wachstum %d / 3" % get_crop_visual_stage()},
+				{"label": "Produkt", "value": product_name},
+				{"label": "Lager", "value": "%d / %d" % [stored_food, storage_capacity]},
+				{"label": "Heute geerntet", "value": "%d" % output_today},
+				{"label": "Heute geliefert", "value": "%d" % delivered_food_today},
+				{"label": "Fahrer", "value": "%d" % get_workers_by_titles(["Fahrer"]).size()},
+			],
+		},
+	]
+	var typed_world := world as World
+	if typed_world == null:
+		return sections
+	var demand_rows: Array = []
+	for entry_var in get_delivery_demand_snapshot(typed_world, viewer):
+		var entry := entry_var as Dictionary
+		var value := "%s: %d Bedarf, %d lieferbar, %.0f m, %s" % [
+			str(entry.get("target_item_label", "")),
+			int(entry.get("need", 0)),
+			int(entry.get("deliverable", 0)),
+			float(entry.get("distance_m", 0.0)),
+			_demand_urgency_display_label(str(entry.get("urgency", "normal"))),
+		]
+		if not bool(entry.get("route_available", false)):
+			value += ", keine Fahrzeugroute"
+		if role == AccessRole.OWNER:
+			value += ", Umsatz %d EUR" % int(entry.get("expected_revenue", 0))
+		demand_rows.append({
+			"label": str(entry.get("target_name", "Geschäft")),
+			"value": value,
+			"severity": "critical" if str(entry.get("urgency", "")) == "critical" else ("warning" if str(entry.get("urgency", "")) == "high" else "normal"),
+		})
+	if demand_rows.is_empty():
+		demand_rows.append({"label": "", "value": "Keine offene kompatible Nachfrage"})
+	sections.append({"title": "Nachfrage", "rows": demand_rows})
+	return sections
 
 func _get_extra_info(_world = null) -> Dictionary:
 	var info: Dictionary = {}

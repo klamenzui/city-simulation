@@ -147,6 +147,11 @@ func _run_all_tests() -> void:
 		"multiplayer_host_authority_applies_player_actions",
 		"network_snapshot_rebuilds_player_work_and_home_ui",
 		"player_work_education_gate",
+		"player_application_replaces_lower_education_npc",
+		"player_application_equal_education_replaces_shortest_tenure",
+		"player_application_replaces_equal_reserved_npc",
+		"player_application_cannot_replace_higher_education_npc",
+		"player_application_keeps_different_job_role",
 		"player_university_unlocks_job",
 		"player_work_payday_uses_worked_minutes",
 		"wage_progression_bonus_breakdown",
@@ -253,6 +258,16 @@ func _run_test(test_name: String) -> String:
 			return _test_network_snapshot_rebuilds_player_work_and_home_ui()
 		"player_work_education_gate":
 			return _test_player_work_education_gate()
+		"player_application_replaces_lower_education_npc":
+			return _test_player_application_replaces_lower_education_npc()
+		"player_application_equal_education_replaces_shortest_tenure":
+			return _test_player_application_equal_education_replaces_shortest_tenure()
+		"player_application_replaces_equal_reserved_npc":
+			return _test_player_application_replaces_equal_reserved_npc()
+		"player_application_cannot_replace_higher_education_npc":
+			return _test_player_application_cannot_replace_higher_education_npc()
+		"player_application_keeps_different_job_role":
+			return _test_player_application_keeps_different_job_role()
 		"player_university_unlocks_job":
 			return _test_player_university_unlocks_job()
 		"player_work_payday_uses_worked_minutes":
@@ -2191,18 +2206,28 @@ func _test_player_action_buttons_and_manual_actions() -> String:
 
 	_expect(player.player_enter_building(cafe, world), "player should enter the cafe as a visitor")
 	var cafe_action_state := player.get_player_action_ui_state(world)
-	_expect(_player_ui_button_enabled(cafe_action_state, "building_inventory"),
-			"cafe action bar should allow reopening building inventory")
+	_expect(not _player_ui_button_enabled(cafe_action_state, "building_inventory"),
+			"cafe visitor must not access internal building inventory")
 	var cafe_inventory_state := player.get_player_inventory_ui_state(world, "building")
-	_expect_eq(str(cafe_inventory_state.get("mode", "")), "building",
-			"cafe inventory should use read-only building mode")
-	_expect(_inventory_container_has_slot(cafe_inventory_state, "building", "drink"),
-			"cafe building inventory should show drinks")
-	_expect(_inventory_container_has_slot(cafe_inventory_state, "building", "snack"),
-			"cafe building inventory should show snacks")
-	_expect((cafe_inventory_state.get("categories", []) as Array).is_empty(),
-			"read-only cafe inventory should not expose shop purchase categories")
+	_expect_eq(str(cafe_inventory_state.get("mode", "")), "player",
+			"cafe visitor building-inventory request should fall back to player inventory")
+	_expect(not _inventory_container_has_slot(cafe_inventory_state, "building", "drink"),
+			"cafe visitor must not see internal drink stock")
 	_expect(player.player_exit_building(world), "player should leave cafe before going home")
+	cafe.citizen_owner = player
+	cafe.owner_display_name = player.citizen_name
+	_expect(player.player_enter_building(cafe, world), "cafe owner should enter without a visitor slot")
+	var owner_cafe_action_state := player.get_player_action_ui_state(world)
+	_expect(_player_ui_button_enabled(owner_cafe_action_state, "building_inventory"),
+			"cafe owner should access internal building inventory")
+	var owner_cafe_inventory_state := player.get_player_inventory_ui_state(world, "building")
+	_expect(_inventory_container_has_slot(owner_cafe_inventory_state, "building", "drink"),
+			"cafe owner inventory should show drinks")
+	_expect(_inventory_container_has_slot(owner_cafe_inventory_state, "building", "snack"),
+			"cafe owner inventory should show snacks")
+	_expect(player.player_exit_building(world), "player should leave owned cafe before going home")
+	cafe.citizen_owner = null
+	cafe.owner_display_name = ""
 
 	_expect(player.player_enter_building(home, world), "player should enter home to store carried inventory")
 	var carried_before_deposit := player.get_carried_inventory_count("food")
@@ -2522,6 +2547,129 @@ func _test_player_work_education_gate() -> String:
 	_expect(uni.workers.has(player), "qualified application should take the worker slot")
 	_expect(player.job != null and player.job.workplace == uni, "qualified application should assign the job")
 	_expect(player.player_work(world), "accepted player_work should start work")
+
+	_free_world(world)
+	return _current_error
+
+func _test_player_application_replaces_lower_education_npc() -> String:
+	var world: World = _new_world()
+	var workplace: Building = _new_building("Competitive Workplace", 2)
+	world.register_building(workplace)
+	var lower := _hire_test_worker(world, workplace, "Lower Education NPC", "Worker", 0, 12)
+	var equal := _hire_test_worker(world, workplace, "Equal Education NPC", "Worker", 1, 1)
+	lower.current_action = WorkActionScript.new(lower.job)
+
+	var player: Citizen = _new_citizen("Qualified Player")
+	world.register_citizen(player)
+	player.set_world_ref(world)
+	player.autonomous_simulation_enabled = false
+	player.keyboard_control_enabled = true
+	player.education_level = 1
+
+	_expect(player.player_enter_building(workplace, world), "player should enter a full workplace")
+	_expect(player.player_apply_for_work(world), "qualified player should replace a lower-education NPC")
+	_expect(workplace.workers.has(player), "accepted player should occupy the worker slot")
+	_expect(not workplace.workers.has(lower), "lower-education NPC should lose the worker slot")
+	_expect(workplace.workers.has(equal), "equal-education NPC should remain while a lower-education NPC exists")
+	_expect(lower.job != null and lower.job.workplace == null,
+			"displaced NPC should keep a reusable job profile without the old workplace")
+	_expect(not world.jobs.has(lower.job), "displaced NPC job should be removed from the job registry")
+	_expect(lower.current_action == null, "displaced NPC work action must stop immediately")
+	_expect(player.get_player_action_notice().find(lower.citizen_name) != -1,
+			"acceptance notice should identify the displaced NPC")
+
+	_free_world(world)
+	return _current_error
+
+func _test_player_application_equal_education_replaces_shortest_tenure() -> String:
+	var world: World = _new_world()
+	var workplace: Building = _new_building("Equal Education Workplace", 2)
+	world.register_building(workplace)
+	var long_tenure := _hire_test_worker(world, workplace, "Long Tenure NPC", "Worker", 1, 8)
+	var short_tenure := _hire_test_worker(world, workplace, "Short Tenure NPC", "Worker", 1, 2)
+
+	var player: Citizen = _new_citizen("Equal Education Player")
+	world.register_citizen(player)
+	player.set_world_ref(world)
+	player.autonomous_simulation_enabled = false
+	player.keyboard_control_enabled = true
+	player.education_level = 1
+
+	_expect(player.player_enter_building(workplace, world), "player should enter the full equal-education workplace")
+	_expect(player.player_apply_for_work(world),
+			"equal player education should still allow a full-workplace application")
+	_expect(workplace.workers.has(player), "equal-education player should be hired")
+	_expect(workplace.workers.has(long_tenure), "longer-tenure NPC should be retained")
+	_expect(not workplace.workers.has(short_tenure), "shortest-tenure equal-education NPC should be replaced")
+
+	_free_world(world)
+	return _current_error
+
+func _test_player_application_replaces_equal_reserved_npc() -> String:
+	var world: World = _new_world()
+	var workplace: Building = _new_building("Reserved Workplace", 1)
+	world.register_building(workplace)
+	var reserved := _hire_test_worker(world, workplace, "Reserved NPC", "Worker", 1, 0, false)
+
+	var player: Citizen = _new_citizen("Reserved Slot Player")
+	world.register_citizen(player)
+	player.set_world_ref(world)
+	player.autonomous_simulation_enabled = false
+	player.keyboard_control_enabled = true
+	player.education_level = 1
+
+	_expect(not workplace.workers.has(reserved), "test NPC should reserve the job without being employed yet")
+	_expect(player.player_enter_building(workplace, world), "player should enter the reserved workplace")
+	_expect(player.player_apply_for_work(world), "equal-education player should replace an NPC reservation")
+	_expect(workplace.workers.has(player), "player should occupy the previously reserved slot")
+	_expect(reserved.job != null and reserved.job.workplace == null,
+			"displaced reservation should release its workplace")
+	_expect(not world.jobs.has(reserved.job), "displaced reservation should leave the job registry")
+
+	_free_world(world)
+	return _current_error
+
+func _test_player_application_cannot_replace_higher_education_npc() -> String:
+	var world: World = _new_world()
+	var workplace: Building = _new_building("Higher Education Workplace", 1)
+	world.register_building(workplace)
+	var senior := _hire_test_worker(world, workplace, "Higher Education NPC", "Worker", 2, 1)
+
+	var player: Citizen = _new_citizen("Lower Education Player")
+	world.register_citizen(player)
+	player.set_world_ref(world)
+	player.autonomous_simulation_enabled = false
+	player.keyboard_control_enabled = true
+	player.education_level = 1
+
+	_expect(player.player_enter_building(workplace, world), "player should enter the protected workplace")
+	_expect(not player.player_apply_for_work(world),
+			"player must not replace an NPC with a higher education level")
+	_expect(workplace.workers.has(senior), "higher-education NPC should keep the worker slot")
+	_expect(not workplace.workers.has(player), "rejected player should not occupy the worker slot")
+	_expect(player.job == null, "rejected player should not keep a job commitment")
+
+	_free_world(world)
+	return _current_error
+
+func _test_player_application_keeps_different_job_role() -> String:
+	var world: World = _new_world()
+	var workplace: Building = _new_building("Mixed Role Workplace", 1)
+	world.register_building(workplace)
+	var specialist := _hire_test_worker(world, workplace, "Specialist NPC", "Nurse", 0, 1)
+
+	var player: Citizen = _new_citizen("Worker Applicant")
+	world.register_citizen(player)
+	player.set_world_ref(world)
+	player.autonomous_simulation_enabled = false
+	player.keyboard_control_enabled = true
+	player.education_level = 3
+
+	_expect(player.player_enter_building(workplace, world), "player should enter the mixed-role workplace")
+	_expect(not player.player_apply_for_work(world),
+			"player must not replace an NPC assigned to a different job role")
+	_expect(workplace.workers.has(specialist), "different-role NPC should keep the worker slot")
+	_expect(player.job == null, "rejected mixed-role application should not keep a job")
 
 	_free_world(world)
 	return _current_error
@@ -2989,6 +3137,34 @@ func _new_citizen(citizen_name: String) -> Citizen:
 	citizen.citizen_name = citizen_name
 	citizen.jump_low_obstacles = false
 	_harness_root.add_child(citizen)
+	return citizen
+
+func _hire_test_worker(
+	world: World,
+	workplace: Building,
+	citizen_name: String,
+	job_title: String,
+	education: int,
+	tenure_days: int,
+	employed: bool = true
+) -> Citizen:
+	var citizen := _new_citizen(citizen_name)
+	world.register_citizen(citizen)
+	citizen.set_world_ref(world)
+	citizen.education_level = education
+	var assigned_job := Job.new()
+	assigned_job.title = job_title
+	assigned_job.wage_per_hour = 12
+	assigned_job.shift_hours = 8
+	assigned_job.required_education_level = 0
+	assigned_job.workplace = workplace
+	assigned_job.preferred_workplace = workplace
+	assigned_job.allowed_building_types = [int(workplace.building_type)]
+	citizen.job = assigned_job
+	world.register_job(assigned_job)
+	if employed:
+		_expect(workplace.try_hire(citizen), "%s should be hired for test setup" % citizen_name)
+	citizen.job_tenure_days = tenure_days
 	return citizen
 
 func _new_world() -> World:

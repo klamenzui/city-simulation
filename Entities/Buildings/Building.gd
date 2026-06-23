@@ -28,6 +28,12 @@ enum BuildingType {
 	LOGISTICS_DEPOT,
 }
 
+enum AccessRole {
+	VISITOR,
+	WORKER,
+	OWNER,
+}
+
 const BUILDING_USE_GROUP_PREFIX := "building_use_"
 const BUILDING_USE_GROUPS := [
 	"building_use_generic",
@@ -675,9 +681,32 @@ func get_info_sections(world = null) -> Array:
 	return sections
 
 
+func get_info_sections_for_viewer(world = null, viewer: Citizen = null) -> Array:
+	if viewer == null:
+		return get_info_sections(world)
+
+	var role := get_access_role(viewer)
+	var sections: Array = [
+		_build_building_identity_section(),
+		_build_building_occupancy_section(world),
+	]
+	if role == AccessRole.OWNER:
+		sections.append(_build_building_finance_section(world))
+		sections.append(_build_building_maintenance_section(world))
+	elif role == AccessRole.WORKER:
+		sections.append(_build_building_maintenance_section(world))
+	for section in _get_extra_info_sections_for_viewer(world, viewer, role):
+		sections.append(section)
+	return sections
+
+
 # Subclass hook for extra sections. Default: empty.
 func _get_extra_info_sections(_world = null) -> Array:
 	return []
+
+
+func _get_extra_info_sections_for_viewer(world = null, _viewer: Citizen = null, _role: AccessRole = AccessRole.VISITOR) -> Array:
+	return _get_extra_info_sections(world)
 
 
 func _build_building_identity_section() -> Dictionary:
@@ -1247,6 +1276,19 @@ func has_citizen_owner() -> bool:
 
 func is_owned_by(citizen: Citizen) -> bool:
 	return citizen != null and get_owner_citizen() == citizen
+
+func is_worker(citizen: Citizen) -> bool:
+	return citizen != null \
+		and workers.has(citizen) \
+		and citizen.job != null \
+		and citizen.job.workplace == self
+
+func get_access_role(citizen: Citizen) -> AccessRole:
+	if is_owned_by(citizen):
+		return AccessRole.OWNER
+	if is_worker(citizen):
+		return AccessRole.WORKER
+	return AccessRole.VISITOR
 
 func get_owner_display_name() -> String:
 	var citizen_owner := get_owner_citizen()

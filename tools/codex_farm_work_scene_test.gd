@@ -212,9 +212,53 @@ func _initialize() -> void:
 		mounted_scene.call("finish_session")
 	await process_frame
 
+	var owner := CitizenScene.instantiate() as Citizen
+	root.add_child(owner)
+	await process_frame
+	owner.citizen_name = "Farm Owner"
+	owner.needs.hunger = 0.0
+	owner.needs.energy = 100.0
+	owner.needs.health = 100.0
+	farm.citizen_owner = owner
+	farm.owner_display_name = owner.citizen_name
+	farm.crop_state = Farm.CropState.READY
+	farm.crop_growth_minutes = farm.get_crop_growth_total_minutes()
+	_expect(owner.job == null, "owner work fixture should not have an employment contract", failures)
+	_expect(farm.can_actor_perform_work(owner), "Farm owner should be allowed to work without a job", failures)
+	_expect(farm.begin_player_work_session(owner), "Farm owner work session should start", failures)
+	var owner_context := farm.get_player_work_context(world, owner)
+	_expect_eq(str(owner_context.get("actor_role", "")), "owner", "Farm work context should expose owner role", failures)
+	var restaurant := Restaurant.new()
+	restaurant.name = "Demand Restaurant"
+	root.add_child(restaurant)
+	await process_frame
+	world.register_building(restaurant)
+	restaurant.inventory["meal"] = 0
+	restaurant.account.balance = 1000
+	var worker_demand := farm.get_delivery_demand_snapshot(world, player)
+	var owner_demand := farm.get_delivery_demand_snapshot(world, owner)
+	_expect(_demand_contains_target(worker_demand, restaurant.get_display_name()), "Farm worker should see Restaurant demand", failures)
+	_expect(not _demand_has_finance(worker_demand), "Farm worker demand must hide revenue data", failures)
+	_expect(_demand_has_finance(owner_demand), "Farm owner demand should include revenue data", failures)
+	var worker_sections := farm.get_info_sections_for_viewer(world, player)
+	var owner_sections := farm.get_info_sections_for_viewer(world, owner)
+	_expect_eq(owner_sections.size(), worker_sections.size() + 1, "Farm owner details should add the finance section", failures)
+	var owner_applied := farm.apply_player_work_result(world, owner, {
+		"harvested_amount": 1,
+		"quality_score": 0.9,
+		"work_minutes": 30,
+		"growth_minutes_added": 0,
+		"delivered_crates": 0,
+	})
+	_expect(bool(owner_applied.get("accepted", false)), "Farm should accept owner self-work result", failures)
+	_expect_eq(owner.work_minutes_today, 0, "Owner self-work must not create wage minutes", failures)
+	_expect(farm.owner_work_minutes_today >= 30, "Farm should track unpaid owner work minutes", failures)
+
 	game.queue_free()
 	maintenance.queue_free()
 	live.queue_free()
+	restaurant.queue_free()
+	owner.queue_free()
 	player.queue_free()
 	farm.queue_free()
 	world.queue_free()
@@ -248,3 +292,19 @@ func _expect(condition: bool, message: String, failures: Array[String]) -> void:
 func _expect_eq(actual, expected, message: String, failures: Array[String]) -> void:
 	if actual != expected:
 		failures.append("%s (expected %s, got %s)" % [message, str(expected), str(actual)])
+
+
+func _demand_contains_target(entries: Array, target_name: String) -> bool:
+	for entry_var in entries:
+		var entry := entry_var as Dictionary
+		if str(entry.get("target_name", "")) == target_name:
+			return true
+	return false
+
+
+func _demand_has_finance(entries: Array) -> bool:
+	for entry_var in entries:
+		var entry := entry_var as Dictionary
+		if entry.has("expected_revenue") or entry.has("unit_price"):
+			return true
+	return false

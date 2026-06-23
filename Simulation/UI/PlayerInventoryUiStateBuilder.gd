@@ -15,7 +15,9 @@ static func build(citizen: Citizen, world: Node = null, mode: String = "player")
 	var resolved_world := citizen._resolve_world_arg(world)
 	var location := citizen._get_player_current_building()
 	var show_shop := clean_mode == "shop" and location is Shop
-	var show_building := clean_mode == "building" and location is CommercialBuilding
+	var show_building := clean_mode == "building" \
+		and location is CommercialBuilding \
+		and (location.is_worker(citizen) or location.is_owned_by(citizen))
 	var resolved_mode := "shop" if show_shop else ("building" if show_building else "player")
 	var status_lines: PackedStringArray = []
 	status_lines.append(LocaleServiceScript.t("player.money") % (citizen.wallet.balance if citizen.wallet != null else 0))

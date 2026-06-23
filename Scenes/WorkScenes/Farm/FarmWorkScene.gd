@@ -85,23 +85,23 @@ const TASK_FLOW := [
 ]
 
 const ITEM_LABELS := {
-	"wheat_seed": "Wheat seed",
-	"corn_seed": "Corn seed",
-	"sunflower_seed": "Sunflower seed",
-	"wheat_grain": "Wheat",
-	"corn_grain": "Corn",
-	"sunflower_grain": "Sunflowers",
-	"flour_sack": "Flour sack",
-	"watering_can": "Watering can",
-	"sickle": "Sickle",
-	"shovel": "Shovel",
-	"empty_sack": "Empty sack",
+	"wheat_seed": "Weizensaat",
+	"corn_seed": "Maissaat",
+	"sunflower_seed": "Sonnenblumensaat",
+	"wheat_grain": "Weizen",
+	"corn_grain": "Mais",
+	"sunflower_grain": "Sonnenblumen",
+	"flour_sack": "Mehlsack",
+	"watering_can": "Gießkanne",
+	"sickle": "Sichel",
+	"shovel": "Schaufel",
+	"empty_sack": "Leerer Sack",
 }
 
 const CROP_LABELS := {
-	CROP_WHEAT: "Wheat",
-	CROP_CORN: "Corn",
-	CROP_SUNFLOWER: "Sunflower",
+	CROP_WHEAT: "Weizen",
+	CROP_CORN: "Mais",
+	CROP_SUNFLOWER: "Sonnenblume",
 }
 
 @export var auto_start: bool = true
@@ -124,6 +124,8 @@ var delivered_crates: int = 0
 var harvested_amount: int = 0
 var quality_score: float = 1.0
 var work_minutes: int = DEFAULT_WORK_MINUTES
+var actor_role: String = "worker"
+var demand_entries: Array[Dictionary] = []
 
 var _player_inventory = FarmWorkInventoryScript.new()
 var _silo_inventory = FarmWorkInventoryScript.new()
@@ -164,6 +166,7 @@ var _hud_label: Label = null
 var _task_label: Label = null
 var _tool_label: Label = null
 var _hint_label: Label = null
+var _demand_label: Label = null
 var _inventory_label: Label = null
 var _context_panel: PanelContainer = null
 var _context_content: VBoxContainer = null
@@ -226,7 +229,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 
 
-func configure_for_farm(farm, skill_level: int = 0) -> bool:
+func configure_for_farm(
+	farm,
+	skill_level: int = 0,
+	world: World = null,
+	actor: Citizen = null
+) -> bool:
 	player_skill_level = maxi(skill_level, 0)
 	if farm == null:
 		_apply_context({
@@ -243,7 +251,7 @@ func configure_for_farm(farm, skill_level: int = 0) -> bool:
 		return false
 	var context := {}
 	if farm.has_method("get_player_work_context"):
-		context = farm.call("get_player_work_context")
+		context = farm.call("get_player_work_context", world, actor)
 	else:
 		context = {
 			"farm_label": farm.get_display_name() if farm.has_method("get_display_name") else str(farm.name),
@@ -453,6 +461,13 @@ func _apply_context(context: Dictionary) -> void:
 	suggested_harvest_units = maxi(int(context.get("suggested_harvest_units", suggested_harvest_units)), 0)
 	work_minutes = maxi(int(context.get("work_minutes", work_minutes)), 15)
 	_farm_growth_total_minutes = maxi(int(context.get("crop_growth_total_minutes", _farm_growth_total_minutes)), 1)
+	actor_role = str(context.get("actor_role", actor_role)).strip_edges()
+	demand_entries.clear()
+	var context_demand: Variant = context.get("demand_entries", [])
+	if context_demand is Array:
+		for entry_var in context_demand:
+			if entry_var is Dictionary:
+				demand_entries.append((entry_var as Dictionary).duplicate(true))
 	_units_per_crate = _calculate_units_per_crate()
 	if is_inside_tree():
 		_reset_session_state()
@@ -804,6 +819,9 @@ func _build_ui() -> void:
 	_task_label = _make_label("", 13)
 	_task_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hud_box.add_child(_task_label)
+	_demand_label = _make_label("", 12)
+	_demand_label.custom_minimum_size = Vector2(270, 0)
+	hud_box.add_child(_demand_label)
 	_tool_label = _make_label("", 13)
 	_tool_label.custom_minimum_size = Vector2(160, 0)
 	hud_box.add_child(_tool_label)
@@ -812,7 +830,7 @@ func _build_ui() -> void:
 	hud_box.add_child(_hint_label)
 
 	var leave_button := Button.new()
-	leave_button.text = "Leave"
+	leave_button.text = "Verlassen"
 	leave_button.custom_minimum_size = Vector2(92, 42)
 	leave_button.pressed.connect(finish_session)
 	hud_box.add_child(leave_button)
@@ -852,21 +870,25 @@ func _make_label(text: String, font_size: int) -> Label:
 
 func _update_all_ui() -> void:
 	if _hud_label != null:
-		_hud_label.text = "%s\nScore %d | %02ds" % [
+		var role_label := "Besitzer" if actor_role == "owner" else "Arbeiter"
+		_hud_label.text = "%s\n%s | Punkte %d | %02ds" % [
 			farm_label,
+			role_label,
 			score,
 			int(maxf(session_duration_sec - elapsed_sec, 0.0)),
 		]
 	if _inventory_label != null:
-		_inventory_label.text = "Inventory\n%s" % _player_inventory.format_contents(ITEM_LABELS)
+		_inventory_label.text = "Inventar\n%s" % _player_inventory.format_contents(ITEM_LABELS)
 	if _task_label != null:
-		_task_label.text = "Task\n%s" % _get_current_task_label()
+		_task_label.text = "Aufgabe\n%s" % _get_current_task_label()
+	if _demand_label != null:
+		_demand_label.text = _format_demand_hud()
 	if _tool_label != null:
-		_tool_label.text = "Tool\n%s | Crop: %s" % [_selected_tool, _crop_label(_selected_crop_type)]
+		_tool_label.text = "Werkzeug\n%s | Pflanze: %s" % [_tool_display_label(_selected_tool), _crop_label(_selected_crop_type)]
 	if _hint_label != null and _nearest_interactable != null:
-		_hint_label.text = "Near\n%s" % _nearest_interactable.display_name
+		_hint_label.text = "In der Nähe\n%s" % _nearest_interactable.display_name
 	elif _hint_label != null:
-		_hint_label.text = "Near\n-"
+		_hint_label.text = "In der Nähe\n-"
 	if _context_panel != null and _context_panel.visible and _active_interactable != null:
 		_refresh_context_panel()
 
@@ -1133,6 +1155,13 @@ func _get_context_lines(interactable) -> PackedStringArray:
 			lines.append("Vehicle: Pickup placeholder")
 			lines.append("Status: parked")
 			lines.append("Cargo: %d / 6 flour sacks" % _pickup_inventory.get_amount("flour_sack"))
+			if not demand_entries.is_empty():
+				var priority := demand_entries[0]
+				lines.append("Priorität: %s benötigt %d %s" % [
+					str(priority.get("target_name", "Business")),
+					int(priority.get("need", 0)),
+					str(priority.get("target_item_label", "goods")),
+				])
 		"gate":
 			lines.append("Exit: returns to the city gate position")
 	return lines
@@ -1461,25 +1490,25 @@ func _get_current_task_label() -> String:
 func _task_label_for_id(task_id: String) -> String:
 	match task_id:
 		"take_seed":
-			return "Take wheat seeds from farm inventory"
+			return "Weizensaat aus dem Farmlager holen"
 		"sow_wheat":
-			return "Sow wheat on the wheat field"
+			return "Weizen auf dem Weizenfeld säen"
 		"water_wheat":
-			return "Water the wheat field"
+			return "Weizenfeld bewässern"
 		"wait_growth":
-			return "Wait for mature wheat"
+			return "Wachstum des Weizens abwarten"
 		"harvest_wheat":
-			return "Harvest wheat"
+			return "Weizen ernten"
 		"store_silo":
-			return "Store grain in the silo"
+			return "Getreide im Silo einlagern"
 		"start_mill":
-			return "Start the windmill"
+			return "Windmühle starten"
 		"collect_flour":
-			return "Collect flour sacks"
+			return "Mehlsäcke abholen"
 		"store_barn":
-			return "Store sacks in the barn"
+			return "Säcke in der Scheune lagern"
 		"load_pickup":
-			return "Load the pickup"
+			return "Pickup beladen"
 	return task_id
 
 
@@ -1624,6 +1653,18 @@ func _crop_label(crop_type: String) -> String:
 func _item_label(item_id: String) -> String:
 	return str(ITEM_LABELS.get(item_id, item_id))
 
+func _tool_display_label(tool: String) -> String:
+	match tool:
+		"Hands":
+			return "Hände"
+		"Seed bag":
+			return "Saatbeutel"
+		"Watering can":
+			return "Gießkanne"
+		"Sickle":
+			return "Sichel"
+	return tool
+
 
 func _set_hint(text: String) -> void:
 	if _hint_label != null:
@@ -1639,6 +1680,23 @@ func _calculate_units_per_crate() -> int:
 func _calculate_work_minutes() -> int:
 	var progress := clampf(elapsed_sec / maxf(session_duration_sec, 1.0), 0.25, 1.0)
 	return maxi(int(round(float(work_minutes) * progress)), 15)
+
+
+func _format_demand_hud() -> String:
+	if demand_entries.is_empty():
+		return "Nachfrage\nKeine offenen Bestellungen"
+	var lines := PackedStringArray(["Nachfrage"])
+	var count := mini(demand_entries.size(), 2)
+	for index in range(count):
+		var entry := demand_entries[index]
+		lines.append("%s: %d %s" % [
+			str(entry.get("target_name", "Business")),
+			int(entry.get("need", 0)),
+			str(entry.get("target_item_label", "goods")),
+		])
+	if demand_entries.size() > count:
+		lines.append("+%d weitere" % (demand_entries.size() - count))
+	return "\n".join(lines)
 
 
 func _is_text_input_focused() -> bool:

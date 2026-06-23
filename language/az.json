@@ -267,6 +267,7 @@
 		"education_rejected": "%s üçün təhsil %d/%d tələb olunur.",
 		"hiring_full": "%s doludur.",
 		"accepted_job": "%s kimi %s yerində qəbul edildi.",
+		"accepted_job_replaced": "%s kimi %s yerində qəbul edildi. %s əvəz olundu.",
 		"apply_first": "Əvvəlcə %s yerinə müraciət et.",
 		"relax_home_or_park": "Dincəlmək evdə və ya parkda mümkündür.",
 		"socialize_park": "Sosiallaşmaq yalnız parkda mümkündür.",

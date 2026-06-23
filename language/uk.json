@@ -267,6 +267,7 @@
 		"education_rejected": "Для %s потрібна освіта %d/%d.",
 		"hiring_full": "%s заповнено.",
 		"accepted_job": "Прийнято як %s у %s.",
+		"accepted_job_replaced": "Прийнято як %s у %s. %s було замінено.",
 		"apply_first": "Спочатку подайте заявку у %s.",
 		"relax_home_or_park": "Відпочити можна вдома або в парку.",
 		"socialize_park": "Спілкуватися можна тільки в парку.",

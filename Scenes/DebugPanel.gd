@@ -230,6 +230,8 @@ func update_player_actions(ui_state: Dictionary) -> void:
 
 func _create_player_panel_button(spec: Dictionary, action_id: String) -> Button:
 	var btn := Button.new()
+	btn.name = "Action_%s" % action_id
+	btn.set_meta("action_id", action_id)
 	btn.text = str(spec.get("text", action_id))
 	btn.disabled = not bool(spec.get("enabled", true))
 	btn.tooltip_text = str(spec.get("tooltip", ""))

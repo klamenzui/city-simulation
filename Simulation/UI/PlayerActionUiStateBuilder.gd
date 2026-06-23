@@ -33,6 +33,8 @@ static func build(citizen: Citizen, world: Node = null) -> Dictionary:
 		status_lines.append(LocaleServiceScript.t("player.status_active") % citizen._active_player_action_label())
 		buttons.append(_make_button("stop", LocaleServiceScript.t("action.stop"), true))
 
+	_append_active_farm_delivery(citizen, typed_world, buttons, status_lines)
+
 	if location != null:
 		_append_location_actions(citizen, typed_world, location, buttons, status_lines, active_id, action_running)
 
@@ -128,12 +130,15 @@ static func _append_location_actions(
 
 	if location is Shop:
 		buttons.append(_make_button("shop", LocaleServiceScript.t("action.shop"), true))
-	elif location is CommercialBuilding:
+	if location is CommercialBuilding and (location.is_worker(citizen) or location.is_owned_by(citizen)):
 		buttons.append(_make_button(
 			"building_inventory",
 			LocaleServiceScript.t("inventory.container_building", "Building inventory"),
 			true
 		))
+
+	if location is Farm:
+		_append_farm_actions(citizen, world, location as Farm, buttons, status_lines, action_running)
 
 	if int(location.job_capacity) > 0:
 		_append_work_actions(citizen, world, location, buttons, status_lines, active_id, action_running)
@@ -152,6 +157,7 @@ static func _append_work_actions(
 	var required_edu := location.get_required_education_level()
 	var qualifies := citizen.education_level >= required_edu
 	var employed_here := citizen._player_has_accepted_job_at(location)
+	var owner_self_work := location is Farm and location.is_owned_by(citizen)
 	if required_edu > 0:
 		status_lines.append(LocaleServiceScript.t("player.status_job_requirement") % [prospective_title, citizen.education_level, required_edu])
 	else:
@@ -178,12 +184,88 @@ static func _append_work_actions(
 				])
 		var can_work := not action_running or active_id == "work"
 		buttons.append(_make_button("work", LocaleServiceScript.t("action.work"), can_work, LocaleServiceScript.t("player_disabled.action_running")))
+	elif owner_self_work:
+		status_lines.append("Besitzerarbeit: kein Lohn, Ertrag geht an den Farmbetrieb.")
+		buttons.append(_make_button(
+			"work",
+			LocaleServiceScript.t("action.work"),
+			not action_running,
+			LocaleServiceScript.t("player_disabled.action_running")
+		))
 	else:
 		buttons.append(_make_button("apply_work", LocaleServiceScript.t("action.apply_work"), not action_running, LocaleServiceScript.t("player_disabled.action_running")))
-	if not qualifies:
+	if not qualifies and not owner_self_work:
 		buttons.append(_make_button("training", LocaleServiceScript.t("action.training"), true))
 	if employed_here:
 		buttons.append(_make_button("quit_job", LocaleServiceScript.t("action.quit_job"), true))
+
+
+static func _append_farm_actions(
+	citizen: Citizen,
+	world: World,
+	farm: Farm,
+	buttons: Array,
+	status_lines: PackedStringArray,
+	action_running: bool
+) -> void:
+	if farm == null or not farm.can_actor_view_demand(citizen):
+		return
+	var demand := farm.get_delivery_demand_snapshot(world, citizen) if world != null else []
+	status_lines.append("Farmrolle: %s" % ("Besitzer" if farm.is_owned_by(citizen) else "Arbeiter"))
+	if demand.is_empty():
+		status_lines.append("Nachfrage: keine offenen kompatiblen Bestellungen.")
+	else:
+		status_lines.append("Nachfrage: %d offene Bestellungen." % demand.size())
+		var preview_count := mini(demand.size(), 3)
+		for index in range(preview_count):
+			var entry := demand[index] as Dictionary
+			status_lines.append("%s braucht %d %s (%d lieferbar)." % [
+				str(entry.get("target_name", "Geschäft")),
+				int(entry.get("need", 0)),
+				str(entry.get("target_item_label", "Ware")),
+				int(entry.get("deliverable", 0)),
+			])
+	buttons.append(_make_button(
+		"farm_demand",
+		"Nachfrage",
+		not action_running,
+		LocaleServiceScript.t("player_disabled.action_running")
+	))
+
+
+static func _append_active_farm_delivery(
+	citizen: Citizen,
+	world: World,
+	buttons: Array,
+	status_lines: PackedStringArray
+) -> void:
+	var farm := _find_manual_delivery_farm(citizen, world)
+	if farm == null:
+		return
+	var status := farm.get_manual_delivery_status(citizen)
+	status_lines.append("Farmlieferung: %d %s zu %s." % [
+		int(status.get("quantity", 0)),
+		str(status.get("target_item", "Ware")),
+		str(status.get("target_name", "Ziel")),
+	])
+	var at_target := bool(status.get("at_target", false))
+	buttons.append(_make_button(
+		"complete_farm_delivery",
+		"Lieferung abladen",
+		at_target,
+		"Fahre zum Zielgeschäft."
+	))
+	buttons.append(_make_button("cancel_farm_delivery", "Lieferung abbrechen", true))
+
+
+static func _find_manual_delivery_farm(citizen: Citizen, world: World) -> Farm:
+	if citizen == null or world == null:
+		return null
+	for building in world.buildings:
+		var farm := building as Farm
+		if farm != null and farm.has_manual_delivery_for(citizen):
+			return farm
+	return null
 
 
 static func _buy_building_disabled_reason(citizen: Citizen, building: Building, world: World, action_running: bool) -> String:

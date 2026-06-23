@@ -267,6 +267,7 @@
 		"education_rejected": "Для %s нужно образование %d/%d.",
 		"hiring_full": "%s заполнено.",
 		"accepted_job": "Принято: %s в %s.",
+		"accepted_job_replaced": "Принято: %s в %s. %s был заменен.",
 		"apply_first": "Сначала подайте заявку в %s.",
 		"relax_home_or_park": "Отдых доступен дома или в парке.",
 		"socialize_park": "Общаться можно только в парке.",
