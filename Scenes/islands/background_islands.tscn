@@ -1,0 +1,42 @@
+[gd_scene format=3 uid="uid://c0ofopdq8abpu"]
+
+[node name="BackgroundIslands" type="Node3D" unique_id=717709965]
+
+[node name="SM_Env_Background_Island_15" type="Node3D" parent="." unique_id=7097241]
+transform = Transform3D(0.0159481, 0, 1.64466, 0, 1.64474, 0, -1.64466, 0, 0.0159481, -47990, -220, -2450)
+
+[node name="SM_Env_Background_Island_14" type="Node3D" parent="." unique_id=1273214002]
+transform = Transform3D(0.441073, 0, 1.58449, 0, 1.64474, 0, -1.58449, 0, 0.441073, -46620, -250, -12860)
+
+[node name="SM_Env_Background_Island_13" type="Node3D" parent="." unique_id=32061782]
+transform = Transform3D(1.23852, 0, 1.08224, 0, 1.64474, 0, -1.08224, 0, 1.23852, -29950, -220, -37990)
+
+[node name="SM_Env_Background_Island_12" type="Node3D" parent="." unique_id=94242727]
+transform = Transform3D(1.60532, 0, -0.357928, 0, 1.64474, 0, 0.357928, 0, 1.60532, 13600, -220, -46550)
+
+[node name="SM_Env_Background_Island_11" type="Node3D" parent="." unique_id=940554753]
+transform = Transform3D(1.62944, 0, -0.223821, 0, 1.64474, 0, 0.223821, 0, 1.62944, 7170, -260, -48020)
+
+[node name="SM_Env_Background_Island_09" type="Node3D" parent="." unique_id=268458418]
+transform = Transform3D(1.20724, 0, -1.11702, 0, 1.64474, 0, 1.11702, 0, 1.20724, 36290, -260, -32060)
+
+[node name="SM_Env_Background_Island_08" type="Node3D" parent="." unique_id=941095777]
+transform = Transform3D(-1.18146, 6.12918e-17, 1.14425, 1.44687e-16, 1.64474, 6.12918e-17, -1.14425, 1.44687e-16, -1.18146, -38270, -260, 30110)
+
+[node name="SM_Env_Background_Island_07" type="Node3D" parent="." unique_id=1732999657]
+transform = Transform3D(-0.724016, 2.05654e-17, 1.47681, 8.86664e-17, 1.64474, 2.05654e-17, -1.47681, 8.86664e-17, -0.724016, -42850, -260, 22670)
+
+[node name="SM_Env_Background_Island_05" type="Node3D" parent="." unique_id=1718692376]
+transform = Transform3D(-1.45358, 2.95671e-16, -0.769598, 1.78012e-16, 1.64474, 2.95671e-16, 0.769598, 1.78012e-16, -1.45358, 19840, -260, 44250)
+
+[node name="SM_Env_Background_Island_04" type="Node3D" parent="." unique_id=1918833639]
+transform = Transform3D(-1.6425, 2.11916e-16, -0.0856861, 2.01149e-16, 1.64474, 2.11916e-16, 0.0856861, 2.01149e-16, -1.6425, -280, -220, 48540)
+
+[node name="SM_Env_Background_Island_03" type="Node3D" parent="." unique_id=1992938212]
+transform = Transform3D(-1.43392, 3.00084e-16, -0.805634, 1.75604e-16, 1.64474, 3.00084e-16, 0.805634, 1.75604e-16, -1.43392, 24940, -220, 41580)
+
+[node name="SM_Env_Background_Island_06" type="Node3D" parent="." unique_id=909219861]
+transform = Transform3D(6.5703e-07, 0, -1.64474, 0, 1.64474, 0, 1.64474, 0, 6.5703e-07, 48700, -250, -70)
+
+[node name="SM_Env_Background_Island_02" type="Node3D" parent="." unique_id=657410378]
+transform = Transform3D(0.425691, 0, -1.58869, 0, 1.64474, 0, 1.58869, 0, 0.425691, 47230, -219, -10460)

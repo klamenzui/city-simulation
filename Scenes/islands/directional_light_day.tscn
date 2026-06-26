@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://dwo0tltmjfe4s"]
+
+[node name="Directional_Light_Day" type="Node3D" unique_id=1486198502]
+transform = Transform3D(0.454645, -0.3859, 0.802732, 0.59648, 0.80123, 0.0473478, -0.661445, 0.457287, 0.594457, 0, 0, 0)
+
+[node name="Object_3177" type="Node3D" parent="." unique_id=939545927]
+transform = Transform3D(1, 0, 0, 0, 2.22045e-16, -1, 0, 1, 2.22045e-16, 0, 0, 0)
+
+[node name="Object_3178" type="Node3D" parent="Object_3177" unique_id=2010474621]
