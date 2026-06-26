@@ -2,7 +2,6 @@ extends RefCounted
 class_name SceneBootstrapController
 
 const BuildingScript = preload("res://Entities/Buildings/Building.gd")
-const ImportedCitySetupScript = preload("res://Simulation/Bootstrap/ImportedCitySetup.gd")
 const NavigationSetupScript = preload("res://Simulation/Bootstrap/NavigationSetup.gd")
 const RoadBuilderScript = preload("res://Simulation/Bootstrap/RoadBuilder.gd")
 const WorldSetupScript = preload("res://Simulation/Bootstrap/WorldSetup.gd")
@@ -28,10 +27,8 @@ static func setup_scene(root: Node3D, world: World) -> void:
 		return
 	var is_headless := _is_headless_runtime()
 
-	var has_scene_city: bool = root.get_node_or_null("World/City") != null
+	var has_scene_city: bool = root.get_node_or_null("RootNode/City") != null
 	var imported_city: Node3D = null
-	if not has_scene_city:
-		imported_city = ImportedCitySetupScript.ensure_city_visual(root)
 
 	_spawn_missing_core_buildings(root)
 	NavigationSetupScript.ensure_region(root, world)
@@ -46,7 +43,7 @@ static func setup_scene(root: Node3D, world: World) -> void:
 
 	world.rebuild_road_graph(root)
 	world.rebuild_pedestrian_graph(root)
-	_ensure_ocean(world)
+	#_ensure_ocean(world)
 
 static func _is_headless_runtime() -> bool:
 	return DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server")
@@ -191,7 +188,7 @@ static func _polish_mesh_instance(mesh_instance: MeshInstance3D, material_cache:
 static func _polish_plant_materials(root: Node3D) -> void:
 	if root == null:
 		return
-	var search_root: Node = root.get_node_or_null("World")
+	var search_root: Node = root.get_node_or_null("RootNode/Islands/World")
 	if search_root == null:
 		search_root = root
 	var material_cache: Dictionary = {}

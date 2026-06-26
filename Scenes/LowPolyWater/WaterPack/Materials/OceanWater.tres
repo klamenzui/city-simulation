@@ -1,0 +1,62 @@
+[gd_resource type="ShaderMaterial" load_steps=10 format=3]
+
+[ext_resource type="Shader" path="res://Scenes/LowPolyWater/WaterPack/Shaders/ocean_water.gdshader" id="1"]
+[ext_resource type="Texture2D" path="res://Scenes/LowPolyWater/WaterPack/Textures/normal_large.png" id="2"]
+[ext_resource type="Texture2D" path="res://Scenes/LowPolyWater/WaterPack/Textures/normal_small.png" id="3"]
+[ext_resource type="Texture2D" path="res://Scenes/LowPolyWater/WaterPack/Textures/caustics.png" id="4"]
+[ext_resource type="Texture2D" path="res://Scenes/LowPolyWater/WaterPack/Textures/noise.png" id="5"]
+[ext_resource type="Texture2D" path="res://Scenes/LowPolyWater/WaterPack/Textures/flow.png" id="6"]
+[ext_resource type="Texture2D" path="res://Scenes/LowPolyWater/WaterPack/Textures/foam.png" id="7"]
+[ext_resource type="Texture2D" path="res://Scenes/LowPolyWater/WaterPack/Textures/shore_mask_default.png" id="8"]
+[ext_resource type="Texture2D" path="res://Scenes/LowPolyWater/WaterPack/Textures/shore_mask_pirate.png" id="9"]
+
+[resource]
+render_priority = 3
+shader = ExtResource("1")
+shader_parameter/normal_large = ExtResource("2")
+shader_parameter/normal_small = ExtResource("3")
+shader_parameter/caustics_tex = ExtResource("4")
+shader_parameter/noise_tex = ExtResource("5")
+shader_parameter/flow_tex = ExtResource("6")
+shader_parameter/foam_tex = ExtResource("7")
+shader_parameter/shore_mask = ExtResource("8")
+shader_parameter/deep_color = Color(0.01, 0.11, 0.275, 0.96)
+shader_parameter/mid_color = Color(0.022, 0.34, 0.605, 0.86)
+shader_parameter/shallow_color = Color(0.082, 0.745, 0.845, 0.58)
+shader_parameter/shore_color = Color(0.39, 0.935, 0.905, 0.5)
+shader_parameter/highlight_color = Color(0.76, 0.98, 0.95, 1)
+shader_parameter/foam_color = Color(0.992, 0.996, 0.994, 1)
+shader_parameter/uv_scale = 0.0105
+shader_parameter/flow_scale = 0.0028
+shader_parameter/flow_strength = 0.072
+shader_parameter/wave_speed = 0.04
+shader_parameter/small_wave_speed = 0.066
+shader_parameter/normal_strength = 0.135
+shader_parameter/wave_height = 0.052
+shader_parameter/surface_drift_strength = 1.0
+shader_parameter/secondary_wave_speed = 1.32
+shader_parameter/primary_wave_speed = 0.92
+shader_parameter/secondary_wave_scale = 0.036
+shader_parameter/primary_wave_scale = 0.022
+shader_parameter/secondary_wave_height = 0.065
+shader_parameter/primary_wave_height = 0.135
+shader_parameter/secondary_wave_direction = Vector2(-0.38, 0.93)
+shader_parameter/primary_wave_direction = Vector2(0.84, 0.31)
+shader_parameter/current_speed = 13.0
+shader_parameter/current_direction = Vector2(0.82, 0.36)
+shader_parameter/water_pattern_strength = 0.03
+shader_parameter/water_pattern_scale = 0.0025
+shader_parameter/surface_line_strength = 0.02
+shader_parameter/caustics_strength = 0.022
+shader_parameter/water_center_xz = Vector2(0, 0)
+shader_parameter/water_size_xz = Vector2(2200, 3200)
+shader_parameter/shore_mask_strength = 1.0
+shader_parameter/shore_color_strength = 0.82
+shader_parameter/foam_strength = 0.96
+shader_parameter/foam_noise_scale = 0.016
+shader_parameter/foam_noise_speed = 0.06
+shader_parameter/deep_alpha = 0.998
+shader_parameter/shallow_alpha = 0.925
+shader_parameter/land_mask_cut_strength = 1.0
+shader_parameter/fresnel_power = 4.0
+shader_parameter/emission_strength = 0.006

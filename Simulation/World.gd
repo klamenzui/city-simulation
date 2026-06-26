@@ -1,4 +1,4 @@
-extends MeshInstance3D
+extends Node3D
 class_name World
 
 const RoadGraphScript = preload("res://Simulation/Navigation/RoadGraph.gd")
@@ -13,6 +13,7 @@ const CITY_BENCH_RESERVATIONS_META := "_world_city_bench_reservations"
 const CITY_SPAWN_POINT_GROUPS := ["city_spawn_point", "citizen_spawn_point", "spawn_point"]
 const CITY_SPAWN_POINT_NAME_HINTS := ["citizenspawnpoint", "cityspawnpoint", "spawnpoint", "spawn_point", "citizen_spawn"]
 
+@export var mesh_instance: MeshInstance3D
 @export var minutes_per_tick: int = 1
 @export var tick_interval_sec: float = 0.5
 @export_range(0.1, 20.0, 0.1) var speed_multiplier: float = 1.0
@@ -988,8 +989,8 @@ func get_pedestrian_component_id(pos: Vector3, building: Building = null) -> int
 	return pedestrian_graph.get_component_id_for_pos(pos, building)
 
 func get_world_bounds() -> AABB:
-	if mesh != null:
-		return _transform_aabb_to_world(mesh.get_aabb())
+	if mesh_instance.mesh != null:
+		return _transform_aabb_to_world(mesh_instance.mesh.get_aabb())
 	return AABB(global_position - Vector3(40.0, 1.0, 40.0), Vector3(80.0, 2.0, 80.0))
 
 func get_world_center() -> Vector3:

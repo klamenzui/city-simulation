@@ -1,6 +1,6 @@
 extends Node3D
 
-@onready var world: World = $World
+@onready var world: World = $RootNode/Islands/MainIsland
 @onready var _city_camera: CityBuilderCamera = $Camera3D as CityBuilderCamera
 @onready var _controlled_citizen: Node3D = get_node_or_null("ControlledCitizen") as Node3D
 

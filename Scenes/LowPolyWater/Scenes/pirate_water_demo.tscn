@@ -1,0 +1,142 @@
+[gd_scene format=3 uid="uid://c87lk1xoddiqv"]
+
+[ext_resource type="PackedScene" uid="uid://b32omftt0i71s" path="res://Scenes/LowPolyWater/Scenes/pirate_scene.tscn" id="1"]
+[ext_resource type="Script" uid="uid://m2nd7ccpbrsv" path="res://Scenes/LowPolyWater/WaterPack/Scripts/low_poly_water_plane.gd" id="2"]
+[ext_resource type="Shader" uid="uid://cdm676yxxc0ro" path="res://Scenes/LowPolyWater/WaterPack/Shaders/ocean_water.gdshader" id="2_hoc0s"]
+[ext_resource type="Material" path="res://Scenes/LowPolyWater/WaterPack/Materials/OceanWater.tres" id="3"]
+[ext_resource type="Texture2D" uid="uid://ck0ocgilo5rt1" path="res://Scenes/LowPolyWater/WaterPack/Textures/caustics.png" id="3_37pty"]
+[ext_resource type="Script" uid="uid://c7av40l56ryv8" path="res://Scenes/LowPolyWater/Scripts/strategy_camera_controller.gd" id="4"]
+[ext_resource type="Texture2D" uid="uid://bobwfvnpwybw0" path="res://Scenes/LowPolyWater/WaterPack/Textures/flow.png" id="4_nqykj"]
+[ext_resource type="Texture2D" uid="uid://qags5osf5vx8" path="res://Scenes/LowPolyWater/WaterPack/Textures/foam.png" id="5_qo1ym"]
+[ext_resource type="Texture2D" uid="uid://kmftwnm8lgv0" path="res://Scenes/LowPolyWater/WaterPack/Textures/noise.png" id="6_nhkd5"]
+[ext_resource type="Texture2D" uid="uid://bl7brg7te6ph1" path="res://Scenes/LowPolyWater/WaterPack/Textures/normal_large.png" id="7_5rixd"]
+[ext_resource type="Texture2D" uid="uid://dqagbu7djip4w" path="res://Scenes/LowPolyWater/WaterPack/Textures/normal_small.png" id="8_nl35r"]
+[ext_resource type="Texture2D" uid="uid://cm822q7kkcs3s" path="res://Scenes/LowPolyWater/WaterPack/Textures/shore_mask_default.png" id="9_6ofbf"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
+sky_top_color = Color(0.34, 0.55, 0.76, 1)
+sky_horizon_color = Color(0.58, 0.74, 0.88, 1)
+ground_bottom_color = Color(0.16, 0.22, 0.3, 1)
+ground_horizon_color = Color(0.42, 0.58, 0.7, 1)
+
+[sub_resource type="Sky" id="Sky_1"]
+sky_material = SubResource("ProceduralSkyMaterial_1")
+
+[sub_resource type="Environment" id="Environment_1"]
+background_mode = 2
+sky = SubResource("Sky_1")
+ambient_light_source = 2
+ambient_light_color = Color(0.56, 0.66, 0.76, 1)
+ambient_light_energy = 0.22
+tonemap_mode = 2
+tonemap_exposure = 0.78
+tonemap_white = 2.0
+adjustment_enabled = true
+adjustment_brightness = 0.96
+adjustment_contrast = 1.08
+adjustment_saturation = 1.05
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_hoc0s"]
+render_priority = 3
+shader = ExtResource("2_hoc0s")
+shader_parameter/normal_large = ExtResource("7_5rixd")
+shader_parameter/normal_small = ExtResource("8_nl35r")
+shader_parameter/caustics_tex = ExtResource("3_37pty")
+shader_parameter/noise_tex = ExtResource("6_nhkd5")
+shader_parameter/flow_tex = ExtResource("4_nqykj")
+shader_parameter/foam_tex = ExtResource("5_qo1ym")
+shader_parameter/shore_mask = ExtResource("9_6ofbf")
+shader_parameter/deep_color = Color(0.01, 0.11, 0.275, 0.96)
+shader_parameter/mid_color = Color(0.022, 0.34, 0.605, 0.86)
+shader_parameter/shallow_color = Color(0.082, 0.745, 0.845, 0.58)
+shader_parameter/shore_color = Color(0.39, 0.935, 0.905, 0.5)
+shader_parameter/highlight_color = Color(0.76, 0.98, 0.95, 1)
+shader_parameter/foam_color = Color(0.992, 0.996, 0.994, 1)
+shader_parameter/uv_scale = 0.0105
+shader_parameter/flow_scale = 0.0028
+shader_parameter/flow_strength = 0.072
+shader_parameter/wave_speed = 0.04
+shader_parameter/small_wave_speed = 0.066
+shader_parameter/normal_strength = 0.135
+shader_parameter/wave_height = 0.052
+shader_parameter/current_direction = Vector2(0.82, 0.36)
+shader_parameter/current_speed = 13.0
+shader_parameter/primary_wave_direction = Vector2(0.84, 0.31)
+shader_parameter/secondary_wave_direction = Vector2(-0.38, 0.93)
+shader_parameter/primary_wave_height = 0.135
+shader_parameter/secondary_wave_height = 0.065
+shader_parameter/primary_wave_scale = 0.022
+shader_parameter/secondary_wave_scale = 0.036
+shader_parameter/primary_wave_speed = 0.92
+shader_parameter/secondary_wave_speed = 1.32
+shader_parameter/surface_drift_strength = 1.0
+shader_parameter/water_pattern_strength = 0.03
+shader_parameter/water_pattern_scale = 0.0025
+shader_parameter/surface_line_strength = 0.02
+shader_parameter/caustics_strength = 0.022
+shader_parameter/water_center_xz = Vector2(112.339, 33.6225)
+shader_parameter/water_size_xz = Vector2(2200, 3200)
+shader_parameter/shore_mask_strength = 1.0
+shader_parameter/shore_color_strength = 0.82
+shader_parameter/foam_strength = 0.96
+shader_parameter/foam_noise_scale = 0.016
+shader_parameter/foam_noise_speed = 0.06
+shader_parameter/deep_alpha = 0.998
+shader_parameter/shallow_alpha = 0.925
+shader_parameter/land_mask_cut_strength = 1.0
+shader_parameter/fresnel_power = 4.0
+shader_parameter/emission_strength = 0.006
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_37pty"]
+size = Vector2(2200, 3200)
+subdivide_width = 192
+subdivide_depth = 224
+
+[node name="PirateWaterDemo" type="Node3D" unique_id=762061575]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=61410006]
+environment = SubResource("Environment_1")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=1501739444]
+transform = Transform3D(0.707107, -0.353553, 0.612372, 0, 0.866025, 0.5, -0.707107, -0.353553, 0.612372, 0, 80, 0)
+light_energy = 0.72
+shadow_enabled = true
+
+[node name="PirateScene" parent="." unique_id=238806162 instance=ExtResource("1")]
+
+[node name="Water" type="MeshInstance3D" parent="." unique_id=436600226]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 112.339, -21.8, 33.6225)
+material_override = SubResource("ShaderMaterial_hoc0s")
+extra_cull_margin = 20.0
+mesh = SubResource("PlaneMesh_37pty")
+script = ExtResource("2")
+plane_size = Vector2(2200, 3200)
+subdivisions_x = 192
+subdivisions_z = 224
+water_y = -21.8
+water_material = ExtResource("3")
+shore_source_root_path = NodePath("../PirateScene")
+shore_gradient_pixels = 78.0
+foam_band_pixels = 0.65
+include_name_keywords = PackedStringArray("Beach", "Rock")
+exclude_name_keywords = PackedStringArray("PalmTree", "Grass", "Flowers", "Fence", "Rope", "Torch", "Bones", "Skull", "Ship", "Boat", "Barrel", "Table", "Chair")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=73987676]
+transform = Transform3D(0.707107, -0.541675, 0.454519, 0, 0.642788, 0.766044, -0.707107, -0.541675, 0.454519, 270, 470, -170)
+current = true
+fov = 45.0
+far = 6000.0
+script = ExtResource("4")
+target_position = Vector3(520, -12, 90)
+distance = 620.0
+min_distance = 30.0
+max_distance = 1800.0
+yaw_degrees = -45.0
+pitch_degrees = -56.0
+focus_distance = 620.0
+movement_speed = 240.0
+edge_scroll_speed = 260.0
+use_bounds = true
+bounds_min = Vector2(-1000, -800)
+bounds_max = Vector2(1100, 2400)
+zoom_step = 55.0

@@ -1,0 +1,14 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Scenes/LowPolyWater/WaterPack/Scripts/low_poly_water_plane.gd" id="1"]
+[ext_resource type="Material" path="res://Scenes/LowPolyWater/WaterPack/Materials/OceanWater.tres" id="2"]
+
+[node name="UniversalWater" type="Node3D"]
+
+[node name="Ocean" type="MeshInstance3D" parent="."]
+script = ExtResource("1")
+plane_size = Vector2(200, 200)
+subdivisions_x = 128
+subdivisions_z = 128
+water_y = 0.0
+water_material = ExtResource("2")
