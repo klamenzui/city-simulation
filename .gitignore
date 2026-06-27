@@ -5,6 +5,7 @@
 # Build / local generated
 /android/
 /environment/audio/
+logs/fps_profiles/
 *.log
 
 # Local project tools / notes

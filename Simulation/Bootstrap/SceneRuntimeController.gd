@@ -12,6 +12,7 @@ const ToastControllerScript = preload("res://Simulation/UI/ToastController.gd")
 const CoordinatePickerControllerScript = preload("res://Simulation/UI/CoordinatePickerController.gd")
 const BuildingStatusBadgeControllerScript = preload("res://Simulation/UI/BuildingStatusBadgeController.gd")
 const CitizenSimulationLodControllerScript = preload("res://Simulation/Citizens/CitizenSimulationLodController.gd")
+const SceneVisualLodControllerScript = preload("res://Simulation/Rendering/SceneVisualLodController.gd")
 const CitizenConversationManagerScript = preload("res://Simulation/Conversation/CitizenConversationManager.gd")
 const LocalDialogueRuntimeServiceScript = preload("res://Simulation/AI/LocalDialogueRuntimeService.gd")
 
@@ -29,6 +30,7 @@ var toast_controller = null
 var coordinate_picker_controller = null
 var selection_state_controller = null
 var citizen_lod_controller = null
+var visual_lod_controller = null
 var citizen_conversation_manager = null
 var dialogue_runtime_service = null
 var multiplayer_session = null
@@ -72,6 +74,7 @@ func setup(
 	_setup_dialogue_runtime(headless_runtime)
 	_setup_conversation_manager()
 	_setup_citizen_lod_controller()
+	_setup_visual_lod_controller(headless_runtime)
 	if headless_runtime:
 		return
 	_setup_selection_debug_controller()
@@ -133,6 +136,11 @@ func refresh_citizen_lod_now() -> void:
 	if lod_camera != null and citizen_lod_controller.city_camera != lod_camera:
 		citizen_lod_controller.setup(world, lod_camera, selection_state_controller, camera_mode_manager)
 	citizen_lod_controller.update(999.0)
+
+func get_visual_lod_summary() -> Dictionary:
+	if visual_lod_controller != null and visual_lod_controller.has_method("get_debug_summary"):
+		return visual_lod_controller.get_debug_summary()
+	return {}
 
 func handle_input(event: InputEvent) -> bool:
 	# Coordinate picker has priority — when active it consumes left-clicks so
@@ -303,6 +311,13 @@ func _setup_citizen_lod_controller() -> void:
 	citizen_lod_controller = CitizenSimulationLodControllerScript.new()
 	citizen_lod_controller.setup(world, lod_camera, selection_state_controller, camera_mode_manager)
 	citizen_lod_controller.update(999.0)
+
+func _setup_visual_lod_controller(headless_runtime: bool) -> void:
+	if owner_node == null:
+		return
+	var lod_camera := _resolve_lod_camera()
+	visual_lod_controller = SceneVisualLodControllerScript.new()
+	visual_lod_controller.setup(owner_node, lod_camera, headless_runtime)
 
 func _ensure_citizen_lod_controller_started() -> void:
 	if world == null:

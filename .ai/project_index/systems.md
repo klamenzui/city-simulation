@@ -213,6 +213,7 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_farm_work_scene_test.gd | - | SceneTree |
 | tools/codex_first_day_delivery_seed_test.gd | - | SceneTree |
 | tools/codex_forest_multimesh_scene_probe.gd | - | SceneTree |
+| tools/codex_fps_probe.gd | - | SceneTree |
 | tools/codex_game_smoke_test.gd | - | SceneTree |
 | tools/codex_generate_forest_scene.gd | - | SceneTree |
 | tools/codex_generate_forest_yamms.gd | - | SceneTree |
@@ -223,4 +224,3 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_local_grid_topology_test.gd | - | SceneTree |
 | tools/codex_locale_test.gd | - | SceneTree |
 | tools/codex_multiplayer_host_connect_test.gd | - | SceneTree |
-| tools/codex_multiplayer_process_probe.gd | - | SceneTree |

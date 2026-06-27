@@ -329,6 +329,11 @@ $availableTests = @(
 		TimeoutSec = 180
 	}
 	[pscustomobject]@{
+		Key = "visuallod"
+		Label = "Visual LOD Probe"
+		Script = "res://tools/codex_visual_lod_probe.gd"
+	}
+	[pscustomobject]@{
 		Key = "fallsafe"
 		Label = "Citizen Fall Respawn"
 		Script = "res://tools/codex_citizen_fall_respawn_test.gd"

@@ -37,7 +37,7 @@ Purpose: likely duplication areas to inspect before adding new code.
 
 ## Navigation Graph Overlap
 
-- Shared `RoadGraph` / `PedestrianGraph` function names: _append_transport_segments, _find_index_path, _grid_key, _heuristic, _remove_close_duplicates, _xz_distance, find_path_points, get_nearest_node_index, has_graph, rebuild_from_scene.
+- Shared `RoadGraph` / `PedestrianGraph` function names: _append_transport_segments, _find_city_root, _find_index_path, _grid_key, _heuristic, _remove_close_duplicates, _xz_distance, find_path_points, get_nearest_node_index, has_graph, rebuild_from_scene.
 - Do not duplicate graph search logic between road and pedestrian routing without a deliberate ownership decision.
 
 ## Citizen Behavior Overlap

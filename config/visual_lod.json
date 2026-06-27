@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "enabled": true,
+  "hide_debug_mesh_names": [
+    "DebugSpotBody",
+    "DebugFrontMarker"
+  ],
+  "static_ranges": [
+    {
+      "path": "RootNode/City/CityPlants",
+      "visibility_end": 95.0,
+      "fade_margin": 14.0,
+      "cast_shadows": false
+    },
+    {
+      "path": "RootNode/City/Streetlight",
+      "visibility_end": 125.0,
+      "fade_margin": 18.0,
+      "cast_shadows": false
+    },
+    {
+      "path": "RootNode/City/Trafficlight",
+      "visibility_end": 110.0,
+      "fade_margin": 14.0,
+      "cast_shadows": false
+    },
+    {
+      "path": "RootNode/Islands/MainIsland/Plants",
+      "visibility_end": 150.0,
+      "fade_margin": 20.0,
+      "cast_shadows": false
+    }
+  ],
+  "light_lod": {
+    "enabled": true,
+    "root_paths": [
+      "RootNode/City/Streetlight",
+      "RootNode/City/Trafficlight"
+    ],
+    "distance_fade_begin": 45.0,
+    "distance_fade_length": 35.0,
+    "shadow_enabled": false
+  }
+}
