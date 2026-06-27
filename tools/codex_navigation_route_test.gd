@@ -1,34 +1,25 @@
 extends SceneTree
 
+const SceneTestUtils = preload("res://tools/codex_scene_test_utils.gd")
+
 ## Map-based regression test for the new CitizenController stack.
 ##
 ## Loads Main.tscn headless, finds a scriptable registered Citizen, teleports
-## it to a known START coordinate, sets a known
-## END coordinate as the global target, and ticks until ARRIVED or timeout.
-##
-## START / END coordinates are user-supplied (picked via the in-game
-## CoordinatePickerController). They represent a real-world route on the
-## current map that includes:
-##   - park-side walkway start (Z ≈ 18.65)
-##   - crosswalk transit at ≈ Vector3(12.13, 0.00, 9.86)
-##   - building target on the south side
+## it to a live pedestrian-graph access point, sets another access point as
+## the global target, and ticks until ARRIVED or timeout.
 ##
 ## Pass criteria are derived from the live citizen.log baseline (52 s,
 ## 145 NO_CANDIDATES) with margin so the current behaviour passes but
 ## measurable degradation fails.
 
-const START_POSITION: Vector3 = Vector3(11.45, 0.16, 18.65)
-const TARGET_POSITION: Vector3 = Vector3(21.29, 0.16, 8.40)
-
-## Indicator waypoints supplied by the user — the route is supposed to pass
-## near these. Soft check (print-only, no fail): if the citizen deviates a lot
-## the avoidance is steering wrong. Reported as min planar distance to each.
-const INDICATOR_WAYPOINTS: Array[Dictionary] = [
-	# Mid-walkway alongside the park, near start.
-	{"label": "park-walk midpoint", "pos": Vector3(11.45, 0.16, 18.65), "expect_within": 0.6},
-	# Crosswalk transit point.
-	{"label": "crosswalk transit", "pos": Vector3(12.13, 0.00, 9.86), "expect_within": 1.0},
+const PREFERRED_ROUTE_PAIRS: Array = [
+	["Residential 01 (Multi-building)", "University 02 (Services)"],
+	["Residential 03 (Multi-building)", "Cinema 05 (Stores)"],
 ]
+const MIN_ROUTE_POINTS: int = 6
+const MIN_ROUTE_LENGTH: float = 8.0
+const MAX_ROUTE_LENGTH: float = 140.0
+const MAX_DYNAMIC_ROUTE_CHECKS: int = 900
 const POSITION_SAMPLE_INTERVAL_FRAMES: int = 4  # ~15 Hz at 60 Hz physics
 
 ## Hard time budget. Live trip was 52 s; a 90 s budget allows for headless
@@ -37,7 +28,7 @@ const MAX_TRAVEL_SECONDS: float = 90.0
 ## Pass thresholds. Pre-fix baseline was 145-200 NO_CANDIDATES because the
 ## replan timer kept firing every 0.18s after FALLBACK_GLOBAL. After the
 ## fallback-cooldown fix (2026-04-27) the count dropped to ~40. Limit set
-## to 80 — fails any regression that doubles failed-replan frequency.
+## to 80 - fails any regression that doubles failed-replan frequency.
 const MAX_NO_CANDIDATES: int = 80
 const MAX_STUCK_REPLAN: int = 2
 ## Headless physics tick rate. Godot default is 60 Hz; we drive the loop
@@ -47,9 +38,6 @@ const PHYSICS_HZ: float = 60.0
 
 func _init() -> void:
 	print("=== Citizen navigation route test ===")
-	print("start  = (%.2f, %.2f, %.2f)" % [START_POSITION.x, START_POSITION.y, START_POSITION.z])
-	print("target = (%.2f, %.2f, %.2f)" % [TARGET_POSITION.x, TARGET_POSITION.y, TARGET_POSITION.z])
-	print()
 
 	var main_scene := load("res://Main.tscn")
 	if main_scene == null:
@@ -65,6 +53,31 @@ func _init() -> void:
 	await physics_frame
 	await physics_frame
 
+	var world := SceneTestUtils.find_world(main_instance)
+	if world == null:
+		printerr("FAIL: World node not found in Main.tscn")
+		quit(1)
+		return
+
+	var route_case := _select_route_case(world)
+	if route_case.is_empty():
+		printerr("FAIL: no usable pedestrian route found for navigation test")
+		quit(1)
+		return
+
+	var start_position: Vector3 = route_case.get("start", Vector3.ZERO)
+	var target_position: Vector3 = route_case.get("target", Vector3.ZERO)
+	var indicator_waypoints: Array[Dictionary] = _read_indicator_waypoints(route_case)
+	print("route_source = %s" % str(route_case.get("source", "?")))
+	print("route_from   = %s" % str(route_case.get("from", "?")))
+	print("route_to     = %s" % str(route_case.get("to", "?")))
+	print("route_points = %d" % int(route_case.get("points", 0)))
+	print("route_length = %.2f" % float(route_case.get("length", 0.0)))
+	print("crosswalks   = %d" % int(route_case.get("crosswalks", 0)))
+	print("start        = %s" % _fmt_vec3(start_position))
+	print("target       = %s" % _fmt_vec3(target_position))
+	print()
+
 	var citizen := _find_test_citizen(main_instance)
 	if citizen == null:
 		printerr("FAIL: $Citizen node not found in Main.tscn")
@@ -73,13 +86,13 @@ func _init() -> void:
 
 	# Teleport to start. The CharacterBody3D needs a force_update_transform
 	# pulse so the next physics frame sees the new position.
-	citizen.global_position = START_POSITION
+	citizen.global_position = start_position
 	citizen.velocity = Vector3.ZERO
 	citizen.force_update_transform()
 	await physics_frame
 
 	if not citizen.has_method("set_global_target"):
-		printerr("FAIL: $Citizen does not expose set_global_target — wrong scene?")
+		printerr("FAIL: $Citizen does not expose set_global_target - wrong scene?")
 		quit(1)
 		return
 
@@ -89,7 +102,7 @@ func _init() -> void:
 	citizen.target_reached.connect(func(): arrived[0] = true)
 	citizen.stuck.connect(func(): stuck_emitted[0] = true)
 
-	var ok: bool = citizen.set_global_target(TARGET_POSITION)
+	var ok: bool = citizen.set_global_target(target_position)
 	if not ok:
 		printerr("FAIL: set_global_target returned false (no path?)")
 		_print_outcome(citizen, false, false, 0.0)
@@ -120,17 +133,148 @@ func _init() -> void:
 	var elapsed_seconds := float(elapsed_frames) / PHYSICS_HZ
 	var passed := _print_outcome(citizen, arrived[0], stuck_emitted[0], elapsed_seconds)
 	_print_path_samples(path_samples)
-	_print_indicator_waypoints(samples)
+	_print_indicator_waypoints(samples, indicator_waypoints)
 	print()
 	print("=== End route test ===")
 	quit(0 if passed else 1)
+
+
+func _select_route_case(world: World) -> Dictionary:
+	for pair in PREFERRED_ROUTE_PAIRS:
+		var start_building: Building = _find_building(world.buildings, str(pair[0]))
+		var target_building: Building = _find_building(world.buildings, str(pair[1]))
+		var route_case := _build_route_case(world, start_building, target_building, "preferred")
+		if not route_case.is_empty():
+			return route_case
+
+	var best_case: Dictionary = {}
+	var best_score := -INF
+	var checked := 0
+	for start_candidate in world.buildings:
+		if not _is_route_building(start_candidate):
+			continue
+		for target_candidate in world.buildings:
+			if target_candidate == start_candidate or not _is_route_building(target_candidate):
+				continue
+			checked += 1
+			if checked > MAX_DYNAMIC_ROUTE_CHECKS:
+				return best_case
+			var route_case := _build_route_case(
+				world,
+				start_candidate as Building,
+				target_candidate as Building,
+				"dynamic"
+			)
+			if route_case.is_empty():
+				continue
+			var score := float(route_case.get("score", 0.0))
+			if score > best_score:
+				best_score = score
+				best_case = route_case
+	return best_case
+
+
+func _build_route_case(world: World, start_building: Building, target_building: Building,
+		source: String) -> Dictionary:
+	if world == null or not _is_route_building(start_building) or not _is_route_building(target_building):
+		return {}
+
+	var route: PackedVector3Array = world.get_pedestrian_path(
+		start_building.get_entrance_pos(),
+		target_building.get_entrance_pos(),
+		start_building,
+		target_building
+	)
+	if route.size() < MIN_ROUTE_POINTS:
+		return {}
+
+	var length := _path_length_xz(route)
+	if length < MIN_ROUTE_LENGTH or length > MAX_ROUTE_LENGTH:
+		return {}
+
+	var crosswalks := 0
+	if world.has_method("count_pedestrian_path_crosswalk_centers"):
+		crosswalks = int(world.count_pedestrian_path_crosswalk_centers(route))
+	var distance_score := 45.0 - absf(length - 45.0)
+	var score := float(crosswalks * 100) + distance_score
+
+	return {
+		"source": source,
+		"from": start_building.get_display_name(),
+		"to": target_building.get_display_name(),
+		"start": route[0],
+		"target": route[route.size() - 1],
+		"points": route.size(),
+		"length": length,
+		"crosswalks": crosswalks,
+		"score": score,
+		"indicators": _build_indicator_waypoints(world, route),
+	}
+
+
+func _read_indicator_waypoints(route_case: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for raw_item in route_case.get("indicators", []):
+		if raw_item is Dictionary:
+			out.append(raw_item as Dictionary)
+	return out
+
+
+func _is_route_building(node) -> bool:
+	return node is Building \
+		and node.has_method("get_entrance_pos") \
+		and node.has_method("get_display_name")
+
+
+func _find_building(buildings: Array, display_name: String) -> Building:
+	for building in buildings:
+		if building is Building and building.get_display_name() == display_name:
+			return building as Building
+	return null
+
+
+func _path_length_xz(route: PackedVector3Array) -> float:
+	var total := 0.0
+	for idx in range(route.size() - 1):
+		var a := route[idx]
+		var b := route[idx + 1]
+		a.y = 0.0
+		b.y = 0.0
+		total += a.distance_to(b)
+	return total
+
+
+func _build_indicator_waypoints(world: World, route: PackedVector3Array) -> Array[Dictionary]:
+	var waypoints: Array[Dictionary] = []
+	var seen: Dictionary = {}
+	if world != null and world.has_method("get_pedestrian_path_point_kind"):
+		for point in route:
+			var kind := str(world.get_pedestrian_path_point_kind(point))
+			if kind != "crosswalk":
+				continue
+			var key := _fmt_vec3(point)
+			if seen.has(key):
+				continue
+			seen[key] = true
+			waypoints.append({
+				"label": "crosswalk " + str(waypoints.size() + 1),
+				"pos": point,
+				"expect_within": 1.2,
+			})
+	if waypoints.is_empty() and not route.is_empty():
+		waypoints.append({
+			"label": "route midpoint",
+			"pos": route[int(route.size() / 2)],
+			"expect_within": 1.5,
+		})
+	return waypoints
 
 
 func _find_test_citizen(main_instance: Node) -> CharacterBody3D:
 	var controlled := main_instance.get_node_or_null("ControlledCitizen")
 	if controlled is CharacterBody3D:
 		return _prepare_scripted_citizen(controlled as CharacterBody3D)
-	var world := main_instance.get_node_or_null("World") as World
+	var world := SceneTestUtils.find_world(main_instance)
 	if world != null:
 		for citizen in world.citizens:
 			if _is_preferred_scripted_citizen(citizen):
@@ -236,12 +380,12 @@ func _print_outcome(citizen: Node, arrived: bool, stuck_emitted: bool, elapsed_s
 	return failures == 0
 
 
-func _print_indicator_waypoints(samples: Array[Vector3]) -> void:
-	if samples.is_empty():
+func _print_indicator_waypoints(samples: Array[Vector3], waypoints: Array[Dictionary]) -> void:
+	if samples.is_empty() or waypoints.is_empty():
 		return
 	print()
 	print("--- Indicator waypoints (avoidance correctness, soft check) ---")
-	for waypoint in INDICATOR_WAYPOINTS:
+	for waypoint in waypoints:
 		var label: String = str(waypoint.get("label", "?"))
 		var pos: Vector3 = waypoint.get("pos", Vector3.ZERO) as Vector3
 		var expect_within: float = float(waypoint.get("expect_within", 1.0))
@@ -285,7 +429,7 @@ func _print_global_path(citizen: Node) -> void:
 
 func _event_count(citizen: Node, layer: String, event: String) -> int:
 	# Reach into the controller's logger via the private member.
-	# Acceptable for a test — the logger is the source of truth for events.
+	# Acceptable for a test - the logger is the source of truth for events.
 	if citizen == null:
 		return 0
 	if not "_logger" in citizen:

@@ -108,6 +108,13 @@ Runtime and debug scenes/resources.
 | Path | class_name | extends |
 | --- | --- | --- |
 | Scenes/DebugPanel.gd | DebugPanel | CanvasLayer |
+| Scenes/LowPolyWater/low_poly_water_plane.gd | - | MeshInstance3D |
+| Scenes/LowPolyWater/Scripts/low_poly_water_plane.gd | - | MeshInstance3D |
+| Scenes/LowPolyWater/Scripts/strategy_camera_controller.gd | StrategyCameraController | Camera3D |
+| Scenes/LowPolyWater/WaterPack/Scripts/low_poly_water_plane.gd | LowPolyWaterPlane | MeshInstance3D |
+| Scenes/LowPolyWater/WaterPack/Scripts/shore_wave_audio.gd | ShoreWaveAudio | AudioStreamPlayer3D |
+| Scenes/LowPolyWater/WaterPack/Scripts/water_material_applier.gd | WaterMaterialApplier | Node |
+| Scenes/LowPolyWater/WaterPack/Tools/bake_shore_mask.gd | - | SceneTree |
 | Scenes/Minigames/CookingIngredientCatch/CookingIngredientCatchMinigame.gd | CookingIngredientCatchMinigame | Control |
 | Scenes/Minigames/RetailWorkSort/RetailWorkSortMinigame.gd | RetailWorkSortMinigame | Control |
 | Scenes/Minigames/ServiceFlow/ServiceFlowMinigame.gd | ServiceFlowMinigame | Control |
@@ -129,7 +136,6 @@ World orchestration, economy, time, bootstrap, navigation, GOAP, UI, debug, logg
 | Simulation/Audio/MusicDirector.gd | MusicDirector | Node |
 | Simulation/Bootstrap/BuildingUseBinder.gd | BuildingUseBinder | RefCounted |
 | Simulation/Bootstrap/CitySceneRefactor.gd | - | SceneTree |
-| Simulation/Bootstrap/ImportedCitySetup.gd | ImportedCitySetup | - |
 | Simulation/Bootstrap/NavigationSetup.gd | NavigationSetup | RefCounted |
 | Simulation/Bootstrap/RoadBuilder.gd | - | RefCounted |
 | Simulation/Bootstrap/SceneBootstrapController.gd | SceneBootstrapController | RefCounted |
@@ -160,6 +166,7 @@ World orchestration, economy, time, bootstrap, navigation, GOAP, UI, debug, logg
 | Simulation/GOAP/CitizenFunGoap.gd | CitizenFunGoap | RefCounted |
 | Simulation/GOAP/CitizenHealthGoap.gd | CitizenHealthGoap | RefCounted |
 | Simulation/GOAP/CitizenHungerGoap.gd | CitizenHungerGoap | RefCounted |
+| Simulation/GOAP/CitizenSocialGoap.gd | CitizenSocialGoap | RefCounted |
 
 ## config
 

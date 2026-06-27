@@ -321,6 +321,14 @@ $availableTests = @(
 		Script = "res://tools/codex_game_smoke_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "fps"
+		Label = "FPS Probe"
+		Script = "res://tools/codex_fps_probe.gd"
+		Optional = $true
+		Headless = $true
+		TimeoutSec = 180
+	}
+	[pscustomobject]@{
 		Key = "fallsafe"
 		Label = "Citizen Fall Respawn"
 		Script = "res://tools/codex_citizen_fall_respawn_test.gd"

@@ -1,5 +1,7 @@
 extends SceneTree
 
+const SceneTestUtils = preload("res://tools/codex_scene_test_utils.gd")
+
 func _init() -> void:
 	var main_scene := load("res://Main.tscn")
 	if main_scene == null:
@@ -14,7 +16,7 @@ func _init() -> void:
 	await process_frame
 	await process_frame
 
-	var world = main.get_node_or_null("World")
+	var world = SceneTestUtils.find_world(main)
 	if world == null:
 		push_error("World node not found")
 		quit(1)
@@ -225,6 +227,7 @@ func _probe_graph_crosswalks(world) -> Array[Dictionary]:
 
 func _find_first_crosswalk_node(root: Node) -> Node3D:
 	var paths := [
+		"RootNode/City/only_people_nav/only_people/Road_straight_crossing",
 		"World/City/only_people_nav/only_people/Road_straight_crossing",
 		"ImportedCity/only_people_nav/only_people/Road_straight_crossing",
 	]

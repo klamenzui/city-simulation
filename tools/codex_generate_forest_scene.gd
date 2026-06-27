@@ -1,5 +1,7 @@
 extends SceneTree
 
+const SceneTestUtils = preload("res://tools/codex_scene_test_utils.gd")
+
 const MAIN_SCENE_PATH := "res://Main.tscn"
 const OUTPUT_SCENE_PATH := "res://Scenes/Plants/ForestMultiMesh.tscn"
 
@@ -57,7 +59,7 @@ func _initialize() -> void:
 	await physics_frame
 	await physics_frame
 
-	_world_node = main.get_node_or_null(NodePath("World")) as Node3D
+	_world_node = SceneTestUtils.find_world(main)
 	if _world_node == null:
 		push_error("Main scene is missing World node.")
 		quit(FAILED)

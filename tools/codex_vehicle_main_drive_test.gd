@@ -1,5 +1,7 @@
 extends SceneTree
 
+const SceneTestUtils = preload("res://tools/codex_scene_test_utils.gd")
+
 const MAIN_SCENE := "res://Main.tscn"
 
 var _errors: Array[String] = []
@@ -23,7 +25,7 @@ func _initialize() -> void:
 
 	var truck := _find_main_truck(main)
 	var citizen := _find_controlled_citizen(main)
-	var world := main.get_node_or_null("World") as World
+	var world := SceneTestUtils.find_world(main)
 	if truck == null:
 		_errors.append("Main scene should contain a truck in the vehicles group.")
 		_finish(main)
@@ -33,7 +35,7 @@ func _initialize() -> void:
 		_finish(main)
 		return
 	if world == null:
-		_errors.append("Main scene should expose $World.")
+		_errors.append("Main scene should expose a World node.")
 		_finish(main)
 		return
 	if not world.vehicles.has(truck):

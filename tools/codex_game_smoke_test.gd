@@ -1,5 +1,6 @@
 extends SceneTree
 
+const SceneTestUtils = preload("res://tools/codex_scene_test_utils.gd")
 const SETTLE_FRAMES := 30
 const POST_DAY_FRAMES := 30
 
@@ -18,7 +19,7 @@ func _init() -> void:
 		await process_frame
 	await physics_frame
 
-	var world := main.get_node_or_null("World") as World
+	var world := SceneTestUtils.find_world(main)
 	if world == null:
 		printerr("FAIL: World node not found")
 		quit(1)

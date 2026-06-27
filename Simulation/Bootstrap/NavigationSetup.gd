@@ -36,5 +36,6 @@ static func ensure_region(root: Node3D, world: World, region_name: String = "Nav
 static func has_dedicated_pedestrian_nav(root: Node3D) -> bool:
 	if root == null:
 		return false
-	return root.get_node_or_null("World/City/only_people_nav") != null \
+	return root.get_node_or_null("RootNode/City/only_people_nav") != null \
+		or root.get_node_or_null("World/City/only_people_nav") != null \
 		or root.get_node_or_null("ImportedCity/only_people_nav") != null

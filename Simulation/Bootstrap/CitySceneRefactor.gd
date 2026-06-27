@@ -96,9 +96,11 @@ func _run() -> int:
 		push_error("CitySceneRefactor: Could not instantiate %s" % MAIN_SCENE_PATH)
 		return 1
 
-	var people_root = root.get_node_or_null("World/City/only_people_nav/only_people") as Node3D
+	var people_root = root.get_node_or_null("RootNode/City/only_people_nav/only_people") as Node3D
 	if people_root == null:
-		push_error("CitySceneRefactor: Node path 'World/City/only_people_nav/only_people' not found.")
+		people_root = root.get_node_or_null("World/City/only_people_nav/only_people") as Node3D
+	if people_root == null:
+		push_error("CitySceneRefactor: People navigation root not found.")
 		return 1
 
 	_ensure_directory(OUTPUT_ROOT_DIR)

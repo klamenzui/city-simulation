@@ -1,5 +1,7 @@
 extends SceneTree
 
+const SceneTestUtils = preload("res://tools/codex_scene_test_utils.gd")
+
 # Headless smoke test for the save / load roundtrip. Loads Main.tscn, lets the
 # bootstrap settle for a handful of frames, saves to slot 1, mutates a citizen,
 # applies the payload back, and confirms the mutated state was restored.
@@ -28,7 +30,7 @@ func _run() -> void:
 	for _i in range(SETTLE_FRAMES):
 		await process_frame
 
-	var world: World = root.get_node_or_null("World") as World
+	var world: World = SceneTestUtils.find_world(root)
 	if world == null:
 		_fail("World node missing on Main.tscn root.")
 		_finish()

@@ -23,7 +23,9 @@ Purpose: likely duplication areas to inspect before adding new code.
 | fence | 3 | Scenes/Environment/CityProps/CityPack/fence.tscn<br>Scenes/Environment/CityProps/fence.tscn<br>Scenes/FarmAssets/Quaternius/Fence.tscn |
 | fence_end | 2 | Scenes/Environment/CityProps/CityPack/fence_end.tscn<br>Scenes/Environment/CityProps/fence_end.tscn |
 | hospital | 2 | Entities/Buildings/Hospital.gd<br>Scenes/CityBuildings/services/Hospital.tscn |
+| low_poly_water_plane | 3 | Scenes/LowPolyWater/low_poly_water_plane.gd<br>Scenes/LowPolyWater/Scripts/low_poly_water_plane.gd<br>Scenes/LowPolyWater/WaterPack/Scripts/low_poly_water_plane.gd |
 | main | 2 | main.gd<br>Main.tscn |
+| oceanwater | 2 | Scenes/LowPolyWater/Materials/OceanWater.tres<br>Scenes/LowPolyWater/WaterPack/Materials/OceanWater.tres |
 | plant | 2 | ImportedCitySource/Plant.tscn<br>ImportedCitySource/scripts/plant/plant.gd |
 | retailworksortminigame | 2 | Scenes/Minigames/RetailWorkSort/RetailWorkSortMinigame.gd<br>Scenes/Minigames/RetailWorkSort/RetailWorkSortMinigame.tscn |
 | serviceflowminigame | 2 | Scenes/Minigames/ServiceFlow/ServiceFlowMinigame.gd<br>Scenes/Minigames/ServiceFlow/ServiceFlowMinigame.tscn |

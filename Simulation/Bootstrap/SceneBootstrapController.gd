@@ -129,7 +129,7 @@ static func _apply_matte_city_materials(root: Node3D) -> void:
 		return
 	var processed_roots: Dictionary = {}
 	var matte_cache: Dictionary = {}
-	for path in ["World/City", "ImportedCity"]:
+	for path in ["RootNode/City", "World/City", "ImportedCity"]:
 		var visual_root := root.get_node_or_null(path)
 		if visual_root == null:
 			continue
@@ -188,7 +188,9 @@ static func _polish_mesh_instance(mesh_instance: MeshInstance3D, material_cache:
 static func _polish_plant_materials(root: Node3D) -> void:
 	if root == null:
 		return
-	var search_root: Node = root.get_node_or_null("RootNode/Islands/World")
+	var search_root: Node = root.get_node_or_null("RootNode/Islands/MainIsland")
+	if search_root == null:
+		search_root = root.get_node_or_null("RootNode/Islands/World")
 	if search_root == null:
 		search_root = root
 	var material_cache: Dictionary = {}

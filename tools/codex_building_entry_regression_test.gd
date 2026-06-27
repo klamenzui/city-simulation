@@ -1,5 +1,6 @@
 extends SceneTree
 
+const SceneTestUtils = preload("res://tools/codex_scene_test_utils.gd")
 const GoToBuildingActionScript = preload("res://Actions/GoToBuildingAction.gd")
 
 const SETTLE_FRAMES := 30
@@ -25,7 +26,7 @@ func _initialize() -> void:
 		await process_frame
 	await physics_frame
 
-	var world := main.get_node_or_null("World") as World
+	var world := SceneTestUtils.find_world(main)
 	var citizen := _find_scripted_travel_citizen(world)
 	var source := _find_building_by_name(world, SOURCE_NAME)
 	var targets := _find_buildings_by_name(world, TARGET_NAME)

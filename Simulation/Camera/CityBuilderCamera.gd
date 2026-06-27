@@ -255,10 +255,7 @@ func _has_text_input_focus() -> bool:
 
 func _resolve_ground_height() -> void:
 	_ground_y = 0.0
-	var root := get_parent()
-	if root == null:
-		return
-	var world := root.get_node_or_null("World")
+	var world := _resolve_world_node()
 	if world != null and world.has_method("get_ground_fallback_y"):
 		_ground_y = float(world.call("get_ground_fallback_y"))
 
@@ -298,10 +295,7 @@ func _resolve_bounds() -> void:
 				max_z = maxf(max_z, p.z)
 
 	if not has_points:
-		var root := get_parent()
-		var world_node: Node = null
-		if root != null:
-			world_node = root.get_node_or_null("World")
+		var world_node := _resolve_world_node()
 		if world_node != null and world_node.has_method("get_world_bounds"):
 			var bounds: AABB = world_node.call("get_world_bounds")
 			min_x = bounds.position.x
@@ -318,6 +312,26 @@ func _resolve_bounds() -> void:
 
 	_bounds_min = Vector2(min_x - world_padding, min_z - world_padding)
 	_bounds_max = Vector2(max_x + world_padding, max_z + world_padding)
+
+func _resolve_world_node() -> Node:
+	var root := get_parent()
+	if root == null:
+		return null
+	for path in [
+		"RootNode/Islands/MainIsland",
+		"World",
+		"RootNode/Islands/World",
+	]:
+		var node := root.get_node_or_null(path)
+		if node != null:
+			return node
+	var tree := get_tree()
+	if tree == null:
+		return null
+	for node in tree.get_nodes_in_group("world"):
+		if node != null:
+			return node
+	return null
 
 func _initialize_from_transform() -> void:
 	var forward := -global_transform.basis.z.normalized()

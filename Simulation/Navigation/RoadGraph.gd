@@ -126,10 +126,9 @@ func get_nearest_node_index(pos: Vector3) -> int:
 func _collect_road_nodes(root: Node3D) -> Array[Node3D]:
 	var out: Array[Node3D] = []
 
-	# Main scene city roads under World/City/only_transport
-	var world_city := root.get_node_or_null("World/City") as Node3D
-	if world_city != null:
-		var city_transport := world_city.get_node_or_null("only_transport") as Node3D
+	var city_root := _find_city_root(root)
+	if city_root != null:
+		var city_transport := city_root.get_node_or_null("only_transport") as Node3D
 		if city_transport != null:
 			_append_transport_segments(city_transport, out)
 
@@ -148,6 +147,18 @@ func _collect_road_nodes(root: Node3D) -> Array[Node3D]:
 				out.append(child as Node3D)
 
 	return out
+
+func _find_city_root(root: Node3D) -> Node3D:
+	for path in [
+		"RootNode/City",
+		"World/City",
+		"RootNode/Islands/MainIsland/City",
+		"City",
+	]:
+		var node := root.get_node_or_null(path) as Node3D
+		if node != null:
+			return node
+	return null
 
 func _append_transport_segments(transport_root: Node3D, out: Array[Node3D]) -> void:
 	for category in transport_root.get_children():

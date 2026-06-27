@@ -1,8 +1,10 @@
 extends SceneTree
 
+const SceneTestUtils = preload("res://tools/codex_scene_test_utils.gd")
+
 const MAIN_SCENE_PATH := "res://Main.tscn"
-const SCATTER_ROOT_PATH := NodePath("World/MeadowPlantsScatter")
-const GRASS_ITEM_PATH := NodePath("World/MeadowPlantsScatter/GrassItem")
+const SCATTER_ROOT_PATH := NodePath("Plants/MeadowPlantsScatter")
+const GRASS_ITEM_PATH := NodePath("Plants/MeadowPlantsScatter/GrassItem")
 const GRASS_SCENE_PATH := "res://Scenes/Environment/Grass/grass.glb"
 const GRASS_MATERIAL_PATH := "res://Scenes/Plants/Biomes/Stylized3DGrass.tres"
 const GRASS_SHADER_PATH := "res://Scenes/Plants/Biomes/GrassShader.tres"
@@ -36,10 +38,15 @@ func _check_main_scene_contract(errors: Array[String]) -> void:
 	for _i in range(3):
 		await physics_frame
 
-	if main.get_node_or_null(NodePath("World/ExteriorGrass")) != null:
-		errors.append("Main scene should use scatter grass, not legacy World/ExteriorGrass.")
+	var world := SceneTestUtils.find_world(main)
+	if world == null:
+		errors.append("Main scene is missing a World node.")
+		main.free()
+		return
+	if world.get_node_or_null(NodePath("ExteriorGrass")) != null:
+		errors.append("Main scene should use scatter grass, not legacy ExteriorGrass.")
 
-	var scatter := main.get_node_or_null(SCATTER_ROOT_PATH)
+	var scatter := world.get_node_or_null(SCATTER_ROOT_PATH)
 	if scatter == null:
 		errors.append("Main scene is missing %s." % str(SCATTER_ROOT_PATH))
 		main.free()
@@ -51,7 +58,7 @@ func _check_main_scene_contract(errors: Array[String]) -> void:
 	if scatter.is_in_group("buildings") or scatter.is_in_group("walkable_surface"):
 		errors.append("Scatter grass must not register as a building or walkable surface.")
 
-	var grass_item := main.get_node_or_null(GRASS_ITEM_PATH) as MultiMeshInstance3D
+	var grass_item := world.get_node_or_null(GRASS_ITEM_PATH) as MultiMeshInstance3D
 	if grass_item == null:
 		errors.append("Main scene is missing %s." % str(GRASS_ITEM_PATH))
 		main.free()

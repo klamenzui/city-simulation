@@ -2,7 +2,7 @@ extends SceneTree
 
 const CHURCH_SCENE_PATH := "res://Scenes/CityBuildings/landmarks/church.tscn"
 const MAIN_SCENE_PATH := "res://Main.tscn"
-const MAIN_CHURCH_PATH := "World/City/only_people_nav/only_people/Services/Church"
+const MAIN_CHURCH_PATH := "RootNode/City/only_people_nav/only_people/Services/Church"
 
 
 func _initialize() -> void:

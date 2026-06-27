@@ -1,5 +1,6 @@
 extends SceneTree
 
+const SceneTestUtils = preload("res://tools/codex_scene_test_utils.gd")
 const MainScene := preload("res://Main.tscn")
 
 const SETTLE_PROCESS_FRAMES := 24
@@ -21,9 +22,9 @@ func _initialize() -> void:
 	for _i in range(SETTLE_PHYSICS_FRAMES):
 		await physics_frame
 
-	var world := main.get_node_or_null("World") as World
+	var world := SceneTestUtils.find_world(main)
 	if world == null:
-		_errors.append("Main.tscn should expose $World.")
+		_errors.append("Main.tscn should expose a World node.")
 		_finish(main)
 		return
 

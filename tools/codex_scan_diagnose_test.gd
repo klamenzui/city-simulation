@@ -1,5 +1,7 @@
 extends SceneTree
 
+const SceneTestUtils = preload("res://tools/codex_scene_test_utils.gd")
+
 ## Headless scan-tool diagnostic — runs `LocalGridPlanner.scan_at` at a
 ## known pedzone point and prints what surface kind / collider every cell
 ## sees. Goal: pinpoint why the live scan returns "all green" on positions
@@ -134,7 +136,7 @@ func _diagnose_at(citizen: Node, world_pos: Vector3) -> void:
 
 
 func _find_diagnostic_citizen(main_instance: Node) -> CharacterBody3D:
-	var world := main_instance.get_node_or_null("World") as World
+	var world := SceneTestUtils.find_world(main_instance)
 	if world != null:
 		for citizen in world.citizens:
 			if _has_local_grid(citizen) and not _is_keyboard_citizen(citizen):

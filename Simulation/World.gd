@@ -989,8 +989,11 @@ func get_pedestrian_component_id(pos: Vector3, building: Building = null) -> int
 	return pedestrian_graph.get_component_id_for_pos(pos, building)
 
 func get_world_bounds() -> AABB:
-	if mesh_instance.mesh != null:
-		return _transform_aabb_to_world(mesh_instance.mesh.get_aabb())
+	var bounds_mesh := mesh_instance
+	if bounds_mesh == null or not is_instance_valid(bounds_mesh):
+		bounds_mesh = get_node_or_null("MainIslandMash") as MeshInstance3D
+	if bounds_mesh != null and bounds_mesh.mesh != null:
+		return _transform_aabb_to_world(bounds_mesh.mesh.get_aabb())
 	return AABB(global_position - Vector3(40.0, 1.0, 40.0), Vector3(80.0, 2.0, 80.0))
 
 func get_world_center() -> Vector3:

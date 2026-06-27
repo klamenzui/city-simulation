@@ -142,7 +142,9 @@ func _collect_debug_roads() -> Array[Node3D]:
 	var out: Array[Node3D] = []
 	if owner_node == null:
 		return out
-	_append_transport_segments_for_log(owner_node.get_node_or_null("World/City/only_transport"), out)
+	var city_root := _find_city_root()
+	if city_root != null:
+		_append_transport_segments_for_log(city_root.get_node_or_null("only_transport"), out)
 	_append_transport_segments_for_log(owner_node.get_node_or_null("ImportedCity/only_transport"), out)
 	var generated := owner_node.get_node_or_null("RoadNetwork")
 	if generated != null:
@@ -165,9 +167,23 @@ func _collect_debug_crosswalks() -> Array[Node3D]:
 	var out: Array[Node3D] = []
 	if owner_node == null:
 		return out
-	_append_node3d_children_for_log(owner_node.get_node_or_null("World/City/only_people_nav/only_people/Road_straight_crossing"), out)
+	var city_root := _find_city_root()
+	if city_root != null:
+		_append_node3d_children_for_log(city_root.get_node_or_null("only_people_nav/only_people/Road_straight_crossing"), out)
 	_append_node3d_children_for_log(owner_node.get_node_or_null("ImportedCity/only_people_nav/only_people/Road_straight_crossing"), out)
 	return out
+
+func _find_city_root() -> Node3D:
+	for path in [
+		"RootNode/City",
+		"World/City",
+		"RootNode/Islands/MainIsland/City",
+		"City",
+	]:
+		var node := owner_node.get_node_or_null(path) as Node3D
+		if node != null:
+			return node
+	return null
 
 func _append_node3d_children_for_log(root: Node, out: Array[Node3D]) -> void:
 	if root == null:

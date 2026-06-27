@@ -1,5 +1,6 @@
 extends SceneTree
 
+const SceneTestUtils = preload("res://tools/codex_scene_test_utils.gd")
 const InteractionControllerScript = preload("res://Simulation/UI/SimulationInteractionController.gd")
 const SelectionStateControllerScript = preload("res://Simulation/Debug/SelectionStateController.gd")
 
@@ -28,7 +29,7 @@ func _init() -> void:
 		await process_frame
 	await physics_frame
 
-	var world := main.get_node_or_null("World") as World
+	var world := SceneTestUtils.find_world(main)
 	var camera := main.get_node_or_null("Camera3D") as CityBuilderCamera
 	if world == null or camera == null:
 		printerr("FAIL: World or Camera3D not found")

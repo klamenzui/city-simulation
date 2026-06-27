@@ -1,5 +1,7 @@
 extends SceneTree
 
+const SceneTestUtils = preload("res://tools/codex_scene_test_utils.gd")
+
 const REPORT_INTERVAL_SEC := 0.10
 const MAX_RUNTIME_SEC := 120.0
 const CLIENT_DRIVE_COMMAND_COUNT := 80
@@ -539,7 +541,7 @@ func _get_session() -> Node:
 	return _main.get_node_or_null("MultiplayerSession") if _main != null else null
 
 func _get_world() -> World:
-	return _main.get_node_or_null("World") as World if _main != null else null
+	return SceneTestUtils.find_world(_main) if _main != null else null
 
 func _get_camera() -> Camera3D:
 	if _main == null:

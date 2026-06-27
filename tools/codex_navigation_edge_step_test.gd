@@ -1,5 +1,7 @@
 extends SceneTree
 
+const SceneTestUtils = preload("res://tools/codex_scene_test_utils.gd")
+
 ## Regression for a citizen getting stuck at the road/pedestrian edge near
 ## the park-side crossing. The log failure showed PATH_AHEAD_SKIP_JUMPABLE
 ## followed by LOW_STEP_IGNORED at this coordinate, then STUCK.EXHAUSTED.
@@ -80,7 +82,7 @@ func _find_test_citizen(main_instance: Node) -> CharacterBody3D:
 	var controlled := main_instance.get_node_or_null("ControlledCitizen")
 	if controlled is CharacterBody3D:
 		return _prepare_scripted_citizen(controlled as CharacterBody3D)
-	var world := main_instance.get_node_or_null("World") as World
+	var world := SceneTestUtils.find_world(main_instance)
 	if world != null:
 		for citizen in world.citizens:
 			if _is_preferred_scripted_citizen(citizen):

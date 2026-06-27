@@ -716,9 +716,9 @@ func _get_crosswalk_side_corner_indices(road: Vector3, cross_dir: Vector3, forwa
 func _iter_road_nodes(root: Node3D) -> Array[Node3D]:
 	var out: Array[Node3D] = []
 
-	var world_city := root.get_node_or_null("World/City") as Node3D
-	if world_city != null:
-		var city_transport := world_city.get_node_or_null("only_transport") as Node3D
+	var city_root := _find_city_root(root)
+	if city_root != null:
+		var city_transport := city_root.get_node_or_null("only_transport") as Node3D
 		if city_transport != null:
 			_append_transport_segments(city_transport, out)
 
@@ -750,6 +750,7 @@ func _iter_crosswalk_nodes(root: Node3D) -> Array[Node3D]:
 
 func _find_crosswalk_root(root: Node3D) -> Node3D:
 	var paths := [
+		"RootNode/City/only_people_nav/only_people/Road_straight_crossing",
 		"World/City/only_people_nav/only_people/Road_straight_crossing",
 		"ImportedCity/only_people_nav/only_people/Road_straight_crossing",
 	]
@@ -759,6 +760,18 @@ func _find_crosswalk_root(root: Node3D) -> Node3D:
 		if node != null:
 			return node
 
+	return null
+
+func _find_city_root(root: Node3D) -> Node3D:
+	for path in [
+		"RootNode/City",
+		"World/City",
+		"RootNode/Islands/MainIsland/City",
+		"City",
+	]:
+		var node := root.get_node_or_null(path) as Node3D
+		if node != null:
+			return node
 	return null
 
 func _append_transport_segments(transport_root: Node3D, out: Array[Node3D]) -> void:

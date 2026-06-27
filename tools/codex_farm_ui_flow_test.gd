@@ -1,5 +1,6 @@
 extends SceneTree
 
+const SceneTestUtils = preload("res://tools/codex_scene_test_utils.gd")
 const MainScene := preload("res://Main.tscn")
 const VehicleDepotAccessScript := preload("res://Simulation/Transport/VehicleDepotAccess.gd")
 const SimulationInteractionControllerScript := preload("res://Simulation/UI/SimulationInteractionController.gd")
@@ -91,7 +92,7 @@ func _initialize() -> void:
 		for _i in range(4):
 			await physics_frame
 
-	var world := main.get_node_or_null("World") as World
+	var world := SceneTestUtils.find_world(main)
 	var player := main.get_node_or_null("ControlledCitizen") as Citizen
 	var runtime = main.get("_runtime_controller")
 	var interaction = runtime.get("interaction_controller") if runtime != null else null

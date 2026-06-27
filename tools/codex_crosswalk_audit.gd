@@ -1,5 +1,7 @@
 extends SceneTree
 
+const SceneTestUtils = preload("res://tools/codex_scene_test_utils.gd")
+
 const MAX_PRINT := 24
 const MAX_ROUTE_AUDIT_PAIRS := 800
 
@@ -17,7 +19,7 @@ func _init() -> void:
 	await process_frame
 	await process_frame
 
-	var world = main.get_node_or_null("World")
+	var world = SceneTestUtils.find_world(main)
 	if world == null or world.pedestrian_graph == null:
 		push_error("World or pedestrian_graph missing")
 		quit(1)
