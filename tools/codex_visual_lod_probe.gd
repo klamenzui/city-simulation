@@ -49,6 +49,18 @@ func _init() -> void:
 		printerr("FAIL: visual LOD configured no lights")
 		quit(1)
 		return
+	if not bool(summary.get("light_pool_enabled", false)):
+		printerr("FAIL: visual LOD light pool is not enabled")
+		quit(1)
+		return
+	if int(summary.get("light_pool_managed", 0)) <= 0:
+		printerr("FAIL: visual LOD light pool manages no lights")
+		quit(1)
+		return
+	if int(summary.get("light_pool_active", 0)) > int(summary.get("light_pool_budget", 0)):
+		printerr("FAIL: active pooled lights exceed budget")
+		quit(1)
+		return
 	if int(summary.get("hidden_debug_meshes", 0)) <= 0:
 		printerr("FAIL: visual LOD hid no debug meshes")
 		quit(1)
@@ -73,9 +85,11 @@ func _init() -> void:
 		quit(1)
 		return
 
-	print("VISUAL_LOD OK meshes=%d lights=%d hidden_debug=%d" % [
+	print("VISUAL_LOD OK meshes=%d lights=%d active_lights=%d/%d hidden_debug=%d" % [
 		int(summary.get("configured_meshes", 0)),
 		int(summary.get("configured_lights", 0)),
+		int(summary.get("light_pool_active", 0)),
+		int(summary.get("light_pool_budget", 0)),
 		int(summary.get("hidden_debug_meshes", 0)),
 	])
 	main.queue_free()

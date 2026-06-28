@@ -10,6 +10,8 @@ var owner_node: Node = null
 var city_camera: Camera3D = null
 
 var _config: Dictionary = {}
+var _managed_lights: Array[Light3D] = []
+var _light_pool_update_left: float = 0.0
 var _summary: Dictionary = {
 	"enabled": false,
 	"configured_meshes": 0,
@@ -17,6 +19,11 @@ var _summary: Dictionary = {
 	"disabled_shadow_meshes": 0,
 	"disabled_shadow_lights": 0,
 	"hidden_debug_meshes": 0,
+	"light_pool_enabled": false,
+	"light_pool_budget": 0,
+	"light_pool_active": 0,
+	"light_pool_managed": 0,
+	"light_pool_camera_valid": false,
 	"missing_roots": [],
 }
 
@@ -25,6 +32,8 @@ func setup(owner_ref: Node, camera_ref: Camera3D, _headless_runtime: bool) -> vo
 	owner_node = owner_ref
 	city_camera = camera_ref
 	_config = _load_config()
+	_managed_lights.clear()
+	_light_pool_update_left = 0.0
 	_summary = {
 		"enabled": bool(_config.get("enabled", false)),
 		"configured_meshes": 0,
@@ -32,6 +41,11 @@ func setup(owner_ref: Node, camera_ref: Camera3D, _headless_runtime: bool) -> vo
 		"disabled_shadow_meshes": 0,
 		"disabled_shadow_lights": 0,
 		"hidden_debug_meshes": 0,
+		"light_pool_enabled": _is_light_pool_enabled(),
+		"light_pool_budget": _get_light_pool_budget(),
+		"light_pool_active": 0,
+		"light_pool_managed": 0,
+		"light_pool_camera_valid": false,
 		"missing_roots": [],
 	}
 	if not bool(_config.get("enabled", false)):
@@ -41,6 +55,19 @@ func setup(owner_ref: Node, camera_ref: Camera3D, _headless_runtime: bool) -> vo
 	_apply_static_ranges()
 	_apply_light_lod()
 	_bind_dynamic_updates()
+	_refresh_light_pool()
+
+
+func update(delta: float, camera_ref: Camera3D = null) -> void:
+	if camera_ref != null and is_instance_valid(camera_ref):
+		city_camera = camera_ref
+	if not bool(_config.get("enabled", false)) or not _is_light_pool_enabled():
+		return
+	_light_pool_update_left -= delta
+	if _light_pool_update_left > 0.0:
+		return
+	_light_pool_update_left = maxf(0.05, _get_light_pool_update_interval())
+	_refresh_light_pool()
 
 
 func get_debug_summary() -> Dictionary:
@@ -169,6 +196,7 @@ func _apply_light_lod_to_root(root: Node, fade_begin: float, fade_length: float,
 			light.shadow_enabled = shadow_enabled
 			if not shadow_enabled:
 				_summary["disabled_shadow_lights"] = int(_summary.get("disabled_shadow_lights", 0)) + 1
+		_register_managed_light(light)
 		light.set_meta(META_LIGHT_CONFIGURED, true)
 		_summary["configured_lights"] = int(_summary.get("configured_lights", 0)) + 1
 
@@ -190,6 +218,7 @@ func _on_tree_node_added(node: Node) -> void:
 	_hide_debug_meshes_in_subtree(node, _get_hide_debug_names())
 	_apply_static_ranges_to_dynamic_root(node)
 	_apply_light_lod_to_dynamic_root(node)
+	_light_pool_update_left = 0.0
 
 
 func _apply_static_ranges_to_dynamic_root(node: Node) -> void:
@@ -221,6 +250,117 @@ func _apply_light_lod_to_dynamic_root(node: Node) -> void:
 		var configured_root := _find_node(root_path)
 		if configured_root != null and _is_same_tree_branch(configured_root, node):
 			_apply_light_lod_to_root(node, fade_begin, fade_length, shadow_enabled)
+
+
+func _register_managed_light(light: Light3D) -> void:
+	if light == null or not is_instance_valid(light):
+		return
+	if _managed_lights.has(light):
+		return
+	_managed_lights.append(light)
+	_summary["light_pool_managed"] = _managed_lights.size()
+
+
+func _refresh_light_pool() -> void:
+	_prune_invalid_lights()
+	_summary["light_pool_enabled"] = _is_light_pool_enabled()
+	_summary["light_pool_budget"] = _get_light_pool_budget()
+	_summary["light_pool_managed"] = _managed_lights.size()
+	if not _is_light_pool_enabled():
+		_set_all_managed_lights_visible(true)
+		_summary["light_pool_active"] = _managed_lights.size()
+		_summary["light_pool_camera_valid"] = false
+		return
+
+	var budget := _get_light_pool_budget()
+	if budget <= 0:
+		_set_all_managed_lights_visible(false)
+		_summary["light_pool_active"] = 0
+		_summary["light_pool_camera_valid"] = false
+		return
+
+	if city_camera == null or not is_instance_valid(city_camera):
+		_set_all_managed_lights_visible(true)
+		_summary["light_pool_active"] = _managed_lights.size()
+		_summary["light_pool_camera_valid"] = false
+		return
+
+	var max_distance := _get_light_pool_max_distance()
+	var max_distance_sq := max_distance * max_distance
+	var camera_position := city_camera.global_position
+	var candidates: Array[Dictionary] = []
+	for light in _managed_lights:
+		if light == null or not is_instance_valid(light):
+			continue
+		var distance_sq := camera_position.distance_squared_to(light.global_position)
+		if max_distance > 0.0 and distance_sq > max_distance_sq:
+			light.visible = false
+			continue
+		candidates.append({
+			"light": light,
+			"distance_sq": distance_sq,
+		})
+	candidates.sort_custom(Callable(self, "_compare_light_candidates"))
+
+	var active_count := 0
+	for index in range(candidates.size()):
+		var entry := candidates[index]
+		var light := entry.get("light") as Light3D
+		if light == null or not is_instance_valid(light):
+			continue
+		var should_enable := index < budget
+		light.visible = should_enable
+		if should_enable:
+			active_count += 1
+	_summary["light_pool_active"] = active_count
+	_summary["light_pool_camera_valid"] = true
+
+
+func _compare_light_candidates(a: Dictionary, b: Dictionary) -> bool:
+	return float(a.get("distance_sq", 0.0)) < float(b.get("distance_sq", 0.0))
+
+
+func _set_all_managed_lights_visible(visible: bool) -> void:
+	for light in _managed_lights:
+		if light != null and is_instance_valid(light):
+			light.visible = visible
+
+
+func _prune_invalid_lights() -> void:
+	var valid_lights: Array[Light3D] = []
+	for light in _managed_lights:
+		if light != null and is_instance_valid(light):
+			valid_lights.append(light)
+	_managed_lights = valid_lights
+
+
+func _get_light_pool_config() -> Dictionary:
+	var light_lod: Dictionary = _config.get("light_lod", {})
+	var pool_config: Dictionary = light_lod.get("pool", {})
+	return pool_config
+
+
+func _is_light_pool_enabled() -> bool:
+	var light_lod: Dictionary = _config.get("light_lod", {})
+	if not bool(light_lod.get("enabled", false)):
+		return false
+	var pool_config := _get_light_pool_config()
+	return bool(pool_config.get("enabled", false))
+
+
+func _get_light_pool_budget() -> int:
+	var pool_config := _get_light_pool_config()
+	return maxi(0, int(pool_config.get("max_active_lights", 0)))
+
+
+func _get_light_pool_max_distance() -> float:
+	var pool_config := _get_light_pool_config()
+	return maxf(0.0, float(pool_config.get("max_distance", 0.0)))
+
+
+func _get_light_pool_update_interval() -> float:
+	var pool_config := _get_light_pool_config()
+	return maxf(0.05, float(pool_config.get("update_interval_sec", 0.25)))
 
 
 func _find_node(path: String) -> Node:

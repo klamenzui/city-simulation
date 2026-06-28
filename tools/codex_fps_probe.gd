@@ -218,9 +218,11 @@ func _print_result(report: Dictionary) -> void:
 		float(cpu.get("physics_ms_max", 0.0)),
 	])
 	if not visual_lod.is_empty():
-		print("FPS_VISUAL_LOD meshes=%d lights=%d hidden_debug=%d missing_roots=%s" % [
+		print("FPS_VISUAL_LOD meshes=%d lights=%d active_lights=%d/%d hidden_debug=%d missing_roots=%s" % [
 			int(visual_lod.get("configured_meshes", 0)),
 			int(visual_lod.get("configured_lights", 0)),
+			int(visual_lod.get("light_pool_active", 0)),
+			int(visual_lod.get("light_pool_budget", 0)),
 			int(visual_lod.get("hidden_debug_meshes", 0)),
 			str(visual_lod.get("missing_roots", [])),
 		])

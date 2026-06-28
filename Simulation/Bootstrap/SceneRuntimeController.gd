@@ -113,6 +113,8 @@ func update(delta: float) -> void:
 		citizen_conversation_manager.update(delta)
 	if citizen_lod_controller != null:
 		citizen_lod_controller.update(delta)
+	if visual_lod_controller != null and visual_lod_controller.has_method("update"):
+		visual_lod_controller.update(delta, _resolve_lod_camera())
 	if runtime_debug_logger != null:
 		runtime_debug_logger.update(delta, selected_citizen)
 	if selection_debug_controller != null:

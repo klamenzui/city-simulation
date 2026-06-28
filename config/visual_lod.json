@@ -8,25 +8,25 @@
   "static_ranges": [
     {
       "path": "RootNode/City/CityPlants",
-      "visibility_end": 95.0,
+      "visibility_end": 80.0,
       "fade_margin": 14.0,
       "cast_shadows": false
     },
     {
       "path": "RootNode/City/Streetlight",
-      "visibility_end": 125.0,
+      "visibility_end": 85.0,
       "fade_margin": 18.0,
       "cast_shadows": false
     },
     {
       "path": "RootNode/City/Trafficlight",
-      "visibility_end": 110.0,
+      "visibility_end": 75.0,
       "fade_margin": 14.0,
       "cast_shadows": false
     },
     {
       "path": "RootNode/Islands/MainIsland/Plants",
-      "visibility_end": 150.0,
+      "visibility_end": 120.0,
       "fade_margin": 20.0,
       "cast_shadows": false
     }
@@ -39,6 +39,12 @@
     ],
     "distance_fade_begin": 45.0,
     "distance_fade_length": 35.0,
-    "shadow_enabled": false
+    "shadow_enabled": false,
+    "pool": {
+      "enabled": true,
+      "max_active_lights": 32,
+      "max_distance": 160.0,
+      "update_interval_sec": 0.25
+    }
   }
 }

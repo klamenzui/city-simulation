@@ -209,7 +209,11 @@ Write-Host ("draw_calls_avg={0:N0} primitives_avg={1:N0} render_objects_avg={2:N
 Write-Host ("process_ms_avg={0:N2} physics_ms_avg={1:N2}" -f `
 	[double]$cpu.process_ms_avg, [double]$cpu.physics_ms_avg)
 if ($null -ne $visualLod) {
-	Write-Host ("visual_lod meshes={0} lights={1} hidden_debug={2}" -f `
-		[int]$visualLod.configured_meshes, [int]$visualLod.configured_lights, [int]$visualLod.hidden_debug_meshes)
+	Write-Host ("visual_lod meshes={0} lights={1} active_lights={2}/{3} hidden_debug={4}" -f `
+		[int]$visualLod.configured_meshes,
+		[int]$visualLod.configured_lights,
+		[int]$visualLod.light_pool_active,
+		[int]$visualLod.light_pool_budget,
+		[int]$visualLod.hidden_debug_meshes)
 }
 Write-Host "report=$OutputPath"
