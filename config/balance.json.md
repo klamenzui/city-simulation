@@ -24,8 +24,8 @@ Bevölkerung und Nachschub an Bürgern.
 
 | Key | Default | Wirkung |
 | --- | --- | --- |
-| `initial_citizen_count` | `150` | Anzahl Bürger beim Start. |
-| `target_citizen_count` | `200` | Zielbevölkerung, bis zu der nachgespawnt wird. |
+| `initial_citizen_count` | `2` | Anzahl Bürger beim Start. |
+| `target_citizen_count` | `5` | Zielbevölkerung, bis zu der nachgespawnt wird. |
 | `enable_spawn_refill` | `true` | Schaltet das Nachspawnen verstorbener/fehlender Bürger an. |
 | `spawn_refill_delay_min` | `30` | Minimale Verzögerung (Spielminuten) bis zum Nachspawnen. |
 | `spawn_refill_delay_max` | `180` | Maximale Verzögerung bis zum Nachspawnen. |

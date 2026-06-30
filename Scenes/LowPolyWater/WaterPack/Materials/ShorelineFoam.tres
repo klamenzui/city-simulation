@@ -1,0 +1,19 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://btuqpfdrkflbq"]
+
+[ext_resource type="Shader" uid="uid://ckrrn3yxfsdnx" path="res://Scenes/LowPolyWater/WaterPack/Shaders/shoreline_foam.gdshader" id="1"]
+[ext_resource type="Texture2D" uid="uid://kmftwnm8lgv0" path="res://Scenes/LowPolyWater/WaterPack/Textures/noise.png" id="2"]
+
+[resource]
+render_priority = 5
+shader = ExtResource("1")
+shader_parameter/noise_tex = ExtResource("2")
+shader_parameter/foam_color = Color(1, 1, 1, 1)
+shader_parameter/water_base_y = 0.0
+shader_parameter/tide_speed = 0.08
+shader_parameter/tide_height = 0.9
+shader_parameter/wash_speed = 0.9
+shader_parameter/wash_height = 0.9
+shader_parameter/band_up = 1.1
+shader_parameter/band_down = 0.8
+shader_parameter/foam_clump_scale = 0.12
+shader_parameter/foam_strength = 1.0

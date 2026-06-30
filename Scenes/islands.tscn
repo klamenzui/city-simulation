@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://blp6t3kqi1w4h"]
 
 [ext_resource type="PackedScene" uid="uid://cucql7kywfd" path="res://Scenes/islands/flowers.tscn" id="1_cgqw4"]
-[ext_resource type="PackedScene" uid="uid://bh6c4j6t6qigv" path="res://Scenes/islands/clouds.tscn" id="2_6e3kk"]
 [ext_resource type="PackedScene" uid="uid://cjrjtra04axnk" path="res://Scenes/islands/shanty.tscn" id="3_16gkd"]
 [ext_resource type="PackedScene" uid="uid://bbte10u6gvsid" path="res://Scenes/islands/main_island.tscn" id="4_p7mh2"]
 [ext_resource type="PackedScene" uid="uid://c0ofopdq8abpu" path="res://Scenes/islands/background_islands.tscn" id="5_xkouf"]
@@ -19,9 +18,6 @@ transform = Transform3D(0.01, 0, 0, 0, 0.01, -2.22045e-18, 0, 2.22045e-18, 0.01,
 
 [node name="Flowers" parent="." unique_id=1172912099 instance=ExtResource("1_cgqw4")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35211.6, -1589.25, 14375.4)
-
-[node name="Clouds" parent="." unique_id=1673232872 instance=ExtResource("2_6e3kk")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14394.7, -1657.33, 963.428)
 
 [node name="Shanty" parent="." unique_id=800482982 instance=ExtResource("3_16gkd")]
 transform = Transform3D(-0.50000095, 1.6407192e-17, 0.86602503, 6.12324e-17, 1, 1.6407222e-17, -0.86602503, 6.12324e-17, -0.50000095, 4794.73, -1657.33, -40436.6)

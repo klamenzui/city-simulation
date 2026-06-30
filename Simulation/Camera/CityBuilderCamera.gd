@@ -32,6 +32,12 @@ class_name CityBuilderCamera
 @export var bounds_min_xz: Vector2 = Vector2(-40.0, -40.0)
 @export var bounds_max_xz: Vector2 = Vector2(40.0, 40.0)
 
+@export_category("Free Fly")
+## Optional unrestricted fly camera, toggled with KEY_C. Ignores the pitch /
+## distance / ground / world-bounds clamps so the view can go anywhere.
+@export var free_fly_speed: float = 26.0
+@export var free_fly_look_speed: float = 0.005
+
 var _target_center: Vector3 = Vector3.ZERO
 var _center: Vector3 = Vector3.ZERO
 var _target_yaw: float = 0.0
@@ -50,6 +56,11 @@ var _follow_controller_view: bool = false
 var _follow_target: Node3D = null
 var _input_locked: bool = false
 
+var _free_mode: bool = false
+var _free_pos: Vector3 = Vector3.ZERO
+var _free_yaw: float = 0.0
+var _free_pitch: float = 0.0
+
 func _ready() -> void:
 	current = true
 	_resolve_ground_height()
@@ -58,6 +69,10 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	var input_blocked := _should_block_camera_input()
+	if _free_mode:
+		if not input_blocked:
+			_update_free_fly(delta)
+		return
 	if _follow_mode:
 		_update_follow_targets(delta, input_blocked)
 		return
@@ -81,6 +96,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _should_block_camera_input():
 		_rotating = false
 		return
+	if event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_C:
+		toggle_free_fly()
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_MIDDLE:
@@ -98,8 +117,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event is InputEventMouseMotion and _rotating:
 		var mm := event as InputEventMouseMotion
-		_target_yaw -= mm.relative.x * mouse_rotate_speed
-		_target_pitch += mm.relative.y * mouse_rotate_speed * 0.8
+		if _free_mode:
+			_free_yaw -= mm.relative.x * free_fly_look_speed
+			_free_pitch = clampf(_free_pitch - mm.relative.y * free_fly_look_speed, -1.553, 1.553)
+		else:
+			_target_yaw -= mm.relative.x * mouse_rotate_speed
+			_target_pitch += mm.relative.y * mouse_rotate_speed * 0.8
 		get_viewport().set_input_as_handled()
 
 func _update_pan(delta: float) -> void:
@@ -181,6 +204,70 @@ func _apply_camera_transform() -> void:
 
 	global_position = _center + offset
 	look_at(_center, Vector3.UP)
+
+# --- Free fly mode ----------------------------------------------------------
+# Unrestricted spectator camera. Toggled with KEY_C (see _unhandled_input) or
+# the public toggle_free_fly(). While active it bypasses every clamp: WASD/arrows
+# fly along the view, E/Space go up, Q goes down, Shift is fast, hold middle
+# mouse to look around. Exiting hands control back to the constrained orbit cam,
+# re-seeded from wherever free fly ended so there is no jump.
+
+func toggle_free_fly() -> void:
+	if _free_mode:
+		_exit_free_fly()
+	else:
+		_enter_free_fly()
+
+func is_free_fly() -> bool:
+	return _free_mode
+
+func _enter_free_fly() -> void:
+	_free_mode = true
+	_rotating = false
+	_free_pos = global_position
+	var fwd := -global_transform.basis.z.normalized()
+	_free_yaw = atan2(-fwd.x, -fwd.z)
+	_free_pitch = clampf(asin(clampf(fwd.y, -1.0, 1.0)), -1.553, 1.553)
+
+func _exit_free_fly() -> void:
+	_free_mode = false
+	_rotating = false
+	# Resume the constrained orbit camera from the current transform.
+	_resolve_ground_height()
+	_initialize_from_transform()
+
+func _free_fly_basis() -> Basis:
+	var basis := Basis.IDENTITY
+	basis = basis.rotated(Vector3.UP, _free_yaw)
+	basis = basis.rotated(basis.x.normalized(), _free_pitch)
+	return basis
+
+func _update_free_fly(delta: float) -> void:
+	var basis := _free_fly_basis()
+	var forward := -basis.z
+	var right := basis.x
+
+	var move := Vector3.ZERO
+	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+		move += forward
+	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+		move -= forward
+	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+		move += right
+	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+		move -= right
+	if Input.is_key_pressed(KEY_E) or Input.is_key_pressed(KEY_SPACE):
+		move += Vector3.UP
+	if Input.is_key_pressed(KEY_Q):
+		move -= Vector3.UP
+
+	if move.length_squared() > 0.0001:
+		var speed: float = free_fly_speed
+		if Input.is_key_pressed(KEY_SHIFT):
+			speed *= fast_pan_multiplier
+		_free_pos += move.normalized() * speed * delta
+
+	global_transform = Transform3D(basis, _free_pos)
 
 func _update_follow_targets(delta: float, input_blocked: bool = false) -> void:
 	if _follow_target == null or not is_instance_valid(_follow_target):

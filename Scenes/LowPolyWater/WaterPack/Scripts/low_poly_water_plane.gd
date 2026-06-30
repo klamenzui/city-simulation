@@ -34,12 +34,39 @@ class_name LowPolyWaterPlane
 @export var shore_gradient_pixels: float = 60.0
 @export var foam_band_pixels: float = 0.8
 @export var shore_vertex_radius_pixels: int = 2
-@export var include_name_keywords: PackedStringArray = PackedStringArray(["Beach", "Rock"])
-@export var exclude_name_keywords: PackedStringArray = PackedStringArray(["PalmTree", "Grass", "Flowers", "Fence", "Rope", "Torch", "Bones", "Skull", "Ship", "Boat", "Barrel", "Table", "Chair"])
+@export var include_name_keywords: PackedStringArray = PackedStringArray(["Beach", "Rock", "Cliff", "Stone", "Sand", "Island", "Ground", "Pier", "Dock", "Bridge", "Boat", "Ship", "Buoy", "Post", "Wood"])
+@export var exclude_name_keywords: PackedStringArray = PackedStringArray(["PalmTree", "Grass", "Flowers", "Fence", "Rope", "Torch", "Bones", "Skull", "Tree", "Plant", "Bush", "Table", "Chair"])
+
+@export_category("Contact Foam Categories")
+## Object name -> foam category. Encoded into the shore-mask alpha so the shader
+## can vary foam density / texture / behavior per contact type. Priority on
+## overlap: prop > structure > rock > sand > default.
+@export var sand_name_keywords: PackedStringArray = PackedStringArray(["Beach", "Sand", "Ground", "Island"])
+@export var rock_name_keywords: PackedStringArray = PackedStringArray(["Rock", "Cliff", "Stone"])
+@export var structure_name_keywords: PackedStringArray = PackedStringArray(["Pier", "Dock", "Bridge", "Wood", "Plank", "Post"])
+@export var prop_name_keywords: PackedStringArray = PackedStringArray(["Boat", "Ship", "Buoy", "Barrel", "Crate"])
+## How far (mask pixels) a land pixel's category bleeds into adjacent water so the
+## contact-foam band picks up the right behavior.
+@export_range(1, 32, 1) var category_spread_pixels: int = 6
+
+const CAT_SAND := 1.0
+const CAT_ROCK := 0.7
+const CAT_STRUCTURE := 0.45
+const CAT_PROP := 0.2
+const CAT_DEFAULT := 0.6
 
 var _runtime_material: ShaderMaterial
 var _last_viewport_size: Vector2i = Vector2i.ZERO
 var _shore_mask_texture: ImageTexture
+
+const MAX_DISTURBANCES := 12
+var _disturbances: Array[Vector4] = []
+
+# Separate shoreline-foam overlay (so the foam can sit on the beach and move with
+# the tide, independent of the static water plane).
+const SHORELINE_FOAM_MATERIAL := preload("res://Scenes/LowPolyWater/WaterPack/Materials/ShorelineFoam.tres")
+var _foam_overlay: MeshInstance3D = null
+var _foam_material: ShaderMaterial = null
 
 func _ready() -> void:
 	_rebuild_mesh()
@@ -54,6 +81,7 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	_update_shader_viewport_size(false)
 	_update_shader_water_bounds()
+	_push_disturbances()
 
 func rebuild() -> void:
 	_rebuild_mesh()
@@ -61,6 +89,68 @@ func rebuild() -> void:
 	_apply_material()
 	_update_shader_water_bounds()
 	_update_shader_viewport_size(true)
+
+# --- Buoyancy API -----------------------------------------------------------
+# Sample the wave surface height at a world position. Mirrors the two Gerstner
+# waves in the shader (ignores the small noise ripple and shore damping) so
+# floating objects bob roughly in sync with what is rendered.
+func get_height(world_pos: Vector3) -> float:
+	var t: float = float(Time.get_ticks_msec()) / 1000.0
+	var xz := Vector2(world_pos.x, world_pos.z)
+	var d1 := _wp_dir("primary_wave_direction", Vector2(0.84, 0.31))
+	var d2 := _wp_dir("secondary_wave_direction", Vector2(-0.38, 0.93))
+	var k1 := _wp_f("primary_wave_scale", 0.08)
+	var k2 := _wp_f("secondary_wave_scale", 0.12)
+	var a1 := _wp_f("primary_wave_height", 1.4)
+	var a2 := _wp_f("secondary_wave_height", 0.8)
+	var sp1 := _wp_f("primary_wave_speed", 0.6)
+	var sp2 := _wp_f("secondary_wave_speed", 0.85)
+	var gy: float = sin(xz.dot(d1) * k1 + t * sp1) * a1 + sin(xz.dot(d2) * k2 + t * sp2) * a2
+	return global_position.y + gy
+
+# Approximate surface normal from finite differences of get_height.
+func get_normal(world_pos: Vector3, eps: float = 1.5) -> Vector3:
+	var hl := get_height(world_pos - Vector3(eps, 0.0, 0.0))
+	var hr := get_height(world_pos + Vector3(eps, 0.0, 0.0))
+	var hb := get_height(world_pos - Vector3(0.0, 0.0, eps))
+	var hf := get_height(world_pos + Vector3(0.0, 0.0, eps))
+	return Vector3(hl - hr, 2.0 * eps, hb - hf).normalized()
+
+func _wp_f(param_name: String, fallback: float) -> float:
+	if _runtime_material == null:
+		return fallback
+	var v = _runtime_material.get_shader_parameter(param_name)
+	return float(v) if v != null else fallback
+
+func _wp_dir(param_name: String, fallback: Vector2) -> Vector2:
+	var d := fallback
+	if _runtime_material != null:
+		var v = _runtime_material.get_shader_parameter(param_name)
+		if v != null:
+			d = v
+	var l := d.length()
+	return d / l if l > 0.0001 else fallback
+
+# --- Dynamic wake foam --------------------------------------------------------
+# A moving floating object reports itself each frame; the shader draws extra foam
+# around it. Static objects still get the depth intersection-foam rim for free,
+# so they do not need to report. xz = world position, radius/strength in shader.
+func report_disturbance(world_pos: Vector3, radius: float, strength: float) -> void:
+	if _disturbances.size() >= MAX_DISTURBANCES:
+		return
+	_disturbances.append(Vector4(world_pos.x, world_pos.z, maxf(radius, 0.1), clampf(strength, 0.0, 1.0)))
+
+func _push_disturbances() -> void:
+	if _runtime_material == null:
+		return
+	var n: int = mini(_disturbances.size(), MAX_DISTURBANCES)
+	_runtime_material.set_shader_parameter("disturbance_count", n)
+	if n > 0:
+		var arr: Array[Vector4] = _disturbances.duplicate()
+		while arr.size() < MAX_DISTURBANCES:
+			arr.append(Vector4.ZERO)
+		_runtime_material.set_shader_parameter("disturbances", arr)
+	_disturbances.clear()
 
 func generate_and_apply_shore_mask() -> void:
 	if _runtime_material == null or not is_inside_tree():
@@ -74,8 +164,10 @@ func generate_and_apply_shore_mask() -> void:
 	var total: int = size * size
 	var land := PackedByteArray()
 	land.resize(total)
+	var category := PackedFloat32Array()
+	category.resize(total)
 
-	var marked: int = _mark_land_from_node(root, land, size)
+	var marked: int = _mark_land_from_node(root, land, category, size)
 	if marked <= 0:
 		return
 
@@ -104,14 +196,32 @@ func generate_and_apply_shore_mask() -> void:
 	shore_values = _blur_float_field(shore_values, size, 2)
 	foam_values = _blur_float_field(foam_values, size, 0)
 
+	# Bleed each land pixel's foam category into nearby water so the contact-foam
+	# band knows what it is touching (sand / rock / structure / prop).
+	var spread: int = maxi(category_spread_pixels, 1)
+	var land_floats := PackedFloat32Array()
+	land_floats.resize(total)
+	for i in range(total):
+		land_floats[i] = 1.0 if land[i] > 0 else 0.0
+	var blurred_land := _blur_float_field(land_floats, size, spread)
+	var blurred_cat := _blur_float_field(category, size, spread)
+	var contact_cat := PackedFloat32Array()
+	contact_cat.resize(total)
+	for i in range(total):
+		var occ: float = blurred_land[i]
+		if occ > 0.0001:
+			contact_cat[i] = clampf(blurred_cat[i] / occ, 0.0, 1.0)
+		else:
+			contact_cat[i] = CAT_DEFAULT
+
 	var img: Image = Image.create(size, size, false, Image.FORMAT_RGBA8)
 	for y in range(size):
 		for x in range(size):
 			var idx: int = y * size + x
 			if land[idx] > 0:
-				img.set_pixel(x, y, Color(0.0, 0.0, 1.0, 1.0))
+				img.set_pixel(x, y, Color(0.0, 0.0, 1.0, clampf(category[idx], 0.0, 1.0)))
 			else:
-				img.set_pixel(x, y, Color(shore_values[idx], foam_values[idx], 0.0, 1.0))
+				img.set_pixel(x, y, Color(shore_values[idx], foam_values[idx], 0.0, contact_cat[idx]))
 
 	_shore_mask_texture = ImageTexture.create_from_image(img)
 	_runtime_material.set_shader_parameter("shore_mask", _shore_mask_texture)
@@ -199,16 +309,39 @@ func _update_shader_water_bounds() -> void:
 		return
 	_runtime_material.set_shader_parameter("water_center_xz", Vector2(global_position.x, global_position.z))
 	_runtime_material.set_shader_parameter("water_size_xz", plane_size)
+	_runtime_material.set_shader_parameter("water_base_y", global_position.y)
+	if _foam_material != null:
+		_foam_material.set_shader_parameter("water_base_y", global_position.y)
 
-func _mark_land_from_node(node: Node, land: PackedByteArray, size: int) -> int:
+func _setup_foam_overlay() -> void:
+	if _foam_overlay != null:
+		return
+	_foam_overlay = MeshInstance3D.new()
+	_foam_overlay.name = "ShorelineFoam"
+	var pm := PlaneMesh.new()
+	pm.size = plane_size
+	pm.subdivide_width = 1
+	pm.subdivide_depth = 1
+	_foam_overlay.mesh = pm
+	if SHORELINE_FOAM_MATERIAL is ShaderMaterial:
+		_foam_material = (SHORELINE_FOAM_MATERIAL as ShaderMaterial).duplicate() as ShaderMaterial
+		_foam_overlay.material_override = _foam_material
+	# Big margin + no shadows: it is a flat screen-covering overlay, not real geo.
+	_foam_overlay.extra_cull_margin = 8192.0
+	_foam_overlay.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_foam_overlay)
+	if _foam_material != null:
+		_foam_material.set_shader_parameter("water_base_y", global_position.y)
+
+func _mark_land_from_node(node: Node, land: PackedByteArray, category: PackedFloat32Array, size: int) -> int:
 	var marked := 0
 	if node is MeshInstance3D:
-		marked += _mark_mesh_instance(node as MeshInstance3D, land, size)
+		marked += _mark_mesh_instance(node as MeshInstance3D, land, category, size)
 	for child in node.get_children():
-		marked += _mark_land_from_node(child, land, size)
+		marked += _mark_land_from_node(child, land, category, size)
 	return marked
 
-func _mark_mesh_instance(mi: MeshInstance3D, land: PackedByteArray, size: int) -> int:
+func _mark_mesh_instance(mi: MeshInstance3D, land: PackedByteArray, category: PackedFloat32Array, size: int) -> int:
 	if mi.mesh == null:
 		return 0
 	if not _name_matches_include(mi):
@@ -218,6 +351,7 @@ func _mark_mesh_instance(mi: MeshInstance3D, land: PackedByteArray, size: int) -
 	if not _aabb_intersects_water_band(mi):
 		return 0
 
+	var cat: float = _object_category(mi)
 	var marked := 0
 	for surface_idx in range(mi.mesh.get_surface_count()):
 		var arrays := mi.mesh.surface_get_arrays(surface_idx)
@@ -232,16 +366,16 @@ func _mark_mesh_instance(mi: MeshInstance3D, land: PackedByteArray, size: int) -
 		if indices.size() >= 3:
 			var i := 0
 			while i + 2 < indices.size():
-				marked += _mark_triangle(mi, vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], land, size)
+				marked += _mark_triangle(mi, vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], land, category, cat, size)
 				i += 3
 		else:
 			var i := 0
 			while i + 2 < vertices.size():
-				marked += _mark_triangle(mi, vertices[i], vertices[i + 1], vertices[i + 2], land, size)
+				marked += _mark_triangle(mi, vertices[i], vertices[i + 1], vertices[i + 2], land, category, cat, size)
 				i += 3
 	return marked
 
-func _mark_triangle(mi: MeshInstance3D, a: Vector3, b: Vector3, c: Vector3, land: PackedByteArray, size: int) -> int:
+func _mark_triangle(mi: MeshInstance3D, a: Vector3, b: Vector3, c: Vector3, land: PackedByteArray, category: PackedFloat32Array, cat: float, size: int) -> int:
 	var water_h := global_position.y
 	var pa := mi.global_transform * a
 	var pb := mi.global_transform * b
@@ -258,14 +392,14 @@ func _mark_triangle(mi: MeshInstance3D, a: Vector3, b: Vector3, c: Vector3, land
 	var av := _world_to_mask_pixel(pa, size)
 	var bv := _world_to_mask_pixel(pb, size)
 	var cv := _world_to_mask_pixel(pc, size)
-	return _rasterize_triangle(av, bv, cv, land, size)
+	return _rasterize_triangle(av, bv, cv, land, category, cat, size)
 
 func _world_to_mask_pixel(p: Vector3, size: int) -> Vector2:
 	var u := (p.x - global_position.x) / maxf(plane_size.x, 0.001) + 0.5
 	var v := (p.z - global_position.z) / maxf(plane_size.y, 0.001) + 0.5
 	return Vector2(clampf(u, 0.0, 0.9999) * float(size - 1), clampf(v, 0.0, 0.9999) * float(size - 1))
 
-func _rasterize_triangle(a: Vector2, b: Vector2, c: Vector2, land: PackedByteArray, size: int) -> int:
+func _rasterize_triangle(a: Vector2, b: Vector2, c: Vector2, land: PackedByteArray, category: PackedFloat32Array, cat: float, size: int) -> int:
 	var min_x := clampi(floori(minf(a.x, minf(b.x, c.x))) - shore_vertex_radius_pixels, 0, size - 1)
 	var max_x := clampi(ceili(maxf(a.x, maxf(b.x, c.x))) + shore_vertex_radius_pixels, 0, size - 1)
 	var min_y := clampi(floori(minf(a.y, minf(b.y, c.y))) - shore_vertex_radius_pixels, 0, size - 1)
@@ -274,7 +408,7 @@ func _rasterize_triangle(a: Vector2, b: Vector2, c: Vector2, land: PackedByteArr
 	var marked := 0
 
 	if absf(area) < 0.001:
-		return _mark_disk(a, land, size, shore_vertex_radius_pixels) + _mark_disk(b, land, size, shore_vertex_radius_pixels) + _mark_disk(c, land, size, shore_vertex_radius_pixels)
+		return _mark_disk(a, land, category, cat, size, shore_vertex_radius_pixels) + _mark_disk(b, land, category, cat, size, shore_vertex_radius_pixels) + _mark_disk(c, land, category, cat, size, shore_vertex_radius_pixels)
 
 	for y in range(min_y, max_y + 1):
 		for x in range(min_x, max_x + 1):
@@ -287,12 +421,13 @@ func _rasterize_triangle(a: Vector2, b: Vector2, c: Vector2, land: PackedByteArr
 				if land[idx] == 0:
 					land[idx] = 1
 					marked += 1
+				category[idx] = maxf(category[idx], cat)
 	return marked
 
 func _edge(a: Vector2, b: Vector2, c: Vector2) -> float:
 	return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)
 
-func _mark_disk(p: Vector2, land: PackedByteArray, size: int, radius: int) -> int:
+func _mark_disk(p: Vector2, land: PackedByteArray, category: PackedFloat32Array, cat: float, size: int, radius: int) -> int:
 	var cx := clampi(roundi(p.x), 0, size - 1)
 	var cy := clampi(roundi(p.y), 0, size - 1)
 	var marked := 0
@@ -302,6 +437,7 @@ func _mark_disk(p: Vector2, land: PackedByteArray, size: int, radius: int) -> in
 			if land[idx] == 0:
 				land[idx] = 1
 				marked += 1
+			category[idx] = maxf(category[idx], cat)
 	return marked
 
 func _distance_field_from_land(land: PackedByteArray, size: int) -> PackedInt32Array:
@@ -375,3 +511,24 @@ func _name_matches_exclude(mi: MeshInstance3D) -> bool:
 		if text.find(String(keyword).to_lower()) >= 0:
 			return true
 	return false
+
+# Classify a contact object into a foam category. Priority on overlap:
+# prop > structure > rock > sand > default (a wooden boat is a prop, not a structure).
+func _object_category(mi: MeshInstance3D) -> float:
+	var text := String(mi.name).to_lower()
+	var parent := mi.get_parent()
+	if parent != null:
+		text += " " + String(parent.name).to_lower()
+	for keyword in prop_name_keywords:
+		if text.find(String(keyword).to_lower()) >= 0:
+			return CAT_PROP
+	for keyword in structure_name_keywords:
+		if text.find(String(keyword).to_lower()) >= 0:
+			return CAT_STRUCTURE
+	for keyword in rock_name_keywords:
+		if text.find(String(keyword).to_lower()) >= 0:
+			return CAT_ROCK
+	for keyword in sand_name_keywords:
+		if text.find(String(keyword).to_lower()) >= 0:
+			return CAT_SAND
+	return CAT_DEFAULT
