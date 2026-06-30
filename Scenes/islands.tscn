@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://blp6t3kqi1w4h"]
 
 [ext_resource type="PackedScene" uid="uid://cucql7kywfd" path="res://Scenes/islands/flowers.tscn" id="1_cgqw4"]
+[ext_resource type="PackedScene" uid="uid://bbte10u6gvsid" path="res://Scenes/islands/main_island.tscn" id="3_1bqtc"]
 [ext_resource type="PackedScene" uid="uid://cjrjtra04axnk" path="res://Scenes/islands/shanty.tscn" id="3_16gkd"]
-[ext_resource type="PackedScene" uid="uid://bbte10u6gvsid" path="res://Scenes/islands/main_island.tscn" id="4_p7mh2"]
 [ext_resource type="PackedScene" uid="uid://c0ofopdq8abpu" path="res://Scenes/islands/background_islands.tscn" id="5_xkouf"]
 [ext_resource type="PackedScene" uid="uid://gptstlacsdot" path="res://Scenes/islands/shipwreck.tscn" id="6_h2nvd"]
 [ext_resource type="PackedScene" uid="uid://b5cb0mwowbwgc" path="res://Scenes/islands/mangrove.tscn" id="7_lf066"]
@@ -22,8 +22,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35211.6, -1589.25, 14375.4)
 [node name="Shanty" parent="." unique_id=800482982 instance=ExtResource("3_16gkd")]
 transform = Transform3D(-0.50000095, 1.6407192e-17, 0.86602503, 6.12324e-17, 1, 1.6407222e-17, -0.86602503, 6.12324e-17, -0.50000095, 4794.73, -1657.33, -40436.6)
 
-[node name="MainIsland" parent="." unique_id=1197112880 instance=ExtResource("4_p7mh2")]
-transform = Transform3D(-0.43097594, 2.2425285e-16, -0.90236354, 4.5389425e-16, 1, 3.173378e-17, 0.90236354, -3.9590103e-16, -0.43097594, -32722.02, -1657.33, 48950.594)
+[node name="MainIsland" parent="." unique_id=1057570396 instance=ExtResource("3_1bqtc")]
+transform = Transform3D(-0.43097594, 2.2425282e-16, -0.90236354, 4.5389425e-16, 1, 3.1733752e-17, 0.90236354, -3.9590103e-16, -0.43097594, -32722.02, -1657.33, 48950.594)
 
 [node name="BackgroundIslands" parent="." unique_id=717709965 instance=ExtResource("5_xkouf")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14394.7, -1657.33, 963.428)

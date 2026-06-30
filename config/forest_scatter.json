@@ -289,7 +289,7 @@
                     "category": "GroundPlants",
                     "mesh": "res://Scenes/Environment/Grass/grass.glb",
 					"material_override": "res://Scenes/Plants/Biomes/Stylized3DGrass.tres",
-                    "count": 540,
+                    "count": 1040,
                     "height_min": 0.15,
                     "height_max": 0.25
                 }

@@ -119,11 +119,21 @@ func _debug(message):
 # Set to 0 to remove all previously generated instance.
 # The actual instance_count will be set by the MultiScatterTransform
 func _prepare_multimesh():
-	clear()
+	_ensure_multimesh_ready_for_3d()
 	
 # Delete all previously generated multi mesh instances.
 func clear():
+	if multimesh == null:
+		return
+	multimesh.visible_instance_count = 0
 	multimesh.instance_count = 0
+
+func _ensure_multimesh_ready_for_3d():
+	if multimesh == null:
+		multimesh = MultiMesh.new()
+	clear()
+	if multimesh.transform_format != MultiMesh.TRANSFORM_3D:
+		multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	
 # Generate the MultiMesh instances.
 func generate(
@@ -171,9 +181,19 @@ func generate(
 		
 		# All set up. Now generate.
 		placement.generate()
+		_show_generated_instances()
 
 	else:
 		_debug("No PlacementMode set")
+
+
+func _show_generated_instances() -> void:
+	if multimesh == null:
+		return
+	if multimesh.instance_count <= 0:
+		multimesh.visible_instance_count = 0
+		return
+	multimesh.visible_instance_count = multimesh.instance_count
 
 
 # Gets the first child of type "PlacementMode".

@@ -275,6 +275,23 @@ $availableTests = @(
 		Script = "res://tools/codex_forest_multimesh_scene_probe.gd"
 	}
 	[pscustomobject]@{
+		Key = "yamms"
+		Label = "YAMMS MultiMesh Format"
+		Script = "res://tools/codex_yamms_multimesh_format_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "islandscatter"
+		Label = "Main Island Scatter Visibility"
+		Script = "res://tools/codex_main_island_scatter_visibility_test.gd"
+	}
+	[pscustomobject]@{
+		Key = "islandgenerate"
+		Label = "Main Island Scatter Generate"
+		Script = "res://tools/codex_main_island_scatter_generate_test.gd"
+		Optional = $true
+		TimeoutSec = 240
+	}
+	[pscustomobject]@{
 		Key = "farm_live_delivery"
 		Label = "Farm Live Delivery"
 		Script = "res://tools/codex_farm_live_delivery_test.gd"

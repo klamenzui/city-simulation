@@ -1,6 +1,6 @@
 [gd_resource type="ShaderMaterial" format=3 uid="uid://btuqpfdrkflbq"]
 
-[ext_resource type="Shader" uid="uid://ckrrn3yxfsdnx" path="res://Scenes/LowPolyWater/WaterPack/Shaders/shoreline_foam.gdshader" id="1"]
+[ext_resource type="Shader" path="res://Scenes/LowPolyWater/WaterPack/Shaders/shoreline_foam.gdshader" id="1"]
 [ext_resource type="Texture2D" uid="uid://kmftwnm8lgv0" path="res://Scenes/LowPolyWater/WaterPack/Textures/noise.png" id="2"]
 
 [resource]

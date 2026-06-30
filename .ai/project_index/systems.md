@@ -111,6 +111,7 @@ Runtime and debug scenes/resources.
 | Scenes/LowPolyWater/Scripts/strategy_camera_controller.gd | StrategyCameraController | Camera3D |
 | Scenes/LowPolyWater/WaterPack/Scripts/low_poly_water_plane.gd | LowPolyWaterPlane | MeshInstance3D |
 | Scenes/LowPolyWater/WaterPack/Scripts/shore_wave_audio.gd | ShoreWaveAudio | AudioStreamPlayer3D |
+| Scenes/LowPolyWater/WaterPack/Scripts/water_buoyancy.gd | WaterBuoyancy | Node3D |
 | Scenes/LowPolyWater/WaterPack/Scripts/water_material_applier.gd | WaterMaterialApplier | Node |
 | Scenes/LowPolyWater/WaterPack/Tools/bake_shore_mask.gd | - | SceneTree |
 | Scenes/Minigames/CookingIngredientCatch/CookingIngredientCatchMinigame.gd | CookingIngredientCatchMinigame | Control |
@@ -221,4 +222,4 @@ Headless probes, parse checks, audits, and regression tests.
 | tools/codex_live_sim_probe.gd | - | SceneTree |
 | tools/codex_local_grid_topology_test.gd | - | SceneTree |
 | tools/codex_locale_test.gd | - | SceneTree |
-| tools/codex_multiplayer_host_connect_test.gd | - | SceneTree |
+| tools/codex_main_island_scatter_generate_test.gd | - | SceneTree |
