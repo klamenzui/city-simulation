@@ -2154,14 +2154,16 @@ func enter_building(building: Building, world: Node = null, emit_log: bool = tru
 	var nav_points := CitizenLocation.resolve_navigation_points(
 			building, world, name_for_offset, global_position)
 	var entry_pos := global_position
+	var fallback_entrance := building.get_entrance_pos() \
+			if building.has_method("get_entrance_pos") else building.global_position
 	stop_travel()
 	current_location = building
 	var is_outdoor: bool = building.has_method("is_outdoor_destination") and building.is_outdoor_destination()
 	if is_outdoor:
 		_sim.location.clear_inside_building()
 	else:
-		if nav_points.has("spawn"):
-			_set_position_grounded(nav_points["spawn"] as Vector3, true)
+		_set_position_at_navigation_anchor(
+				_get_navigation_anchor(nav_points, "access", "entrance", fallback_entrance))
 		_sim.location.set_inside_building(building)
 	if not skip_occupancy_callback and building.has_method("on_citizen_entered"):
 		# Use dynamic call() to bypass the legacy `Citizen` typed parameter on
@@ -2270,13 +2272,15 @@ func exit_current_building(world: Node = null) -> void:
 	var name_for_offset := _sim.identity.citizen_name if _sim.identity != null else citizen_name
 	var nav_points := CitizenLocation.resolve_navigation_points(
 			exit_building, world, name_for_offset, global_position)
-	var exit_pos: Vector3 = nav_points.get("spawn", global_position) as Vector3
+	var fallback_entrance := exit_building.get_entrance_pos() \
+			if exit_building.has_method("get_entrance_pos") else exit_building.global_position
+	var exit_pos := _get_navigation_anchor(nav_points, "spawn", "access", fallback_entrance)
 
 	_sim.location.clear_inside_building()
 	if exit_building.has_method("on_citizen_exited"):
 		exit_building.call("on_citizen_exited", self)
+	_set_position_at_navigation_anchor(exit_pos, true)
 	_set_interior_presence(false)
-	_set_position_grounded(exit_pos, true)
 	if SimLoggerScript != null:
 		SimLoggerScript.log("[Citizen %s] Exited %s at %s" % [
 				_get_log_name(),
@@ -2313,6 +2317,30 @@ func _set_position_grounded(pos: Vector3, require_walkable_surface: bool = false
 	else:
 		global_position = pos
 	velocity = Vector3.ZERO
+
+
+func _get_navigation_anchor(
+		nav_points: Dictionary,
+		primary_key: String,
+		secondary_key: String,
+		fallback: Vector3) -> Vector3:
+	var raw: Variant = nav_points.get(primary_key, nav_points.get(secondary_key, fallback))
+	if raw is Vector3:
+		return raw as Vector3
+	return fallback
+
+
+func _set_position_at_navigation_anchor(pos: Vector3, remember_safe: bool = false) -> void:
+	var anchor := pos
+	if remember_safe:
+		anchor.y += FALL_RESPAWN_GROUND_OFFSET
+	global_position = anchor
+	velocity = Vector3.ZERO
+	if is_inside_tree():
+		force_update_transform()
+	if remember_safe:
+		_last_safe_respawn_position = global_position
+		_has_last_safe_respawn_position = true
 
 
 func _get_log_name() -> String:

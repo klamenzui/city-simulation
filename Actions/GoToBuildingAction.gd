@@ -18,6 +18,7 @@ var _abort_reason: String = ""
 const MAX_TRAVEL_SIM_MIN := 240
 const MAX_DYNAMIC_REROUTES := 2
 const PARK_ENTRY_ARRIVAL_TOLERANCE := 0.15
+const STOPPED_BUILDING_ARRIVAL_TOLERANCE := 0.65
 
 func _init(_target: Building = null, _travel: int = 20, _auto_relax_at_park: bool = true) -> void:
 	super()
@@ -234,7 +235,19 @@ func _has_arrived_at_destination(citizen: Citizen) -> bool:
 	var tolerance := citizen.final_arrival_distance + 0.05
 	if _is_park_target(target):
 		tolerance = PARK_ENTRY_ARRIVAL_TOLERANCE
+	elif not citizen.is_travelling():
+		tolerance = maxf(tolerance, _stopped_building_arrival_tolerance(citizen))
 	return remaining.length() <= tolerance
+
+func _stopped_building_arrival_tolerance(citizen: Citizen) -> float:
+	if citizen == null:
+		return STOPPED_BUILDING_ARRIVAL_TOLERANCE
+	var tolerance := maxf(
+			STOPPED_BUILDING_ARRIVAL_TOLERANCE,
+			citizen.waypoint_reach_distance + 0.2)
+	if target != null and target.has_method("get_navigation_approach_distance"):
+		tolerance = maxf(tolerance, float(target.get_navigation_approach_distance()))
+	return minf(tolerance, 0.85)
 
 func _sync_arrival_target_to_route_end(citizen: Citizen) -> void:
 	if citizen == null:

@@ -139,6 +139,27 @@ func _run_case(world: World, citizen: Citizen, source: Building, target: Buildin
 					if citizen.current_location != null else "<none>",
 		])
 		return
+
+	var target_nav := citizen.get_navigation_points_for_building(target, world)
+	var target_access: Vector3 = target_nav.get("access", target.get_entrance_pos()) as Vector3
+	if absf(citizen.global_position.y - target_access.y) > 0.5:
+		failures.append("%s: target entry anchor snapped above walkable access pos=%s access=%s" % [
+			_building_case_label(target),
+			_fmt_v3(citizen.global_position),
+			_fmt_v3(target_access),
+		])
+		return
+
+	citizen.exit_current_building(world)
+	var exit_delta := citizen.global_position - target_access
+	exit_delta.y = 0.0
+	if exit_delta.length() > 1.0 or absf(citizen.global_position.y - target_access.y) > 0.5:
+		failures.append("%s: target exit did not reappear at walkable access pos=%s access=%s" % [
+			_building_case_label(target),
+			_fmt_v3(citizen.global_position),
+			_fmt_v3(target_access),
+		])
+		return
 	print("  PASS %s route_points=%d" % [_building_case_label(target), route.size()])
 
 
