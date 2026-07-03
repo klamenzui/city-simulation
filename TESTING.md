@@ -76,6 +76,7 @@ Beispiele:
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only parse,economy
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only farm_live_delivery
+powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only farm_windmill_player
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only first_day_delivery
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only workrules
 powershell -ExecutionPolicy Bypass -File C:\dev\projects\Godot\city-simulation\run_tests.ps1 -Only travelsafety
@@ -123,6 +124,7 @@ Wenn ein Check fehlschlaegt, beendet sich der Runner mit Exit-Code `1`.
 - `tools/codex_parse_check.gd`: Ressourcen/Script-Load
 - `tools/codex_economy_test.gd`: Economy-Regressionen
 - `tools/codex_farm_live_delivery_test.gd`: Main.tscn Farm-Fahrer-Lieferung per Truck zum Supermarkt
+- `tools/codex_farm_windmill_player_probe.gd`: visueller und funktioneller Windmill-Farm-Arbeitsplatz-Probe fuer Mitarbeiter und Besitzer; speichert Screenshots unter `.ai/screenshots/farm_windmill_player_probe`
 - `tools/codex_factory_delivery_test.gd`: Factory-Fahrer-Lieferung per Truck zu Shop-/Retail-Bestand
 - `tools/codex_first_day_delivery_seed_test.gd`: Startwelt hat Farm-Lagerbestand, Fahrer, Supermarkt-Bedarf und erreichbare LKW-Route
 - `tools/codex_work_rules_test.gd`: gemeinsame Arbeitsplanungsregeln inklusive krankheitsbedingtem Work-Skip

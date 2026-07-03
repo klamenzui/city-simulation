@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://bbrtbqlqde5u0" path="res://Entities/Buildings/Farm.gd" id="1_farm"]
 [ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/BigBarn.tscn" id="2_bigbarn"]
-[ext_resource type="PackedScene" path="res://Scenes/FarmAssets/LowPolyCityDiorama/FarmHouse2.tscn" id="3_smallbarn"]
+[ext_resource type="PackedScene" uid="uid://dvskvgr2l4kdw" path="res://Scenes/FarmAssets/LowPolyCityDiorama/FarmHouse2.tscn" id="3_smallbarn"]
 [ext_resource type="PackedScene" uid="uid://cxii2n31g1nee" path="res://Scenes/Vehicles/Farm/tractor_green.tscn" id="4_aups6"]
 [ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/Silo.tscn" id="4_silo"]
 [ext_resource type="PackedScene" path="res://Scenes/FarmAssets/Quaternius/Well.tscn" id="5_well"]
@@ -63,11 +63,11 @@ instance_count = 16
 mesh = ExtResource("10_cabbage")
 buffer = PackedFloat32Array(2.2, 0, 0, 1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, 2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, 2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, 3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 0.4, 2.2, 0, 0, 1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, 2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, 2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, 3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 1.2, 2.2, 0, 0, 1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, 2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, 2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, 3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2, 2.2, 0, 0, 1.4, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8, 2.2, 0, 0, 2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8, 2.2, 0, 0, 2.6, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8, 2.2, 0, 0, 3.2, 0, 2.2, 0, -0.08, 0, 0, 2.2, 2.8)
 
-[sub_resource type="BoxShape3D" id="s_house"]
-size = Vector3(2.76, 2.24, 2.37)
-
 [sub_resource type="BoxShape3D" id="s_ground"]
 size = Vector3(17.575, 0.2, 10)
+
+[sub_resource type="BoxShape3D" id="s_house"]
+size = Vector3(2.76, 2.24, 2.37)
 
 [sub_resource type="BoxShape3D" id="s_barn"]
 size = Vector3(2.86, 2.69, 2.73)
@@ -97,11 +97,11 @@ radius = 0.36
 [sub_resource type="BoxShape3D" id="s_open_barn"]
 size = Vector3(3.15, 2.38, 2.94)
 
-[sub_resource type="BoxShape3D" id="s_delivery_loading"]
-size = Vector3(2.4, 0.2, 3)
-
 [sub_resource type="BoxShape3D" id="s_click"]
 size = Vector3(9.2, 2.6, 8.4)
+
+[sub_resource type="BoxShape3D" id="s_delivery_loading"]
+size = Vector3(2.4, 0.2, 3)
 
 [node name="Farm" type="Node3D" unique_id=1354300990 groups=["building_use_farm", "buildings"]]
 script = ExtResource("1_farm")
@@ -133,7 +133,7 @@ transform = Transform3D(-0.012150517, 0, 0.33978283, 0, 0.34000006, 0, -0.339782
 transform = Transform3D(0.18503292, 0, -0.2610801, 0, 0.31999996, 0, 0.2610801, 0, 0.18503292, -6.6300526, 0.02, 1.0009434)
 
 [node name="FarmTractorGreen" parent="Buildings" unique_id=1048305351 instance=ExtResource("4_aups6")]
-transform = Transform3D(-0.0102274865, 0, -0.9999478, 0, 1, 0, 0.9999478, 0, -0.0102274865, 1.8348162, 0.068537265, 3.131672)
+transform = Transform3D(-0.0102274865, 0, -0.9999478, 0, 1, 0, 0.9999478, 0, -0.0102274865, 1.8348162, 0.1582413, 3.131672)
 
 [node name="VariantDecor" type="Node3D" parent="." unique_id=111765743]
 
@@ -251,45 +251,45 @@ mesh = ExtResource("11_pumpkin")
 transform = Transform3D(1.8, 0, 0, 0, 1.8, 0, 0, 0, 1.8, 1.48, 0.03, -0.25)
 mesh = ExtResource("11_pumpkin")
 
-[node name="Obstacles" type="StaticBody3D" parent="."]
+[node name="Obstacles" type="StaticBody3D" parent="." unique_id=1978772912]
 
-[node name="GroundShape" type="CollisionShape3D" parent="Obstacles"]
+[node name="GroundShape" type="CollisionShape3D" parent="Obstacles" unique_id=351587782]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.08, 0)
 shape = SubResource("s_ground")
 
-[node name="HouseShape" type="CollisionShape3D" parent="Obstacles"]
+[node name="HouseShape" type="CollisionShape3D" parent="Obstacles" unique_id=1731112280]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5074296, 1.115068, 3.3683026)
 shape = SubResource("s_house")
 
-[node name="BarnShape" type="CollisionShape3D" parent="Obstacles"]
+[node name="BarnShape" type="CollisionShape3D" parent="Obstacles" unique_id=292326334]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.8178973, 1.3393894, 2.9370465)
 shape = SubResource("s_barn")
 
-[node name="SiloShape" type="CollisionShape3D" parent="Obstacles"]
+[node name="SiloShape" type="CollisionShape3D" parent="Obstacles" unique_id=1855627057]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.6382065, 1.455158, 1.039485)
 shape = SubResource("s_silo")
 
-[node name="WellShape" type="CollisionShape3D" parent="Obstacles"]
+[node name="WellShape" type="CollisionShape3D" parent="Obstacles" unique_id=1569457713]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8893647, 0.586076, 0.190502)
 shape = SubResource("s_well")
 
-[node name="StorageShape" type="CollisionShape3D" parent="Obstacles"]
+[node name="StorageShape" type="CollisionShape3D" parent="Obstacles" unique_id=583203409]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0.35, -1.45)
 shape = SubResource("s_storage")
 
-[node name="SideBarnShape" type="CollisionShape3D" parent="Obstacles"]
+[node name="SideBarnShape" type="CollisionShape3D" parent="Obstacles" unique_id=1341752587]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.930545, 0.9018885, -0.883725)
 shape = SubResource("s_side_barn")
 
-[node name="WindmillShape" type="CollisionShape3D" parent="Obstacles"]
+[node name="WindmillShape" type="CollisionShape3D" parent="Obstacles" unique_id=1566227311]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.8894005, 2.236574, -3.32912)
 shape = SubResource("s_windmill")
 
-[node name="WaterTowerShape" type="CollisionShape3D" parent="Obstacles"]
+[node name="WaterTowerShape" type="CollisionShape3D" parent="Obstacles" unique_id=1881930496]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.977873, 1.09711, -4.4225626)
 shape = SubResource("s_water_tower")
 
-[node name="OpenBarnShape" type="CollisionShape3D" parent="Obstacles"]
+[node name="OpenBarnShape" type="CollisionShape3D" parent="Obstacles" unique_id=956688815]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.2803786, 1.1677635, 2.5410516)
 shape = SubResource("s_open_barn")
 
@@ -308,19 +308,19 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.9, 0, 1.2)
 [node name="StoragePoint" type="Node3D" parent="." unique_id=2102548439]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0, -1.45)
 
-[node name="DeliveryLoadingDepot" type="Area3D" parent="." groups=["delivery_loading_depots"]]
+[node name="DeliveryLoadingDepot" type="Area3D" parent="." unique_id=1387945920 groups=["delivery_loading_depots"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 0.1, 5.8)
 collision_layer = 0
 collision_mask = 0
 monitoring = false
 monitorable = false
 
-[node name="ParkingPad" type="MeshInstance3D" parent="DeliveryLoadingDepot"]
+[node name="ParkingPad" type="MeshInstance3D" parent="DeliveryLoadingDepot" unique_id=1604935123]
 transform = Transform3D(1.2, 0, 0, 0, 0.03, 0, 0, 0, 1.5, 0, -0.08, 0)
 material_override = SubResource("mt_path")
 mesh = SubResource("m_box")
 
-[node name="ParkingArea" type="CollisionShape3D" parent="DeliveryLoadingDepot"]
+[node name="ParkingArea" type="CollisionShape3D" parent="DeliveryLoadingDepot" unique_id=2086211474]
 shape = SubResource("s_delivery_loading")
 disabled = true
 

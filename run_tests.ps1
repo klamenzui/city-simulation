@@ -250,6 +250,14 @@ $availableTests = @(
 		Script = "res://tools/codex_farm_ui_flow_test.gd"
 	}
 	[pscustomobject]@{
+		Key = "farm_windmill_player"
+		Label = "Farm Windmill Player Probe"
+		Script = "res://tools/codex_farm_windmill_player_probe.gd"
+		Optional = $true
+		Headless = $false
+		TimeoutSec = 180
+	}
+	[pscustomobject]@{
 		Key = "farmassets"
 		Label = "Quaternius Farm Assets"
 		Script = "res://tools/codex_quaternius_farm_asset_probe.gd"
