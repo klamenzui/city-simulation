@@ -54,6 +54,11 @@ INDIVIDUAL_ASSETS = (
         "Corn2",
     ),
     (
+        "Ultimate Nature Pack by Quaternius/FBX/Wheat.fbx",
+        "Scenes/FarmAssets/Quaternius/GLB/Wheat.glb",
+        "Wheat",
+    ),
+    (
         "cars/ambulance_car_-_low_poly.glb",
         "Scenes/Vehicles/Ambulances/GLB/ambulance_low_poly.glb",
         "AmbulanceLowPoly",
@@ -115,6 +120,10 @@ ROTATE_Z_BY_SOURCE = {
     "cars/tractor_-_game_asset.glb": 90.0,
 }
 
+OPAQUE_MATERIAL_SOURCES = {
+    "Ultimate Nature Pack by Quaternius/FBX/Wheat.fbx",
+}
+
 
 def _argv_after_blender_separator() -> list[str]:
     if "--" not in sys.argv:
@@ -127,6 +136,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--asset-root", required=True, help="Root folder containing the external asset packs.")
     parser.add_argument("--project-root", required=True, help="Godot project root receiving the GLB files.")
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing prepared GLB files.")
+    parser.add_argument(
+        "--only-target",
+        action="append",
+        default=[],
+        help="Only prepare assets with this project-relative target path. Can be passed more than once.",
+    )
     return parser.parse_args(_argv_after_blender_separator())
 
 
@@ -174,6 +189,28 @@ def _remove_unselected_objects(kept_objects: set[bpy.types.Object]) -> None:
             bpy.data.objects.remove(obj, do_unlink=True)
 
 
+def _force_opaque_materials(objects: list[bpy.types.Object]) -> None:
+    for obj in objects:
+        for slot in obj.material_slots:
+            material = slot.material
+            if material is None:
+                continue
+            material.diffuse_color[3] = 1.0
+            if hasattr(material, "blend_method"):
+                material.blend_method = "OPAQUE"
+            if not material.use_nodes:
+                continue
+            for node in material.node_tree.nodes:
+                if node.bl_idname != "ShaderNodeBsdfPrincipled":
+                    continue
+                if "Alpha" in node.inputs:
+                    node.inputs["Alpha"].default_value = 1.0
+                if "Base Color" in node.inputs:
+                    color = node.inputs["Base Color"].default_value
+                    if len(color) >= 4:
+                        color[3] = 1.0
+
+
 def _center_and_ground(root: bpy.types.Object, objects: list[bpy.types.Object]) -> tuple[Vector, Vector]:
     minimum, maximum = _world_bounds(objects)
     root.location += Vector(
@@ -217,10 +254,11 @@ def _prepare_one(
     overwrite: bool,
     mesh_filter=None,
     rotation_z_degrees: float = 0.0,
-) -> None:
+    force_opaque_materials: bool = False,
+) -> bool:
     if target_file.exists() and not overwrite:
         print(f"[SKIP] {target_file}")
-        return
+        return False
     if not source_file.is_file():
         raise FileNotFoundError(f"Missing source asset: {source_file}")
 
@@ -240,6 +278,9 @@ def _prepare_one(
             obj.matrix_world = rotation @ obj.matrix_world
         bpy.context.view_layer.update()
 
+    if force_opaque_materials:
+        _force_opaque_materials(meshes)
+
     root = _flatten_under_root(meshes, root_name)
     _remove_unselected_objects({root, *meshes})
     minimum, maximum = _center_and_ground(root, meshes)
@@ -249,13 +290,15 @@ def _prepare_one(
         f"[EXPORT] {source_file.name} -> {target_file} "
         f"meshes={len(meshes)} dimensions=({dimensions.x:.3f}, {dimensions.y:.3f}, {dimensions.z:.3f})"
     )
+    return True
 
 
-def _copy_medieval_sources(asset_root: Path, project_root: Path, overwrite: bool) -> None:
+def _copy_medieval_sources(asset_root: Path, project_root: Path, overwrite: bool) -> int:
     source_dir = asset_root / "Medieval Village MegaKit[Standard]" / "glTF"
     target_dir = project_root / "ImportedCitySource" / "assets" / "medieval_village"
     target_dir.mkdir(parents=True, exist_ok=True)
 
+    copied_count = 0
     for file_name in MEDIEVAL_SOURCE_FILES:
         source_file = source_dir / file_name
         target_file = target_dir / file_name
@@ -265,7 +308,9 @@ def _copy_medieval_sources(asset_root: Path, project_root: Path, overwrite: bool
             print(f"[SKIP] {target_file}")
             continue
         shutil.copy2(source_file, target_file)
+        copied_count += 1
         print(f"[COPY] {source_file.name} -> {target_file}")
+    return copied_count
 
 
 def _mesh_world_center_x(obj: bpy.types.Object) -> float:
@@ -308,26 +353,36 @@ def main() -> int:
     args = _parse_args()
     asset_root = Path(args.asset_root).resolve()
     project_root = Path(args.project_root).resolve()
+    only_targets = {target.replace("\\", "/") for target in args.only_target}
+    medieval_copy_count = 0
+    prepared_glb_count = 0
 
-    _copy_medieval_sources(asset_root, project_root, args.overwrite)
+    if not only_targets:
+        medieval_copy_count = _copy_medieval_sources(asset_root, project_root, args.overwrite)
 
     for source_relative, target_relative, root_name in INDIVIDUAL_ASSETS:
+        if only_targets and target_relative.replace("\\", "/") not in only_targets:
+            continue
         mesh_filter = None
         if source_relative == "cars/green_farm_tractor_-_game_asset_update.glb":
             mesh_filter = _green_tractor_mesh_filter
-        _prepare_one(
+        if _prepare_one(
             asset_root / source_relative,
             project_root / target_relative,
             root_name,
             args.overwrite,
             mesh_filter=mesh_filter,
             rotation_z_degrees=ROTATE_Z_BY_SOURCE.get(source_relative, 0.0),
-        )
+            force_opaque_materials=source_relative in OPAQUE_MATERIAL_SOURCES,
+        ):
+            prepared_glb_count += 1
 
     truck_source = asset_root / TRUCK_SOURCE
     truck_anchors = [spec[0] for spec in TRUCK_ASSETS]
     for anchor, target_relative, root_name in TRUCK_ASSETS:
-        _prepare_one(
+        if only_targets and target_relative.replace("\\", "/") not in only_targets:
+            continue
+        if _prepare_one(
             truck_source,
             project_root / target_relative,
             root_name,
@@ -337,12 +392,15 @@ def main() -> int:
                 key=lambda candidate: abs(_mesh_world_center_x(obj) - candidate),
             )
             == selected_anchor,
-        )
+        ):
+            prepared_glb_count += 1
 
     combine_source = asset_root / COMBINE_SOURCE
     combine_anchors = [spec[0] for spec in COMBINE_ASSETS]
     for anchor, target_relative, root_name in COMBINE_ASSETS:
-        _prepare_one(
+        if only_targets and target_relative.replace("\\", "/") not in only_targets:
+            continue
+        if _prepare_one(
             combine_source,
             project_root / target_relative,
             root_name,
@@ -352,11 +410,12 @@ def main() -> int:
                 key=lambda candidate: abs(_mesh_world_center_x(obj) - candidate),
             )
             == selected_anchor,
-        )
+        ):
+            prepared_glb_count += 1
 
     print(
-        f"[DONE] Prepared 9 Medieval source models and "
-        f"{len(INDIVIDUAL_ASSETS) + len(TRUCK_ASSETS) + len(COMBINE_ASSETS)} GLB assets."
+        f"[DONE] Copied {medieval_copy_count} Medieval source files and "
+        f"prepared {prepared_glb_count} GLB assets."
     )
     return 0
 

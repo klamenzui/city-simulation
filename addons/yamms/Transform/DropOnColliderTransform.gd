@@ -61,11 +61,16 @@ func _debug(message):
 func generate_rotation():
 	super.generate_rotation()
 	
+	if not _is_valid_normal(normal_rotation):
+		normal_rotation = Vector3.UP
+	else:
+		normal_rotation = normal_rotation.normalized()
+
 	normal_rotation = Vector3(
-		direction.y * -1 * asin(normal_rotation.z ),
-		0.0, 
-		direction.y * asin(normal_rotation.x )
-	) * normal_influence 
+		direction.y * -1.0 * asin(clampf(normal_rotation.z, -1.0, 1.0)),
+		0.0,
+		direction.y * asin(clampf(normal_rotation.x, -1.0, 1.0))
+	) * clampf(normal_influence, 0.0, 1.0)
 
 	var normal_rotation_quaternion = Quaternion().from_euler(normal_rotation)
 	basis = Basis(normal_rotation_quaternion) * basis
@@ -92,3 +97,9 @@ func generate_height() -> bool:
 	normal_rotation = ray_caster.normal_rotation
 	ray_caster.queue_free()
 	return returnValue
+
+
+func _is_valid_normal(value: Vector3) -> bool:
+	if not is_finite(value.x) or not is_finite(value.y) or not is_finite(value.z):
+		return false
+	return value.length_squared() > 0.000001

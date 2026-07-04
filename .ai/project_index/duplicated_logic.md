@@ -31,6 +31,7 @@ Purpose: likely duplication areas to inspect before adding new code.
 | trafficlight_c_active | 2 | ImportedCitySource/scenes/trafficlight_c_active.gd<br>ImportedCitySource/scenes/trafficlight_c_active.tscn |
 | vehicledepot | 2 | Simulation/Transport/VehicleDepot.gd<br>Simulation/Transport/VehicleDepot.tscn |
 | warehousestackminigame | 2 | Scenes/Minigames/WarehouseStack/WarehouseStackMinigame.gd<br>Scenes/Minigames/WarehouseStack/WarehouseStackMinigame.tscn |
+| wheat | 2 | Scenes/FarmAssets/Quaternius/wheat.tres<br>Scenes/FarmAssets/Quaternius/Wheat.tscn |
 | world | 2 | ImportedCitySource/scripts/world.gd<br>Simulation/World.gd |
 
 ## Navigation Graph Overlap

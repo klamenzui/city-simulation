@@ -51,6 +51,7 @@ func _initialize() -> void:
 		collision_total += _count_nodes_of_type(farm, CollisionShape3D)
 		_check_scene_contract(farm, scene_path, errors)
 		_check_crop_multimeshes(farm, scene_path, errors)
+		await _check_optional_crop_scatter(farm, scene_path, errors)
 		_check_variant_nodes(farm, scene_path, errors)
 		await _check_first_day_delivery_seed(farm, scene_path, errors)
 		if scene_path != "res://Scenes/Farm_AnimalRanch.tscn":
@@ -137,6 +138,34 @@ func _check_crop_multimeshes(farm: Node, scene_path: String, errors: Array[Strin
 				node_path,
 				crop_node.multimesh.buffer.size(),
 			])
+
+
+func _check_optional_crop_scatter(farm: Node, scene_path: String, errors: Array[String]) -> void:
+	var scatter := farm.get_node_or_null(NodePath("Fields/FieldMiddle/CropStemInstances")) as MultiScatter
+	if scatter == null:
+		return
+	if scatter.curve == null or scatter.curve.get_point_count() < 3:
+		errors.append("%s crop scatter needs a closed polygon with at least 3 points." % scene_path)
+		return
+
+	await physics_frame
+	var item := scatter.get_node_or_null(NodePath("WheatItem")) as MultiMeshInstance3D
+	if item == null:
+		errors.append("%s crop scatter is missing WheatItem." % scene_path)
+		return
+	if item.multimesh == null or item.multimesh.mesh == null:
+		errors.append("%s crop scatter WheatItem needs a MultiMesh with a mesh." % scene_path)
+		return
+
+	var original_amount := scatter.amount
+	scatter.amount = 8
+	scatter.do_generate()
+	scatter.amount = original_amount
+
+	if item.multimesh.instance_count <= 0:
+		errors.append("%s crop scatter generated no instances." % scene_path)
+	if item.multimesh.visible_instance_count <= 0:
+		errors.append("%s crop scatter generated instances but none are visible." % scene_path)
 
 
 func _check_variant_nodes(farm: Node, scene_path: String, errors: Array[String]) -> void:

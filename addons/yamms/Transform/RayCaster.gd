@@ -70,12 +70,12 @@ func _debug(message):
 func generate_height() -> bool:
 	_debug("Raycasting for height information.")
 	var ray_cast_position = position + global_position
-	var ray_cast_target = position + direction * 10000
+	var ray_cast_target = ray_cast_position + direction * 10000.0
 	_debug("Raycasting at position %s" %ray_cast_position)
 	
 	var ray := PhysicsRayQueryParameters3D.create(
 			ray_cast_position,
-			ray_cast_position + ray_cast_target,
+			ray_cast_target,
 			collisionMask)
 	var hit = space.intersect_ray(ray)
 	if hit.is_empty():

@@ -14,7 +14,12 @@ const VISUAL_SCENES := [
 	"res://Scenes/Plants/MedievalVillage/vine_9.tscn",
 	"res://Scenes/FarmAssets/Quaternius/Corn_1.tscn",
 	"res://Scenes/FarmAssets/Quaternius/Corn_2.tscn",
+	"res://Scenes/FarmAssets/Quaternius/Wheat.tscn",
 ]
+
+const MATERIAL_VISIBILITY_SCENES := {
+	"res://Scenes/FarmAssets/Quaternius/Wheat.tscn": true,
+}
 
 const VEHICLE_SCENES := {
 	"res://Scenes/Vehicles/Ambulances/ambulance_low_poly.tscn": 0,
@@ -63,6 +68,8 @@ func _probe_visual_scene(scene_path: String, failures: Array[String]) -> void:
 	var mesh_count := _count_meshes(root)
 	if mesh_count == 0:
 		failures.append("%s contains no MeshInstance3D." % scene_path)
+	if MATERIAL_VISIBILITY_SCENES.has(scene_path) and _count_visible_material_meshes(root) == 0:
+		failures.append("%s contains no visibly renderable material." % scene_path)
 	root.free()
 
 
@@ -123,6 +130,43 @@ func _count_meshes(node: Node) -> int:
 	for child in node.get_children():
 		count += _count_meshes(child)
 	return count
+
+
+func _count_visible_material_meshes(node: Node) -> int:
+	var count := 0
+	if node is MeshInstance3D:
+		var mesh_instance := node as MeshInstance3D
+		if mesh_instance.visible and mesh_instance.mesh != null and _mesh_instance_has_visible_material(mesh_instance):
+			count += 1
+	for child in node.get_children():
+		count += _count_visible_material_meshes(child)
+	return count
+
+
+func _mesh_instance_has_visible_material(mesh_instance: MeshInstance3D) -> bool:
+	var mesh := mesh_instance.mesh
+	if mesh == null:
+		return false
+	var surface_count := mesh.get_surface_count()
+	if surface_count <= 0:
+		return false
+	for surface_index in range(surface_count):
+		var material := mesh_instance.get_surface_override_material(surface_index)
+		if material == null:
+			material = mesh.surface_get_material(surface_index)
+		if _material_can_render_visible_pixels(material):
+			return true
+	return false
+
+
+func _material_can_render_visible_pixels(material: Material) -> bool:
+	if material == null:
+		return true
+	if material is BaseMaterial3D:
+		var base_material := material as BaseMaterial3D
+		if base_material.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED and base_material.albedo_color.a <= 0.01:
+			return false
+	return true
 
 
 func _count_direct_wheels(node: Node) -> int:

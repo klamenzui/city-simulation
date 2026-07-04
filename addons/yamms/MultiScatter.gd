@@ -240,6 +240,9 @@ func _get_configuration_warnings() -> PackedStringArray:
 # the plane height is the average y  value of all points of the polygon.
 func _calc_plane_min_max() :
 	_nrOfPoints = curve.get_point_count()
+	_avg_height = 0.0
+	polygon_min = Vector3.ZERO
+	polygon_max = Vector3.ZERO
 	
 	# set the initinal min max values.
 	if _nrOfPoints > 0:
@@ -266,4 +269,5 @@ func _calc_plane_min_max() :
 			polygon_max.y = point.y
 		
 		
-	_avg_height = _avg_height / _nrOfPoints
+	if _nrOfPoints > 0:
+		_avg_height = _avg_height / _nrOfPoints

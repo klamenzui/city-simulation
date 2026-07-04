@@ -14,7 +14,12 @@ const ASSET_SCENE_PATHS := [
 	"res://Scenes/FarmAssets/Quaternius/WaterTower.tscn",
 	"res://Scenes/FarmAssets/Quaternius/Well.tscn",
 	"res://Scenes/FarmAssets/Quaternius/Windmill.tscn",
+	"res://Scenes/FarmAssets/Quaternius/Wheat.tscn",
 ]
+
+const MATERIAL_VISIBILITY_SCENES := {
+	"res://Scenes/FarmAssets/Quaternius/Wheat.tscn": true,
+}
 
 const FARM_MODEL_NODES := {
 	"res://Scenes/Farm.tscn": [
@@ -61,6 +66,8 @@ func _initialize() -> void:
 		var mesh_count := _count_nodes_of_type(instance, MeshInstance3D)
 		if mesh_count <= 0:
 			errors.append("Asset scene has no MeshInstance3D descendants: %s" % scene_path)
+		if MATERIAL_VISIBILITY_SCENES.has(scene_path) and _count_visible_material_meshes(instance) <= 0:
+			errors.append("Asset scene has no visibly renderable material: %s" % scene_path)
 		asset_mesh_total += mesh_count
 		instance.free()
 
@@ -105,3 +112,40 @@ func _count_nodes_of_type(root_node: Node, node_type: Variant) -> int:
 	for child in root_node.get_children():
 		count += _count_nodes_of_type(child, node_type)
 	return count
+
+
+func _count_visible_material_meshes(node: Node) -> int:
+	var count := 0
+	if node is MeshInstance3D:
+		var mesh_instance := node as MeshInstance3D
+		if mesh_instance.visible and mesh_instance.mesh != null and _mesh_instance_has_visible_material(mesh_instance):
+			count += 1
+	for child in node.get_children():
+		count += _count_visible_material_meshes(child)
+	return count
+
+
+func _mesh_instance_has_visible_material(mesh_instance: MeshInstance3D) -> bool:
+	var mesh := mesh_instance.mesh
+	if mesh == null:
+		return false
+	var surface_count := mesh.get_surface_count()
+	if surface_count <= 0:
+		return false
+	for surface_index in range(surface_count):
+		var material := mesh_instance.get_surface_override_material(surface_index)
+		if material == null:
+			material = mesh.surface_get_material(surface_index)
+		if _material_can_render_visible_pixels(material):
+			return true
+	return false
+
+
+func _material_can_render_visible_pixels(material: Material) -> bool:
+	if material == null:
+		return true
+	if material is BaseMaterial3D:
+		var base_material := material as BaseMaterial3D
+		if base_material.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED and base_material.albedo_color.a <= 0.01:
+			return false
+	return true

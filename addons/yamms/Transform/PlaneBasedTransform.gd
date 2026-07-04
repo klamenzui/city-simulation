@@ -104,8 +104,9 @@ func generate_plane_positions():
 					+ "2) Is the whole polygon area hidden by an exclude area? " \
 					+ "3) Drop on Floor: is there a large object with collision object underneath?" \
 					+ "4) Drop on Ceiling: is there a large object with collision object above?"
-					
+
 				_debug(message)
+				_apply_generated_instance_count(current_index)
 				push_warning(message)
 				return
 				
@@ -175,3 +176,8 @@ func generate_transform():
 	else:
 		_debug("Not generating plane. Minimum of 3 points in polygon required.")
 		
+
+func _apply_generated_instance_count(count: int) -> void:
+	count = clampi(count, 0, amount)
+	multimesh_item.visible_instance_count = count
+	multimesh_item.instance_count = count

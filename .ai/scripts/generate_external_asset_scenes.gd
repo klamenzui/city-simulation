@@ -57,6 +57,11 @@ const ASSETS := [
 		"target": "res://Scenes/FarmAssets/Quaternius/Corn_2.tscn",
 	},
 	{
+		"name": "Wheat",
+		"source": "res://Scenes/FarmAssets/Quaternius/GLB/Wheat.glb",
+		"target": "res://Scenes/FarmAssets/Quaternius/Wheat.tscn",
+	},
+	{
 		"name": "AmbulanceLowPoly",
 		"source": "res://Scenes/Vehicles/Ambulances/GLB/ambulance_low_poly.glb",
 		"target": "res://Scenes/Vehicles/Ambulances/ambulance_low_poly.tscn",
@@ -141,15 +146,19 @@ const ASSETS := [
 
 func _init() -> void:
 	var overwrite_existing := _has_arg("--overwrite")
+	var only_targets := _arg_values("--only-target")
 	var generated_count := 0
 	var skipped_count := 0
 	var failed_count := 0
 
 	for spec in ASSETS:
+		var target_path := str(spec["target"])
+		if not only_targets.is_empty() and not only_targets.has(target_path):
+			continue
 		var result := _generate_scene(
 			str(spec["name"]),
 			str(spec["source"]),
-			str(spec["target"]),
+			target_path,
 			overwrite_existing
 		)
 		if result == OK:
@@ -273,3 +282,15 @@ func _has_arg(argument: String) -> bool:
 		if current == argument:
 			return true
 	return false
+
+
+func _arg_values(argument: String) -> PackedStringArray:
+	var values := PackedStringArray()
+	var args := OS.get_cmdline_user_args()
+	for index in range(args.size()):
+		var current := args[index]
+		if current == argument and index + 1 < args.size():
+			values.append(args[index + 1])
+		elif current.begins_with(argument + "="):
+			values.append(current.substr(argument.length() + 1))
+	return values
