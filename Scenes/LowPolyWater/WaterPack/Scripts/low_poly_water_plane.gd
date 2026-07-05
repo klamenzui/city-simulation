@@ -15,6 +15,37 @@ class_name LowPolyWaterPlane
 	set(value):
 		subdivisions_z = maxi(value, 1)
 		_rebuild_if_ready()
+
+@export_category("Distance LOD")
+## Static LOD: the plane is split into a high-detail "near" tile (same density as
+## subdivisions_x/z above) around lod_focus_offset, surrounded by 4 coarser tiles
+## covering the rest of plane_size. The ocean here is bounded to the map, not an
+## infinite/camera-following sea, so a fixed layout is enough - no clipmap recentering.
+@export var lod_enabled: bool = true:
+	set(value):
+		lod_enabled = value
+		_rebuild_if_ready()
+## World-space size of the high-detail center tile. Left at the default (bigger than
+## any realistic plane_size) LOD is effectively off, so other scenes using this script
+## keep their original single-density look unless they opt in.
+@export var lod_near_size: Vector2 = Vector2(100000.0, 100000.0):
+	set(value):
+		lod_near_size = Vector2(maxf(value.x, 0.1), maxf(value.y, 0.1))
+		_rebuild_if_ready()
+## Local XZ offset of the near tile's center from the plane's own origin (e.g. to
+## re-center the high-detail area on the island cluster instead of the water plane's
+## geometric center).
+@export var lod_focus_offset: Vector2 = Vector2.ZERO:
+	set(value):
+		lod_focus_offset = value
+		_rebuild_if_ready()
+## How many times coarser (per axis) the surrounding far tiles are versus the near
+## tile's density. 8 -> ~64x fewer triangles per unit area far from the focus point.
+@export_range(1, 32, 1) var lod_far_divisor: int = 8:
+	set(value):
+		lod_far_divisor = maxi(value, 1)
+		_rebuild_if_ready()
+
 @export var water_y: float = 0.0:
 	set(value):
 		water_y = value
@@ -58,9 +89,29 @@ const CAT_DEFAULT := 0.6
 var _runtime_material: ShaderMaterial
 var _last_viewport_size: Vector2i = Vector2i.ZERO
 var _shore_mask_texture: ImageTexture
+var _wave_time: float = 0.0 # shared time for shader waves AND get_height (must match)
 
 const MAX_DISTURBANCES := 12
 var _disturbances: Array[Vector4] = []
+
+@export_category("Buoyancy Auto-Attach")
+## Automatically attach WaterBuoyancy to floating objects (boats) sitting near the
+## water surface, so they bob on the waves and leave a wake when moving fast.
+@export var auto_attach_buoyancy: bool = true
+@export var buoyancy_keywords: PackedStringArray = PackedStringArray(["Boat", "Ship", "Buoy", "Raft"])
+@export var buoyancy_exclude: PackedStringArray = PackedStringArray(["Wreck", "Shipwreck"])
+## Only attach to objects whose Y is within this of the water level (skip beached).
+@export var buoyancy_water_band: float = 3.0
+
+@export_category("Test Boat")
+## Spawn a keyboard-drivable boat on the water to test buoyancy + wake.
+## Controls: I/K forward-back, J/L turn.
+@export var spawn_test_boat: bool = true
+@export var test_boat_scene: PackedScene = preload("res://Scenes/Environment/Watercraft/viking_longship.glb")
+## World offset from the water centre where the boat spawns (find open water).
+@export var test_boat_offset: Vector3 = Vector3(0.0, 0.0, 150.0)
+@export var test_boat_scale: float = 3.0
+const BOAT_CONTROL_SCRIPT := preload("res://Scenes/LowPolyWater/WaterPack/Scripts/boat_control.gd")
 
 # Separate shoreline-foam overlay (so the foam can sit on the beach and move with
 # the tide, independent of the static water plane).
@@ -77,8 +128,16 @@ func _ready() -> void:
 	_update_shader_viewport_size(true)
 	if auto_generate_shore_mask and not Engine.is_editor_hint():
 		call_deferred("generate_and_apply_shore_mask")
+	if spawn_test_boat and not Engine.is_editor_hint():
+		call_deferred("build_land_grid")
+		call_deferred("_spawn_test_boat")
+	if auto_attach_buoyancy and not Engine.is_editor_hint():
+		call_deferred("_auto_attach_buoyancy")
 
 func _process(_delta: float) -> void:
+	_wave_time = float(Time.get_ticks_msec()) / 1000.0
+	if _runtime_material != null:
+		_runtime_material.set_shader_parameter("wave_time", _wave_time)
 	_update_shader_viewport_size(false)
 	_update_shader_water_bounds()
 	_push_disturbances()
@@ -91,22 +150,63 @@ func rebuild() -> void:
 	_update_shader_viewport_size(true)
 
 # --- Buoyancy API -----------------------------------------------------------
-# Sample the wave surface height at a world position. Mirrors the two Gerstner
-# waves in the shader (ignores the small noise ripple and shore damping) so
-# floating objects bob roughly in sync with what is rendered.
+# Sample the wave surface height at a world position. MUST mirror the shader's
+# vertex waves (the 4-octave multi-direction Gerstner sum) so floating objects
+# bob in sync with what is actually rendered. Ignores the tiny noise ripple.
+const _WAVE_ANGLES := [0.0, 1.15, -0.75, 2.30]
+const _WAVE_AMP := [1.0, 0.62, 0.45, 0.28]
+const _WAVE_SCL := [1.0, 1.8, 2.7, 4.1]
+const _WAVE_SPD := [1.0, 1.27, 0.82, 1.55]
+const _WAVE_AMP_SUM := 2.35
+
 func get_height(world_pos: Vector3) -> float:
-	var t: float = float(Time.get_ticks_msec()) / 1000.0
+	# Use the SAME shared time the shader uses (set in _process) so the sampled
+	# height matches the rendered wave exactly - boats sit on the real surface.
+	var t: float = _wave_time
 	var xz := Vector2(world_pos.x, world_pos.z)
-	var d1 := _wp_dir("primary_wave_direction", Vector2(0.84, 0.31))
-	var d2 := _wp_dir("secondary_wave_direction", Vector2(-0.38, 0.93))
-	var k1 := _wp_f("primary_wave_scale", 0.08)
-	var k2 := _wp_f("secondary_wave_scale", 0.12)
-	var a1 := _wp_f("primary_wave_height", 1.4)
-	var a2 := _wp_f("secondary_wave_height", 0.8)
-	var sp1 := _wp_f("primary_wave_speed", 0.6)
-	var sp2 := _wp_f("secondary_wave_speed", 0.85)
-	var gy: float = sin(xz.dot(d1) * k1 + t * sp1) * a1 + sin(xz.dot(d2) * k2 + t * sp2) * a2
-	return global_position.y + gy
+	var base_dir := _wp_dir("primary_wave_direction", Vector2(0.84, 0.31))
+	var k := _wp_f("primary_wave_scale", 0.08)
+	var spd := _wp_f("primary_wave_speed", 0.6)
+	var master_amp := _wp_f("primary_wave_height", 1.4) + _wp_f("secondary_wave_height", 0.8)
+	var gy := 0.0
+	for i in 4:
+		# Shader's rotate2d(a) rotates by -a, so negate the angle to match exactly.
+		var di := base_dir.rotated(-_WAVE_ANGLES[i])
+		var ki: float = k * _WAVE_SCL[i]
+		var ai: float = master_amp * _WAVE_AMP[i] / _WAVE_AMP_SUM
+		gy += sin(xz.dot(di) * ki + t * spd * _WAVE_SPD[i]) * ai
+	# Apply the SAME shore damping the shader does, so boats near islands sit on the
+	# (flattened) rendered water instead of floating above it.
+	return global_position.y + gy * _wave_damping_at(xz)
+
+var _shore_img: Image = null
+
+func _get_shore_image() -> Image:
+	if _shore_img != null:
+		return _shore_img
+	if _runtime_material == null:
+		return null
+	var tex = _runtime_material.get_shader_parameter("shore_mask")
+	if tex == null:
+		return null
+	var img: Image = tex.get_image()
+	if img != null and img.is_compressed():
+		if img.decompress() != OK:
+			return null
+	_shore_img = img
+	return _shore_img
+
+# Mirrors the shader's vertex wave_damping (shore_mask.r gradient + land_mask.b cut).
+func _wave_damping_at(xz: Vector2) -> float:
+	var img := _get_shore_image()
+	if img == null:
+		return 1.0
+	var u := clampf((xz.x - global_position.x) / maxf(plane_size.x, 0.001) + 0.5, 0.0, 0.999)
+	var v := clampf((xz.y - global_position.z) / maxf(plane_size.y, 0.001) + 0.5, 0.0, 0.999)
+	var col := img.get_pixelv(Vector2i(int(u * float(img.get_width() - 1)), int(v * float(img.get_height() - 1))))
+	var d := lerpf(1.0, 0.22, smoothstep(0.12, 0.82, clampf(col.r, 0.0, 1.0)))
+	d *= 1.0 - smoothstep(0.05, 0.35, clampf(col.b, 0.0, 1.0))
+	return d
 
 # Approximate surface normal from finite differences of get_height.
 func get_normal(world_pos: Vector3, eps: float = 1.5) -> Vector3:
@@ -131,10 +231,140 @@ func _wp_dir(param_name: String, fallback: Vector2) -> Vector2:
 	var l := d.length()
 	return d / l if l > 0.0001 else fallback
 
+# --- Open-water queries (spawn floating objects only on real water) ----------
+# A coarse land-occupancy grid built once from ALL island terrain (islands have no
+# colliders, and the shore mask only marks beach/rock). Used for spawn placement.
+var _land_grid: PackedByteArray = PackedByteArray()
+var _land_grid_size: int = 0
+
+func _resolve_islands_root() -> Node:
+	var tree := get_tree()
+	if tree == null or tree.current_scene == null:
+		return null
+	var n := tree.current_scene.get_node_or_null("RootNode/Islands")
+	return n if n != null else tree.current_scene
+
+func build_land_grid() -> void:
+	var root := _resolve_islands_root()
+	if root == null:
+		return
+	_land_grid_size = 256
+	var total := _land_grid_size * _land_grid_size
+	_land_grid = PackedByteArray()
+	_land_grid.resize(total)
+	var cat := PackedFloat32Array()
+	cat.resize(total)
+	# Temporarily match ALL meshes (not just Beach/Rock) so the full island footprint
+	# is captured; exclude keywords still filter out vegetation / boats.
+	var saved_include := include_name_keywords
+	include_name_keywords = PackedStringArray()
+	_mark_land_from_node(root, _land_grid, cat, _land_grid_size)
+	include_name_keywords = saved_include
+
+# True if the position is inside the water plane AND not over island terrain.
+func is_open_water(world_pos: Vector3) -> bool:
+	var half := plane_size * 0.5
+	if absf(world_pos.x - global_position.x) > half.x or absf(world_pos.z - global_position.z) > half.y:
+		return false # off the map
+	if _land_grid_size <= 0:
+		return true # grid not built -> bounds only
+	var u := clampf((world_pos.x - global_position.x) / maxf(plane_size.x, 0.001) + 0.5, 0.0, 0.9999)
+	var v := clampf((world_pos.z - global_position.z) / maxf(plane_size.y, 0.001) + 0.5, 0.0, 0.9999)
+	var px := int(u * float(_land_grid_size))
+	var py := int(v * float(_land_grid_size))
+	# Require the cell and its immediate neighbours to be water (small clearance).
+	for oy in range(-1, 2):
+		for ox in range(-1, 2):
+			var nx := clampi(px + ox, 0, _land_grid_size - 1)
+			var ny := clampi(py + oy, 0, _land_grid_size - 1)
+			if _land_grid[ny * _land_grid_size + nx] > 0:
+				return false
+	return true
+
+# Find the nearest open-water spot to `preferred`; spirals outward if it is on land.
+func find_open_water(preferred: Vector3, search_radius: float = 600.0, rings: int = 30) -> Vector3:
+	var p := preferred
+	p.y = global_position.y
+	if is_open_water(p):
+		return p
+	for ring in range(1, rings + 1):
+		var r := search_radius * float(ring) / float(rings)
+		for a in range(0, 16):
+			var ang := TAU * float(a) / 16.0
+			var c := Vector3(preferred.x + cos(ang) * r, global_position.y, preferred.z + sin(ang) * r)
+			if is_open_water(c):
+				return c
+	return p # give up: return the clamped preferred
+
 # --- Dynamic wake foam --------------------------------------------------------
 # A moving floating object reports itself each frame; the shader draws extra foam
 # around it. Static objects still get the depth intersection-foam rim for free,
 # so they do not need to report. xz = world position, radius/strength in shader.
+func _spawn_test_boat() -> void:
+	if not spawn_test_boat or test_boat_scene == null or not is_inside_tree():
+		return
+	var boat := Node3D.new()
+	boat.name = "PlayerBoat"
+	boat.set_script(BOAT_CONTROL_SCRIPT)
+	var visual := test_boat_scene.instantiate()
+	boat.add_child(visual)
+	if test_boat_scale != 1.0 and visual is Node3D:
+		(visual as Node3D).scale = Vector3.ONE * test_boat_scale
+	var host := get_parent()
+	if host == null:
+		host = self
+	host.add_child(boat)
+	# Spawn on real open water (not under an island / off the map).
+	var p := find_open_water(global_position + test_boat_offset)
+	boat.global_position = p
+	# Float it and give it a wake when it moves.
+	var b := WaterBuoyancy.new()
+	b.name = "WaterBuoyancy"
+	b.water_node = self
+	boat.add_child(b)
+
+func _auto_attach_buoyancy() -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+	var scene_root := tree.current_scene
+	if scene_root == null:
+		scene_root = get_tree().root
+	_scan_buoyancy(scene_root)
+
+func _scan_buoyancy(node: Node) -> void:
+	if node is Node3D and _is_buoyancy_target(node as Node3D):
+		_attach_buoyancy(node as Node3D)
+		return # do not descend into an object we just made floating
+	for child in node.get_children():
+		_scan_buoyancy(child)
+
+func _is_buoyancy_target(n: Node3D) -> bool:
+	var text := String(n.name).to_lower()
+	var matched := false
+	for k in buoyancy_keywords:
+		if text.find(String(k).to_lower()) >= 0:
+			matched = true
+			break
+	if not matched:
+		return false
+	for k in buoyancy_exclude:
+		if text.find(String(k).to_lower()) >= 0:
+			return false
+	# Only objects sitting near the water surface (skip beached / inland ones).
+	if absf(n.global_position.y - global_position.y) > buoyancy_water_band:
+		return false
+	for child in n.get_children():
+		if child is WaterBuoyancy:
+			return false
+	return true
+
+func _attach_buoyancy(n: Node3D) -> void:
+	var b := WaterBuoyancy.new()
+	b.name = "WaterBuoyancy"
+	b.water_node = self
+	n.add_child(b)
+
 func report_disturbance(world_pos: Vector3, radius: float, strength: float) -> void:
 	if _disturbances.size() >= MAX_DISTURBANCES:
 		return
@@ -266,11 +496,58 @@ func _rebuild_if_ready() -> void:
 		_update_shader_viewport_size(true)
 
 func _rebuild_mesh() -> void:
-	var plane := PlaneMesh.new()
-	plane.size = plane_size
-	plane.subdivide_width = subdivisions_x
-	plane.subdivide_depth = subdivisions_z
-	mesh = plane
+	var half := plane_size * 0.5
+	var near_half := Vector2(minf(lod_near_size.x, plane_size.x), minf(lod_near_size.y, plane_size.y)) * 0.5
+
+	# Near tile covers the whole plane (or LOD is off) -> plain single-density plane,
+	# identical to the pre-LOD behavior.
+	if not lod_enabled or (near_half.x >= half.x and near_half.y >= half.y):
+		var plane := PlaneMesh.new()
+		plane.size = plane_size
+		plane.subdivide_width = subdivisions_x
+		plane.subdivide_depth = subdivisions_z
+		mesh = plane
+		return
+
+	var plane_min := Vector2(-half.x, -half.y)
+	var plane_max := Vector2(half.x, half.y)
+	var near_min := Vector2(
+		clampf(lod_focus_offset.x - near_half.x, plane_min.x, plane_max.x),
+		clampf(lod_focus_offset.y - near_half.y, plane_min.y, plane_max.y)
+	)
+	var near_max := Vector2(
+		clampf(lod_focus_offset.x + near_half.x, plane_min.x, plane_max.x),
+		clampf(lod_focus_offset.y + near_half.y, plane_min.y, plane_max.y)
+	)
+
+	var near_density := Vector2(subdivisions_x / plane_size.x, subdivisions_z / plane_size.y)
+	var far_density := near_density / float(lod_far_divisor)
+
+	var array_mesh := ArrayMesh.new()
+	_add_lod_tile(array_mesh, near_min, near_max, near_density)
+	# Top/bottom bands span the full width; left/right only span the near tile's
+	# depth. Together with the near tile these five rects exactly partition
+	# plane_size with no gaps and no overlap (a "plus sign" layout).
+	_add_lod_tile(array_mesh, Vector2(plane_min.x, plane_min.y), Vector2(plane_max.x, near_min.y), far_density)
+	_add_lod_tile(array_mesh, Vector2(plane_min.x, near_max.y), Vector2(plane_max.x, plane_max.y), far_density)
+	_add_lod_tile(array_mesh, Vector2(plane_min.x, near_min.y), Vector2(near_min.x, near_max.y), far_density)
+	_add_lod_tile(array_mesh, Vector2(near_max.x, near_min.y), Vector2(plane_max.x, near_max.y), far_density)
+	mesh = array_mesh
+
+# Builds one rectangular tile (world-space rect_min..rect_max) at the given segments-
+# per-unit density and appends it as a surface of array_mesh. Skips degenerate tiles
+# (e.g. a band fully absorbed because the near tile already spans that axis).
+func _add_lod_tile(array_mesh: ArrayMesh, rect_min: Vector2, rect_max: Vector2, density: Vector2) -> void:
+	var size := rect_max - rect_min
+	if size.x <= 0.01 or size.y <= 0.01:
+		return
+	var center := (rect_min + rect_max) * 0.5
+	var tile := PlaneMesh.new()
+	tile.size = size
+	tile.subdivide_width = maxi(1, roundi(size.x * density.x))
+	tile.subdivide_depth = maxi(1, roundi(size.y * density.y))
+	tile.center_offset = Vector3(center.x, 0.0, center.y)
+	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, tile.surface_get_arrays(0))
 
 func _update_height() -> void:
 	position.y = water_y

@@ -60,10 +60,10 @@ var dusk_colors = {
 }
 
 var night_colors = {
-	"top_color": Color(0.043, 0.082, 0.188),
-	"bottom_color": Color(0.063, 0.098, 0.184),
-	"sun_scatter": Color(0.149, 0.118, 0.282),
-	"clouds_light_color": Color(0.278, 0.341, 0.584)
+	"top_color": Color(0.078, 0.125, 0.24),
+	"bottom_color": Color(0.095, 0.14, 0.225),
+	"sun_scatter": Color(0.18, 0.15, 0.32),
+	"clouds_light_color": Color(0.32, 0.39, 0.62)
 }
 
 func _is_headless_runtime() -> bool:

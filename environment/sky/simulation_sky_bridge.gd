@@ -140,22 +140,24 @@ func _apply_cozy_environment_style() -> void:
 	env.tonemap_exposure = 1.0
 	env.tonemap_white = 1.0
 	env.adjustment_enabled = true
-	env.adjustment_brightness = lerpf(1.02, 0.96, night_t)
+	env.adjustment_brightness = lerpf(1.02, 1.0, night_t)
 	env.adjustment_contrast = lerpf(1.06, 1.02, night_t)
 	env.adjustment_saturation = lerpf(1.12, 0.85, night_t)
 
-	# Soft bloom on highlights (water sparkle, bright clouds, sun-lit foliage edges).
+	# Soft bloom on highlights (water sparkle, bright clouds, sun-lit foliage edges,
+	# moonlight and stars at night).
 	env.glow_enabled = true
-	env.glow_intensity = lerpf(0.55 + golden_t * 0.15, 0.35, night_t)
+	env.glow_intensity = lerpf(0.55 + golden_t * 0.15, 0.5, night_t)
 	env.glow_strength = 0.9
-	env.glow_bloom = lerpf(0.08 + golden_t * 0.06, 0.04, night_t)
+	env.glow_bloom = lerpf(0.08 + golden_t * 0.06, 0.09, night_t)
 	env.glow_hdr_threshold = 1.05
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 
-	# Warm ambient fill during the day, cool desaturated fill at night.
+	# Warm ambient fill during the day, cool moonlit fill at night (bright enough to read
+	# the scene, not pitch black).
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.94, 0.93, 0.88).lerp(Color(0.18, 0.22, 0.32), night_t)
-	env.ambient_light_energy = lerpf(1.05 + golden_t * 0.10, 0.30, night_t)
+	env.ambient_light_color = Color(0.94, 0.93, 0.88).lerp(Color(0.26, 0.32, 0.48), night_t)
+	env.ambient_light_energy = lerpf(1.3 + golden_t * 0.10, 0.6, night_t)
 	env.ambient_light_sky_contribution = 0.6
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 
@@ -163,9 +165,9 @@ func _apply_cozy_environment_style() -> void:
 	# read as soft depth instead of a hard silhouette. This is the key "idyllic" cue.
 	env.fog_enabled = false
 	env.fog_mode = Environment.FOG_MODE_EXPONENTIAL
-	env.fog_density = lerpf(0.0028 + golden_t * 0.0006, 0.0042, night_t)
-	env.fog_light_color = Color(0.74, 0.84, 0.94).lerp(Color(1.0, 0.78, 0.58), golden_t).lerp(Color(0.18, 0.24, 0.36), night_t)
-	env.fog_light_energy = lerpf(0.85 + golden_t * 0.15, 0.30, night_t)
+	env.fog_density = lerpf(0.0028 + golden_t * 0.0006, 0.0035, night_t)
+	env.fog_light_color = Color(0.74, 0.84, 0.94).lerp(Color(1.0, 0.78, 0.58), golden_t).lerp(Color(0.26, 0.34, 0.5), night_t)
+	env.fog_light_energy = lerpf(0.85 + golden_t * 0.15, 0.45, night_t)
 	env.fog_sun_scatter = lerpf(0.05, 0.18, golden_t)
 	env.fog_sky_affect = 0.01
 	env.fog_aerial_perspective = 0.01
@@ -173,13 +175,15 @@ func _apply_cozy_environment_style() -> void:
 	env.fog_height_density = 0.06
 
 	# Ground-contact shadows / crevice darkening — adds depth in foliage and against buildings.
+	# Kept mild: with no GI/bounce light in the scene, strong AO on dense geometry
+	# (tree canopies, rocky islands) had no fill light to compensate and crushed to black.
 	env.ssao_enabled = true
 	env.ssao_radius = 1.6
-	env.ssao_intensity = 1.4
-	env.ssao_power = 1.5
+	env.ssao_intensity = 0.7
+	env.ssao_power = 1.0
 	env.ssao_horizon = 0.06
 	env.ssao_light_affect = 0.1
-	env.ssao_ao_channel_affect = 0.5
+	env.ssao_ao_channel_affect = 0.3
 
 	if directional_light != null:
 		# Warmer day sun, deeper sunset, cool moonlight at night.

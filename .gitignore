@@ -1,6 +1,8 @@
 # Godot 4+ specific ignores
 .godot/
 *.translation
+# Auto-generated import sidecar files (cause constant churn). Ignored per request.
+*.import
 
 # Build / local generated
 /android/

@@ -39,6 +39,9 @@ uniform float surface_drift_strength = 1.0;
 // Gerstner choppiness: 0 = plain vertical swell, higher = sharper peaks / flatter
 // troughs (horizontal pinch). Also drives the whitecap foam via the Jacobian.
 uniform float wave_steepness : hint_range(0.0, 1.0) = 0.9;
+// Shared wave time (set from GDScript). The buoyancy get_height() uses the SAME
+// value so floating objects sit on the exact rendered wave, not a desynced one.
+uniform float wave_time = 0.0;
 
 uniform float water_pattern_strength = 0.030;
 uniform float water_pattern_scale = 0.0025;
@@ -207,7 +210,7 @@ void vertex() {
 		vec2 di = rotate2d(wave_angles[i]) * base_dir;
 		float ki = primary_wave_scale * wave_scl[i];
 		float ai = master_amp * wave_amp[i] / amp_sum;
-		float phi = dot(world_xz, di) * ki + TIME * primary_wave_speed * wave_spd[i];
+		float phi = dot(world_xz, di) * ki + wave_time * primary_wave_speed * wave_spd[i];
 		float si = sin(phi);
 		float ci = cos(phi);
 		gy += si * ai;
@@ -264,14 +267,19 @@ void fragment() {
 	vec4 depth_ndc = vec4(SCREEN_UV * 2.0 - 1.0, scene_depth_raw, 1.0);
 	vec4 depth_view = INV_PROJECTION_MATRIX * depth_ndc;
 	depth_view.xyz /= depth_view.w;
-	float water_depth = max(-depth_view.z - (-VERTEX.z), 0.0);
+	vec3 world_behind = (INV_VIEW_MATRIX * vec4(depth_view.xyz, 1.0)).xyz;
+
+	// VERTICAL water-column depth (surface Y minus seabed/terrain Y). View-independent,
+	// so the shallow colour does NOT follow the camera the way an along-ray depth does.
+	float water_depth = max(world_position.y - world_behind.y, 0.0);
+	// Along-ray distance only for the land-clip proximity gate.
+	float view_dist = max(-depth_view.z - (-VERTEX.z), 0.0);
 
 	// Mask-independent land clip: if the opaque geometry right behind this water
 	// pixel sits above the water level, there is land here - discard so no water is
 	// ever drawn over / through the islands. The distance gate stops far shores and
 	// hills from punching holes in the open sea in front of them.
-	vec3 world_behind = (INV_VIEW_MATRIX * vec4(depth_view.xyz, 1.0)).xyz;
-	if (water_depth < land_clip_distance && world_behind.y > water_base_y + land_clip_margin) {
+	if (view_dist < land_clip_distance && world_behind.y > water_base_y + land_clip_margin) {
 		discard;
 	}
 
@@ -320,17 +328,17 @@ void fragment() {
 	// steps for the color mixes. Foam and alpha keep the smooth gradient.
 	float sg = mix(shore_gradient, floor(shore_gradient * color_bands + 0.5) / max(color_bands, 1.0), band_strength);
 
-	// Shallowness from REAL depth (low-area detection) combined with the baked
-	// shore gradient, then banded for the low-poly stepped colour transition.
-	float depth_shallowness = 1.0 - smoothstep(depth_shallow_distance, depth_deep_distance, water_depth);
-	float shallowness = max(sg, depth_shallowness);
+	// Smooth coastal shallowness from the horizontal shore distance ONLY (no vertical
+	// depth -> no razor-sharp ring on the steep underwater cliffs). The pow widens the
+	// visible shallow band out from the coast while keeping a soft natural falloff.
+	float shallowness = pow(smoothstep(0.0, 1.0, sg), 0.6);
 	float shallow_banded = mix(shallowness, floor(shallowness * color_bands + 0.5) / max(color_bands, 1.0), band_strength);
 
 	float patch = soft_water_pattern(world_xz);
 
-	vec3 water_col = mix(deep_color.rgb, mid_color.rgb, smoothstep(0.0, 0.55, shallow_banded));
-	water_col = mix(water_col, shallow_color.rgb, smoothstep(0.45, 0.85, shallow_banded) * shore_color_strength);
-	water_col = mix(water_col, shore_color.rgb, smoothstep(0.82, 1.0, shallow_banded) * 0.45);
+	vec3 water_col = mix(deep_color.rgb, mid_color.rgb, smoothstep(0.0, 0.5, shallow_banded));
+	water_col = mix(water_col, shallow_color.rgb, smoothstep(0.08, 0.82, shallow_banded) * shore_color_strength);
+	water_col = mix(water_col, shore_color.rgb, smoothstep(0.78, 1.0, shallow_banded) * 0.45);
 
 	// Surface texture: mottled detail so the water reads as a textured surface
 	// instead of a flat colour fill.
@@ -357,7 +365,10 @@ void fragment() {
 	// Shoreline wash: a foam band that rhythmically runs UP toward the shore and
 	// pulls back (waves hitting the coast), shifted slowly by the tide. Driven by
 	// distance-from-shore so the foam actually MOVES instead of sitting as one line.
-	float from_shore = clamp(water_depth / max(wash_depth_range, 0.01), 0.0, 1.0);
+	// Distance from the coastline in the WATER (baked shore gradient hugs the coast
+	// tightly): 0 right at the water's edge, growing seaward. Keeps the foam on the
+	// water edge instead of spreading across shallow lagoons.
+	float from_shore = clamp(1.0 - shore_gradient, 0.0, 1.0);
 	float run_up = 0.5 - 0.5 * cos(TIME * wash_speed + dot(world_xz, vec2(0.022, 0.019)) + edge_noise * 6.2831);
 	float wash_front = mix(wash_reach, 0.0, run_up);
 	float wash_bandw = wash_width * mix(0.7, 1.5, sand_w);
@@ -387,16 +398,6 @@ void fragment() {
 	// receding, not a static ring sitting around it.
 	depth_foam *= mix(0.4, 1.0, 0.5 - 0.5 * cos(TIME * wash_speed + dot(world_xz, vec2(0.05, 0.043))));
 
-	// Dynamic wake foam from moving floating objects (fed from GDScript).
-	float dyn_foam = 0.0;
-	for (int i = 0; i < 12; i++) {
-		if (i >= disturbance_count) { break; }
-		vec4 d = disturbances[i];
-		float dd = distance(world_xz, d.xy);
-		dyn_foam += d.w * (1.0 - smoothstep(d.z * 0.25, d.z, dd));
-	}
-	dyn_foam = clamp(dyn_foam, 0.0, 1.0) * mix(0.7, 1.0, edge_noise);
-
 	// Break the shoreline + contact foam into irregular clumps with gaps instead
 	// of a solid continuous outline (reference look). Two noise octaves carve holes.
 	float foam_break = smoothstep(0.30, 0.62,
@@ -405,7 +406,21 @@ void fragment() {
 	wash_foam *= foam_break;
 	depth_foam *= mix(0.30, 1.0, foam_break);
 
-	float foam = clamp(wash_foam * 1.20 + speckle_foam * 0.8 + whitecap + depth_foam + dyn_foam, 0.0, 1.0) * foam_strength;
+	// Dynamic WAKE foam behind moving boats (points fed from GDScript). Soft blobs
+	// broken up by a fast churn noise so it reads as turbulent foam, not a solid
+	// white blob dragged behind the boat.
+	float dyn_raw = 0.0;
+	for (int i = 0; i < 12; i++) {
+		if (i >= disturbance_count) { break; }
+		vec4 d = disturbances[i];
+		float dd = distance(world_xz, d.xy);
+		dyn_raw += d.w * (1.0 - smoothstep(d.z * 0.30, d.z, dd));
+	}
+	float wake_churn = texture(noise_tex, world_xz * 0.15 + flow * TIME * 0.25 + vec2(TIME * 0.09, -TIME * 0.07)).r;
+	float wake_churn2 = texture(foam_tex, world_xz * 0.34 - vec2(TIME * 0.05, TIME * 0.04)).a;
+	float dyn_foam = clamp(dyn_raw, 0.0, 1.0) * smoothstep(0.33, 0.75, wake_churn * 0.55 + wake_churn2 * 0.45);
+
+	float foam = clamp(wash_foam * 1.20 + speckle_foam * 0.8 + whitecap + depth_foam + dyn_foam * 1.3, 0.0, 1.0) * foam_strength;
 	foam *= 1.0 - land_fade; // never any foam over land
 	float foam_mix = smoothstep(0.05, 0.16, foam);
 	water_col = mix(water_col, foam_color.rgb, foam_mix);

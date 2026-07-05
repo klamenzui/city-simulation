@@ -52,8 +52,8 @@ func _init() -> void:
 
 	print("SKY_PROBE initial shader=", sky_material.shader.resource_path, " time=", sky_time_manager.get_time_of_day_string(), " paused_scale=", snapped(sky_time_manager.time_scale, 0.01))
 	print("SKY_PROBE initial sun_visible=", str(sky_material.get_shader_parameter("sun_visible")), " moon_visible=", str(sky_material.get_shader_parameter("moon_visible")), " energy=", snapped(directional_light.light_energy, 0.01))
-	var water_mesh := water.mesh as PlaneMesh
-	print("WATER_PROBE size=", water_mesh.size if water_mesh != null else Vector2.ZERO, " local_pos=", water.position)
+	var water_plane_size: Vector2 = water.get("plane_size") if water.get("plane_size") != null else Vector2.ZERO
+	print("WATER_PROBE size=", water_plane_size, " local_pos=", water.position, " surfaces=", water.mesh.get_surface_count() if water.mesh != null else 0)
 
 	world.time.advance(12 * 60)
 	await process_frame

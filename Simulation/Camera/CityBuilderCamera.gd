@@ -3,7 +3,7 @@ class_name CityBuilderCamera
 
 @export var pan_speed: float = 14.0
 @export var fast_pan_multiplier: float = 2.5
-@export var edge_scroll_enabled: bool = true
+@export var edge_scroll_enabled: bool = false
 @export var edge_margin_px: int = 14
 @export var edge_pan_factor: float = 1.0
 
