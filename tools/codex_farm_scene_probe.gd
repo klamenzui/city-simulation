@@ -80,7 +80,7 @@ func _check_scene_contract(farm: Node, scene_path: String, errors: Array[String]
 	if _count_nodes_of_type(farm, Camera3D) > 0:
 		errors.append("%s must not contain a Camera3D; city cameras own rendering." % scene_path)
 
-	var required_nodes := [
+	var required_nodes: Array[String] = [
 		"Entrance",
 		"HarvestPoint",
 		"StoragePoint",
@@ -90,22 +90,40 @@ func _check_scene_contract(farm: Node, scene_path: String, errors: Array[String]
 		"Buildings/BigBarnModel",
 		"Buildings/SiloModel",
 		"Fields/FieldWest/FarmlandModel",
-		"Fields/FieldEast/FarmlandModel",
 		"Props/WellModel",
 		"Props/Pumpkins/PumpkinA",
 		"Obstacles/HouseShape",
 		"Obstacles/BarnShape",
 		"Obstacles/SiloShape",
 		"Obstacles/WellShape",
-		"Obstacles/StorageShape",
 	]
+	if scene_path == "res://Scenes/Farm_Windmill.tscn":
+		required_nodes.append_array([
+			"Fields/FieldMiddle/FarmlandModel",
+			"Obstacles/SideBarnShape",
+			"Obstacles/WindmillShape",
+			"Obstacles/WaterTowerShape",
+			"Obstacles/OpenBarnShape",
+		])
+	else:
+		required_nodes.append_array([
+			"Fields/FieldEast/FarmlandModel",
+			"Obstacles/StorageShape",
+		])
 	for node_path in required_nodes:
 		if farm.get_node_or_null(NodePath(node_path)) == null:
 			errors.append("%s missing required Farm node: %s" % [scene_path, node_path])
 
 
 func _check_crop_multimeshes(farm: Node, scene_path: String, errors: Array[String]) -> void:
-	var crop_paths := [
+	if scene_path == "res://Scenes/Farm_Windmill.tscn":
+		_check_windmill_crop_multimeshes(farm, scene_path, errors)
+		return
+	_check_classic_crop_multimeshes(farm, scene_path, errors)
+
+
+func _check_classic_crop_multimeshes(farm: Node, scene_path: String, errors: Array[String]) -> void:
+	var crop_paths: Array[String] = [
 		"Fields/FieldWest/CropStemInstances",
 		"Fields/FieldWest/CropLeafAInstances",
 		"Fields/FieldWest/CropLeafBInstances",
@@ -138,6 +156,28 @@ func _check_crop_multimeshes(farm: Node, scene_path: String, errors: Array[Strin
 				node_path,
 				crop_node.multimesh.buffer.size(),
 			])
+
+
+func _check_windmill_crop_multimeshes(farm: Node, scene_path: String, errors: Array[String]) -> void:
+	var crop_paths: Array[String] = [
+		"Fields/FieldMiddle/CropStemInstances/WheatItem",
+		"Fields/FieldWest/CropLeafBInstances3/WheatItem",
+	]
+	for node_path in crop_paths:
+		var node := farm.get_node_or_null(NodePath(node_path))
+		if node == null:
+			errors.append("%s missing YAMMS crop MultiMesh node: %s" % [scene_path, node_path])
+			continue
+		if node is not MultiMeshInstance3D:
+			errors.append("%s YAMMS crop node is not a MultiMeshInstance3D: %s" % [scene_path, node_path])
+			continue
+
+		var crop_node := node as MultiMeshInstance3D
+		if crop_node.multimesh == null:
+			errors.append("%s YAMMS crop MultiMesh node has no MultiMesh resource: %s" % [scene_path, node_path])
+			continue
+		if crop_node.multimesh.mesh == null:
+			errors.append("%s YAMMS crop MultiMesh node has no mesh resource: %s" % [scene_path, node_path])
 
 
 func _check_optional_crop_scatter(farm: Node, scene_path: String, errors: Array[String]) -> void:

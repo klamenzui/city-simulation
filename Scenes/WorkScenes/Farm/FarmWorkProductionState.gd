@@ -22,6 +22,19 @@ func reset() -> void:
 	changed.emit()
 
 
+func apply_snapshot(data: Dictionary) -> void:
+	var grain := str(data.get("selected_grain_type", selected_grain_type)).strip_edges()
+	selected_grain_type = grain if not grain.is_empty() else "wheat"
+	required_grain = maxi(int(data.get("required_grain", required_grain)), 1)
+	duration_sec = maxf(float(data.get("duration_sec", duration_sec)), 0.1)
+	progress_sec = clampf(float(data.get("progress_sec", progress_sec)), 0.0, duration_sec)
+	running = bool(data.get("running", running))
+	paused = bool(data.get("paused", paused)) and running
+	produced_sacks_pending = maxi(int(data.get("produced_sacks_pending", produced_sacks_pending)), 0)
+	total_sacks_produced = maxi(int(data.get("total_sacks_produced", total_sacks_produced)), produced_sacks_pending)
+	changed.emit()
+
+
 func start(grain_type: String, silo_inventory) -> bool:
 	if silo_inventory == null or running:
 		return false

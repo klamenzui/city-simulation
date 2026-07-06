@@ -79,8 +79,8 @@ func _initialize() -> void:
 	var regional_product_before := int(world.economy.commodity_stock.get(product_key, 0))
 	var vehicle_count_before_delivery := world.vehicles.size()
 	var depot_capacities := _collect_free_depot_delivery_capacities(main, world, depot_parking_position)
-	if depot_capacities.size() < 2 or not depot_capacities.has(4) or not depot_capacities.has(8):
-		_errors.append("Main DeliveryVehicleDepot should contain two free delivery vehicles with capacities 4 and 8.")
+	if depot_capacities.size() < 2 or not depot_capacities.has(4):
+		_errors.append("Main DeliveryVehicleDepot should contain at least two free pickup delivery vehicles with capacity 4.")
 
 	action.start(world, driver)
 	action.tick(world, driver, DELIVERY_TICK_MINUTES)

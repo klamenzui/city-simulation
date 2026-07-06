@@ -190,6 +190,20 @@ func _initialize() -> void:
 	_expect(bool(live_applied.get("accepted", false)), "live 3D result should apply", failures)
 	_expect(int(live_applied.get("harvested_amount", 0)) > 0, "live 3D result should store output on Farm", failures)
 	_expect(not farm.has_player_work_session_in_progress(), "live 3D session should release", failures)
+	var persisted_context := farm.get_player_work_context(world, player)
+	var persisted_inventory := persisted_context.get("farm_inventory", {}) as Dictionary
+	var persisted_seeds := persisted_inventory.get("seeds", {}) as Dictionary
+	var persisted_silo := persisted_inventory.get("silo", {}) as Dictionary
+	var persisted_pickup := persisted_inventory.get("pickup", {}) as Dictionary
+	_expect_eq(int(persisted_seeds.get("wheat_seed", 0)), 15, "Farm should persist live seed consumption after WorkScene result", failures)
+	_expect_eq(int(persisted_silo.get("wheat_grain", 0)), 2, "Farm should persist unprocessed grain after WorkScene result", failures)
+	_expect_eq(int(persisted_pickup.get("flour_sack", 0)), int(live_result.get("goods_delivered", 0)), "Farm should persist prepared pickup load after WorkScene result", failures)
+	_expect_eq(
+		int(persisted_pickup.get("flour_sack", 0)),
+		farm.get_product_inventory_amount(farm.get_product_commodity()),
+		"Farm product inventory should mirror sellable WorkScene product state",
+		failures
+	)
 
 	var interaction = SimulationInteractionControllerScript.new()
 	interaction.setup(root, world)

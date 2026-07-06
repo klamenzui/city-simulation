@@ -28,6 +28,24 @@ const DELIVERY_LOADING_DEPOT_MARKER_NAME := "DeliveryLoadingDepot"
 const DELIVERY_DEPOT_MAX_LOCAL_MANEUVER_DISTANCE := 16.0
 const MANUAL_DELIVERY_ARRIVAL_RADIUS := 6.0
 const OWNER_MAX_WORK_MINUTES_PER_DAY := 8 * 60
+const PLAYER_WORK_PRODUCT_ITEM := "flour_sack"
+const PLAYER_WORK_SEED_ITEMS := ["wheat_seed", "corn_seed", "sunflower_seed"]
+const PLAYER_WORK_GRAIN_ITEMS := ["wheat_grain", "corn_grain", "sunflower_grain"]
+const PLAYER_WORK_BARN_ITEMS := ["flour_sack"]
+const PLAYER_WORK_PICKUP_ITEMS := ["flour_sack"]
+const PLAYER_WORK_DEFAULT_SEED_STOCK := {
+	"wheat_seed": 16,
+	"corn_seed": 12,
+	"sunflower_seed": 12,
+}
+const PLAYER_WORK_SILO_CAPACITY := 120
+const PLAYER_WORK_FIELD_PREPARED := 0
+const PLAYER_WORK_FIELD_SEEDED := 1
+const PLAYER_WORK_FIELD_GROWING := 2
+const PLAYER_WORK_FIELD_MATURE := 3
+const PLAYER_WORK_FIELD_HARVESTED := 4
+const PLAYER_WORK_CROP_WHEAT := "wheat"
+const PLAYER_WORK_CROP_CORN := "corn"
 const VehicleDepotAccessScript := preload("res://Simulation/Transport/VehicleDepotAccess.gd")
 const NetworkEntityRegistryScript := preload("res://Simulation/Multiplayer/shared/NetworkEntityRegistry.gd")
 
@@ -85,6 +103,13 @@ var _manual_delivery_target_item: String = ""
 var _manual_delivery_quantity: int = 0
 var _manual_delivery_vehicle: VehicleAgent = null
 var _manual_delivery_started_minute: int = 0
+var _player_work_state_initialized: bool = false
+var _player_work_seed_inventory: Dictionary = {}
+var _player_work_silo_inventory: Dictionary = {}
+var _player_work_barn_inventory: Dictionary = {}
+var _player_work_pickup_inventory: Dictionary = {}
+var _player_work_field_states: Dictionary = {}
+var _player_work_production_state: Dictionary = {}
 
 func _ready() -> void:
 	super._ready()
@@ -289,6 +314,7 @@ func get_storage_point_global() -> Vector3:
 
 func get_farm_state_snapshot() -> Dictionary:
 	_sync_active_product_from_legacy()
+	_ensure_player_work_state()
 	return {
 		"stored_food": stored_food,
 		"product_inventory": get_product_inventory_snapshot(),
@@ -302,10 +328,16 @@ func get_farm_state_snapshot() -> Dictionary:
 		"delivered_food_today": delivered_food_today,
 		"market_exported_food_today": market_exported_food_today,
 		"owner_work_minutes_today": owner_work_minutes_today,
+		"player_work_state_initialized": _player_work_state_initialized,
+		"player_work_inventory": _get_player_work_inventory_snapshot(),
+		"player_work_fields": _get_player_work_field_snapshot(),
+		"player_work_production": _player_work_production_state.duplicate(true),
 	}
 
 func get_player_work_context(world: World = null, actor: Citizen = null) -> Dictionary:
 	_sync_active_product_from_legacy()
+	_ensure_player_work_state()
+	_sync_player_work_fields_from_crop_state()
 	var storage_space := _get_available_storage()
 	var suggested_harvest := mini(_compute_harvest_yield(), storage_space) if is_crop_ready() else 0
 	return {
@@ -321,6 +353,13 @@ func get_player_work_context(world: World = null, actor: Citizen = null) -> Dict
 		"work_minutes": mini(harvest_duration_minutes + 30, 120),
 		"actor_role": get_actor_role_key(actor),
 		"demand_entries": get_delivery_demand_snapshot(world, actor) if world != null and can_actor_view_demand(actor) else [],
+		"farm_inventory": _get_player_work_inventory_snapshot(),
+		"field_states": _get_player_work_field_snapshot(),
+		"production": _player_work_production_state.duplicate(true),
+		"work_inventory_capacities": {
+			"barn": storage_capacity,
+			"silo": PLAYER_WORK_SILO_CAPACITY,
+		},
 	}
 
 func begin_player_work_session(citizen: Citizen) -> bool:
@@ -350,6 +389,7 @@ func apply_player_work_result(world: World, citizen: Citizen, result: Dictionary
 		"work_minutes": 0,
 		"quality_score": 0.0,
 		"delivered_crates": 0,
+		"goods_produced": 0,
 	}
 	if world == null:
 		applied["reason"] = "missing_world"
@@ -364,6 +404,7 @@ func apply_player_work_result(world: World, citizen: Citizen, result: Dictionary
 		finish_player_work_session(citizen)
 		return applied
 
+	_ensure_player_work_state()
 	var quality := clampf(float(result.get("quality_score", 0.0)), 0.0, 1.0)
 	var owns_farm := is_owned_by(citizen)
 	var max_work_minutes := OWNER_MAX_WORK_MINUTES_PER_DAY
@@ -389,8 +430,22 @@ func apply_player_work_result(world: World, citizen: Citizen, result: Dictionary
 
 	var accepted_harvest := 0
 	var requested_harvest := maxi(int(result.get("harvested_amount", 0)), 0)
-	if requested_harvest > 0 and crop_state == CropState.READY:
-		accepted_harvest = _apply_player_harvest(world, requested_harvest)
+	var live_harvested := maxi(int(result.get("live_harvested_amount", 0)), 0)
+	var legacy_harvested := maxi(int(result.get("legacy_harvested_amount", requested_harvest - live_harvested)), 0)
+	if result.get("farm_inventory", null) is Dictionary:
+		applied["goods_produced"] = _apply_player_work_inventory_result(world, result)
+		if result.get("field_states", null) is Dictionary:
+			_apply_player_work_field_result(result.get("field_states", {}) as Dictionary)
+		if result.get("production", null) is Dictionary:
+			_player_work_production_state = _sanitize_production_state(result.get("production", {}) as Dictionary)
+	if live_harvested > 0:
+		accepted_harvest += live_harvested
+		crop_growth_minutes = 0
+		crop_state = CropState.GROWING
+		_sync_player_work_fields_from_crop_state()
+		_refresh_crop_visuals(true)
+	if legacy_harvested > 0 and crop_state == CropState.READY:
+		accepted_harvest += _apply_player_harvest(world, legacy_harvested)
 
 	applied["accepted"] = true
 	applied["reason"] = "ok"
@@ -435,10 +490,332 @@ func apply_farm_state_snapshot(data: Dictionary) -> void:
 	delivered_food_today = maxi(int(data.get("delivered_food_today", delivered_food_today)), 0)
 	market_exported_food_today = maxi(int(data.get("market_exported_food_today", market_exported_food_today)), 0)
 	owner_work_minutes_today = maxi(int(data.get("owner_work_minutes_today", owner_work_minutes_today)), 0)
+	if data.get("player_work_inventory", null) is Dictionary:
+		_player_work_state_initialized = bool(data.get("player_work_state_initialized", true))
+		_apply_player_work_inventory_snapshot(data.get("player_work_inventory", {}) as Dictionary)
+	elif bool(data.get("player_work_state_initialized", false)):
+		_player_work_state_initialized = true
+		_ensure_player_work_state()
+	if data.get("player_work_fields", null) is Dictionary:
+		_player_work_field_states = _sanitize_player_work_fields(data.get("player_work_fields", {}) as Dictionary)
+	if data.get("player_work_production", null) is Dictionary:
+		_player_work_production_state = _sanitize_production_state(data.get("player_work_production", {}) as Dictionary)
 	_release_harvest_worker()
 	_release_delivery_worker()
 	_clear_manual_delivery()
 	_refresh_crop_visuals(true)
+
+func _ensure_player_work_state() -> void:
+	if not _player_work_state_initialized:
+		_player_work_seed_inventory = PLAYER_WORK_DEFAULT_SEED_STOCK.duplicate(true)
+		_player_work_silo_inventory = {}
+		_player_work_barn_inventory = {}
+		_player_work_pickup_inventory = {}
+		_player_work_field_states = _build_default_player_work_fields()
+		_player_work_production_state = {}
+		_player_work_state_initialized = true
+	_player_work_seed_inventory = _sanitize_inventory(_player_work_seed_inventory, PLAYER_WORK_SEED_ITEMS)
+	_player_work_silo_inventory = _sanitize_inventory(_player_work_silo_inventory, PLAYER_WORK_GRAIN_ITEMS)
+	_player_work_barn_inventory = _sanitize_inventory(_player_work_barn_inventory, PLAYER_WORK_BARN_ITEMS)
+	_player_work_pickup_inventory = _sanitize_inventory(_player_work_pickup_inventory, PLAYER_WORK_PICKUP_ITEMS)
+	_player_work_field_states = _sanitize_player_work_fields(_player_work_field_states)
+	_player_work_production_state = _sanitize_production_state(_player_work_production_state)
+	_sync_player_work_product_from_inventory()
+
+func _get_player_work_inventory_snapshot() -> Dictionary:
+	return {
+		"seeds": _player_work_seed_inventory.duplicate(true),
+		"silo": _player_work_silo_inventory.duplicate(true),
+		"barn": _player_work_barn_inventory.duplicate(true),
+		"pickup": _player_work_pickup_inventory.duplicate(true),
+	}
+
+func _get_player_work_field_snapshot() -> Dictionary:
+	return _player_work_field_states.duplicate(true)
+
+func _apply_player_work_inventory_snapshot(snapshot: Dictionary) -> void:
+	_player_work_seed_inventory = _sanitize_inventory(_dictionary_from_variant(snapshot.get("seeds", {})), PLAYER_WORK_SEED_ITEMS)
+	_player_work_silo_inventory = _sanitize_inventory(_dictionary_from_variant(snapshot.get("silo", {})), PLAYER_WORK_GRAIN_ITEMS)
+	_player_work_barn_inventory = _sanitize_inventory(_dictionary_from_variant(snapshot.get("barn", {})), PLAYER_WORK_BARN_ITEMS)
+	_player_work_pickup_inventory = _sanitize_inventory(_dictionary_from_variant(snapshot.get("pickup", {})), PLAYER_WORK_PICKUP_ITEMS)
+	_player_work_state_initialized = true
+
+func _apply_player_work_inventory_result(world: World, result: Dictionary) -> int:
+	var inventory_result := _dictionary_from_variant(result.get("farm_inventory", {}))
+	if inventory_result.is_empty():
+		return 0
+	var old_seed_inventory := _player_work_seed_inventory.duplicate(true)
+	var old_grain_total := _dict_total(_player_work_silo_inventory, PLAYER_WORK_GRAIN_ITEMS)
+	var old_product_units := get_product_inventory_amount(get_product_commodity())
+	var live_harvested := maxi(int(result.get("live_harvested_amount", 0)), 0)
+	var goods_produced := maxi(int(result.get("goods_produced", 0)), 0)
+
+	var next_seed_inventory := _sanitize_inventory(_dictionary_from_variant(inventory_result.get("seeds", {})), PLAYER_WORK_SEED_ITEMS)
+	var next_silo_inventory := _sanitize_inventory(_dictionary_from_variant(inventory_result.get("silo", {})), PLAYER_WORK_GRAIN_ITEMS)
+	var next_barn_inventory := _sanitize_inventory(_dictionary_from_variant(inventory_result.get("barn", {})), PLAYER_WORK_BARN_ITEMS)
+	var next_pickup_inventory := _sanitize_inventory(_dictionary_from_variant(inventory_result.get("pickup", {})), PLAYER_WORK_PICKUP_ITEMS)
+	var carried_inventory := _sanitize_inventory(
+		_dictionary_from_variant(inventory_result.get("player", {})),
+		PLAYER_WORK_SEED_ITEMS + PLAYER_WORK_GRAIN_ITEMS + PLAYER_WORK_BARN_ITEMS
+	)
+	_merge_carried_player_work_items(
+		carried_inventory,
+		next_seed_inventory,
+		next_silo_inventory,
+		next_barn_inventory
+	)
+
+	for item_id in PLAYER_WORK_SEED_ITEMS:
+		_set_dict_amount(
+			next_seed_inventory,
+			str(item_id),
+			mini(_dict_amount(next_seed_inventory, str(item_id)), _dict_amount(old_seed_inventory, str(item_id)))
+		)
+	next_silo_inventory = _clamp_inventory_total(
+		next_silo_inventory,
+		PLAYER_WORK_GRAIN_ITEMS,
+		old_grain_total + live_harvested
+	)
+
+	var requested_product_units := _dict_amount(next_barn_inventory, PLAYER_WORK_PRODUCT_ITEM) \
+		+ _dict_amount(next_pickup_inventory, PLAYER_WORK_PRODUCT_ITEM)
+	var max_product_units := old_product_units + goods_produced
+	var accepted_product_units := mini(requested_product_units, max_product_units)
+	var product_delta := maxi(accepted_product_units - old_product_units, 0)
+	if product_delta > 0 and not _pay_player_work_product_cost(world, product_delta):
+		accepted_product_units = old_product_units
+		product_delta = 0
+	_trim_product_inventory_to_total(next_barn_inventory, next_pickup_inventory, accepted_product_units)
+
+	_player_work_seed_inventory = next_seed_inventory
+	_player_work_silo_inventory = next_silo_inventory
+	_player_work_barn_inventory = next_barn_inventory
+	_player_work_pickup_inventory = next_pickup_inventory
+	set_product_inventory_amount(get_product_commodity(), accepted_product_units)
+	if product_delta > 0:
+		output_today += product_delta
+	return product_delta
+
+func _apply_player_work_field_result(field_data: Dictionary) -> void:
+	_player_work_field_states = _sanitize_player_work_fields(field_data)
+
+func _sync_player_work_fields_from_crop_state() -> void:
+	if _player_work_field_states.is_empty():
+		_player_work_field_states = _build_default_player_work_fields()
+	var wheat_field := _sanitize_player_work_field(
+		_dictionary_from_variant(_player_work_field_states.get("field_wheat", {})),
+		_make_player_work_field_snapshot("field_wheat", "Wheat field", PLAYER_WORK_CROP_WHEAT, PLAYER_WORK_FIELD_PREPARED)
+	)
+	if crop_state == CropState.READY:
+		wheat_field["crop_type"] = PLAYER_WORK_CROP_WHEAT
+		wheat_field["state"] = PLAYER_WORK_FIELD_MATURE
+		wheat_field["growth"] = 1.0
+		wheat_field["water"] = 0.0
+	elif crop_growth_minutes <= 0:
+		wheat_field = _make_player_work_field_snapshot("field_wheat", "Wheat field", PLAYER_WORK_CROP_WHEAT, PLAYER_WORK_FIELD_PREPARED)
+	else:
+		wheat_field["crop_type"] = PLAYER_WORK_CROP_WHEAT
+		wheat_field["state"] = PLAYER_WORK_FIELD_GROWING
+		wheat_field["growth"] = clampf(float(crop_growth_minutes) / float(get_crop_growth_total_minutes()), 0.0, 1.0)
+	_player_work_field_states["field_wheat"] = wheat_field
+	if not _player_work_field_states.has("field_corn"):
+		_player_work_field_states["field_corn"] = _make_player_work_field_snapshot("field_corn", "Corn field", PLAYER_WORK_CROP_CORN, PLAYER_WORK_FIELD_SEEDED)
+
+func _build_default_player_work_fields() -> Dictionary:
+	return {
+		"field_wheat": _make_player_work_field_snapshot("field_wheat", "Wheat field", PLAYER_WORK_CROP_WHEAT, PLAYER_WORK_FIELD_PREPARED),
+		"field_corn": _make_player_work_field_snapshot("field_corn", "Corn field", PLAYER_WORK_CROP_CORN, PLAYER_WORK_FIELD_SEEDED),
+	}
+
+func _make_player_work_field_snapshot(field_id: String, label: String, crop_type_key: String, state_value: int) -> Dictionary:
+	return {
+		"field_id": field_id,
+		"display_name": label,
+		"allowed_crop_type": crop_type_key,
+		"crop_type": "" if state_value == PLAYER_WORK_FIELD_PREPARED else crop_type_key,
+		"state": state_value,
+		"state_label": "",
+		"growth": 1.0 if state_value == PLAYER_WORK_FIELD_MATURE else 0.0,
+		"water": 0.0,
+		"harvested_units": 0,
+	}
+
+func _sanitize_player_work_fields(data: Dictionary) -> Dictionary:
+	var defaults := _build_default_player_work_fields()
+	var fields: Dictionary = {}
+	for field_id in defaults.keys():
+		var default_field := defaults.get(field_id, {}) as Dictionary
+		fields[field_id] = _sanitize_player_work_field(
+			_dictionary_from_variant(data.get(field_id, {})),
+			default_field
+		)
+	return fields
+
+func _sanitize_player_work_field(data: Dictionary, default_field: Dictionary) -> Dictionary:
+	var field := default_field.duplicate(true)
+	var field_id := str(data.get("field_id", field.get("field_id", ""))).strip_edges()
+	if not field_id.is_empty():
+		field["field_id"] = field_id
+	var label := str(data.get("display_name", field.get("display_name", "Field"))).strip_edges()
+	field["display_name"] = label if not label.is_empty() else "Field"
+	var allowed_crop := str(data.get("allowed_crop_type", field.get("allowed_crop_type", PLAYER_WORK_CROP_WHEAT))).strip_edges()
+	if _is_player_work_crop_supported(allowed_crop):
+		field["allowed_crop_type"] = allowed_crop
+	var crop_type_key := str(data.get("crop_type", field.get("crop_type", ""))).strip_edges()
+	field["crop_type"] = crop_type_key if _is_player_work_crop_supported(crop_type_key) else ""
+	field["state"] = clampi(
+		int(data.get("state", field.get("state", PLAYER_WORK_FIELD_PREPARED))),
+		PLAYER_WORK_FIELD_PREPARED,
+		PLAYER_WORK_FIELD_HARVESTED
+	)
+	field["growth"] = clampf(float(data.get("growth", field.get("growth", 0.0))), 0.0, 1.0)
+	field["water"] = clampf(float(data.get("water", field.get("water", 0.0))), 0.0, 1.0)
+	field["harvested_units"] = maxi(int(data.get("harvested_units", field.get("harvested_units", 0))), 0)
+	if int(field.get("state", PLAYER_WORK_FIELD_PREPARED)) != PLAYER_WORK_FIELD_PREPARED and str(field.get("crop_type", "")).is_empty():
+		field["crop_type"] = str(field.get("allowed_crop_type", PLAYER_WORK_CROP_WHEAT))
+	if int(field.get("state", PLAYER_WORK_FIELD_PREPARED)) == PLAYER_WORK_FIELD_MATURE:
+		field["growth"] = 1.0
+	if int(field.get("state", PLAYER_WORK_FIELD_PREPARED)) == PLAYER_WORK_FIELD_PREPARED:
+		field["crop_type"] = ""
+	return field
+
+func _sanitize_production_state(data: Dictionary) -> Dictionary:
+	if data.is_empty():
+		return {}
+	var duration := maxf(float(data.get("duration_sec", 8.0)), 0.1)
+	var running := bool(data.get("running", false))
+	var pending_sacks := maxi(int(data.get("produced_sacks_pending", 0)), 0)
+	return {
+		"selected_grain_type": str(data.get("selected_grain_type", PLAYER_WORK_CROP_WHEAT)).strip_edges(),
+		"required_grain": maxi(int(data.get("required_grain", 10)), 1),
+		"duration_sec": duration,
+		"progress_sec": clampf(float(data.get("progress_sec", 0.0)), 0.0, duration),
+		"running": running,
+		"paused": bool(data.get("paused", false)) and running,
+		"produced_sacks_pending": pending_sacks,
+		"total_sacks_produced": maxi(int(data.get("total_sacks_produced", 0)), pending_sacks),
+	}
+
+func _sanitize_inventory(data: Dictionary, allowed_items: Array) -> Dictionary:
+	var sanitized: Dictionary = {}
+	for item_var in allowed_items:
+		var item_id := str(item_var).strip_edges()
+		if item_id.is_empty():
+			continue
+		var amount := maxi(int(data.get(item_id, 0)), 0)
+		if amount > 0:
+			sanitized[item_id] = amount
+	return sanitized
+
+func _merge_carried_player_work_items(
+	carried_inventory: Dictionary,
+	seed_inventory: Dictionary,
+	silo_inventory: Dictionary,
+	barn_inventory: Dictionary
+) -> void:
+	for item_id in PLAYER_WORK_SEED_ITEMS:
+		_add_dict_amount(seed_inventory, str(item_id), _dict_amount(carried_inventory, str(item_id)))
+	for item_id in PLAYER_WORK_GRAIN_ITEMS:
+		_add_dict_amount(silo_inventory, str(item_id), _dict_amount(carried_inventory, str(item_id)))
+	_add_dict_amount(barn_inventory, PLAYER_WORK_PRODUCT_ITEM, _dict_amount(carried_inventory, PLAYER_WORK_PRODUCT_ITEM))
+
+func _clamp_inventory_total(data: Dictionary, allowed_items: Array, max_total: int) -> Dictionary:
+	var clamped: Dictionary = {}
+	var remaining := maxi(max_total, 0)
+	for item_var in allowed_items:
+		var item_id := str(item_var).strip_edges()
+		if item_id.is_empty():
+			continue
+		var amount := mini(_dict_amount(data, item_id), remaining)
+		if amount > 0:
+			clamped[item_id] = amount
+		remaining -= amount
+		if remaining <= 0:
+			break
+	return clamped
+
+func _trim_product_inventory_to_total(
+	barn_inventory: Dictionary,
+	pickup_inventory: Dictionary,
+	total_product_units: int
+) -> void:
+	var remaining := maxi(total_product_units, 0)
+	var barn_amount := mini(_dict_amount(barn_inventory, PLAYER_WORK_PRODUCT_ITEM), remaining)
+	_set_dict_amount(barn_inventory, PLAYER_WORK_PRODUCT_ITEM, barn_amount)
+	remaining -= barn_amount
+	var pickup_amount := mini(_dict_amount(pickup_inventory, PLAYER_WORK_PRODUCT_ITEM), remaining)
+	_set_dict_amount(pickup_inventory, PLAYER_WORK_PRODUCT_ITEM, pickup_amount)
+
+func _sync_player_work_product_from_inventory() -> void:
+	var target_units := get_product_inventory_amount(get_product_commodity())
+	var current_units := _dict_amount(_player_work_barn_inventory, PLAYER_WORK_PRODUCT_ITEM) \
+		+ _dict_amount(_player_work_pickup_inventory, PLAYER_WORK_PRODUCT_ITEM)
+	if current_units == target_units:
+		return
+	if current_units < target_units:
+		_add_dict_amount(_player_work_barn_inventory, PLAYER_WORK_PRODUCT_ITEM, target_units - current_units)
+		return
+	var excess := current_units - target_units
+	excess -= _remove_dict_amount(_player_work_pickup_inventory, PLAYER_WORK_PRODUCT_ITEM, excess)
+	if excess > 0:
+		_remove_dict_amount(_player_work_barn_inventory, PLAYER_WORK_PRODUCT_ITEM, excess)
+
+func _pay_player_work_product_cost(world: World, units: int) -> bool:
+	if units <= 0:
+		return true
+	if world == null or world.economy == null:
+		return false
+	var production_cost: int = units * maxi(production_cost_per_unit, 0)
+	if production_cost <= 0:
+		return true
+	if not world.economy.pay_production_cost(account, production_cost):
+		close_due_to_finance(world, "unpaid player farm work production costs")
+		return false
+	record_production_expense(production_cost)
+	return true
+
+func _dictionary_from_variant(value) -> Dictionary:
+	if value is Dictionary:
+		return (value as Dictionary).duplicate(true)
+	return {}
+
+func _dict_amount(data: Dictionary, item_id: String) -> int:
+	return maxi(int(data.get(item_id, 0)), 0)
+
+func _dict_total(data: Dictionary, allowed_items: Array) -> int:
+	var total := 0
+	for item_var in allowed_items:
+		total += _dict_amount(data, str(item_var))
+	return total
+
+func _set_dict_amount(data: Dictionary, item_id: String, amount: int) -> void:
+	var cleaned := item_id.strip_edges()
+	if cleaned.is_empty():
+		return
+	var clamped := maxi(amount, 0)
+	if clamped > 0:
+		data[cleaned] = clamped
+	else:
+		data.erase(cleaned)
+
+func _add_dict_amount(data: Dictionary, item_id: String, amount: int) -> void:
+	var cleaned := item_id.strip_edges()
+	if cleaned.is_empty() or amount <= 0:
+		return
+	data[cleaned] = _dict_amount(data, cleaned) + amount
+
+func _remove_dict_amount(data: Dictionary, item_id: String, amount: int) -> int:
+	var cleaned := item_id.strip_edges()
+	if cleaned.is_empty() or amount <= 0:
+		return 0
+	var removed := mini(_dict_amount(data, cleaned), amount)
+	_set_dict_amount(data, cleaned, _dict_amount(data, cleaned) - removed)
+	return removed
+
+func _is_player_work_crop_supported(crop_type_key: String) -> bool:
+	return crop_type_key == PLAYER_WORK_CROP_WHEAT \
+		or crop_type_key == PLAYER_WORK_CROP_CORN \
+		or crop_type_key == "sunflower"
 
 func _compute_harvest_yield() -> int:
 	var labor_ratio: float = clamp(float(get_employed_worker_count()) / float(maxi(job_capacity, 1)), 0.15, 1.25)
@@ -768,7 +1145,31 @@ func _start_delivery_return_to_depot(world: World, citizen: Citizen) -> bool:
 		return false
 	if not _resolve_delivery_depot_positions(world):
 		return false
+	_normalize_delivery_vehicle_return_start(world)
 	return _delivery_vehicle.assign_delivery_driver_to_position(citizen, _delivery_depot_road_access_position, world, null)
+
+func _normalize_delivery_vehicle_return_start(world: World) -> void:
+	if world == null or _delivery_target == null or not is_instance_valid(_delivery_target):
+		return
+	if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
+		return
+	if not world.has_method("get_vehicle_road_path") or not world.has_method("get_vehicle_road_access_point"):
+		return
+	var current_route: PackedVector3Array = world.get_vehicle_road_path(
+		_delivery_vehicle.global_position,
+		_delivery_depot_road_access_position
+	)
+	if current_route.size() >= 2:
+		return
+	var target_access: Vector3 = world.get_vehicle_road_access_point(_delivery_target.get_entrance_pos())
+	if not VehicleDepotAccessScript.is_finite_vector(target_access):
+		return
+	var access_route: PackedVector3Array = world.get_vehicle_road_path(target_access, _delivery_depot_road_access_position)
+	if access_route.size() < 2:
+		return
+	if VehicleDepotAccessScript.planar_distance(_delivery_vehicle.global_position, target_access) > DELIVERY_DEPOT_MAX_LOCAL_MANEUVER_DISTANCE:
+		return
+	_place_delivery_vehicle_at(target_access)
 
 func _start_delivery_depot_parking() -> bool:
 	if _delivery_vehicle == null or not is_instance_valid(_delivery_vehicle):
@@ -1358,17 +1759,28 @@ func _has_vehicle_route_to(world: World, target: Building) -> bool:
 		return false
 	if not _resolve_delivery_loading_positions(world):
 		return false
-	var depot_to_loading_route: PackedVector3Array = world.get_vehicle_road_path(
+	if not _has_vehicle_route_between(
+		world,
 		_delivery_depot_road_access_position,
 		_delivery_loading_road_access_position
-	)
-	if depot_to_loading_route.size() < 2:
+	):
 		return false
-	var loading_to_target_route: PackedVector3Array = world.get_vehicle_road_path(_delivery_loading_road_access_position, target.get_entrance_pos())
-	if loading_to_target_route.size() < 2:
+	if not _has_vehicle_route_between(world, _delivery_loading_road_access_position, target.get_entrance_pos()):
 		return false
-	var return_route: PackedVector3Array = world.get_vehicle_road_path(target.get_entrance_pos(), _delivery_depot_road_access_position)
-	return return_route.size() >= 2
+	return _has_vehicle_route_between(world, target.get_entrance_pos(), _delivery_depot_road_access_position)
+
+func _has_vehicle_route_between(world: World, start_pos: Vector3, end_pos: Vector3) -> bool:
+	var route: PackedVector3Array = world.get_vehicle_road_path(start_pos, end_pos)
+	if route.size() >= 2:
+		return true
+	if not world.has_method("get_vehicle_road_access_point"):
+		return false
+	var start_access: Vector3 = world.get_vehicle_road_access_point(start_pos)
+	var end_access: Vector3 = world.get_vehicle_road_access_point(end_pos)
+	if not VehicleDepotAccessScript.is_finite_vector(start_access) \
+			or not VehicleDepotAccessScript.is_finite_vector(end_access):
+		return false
+	return VehicleDepotAccessScript.planar_distance(start_access, end_access) <= 0.75
 
 func _has_delivery_infrastructure() -> bool:
 	var depot_position := VehicleDepotAccessScript.resolve_marker_parking_position(
@@ -1487,6 +1899,9 @@ func _apply_player_harvest(world: World, requested_harvest: int) -> int:
 	output_today += stored
 	crop_growth_minutes = 0
 	crop_state = CropState.GROWING
+	_ensure_player_work_state()
+	_sync_player_work_product_from_inventory()
+	_sync_player_work_fields_from_crop_state()
 	_refresh_crop_visuals(true)
 	return stored
 
@@ -1626,14 +2041,27 @@ func _collect_crop_visual_nodes() -> void:
 func _collect_crop_visual_nodes_recursive(node: Node) -> void:
 	for child in node.get_children():
 		if child is MultiMeshInstance3D:
-			var child_name := child.name.to_lower()
-			if child_name.begins_with("cropstem"):
+			var crop_role := _get_crop_visual_role(child)
+			if crop_role == "stem":
 				_crop_stem_nodes.append(child as Node3D)
-			elif child_name.begins_with("cropleafa"):
+			elif crop_role == "leaf_a":
 				_crop_leaf_a_nodes.append(child as Node3D)
-			elif child_name.begins_with("cropleafb"):
+			elif crop_role == "leaf_b":
 				_crop_leaf_b_nodes.append(child as Node3D)
 		_collect_crop_visual_nodes_recursive(child)
+
+func _get_crop_visual_role(node: Node) -> String:
+	var current := node
+	while current != null and current != self:
+		var node_name := current.name.to_lower()
+		if node_name.begins_with("cropstem"):
+			return "stem"
+		if node_name.begins_with("cropleafa"):
+			return "leaf_a"
+		if node_name.begins_with("cropleafb"):
+			return "leaf_b"
+		current = current.get_parent()
+	return ""
 
 func _refresh_crop_visuals(force: bool = false) -> void:
 	var stage := get_crop_visual_stage()

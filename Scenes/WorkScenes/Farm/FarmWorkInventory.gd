@@ -11,6 +11,28 @@ func clear() -> void:
 	changed.emit()
 
 
+func apply_snapshot(data: Dictionary, allowed_items: Array = [], capacity: int = 0) -> void:
+	_items.clear()
+	var total := 0
+	for key in data.keys():
+		var item_id := str(key).strip_edges()
+		if item_id.is_empty():
+			continue
+		if not allowed_items.is_empty() and not allowed_items.has(item_id):
+			continue
+		var amount := maxi(int(data.get(key, 0)), 0)
+		if amount <= 0:
+			continue
+		if capacity > 0:
+			var remaining_capacity := maxi(capacity - total, 0)
+			if remaining_capacity <= 0:
+				break
+			amount = mini(amount, remaining_capacity)
+		_items[item_id] = amount
+		total += amount
+	changed.emit()
+
+
 func add_item(item_id: String, amount: int) -> int:
 	var cleaned := item_id.strip_edges()
 	if cleaned.is_empty() or amount <= 0:

@@ -109,6 +109,7 @@ Runtime and debug scenes/resources.
 | --- | --- | --- |
 | Scenes/DebugPanel.gd | DebugPanel | CanvasLayer |
 | Scenes/LowPolyWater/Scripts/strategy_camera_controller.gd | StrategyCameraController | Camera3D |
+| Scenes/LowPolyWater/WaterPack/Scripts/boat_control.gd | - | Node3D |
 | Scenes/LowPolyWater/WaterPack/Scripts/low_poly_water_plane.gd | LowPolyWaterPlane | MeshInstance3D |
 | Scenes/LowPolyWater/WaterPack/Scripts/shore_wave_audio.gd | ShoreWaveAudio | AudioStreamPlayer3D |
 | Scenes/LowPolyWater/WaterPack/Scripts/water_buoyancy.gd | WaterBuoyancy | Node3D |

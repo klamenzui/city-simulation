@@ -34,6 +34,34 @@ func configure(id: String, label: String, crop: String, initial_state: FieldStat
 	harvested_units = 0
 
 
+func apply_snapshot(data: Dictionary) -> void:
+	var snapshot_id := str(data.get("field_id", field_id)).strip_edges()
+	if not snapshot_id.is_empty():
+		field_id = snapshot_id
+	var snapshot_label := str(data.get("display_name", display_name)).strip_edges()
+	if not snapshot_label.is_empty():
+		display_name = snapshot_label
+	var snapshot_allowed_crop := str(data.get("allowed_crop_type", allowed_crop_type)).strip_edges()
+	if _is_supported_crop(snapshot_allowed_crop):
+		allowed_crop_type = snapshot_allowed_crop
+	var snapshot_crop := str(data.get("crop_type", crop_type)).strip_edges()
+	crop_type = snapshot_crop if _is_supported_crop(snapshot_crop) else ""
+	state = clampi(
+		int(data.get("state", state)),
+		int(FieldState.PREPARED),
+		int(FieldState.HARVESTED)
+	)
+	growth = clampf(float(data.get("growth", growth)), 0.0, 1.0)
+	water = clampf(float(data.get("water", water)), 0.0, 1.0)
+	harvested_units = maxi(int(data.get("harvested_units", harvested_units)), 0)
+	if state != FieldState.PREPARED and crop_type.is_empty():
+		crop_type = allowed_crop_type
+	if state == FieldState.MATURE:
+		growth = 1.0
+	if state == FieldState.PREPARED:
+		crop_type = ""
+
+
 func sow(selected_crop_type: String) -> bool:
 	var selected := selected_crop_type.strip_edges()
 	if selected.is_empty() or selected != allowed_crop_type:
@@ -133,3 +161,7 @@ func get_snapshot() -> Dictionary:
 		"water": water,
 		"harvested_units": harvested_units,
 	}
+
+
+func _is_supported_crop(crop: String) -> bool:
+	return crop == CROP_WHEAT or crop == CROP_CORN or crop == CROP_SUNFLOWER

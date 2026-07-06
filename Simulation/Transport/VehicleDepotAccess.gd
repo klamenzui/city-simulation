@@ -46,6 +46,10 @@ static func resolve_marker_parking_position(owner_node: Node, marker_name: Strin
 static func get_marker_parking_position(marker: Node3D) -> Vector3:
 	if marker == null:
 		return INVALID_POSITION
+	var depot := find_depot_in(marker)
+	if depot != null:
+		var parking_area := depot.get_node_or_null(^"ParkingArea") as Node3D
+		return parking_area.global_position if parking_area != null else depot.global_position
 	var shape := find_first_collision_shape(marker)
 	if shape != null:
 		return shape.global_position
@@ -112,6 +116,8 @@ static func release_vehicle_spot(vehicle: Node) -> void:
 static func get_marker_parking_radius(marker: Node3D) -> float:
 	if marker == null:
 		return DEFAULT_DEPOT_PARKING_RADIUS
+	if find_depot_in(marker) != null:
+		return _get_depot_parking_radius(marker)
 	var shape_node := find_first_collision_shape(marker)
 	if shape_node == null or shape_node.shape == null:
 		return _get_depot_parking_radius(marker)

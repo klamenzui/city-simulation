@@ -3761,6 +3761,8 @@ shape = SubResource("ConcavePolygonShape3D_py6gf")
 [node name="DeliveryVehicleDepot" type="Node3D" parent="RootNode/City/only_people_nav/only_people/Services" unique_id=938742620]
 transform = Transform3D(-0.0039444305, 0, -0.9999922, 0, 1, 0, 0.9999922, 0, -0.0039444305, 21.019505, 0, -7.7122803)
 script = ExtResource("37_imbc2")
+vehicle_scene = ExtResource("125_08030")
+vehicle_role = 2
 side_margin = 0.2
 side_gap = 0.2
 row_gap = 1.1

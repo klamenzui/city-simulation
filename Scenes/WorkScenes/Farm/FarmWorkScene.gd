@@ -70,6 +70,10 @@ const DEFAULT_SEED_STOCK := {
 	"corn_seed": 12,
 	"sunflower_seed": 12,
 }
+const SEED_ITEM_IDS := ["wheat_seed", "corn_seed", "sunflower_seed"]
+const GRAIN_ITEM_IDS := ["wheat_grain", "corn_grain", "sunflower_grain"]
+const BARN_ITEM_IDS := ["flour_sack"]
+const PICKUP_ITEM_IDS := ["flour_sack"]
 
 const TASK_FLOW := [
 	"take_seed",
@@ -126,6 +130,12 @@ var quality_score: float = 1.0
 var work_minutes: int = DEFAULT_WORK_MINUTES
 var actor_role: String = "worker"
 var demand_entries: Array[Dictionary] = []
+
+var _barn_product_capacity: int = BARN_PRODUCT_CAPACITY
+var _silo_grain_capacity: int = SILO_GRAIN_CAPACITY
+var _initial_farm_inventory: Dictionary = {}
+var _initial_field_snapshots: Dictionary = {}
+var _initial_production_snapshot: Dictionary = {}
 
 var _player_inventory = FarmWorkInventoryScript.new()
 var _silo_inventory = FarmWorkInventoryScript.new()
@@ -306,6 +316,8 @@ func get_result() -> Dictionary:
 		"reputation_gain": get_reputation_gain(),
 		"goods_produced": _production.total_sacks_produced,
 		"goods_delivered": _pickup_inventory.get_amount("flour_sack"),
+		"live_harvested_amount": _live_harvested_amount,
+		"legacy_harvested_amount": maxi(harvested_amount - _live_harvested_amount, 0),
 		"farm_inventory": {
 			"player": _player_inventory.get_snapshot(),
 			"silo": _silo_inventory.get_snapshot(),
@@ -313,6 +325,7 @@ func get_result() -> Dictionary:
 			"seeds": _seed_inventory.get_snapshot(),
 			"pickup": _pickup_inventory.get_snapshot(),
 		},
+		"field_states": _get_field_snapshots(),
 		"production": _production.get_snapshot(),
 	}
 
@@ -446,6 +459,36 @@ func debug_force_elapsed(seconds: float) -> void:
 	_update_all_ui()
 
 
+func _get_field_snapshots() -> Dictionary:
+	var snapshots: Dictionary = {}
+	for field in _fields:
+		if field == null:
+			continue
+		snapshots[field.field_id] = field.get_snapshot()
+	return snapshots
+
+
+func _get_initial_inventory_scope(scope: String, fallback: Dictionary) -> Dictionary:
+	if _initial_farm_inventory.has(scope) and _initial_farm_inventory.get(scope) is Dictionary:
+		return (_initial_farm_inventory.get(scope) as Dictionary).duplicate(true)
+	return fallback.duplicate(true)
+
+
+func _apply_initial_field_snapshot(field) -> void:
+	if field == null:
+		return
+	var field_snapshot := _duplicate_dictionary(_initial_field_snapshots.get(field.field_id, {}))
+	if field_snapshot.is_empty():
+		return
+	field.apply_snapshot(field_snapshot)
+
+
+func _duplicate_dictionary(value) -> Dictionary:
+	if value is Dictionary:
+		return (value as Dictionary).duplicate(true)
+	return {}
+
+
 func _apply_context(context: Dictionary) -> void:
 	farm_label = str(context.get("farm_label", farm_label)).strip_edges()
 	if farm_label.is_empty():
@@ -462,6 +505,12 @@ func _apply_context(context: Dictionary) -> void:
 	work_minutes = maxi(int(context.get("work_minutes", work_minutes)), 15)
 	_farm_growth_total_minutes = maxi(int(context.get("crop_growth_total_minutes", _farm_growth_total_minutes)), 1)
 	actor_role = str(context.get("actor_role", actor_role)).strip_edges()
+	_initial_farm_inventory = _duplicate_dictionary(context.get("farm_inventory", {}))
+	_initial_field_snapshots = _duplicate_dictionary(context.get("field_states", {}))
+	_initial_production_snapshot = _duplicate_dictionary(context.get("production", {}))
+	var capacities := _duplicate_dictionary(context.get("work_inventory_capacities", {}))
+	_barn_product_capacity = maxi(int(capacities.get("barn", BARN_PRODUCT_CAPACITY)), 1)
+	_silo_grain_capacity = maxi(int(capacities.get("silo", SILO_GRAIN_CAPACITY)), 1)
 	demand_entries.clear()
 	var context_demand: Variant = context.get("demand_entries", [])
 	if context_demand is Array:
@@ -493,14 +542,28 @@ func _reset_session_state() -> void:
 	_selected_crop_type = CROP_WHEAT
 	_selected_tool = "Hands"
 	_player_inventory.clear()
-	_silo_inventory.clear()
-	_barn_inventory.clear()
-	_seed_inventory.clear()
-	_pickup_inventory.clear()
-	for item_id in DEFAULT_SEED_STOCK:
-		_seed_inventory.add_item(str(item_id), int(DEFAULT_SEED_STOCK[item_id]))
+	_seed_inventory.apply_snapshot(
+		_get_initial_inventory_scope("seeds", DEFAULT_SEED_STOCK),
+		SEED_ITEM_IDS
+	)
+	_silo_inventory.apply_snapshot(
+		_get_initial_inventory_scope("silo", {}),
+		GRAIN_ITEM_IDS,
+		_silo_grain_capacity
+	)
+	_barn_inventory.apply_snapshot(
+		_get_initial_inventory_scope("barn", {}),
+		BARN_ITEM_IDS,
+		_barn_product_capacity
+	)
+	_pickup_inventory.apply_snapshot(
+		_get_initial_inventory_scope("pickup", {}),
+		PICKUP_ITEM_IDS
+	)
 	_production.reset()
 	_production.duration_sec = LIVE_PRODUCTION_DURATION_SEC
+	if not _initial_production_snapshot.is_empty():
+		_production.apply_snapshot(_initial_production_snapshot)
 	_reset_legacy_plots()
 	_reset_live_fields()
 
@@ -509,9 +572,11 @@ func _reset_live_fields() -> void:
 	_fields.clear()
 	var wheat = FarmWorkFieldDataScript.new()
 	wheat.configure("field_wheat", "Wheat field", CROP_WHEAT, FIELD_PREPARED)
+	_apply_initial_field_snapshot(wheat)
 	_fields.append(wheat)
 	var corn = FarmWorkFieldDataScript.new()
 	corn.configure("field_corn", "Corn field", CROP_CORN, FIELD_SEEDED)
+	_apply_initial_field_snapshot(corn)
 	_fields.append(corn)
 	_update_all_field_visuals()
 
@@ -642,7 +707,7 @@ func _build_existing_farm_interactions() -> void:
 	if _farm_environment == null:
 		return
 	_bind_field_interaction(_fields[0], "Fields/FieldWest/FarmlandModel")
-	_bind_field_interaction(_fields[1], "Fields/FieldEast/FarmlandModel")
+	_bind_field_interaction(_fields[1], "Fields/FieldMiddle/FarmlandModel")
 	_bind_visual_interaction("barn", "barn", "Farm inventory", "Buildings/BigBarnModel", 3.5)
 	_bind_visual_interaction("shed", "shed", "Tool and seed shed", "VariantDecor/SideBarnModel", 3.2)
 	_bind_visual_interaction("silo", "silo", "Grain silo", "Buildings/SiloModel", 3.0)
@@ -976,9 +1041,9 @@ func _build_farm_inventory_context() -> void:
 
 	var capacity := _make_label("Barn %d / %d   Silo %d / %d" % [
 		_barn_inventory.get_total_units(),
-		BARN_PRODUCT_CAPACITY,
+		_barn_product_capacity,
 		_silo_inventory.get_total_units(),
-		SILO_GRAIN_CAPACITY,
+		_silo_grain_capacity,
 	], 12)
 	capacity.add_theme_color_override("font_color", UiThemeScript.TEXT_SECONDARY)
 	_context_content.add_child(capacity)
@@ -1115,7 +1180,7 @@ func _get_context_lines(interactable) -> PackedStringArray:
 			lines.append("Wheat: %d" % _silo_inventory.get_amount("wheat_grain"))
 			lines.append("Corn: %d" % _silo_inventory.get_amount("corn_grain"))
 			lines.append("Sunflowers: %d" % _silo_inventory.get_amount("sunflower_grain"))
-			lines.append("Capacity: %d / %d" % [_silo_inventory.get_total_units(), SILO_GRAIN_CAPACITY])
+			lines.append("Capacity: %d / %d" % [_silo_inventory.get_total_units(), _silo_grain_capacity])
 		"windmill":
 			var snapshot: Dictionary = _production.get_snapshot()
 			lines.append("Grain: %s" % _crop_label(str(snapshot.get("selected_grain_type", CROP_WHEAT))))
@@ -1139,9 +1204,9 @@ func _get_context_lines(interactable) -> PackedStringArray:
 			])
 			lines.append("Storage: barn %d / %d | silo %d / %d" % [
 				_barn_inventory.get_total_units(),
-				BARN_PRODUCT_CAPACITY,
+				_barn_product_capacity,
 				_silo_inventory.get_total_units(),
-				SILO_GRAIN_CAPACITY,
+				_silo_grain_capacity,
 			])
 		"shed":
 			lines.append("Tools: watering can, sickle, shovel")
