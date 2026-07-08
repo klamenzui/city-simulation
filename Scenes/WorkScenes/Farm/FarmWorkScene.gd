@@ -34,10 +34,14 @@ const LIVE_TAKE_GRAIN_SILO := "take_grain_silo"
 const LIVE_TAKE_CORN_GRAIN_SILO := "take_corn_grain_silo"
 const LIVE_TAKE_SUNFLOWER_GRAIN_SILO := "take_sunflower_grain_silo"
 const LIVE_START_WINDMILL := "start_windmill"
+const LIVE_START_CORN_PROCESSING := "start_corn_processing"
+const LIVE_START_SUNFLOWER_PROCESSING := "start_sunflower_processing"
 const LIVE_PAUSE_WINDMILL := "pause_windmill"
 const LIVE_COLLECT_FLOUR := "collect_flour"
 const LIVE_STORE_FLOUR_BARN := "store_flour_barn"
 const LIVE_TAKE_FLOUR_BARN := "take_flour_barn"
+const LIVE_TAKE_CORNMEAL_BARN := "take_cornmeal_barn"
+const LIVE_TAKE_SUNFLOWER_OIL_BARN := "take_sunflower_oil_barn"
 const LIVE_LOAD_PICKUP := "load_pickup"
 const LIVE_USE_PICKUP := "use_pickup"
 const LIVE_LEAVE_FARM := "leave_farm"
@@ -64,6 +68,7 @@ const WHEAT_HARVEST_UNITS := 12
 const FARM_FALLBACK_GROWTH_MINUTES := 2 * 24 * 60
 const BARN_PRODUCT_CAPACITY := 80
 const SILO_GRAIN_CAPACITY := 120
+const PICKUP_PRODUCT_CAPACITY := 6
 const SEED_WITHDRAWAL_AMOUNT := 4
 
 const DEFAULT_SEED_STOCK := {
@@ -73,8 +78,30 @@ const DEFAULT_SEED_STOCK := {
 }
 const SEED_ITEM_IDS := ["wheat_seed", "corn_seed", "sunflower_seed"]
 const GRAIN_ITEM_IDS := ["wheat_grain", "corn_grain", "sunflower_grain"]
-const BARN_ITEM_IDS := ["flour_sack"]
-const PICKUP_ITEM_IDS := ["flour_sack"]
+const PRODUCT_ITEM_IDS := ["flour_sack", "cornmeal_sack", "sunflower_oil_crate"]
+const BARN_ITEM_IDS := PRODUCT_ITEM_IDS
+const PICKUP_ITEM_IDS := PRODUCT_ITEM_IDS
+
+const PROCESSING_RECIPES := {
+	CROP_WHEAT: {
+		"input_item_id": "wheat_grain",
+		"required_grain": 10,
+		"output_item_id": "flour_sack",
+		"output_amount": 3,
+	},
+	CROP_CORN: {
+		"input_item_id": "corn_grain",
+		"required_grain": 8,
+		"output_item_id": "cornmeal_sack",
+		"output_amount": 3,
+	},
+	CROP_SUNFLOWER: {
+		"input_item_id": "sunflower_grain",
+		"required_grain": 8,
+		"output_item_id": "sunflower_oil_crate",
+		"output_amount": 2,
+	},
+}
 
 const TASK_FLOW := [
 	"take_seed",
@@ -97,6 +124,8 @@ const ITEM_LABEL_KEYS := {
 	"corn_grain": "farm_work.item.corn_grain",
 	"sunflower_grain": "farm_work.item.sunflower_grain",
 	"flour_sack": "farm_work.item.flour_sack",
+	"cornmeal_sack": "farm_work.item.cornmeal_sack",
+	"sunflower_oil_crate": "farm_work.item.sunflower_oil_crate",
 	"watering_can": "farm_work.item.watering_can",
 	"sickle": "farm_work.item.sickle",
 	"shovel": "farm_work.item.shovel",
@@ -318,8 +347,8 @@ func get_result() -> Dictionary:
 		"customer_satisfaction": result_quality * 100.0,
 		"earned_money": 0,
 		"reputation_gain": get_reputation_gain(),
-		"goods_produced": _production.total_sacks_produced,
-		"goods_delivered": _pickup_inventory.get_amount("flour_sack"),
+		"goods_produced": _production.get_total_produced_units(),
+		"goods_delivered": _product_inventory_total(_pickup_inventory),
 		"live_harvested_amount": _live_harvested_amount,
 		"legacy_harvested_amount": maxi(harvested_amount - _live_harvested_amount, 0),
 		"farm_inventory": {
@@ -385,9 +414,14 @@ func get_action_ids() -> PackedStringArray:
 		LIVE_TAKE_CORN_GRAIN_SILO,
 		LIVE_TAKE_SUNFLOWER_GRAIN_SILO,
 		LIVE_START_WINDMILL,
+		LIVE_START_CORN_PROCESSING,
+		LIVE_START_SUNFLOWER_PROCESSING,
+		LIVE_PAUSE_WINDMILL,
 		LIVE_COLLECT_FLOUR,
 		LIVE_STORE_FLOUR_BARN,
 		LIVE_TAKE_FLOUR_BARN,
+		LIVE_TAKE_CORNMEAL_BARN,
+		LIVE_TAKE_SUNFLOWER_OIL_BARN,
 		LIVE_LOAD_PICKUP,
 	])
 
@@ -919,7 +953,7 @@ func _build_ui() -> void:
 	_context_panel.anchor_right = 0.0
 	_context_panel.anchor_bottom = 1.0
 	_context_panel.offset_left = 12.0
-	_context_panel.offset_top = -390.0
+	_context_panel.offset_top = -460.0
 	_context_panel.offset_right = 430.0
 	_context_panel.offset_bottom = -12.0
 	_context_panel.visible = false
@@ -1053,6 +1087,8 @@ func _build_farm_inventory_context() -> void:
 		_make_inventory_slot_data("corn_grain", _silo_inventory, LIVE_TAKE_CORN_GRAIN_SILO),
 		_make_inventory_slot_data("sunflower_grain", _silo_inventory, LIVE_TAKE_SUNFLOWER_GRAIN_SILO),
 		_make_inventory_slot_data("flour_sack", _barn_inventory, LIVE_TAKE_FLOUR_BARN),
+		_make_inventory_slot_data("cornmeal_sack", _barn_inventory, LIVE_TAKE_CORNMEAL_BARN),
+		_make_inventory_slot_data("sunflower_oil_crate", _barn_inventory, LIVE_TAKE_SUNFLOWER_OIL_BARN),
 	], "StoredproductsGrid")
 
 	var capacity := _make_label(_trf("farm_work.inventory.capacity", [
@@ -1071,7 +1107,7 @@ func _build_farm_inventory_context() -> void:
 	var action_row := HBoxContainer.new()
 	action_row.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
 	_context_content.add_child(action_row)
-	_add_context_action_button(action_row, LIVE_STORE_FLOUR_BARN, _tr("farm_work.action.store_flour", "Mehl einlagern"))
+	_add_context_action_button(action_row, LIVE_STORE_FLOUR_BARN, _tr("farm_work.action.store_products", "Produkte einlagern"))
 	_add_context_action_button(action_row, LIVE_LOAD_PICKUP, _tr("farm_work.action.load_pickup", "Pickup beladen"))
 
 
@@ -1097,6 +1133,46 @@ func _make_inventory_slot_data(item_id: String, inventory, action_id: String) ->
 		"amount": inventory.get_amount(item_id) if inventory != null else 0,
 		"action_id": action_id,
 	}
+
+
+func _processing_recipe(crop_type: String) -> Dictionary:
+	var cleaned := crop_type.strip_edges()
+	var recipe := PROCESSING_RECIPES.get(cleaned, {}) as Dictionary
+	if recipe == null:
+		return {}
+	return recipe.duplicate(true)
+
+
+func _processing_output_item(crop_type: String) -> String:
+	var recipe := _processing_recipe(crop_type)
+	return str(recipe.get("output_item_id", "flour_sack"))
+
+
+func _product_inventory_total(inventory) -> int:
+	if inventory == null:
+		return 0
+	var total := 0
+	for item_id in PRODUCT_ITEM_IDS:
+		total += int(inventory.get_amount(str(item_id)))
+	return total
+
+
+func _item_count_total(counts: Dictionary) -> int:
+	var total := 0
+	for key in counts.keys():
+		total += maxi(int(counts.get(key, 0)), 0)
+	return total
+
+
+func _format_product_counts(counts: Dictionary) -> String:
+	var parts: PackedStringArray = []
+	for item_id in PRODUCT_ITEM_IDS:
+		var amount := maxi(int(counts.get(str(item_id), 0)), 0)
+		if amount > 0:
+			parts.append("%s x%d" % [_item_label(str(item_id)), amount])
+	if parts.is_empty():
+		return "-"
+	return ", ".join(parts)
 
 
 func _build_inventory_slot_button(slot: Dictionary) -> Button:
@@ -1199,14 +1275,24 @@ func _get_context_lines(interactable) -> PackedStringArray:
 			lines.append(_trf("farm_work.context.capacity", [_silo_inventory.get_total_units(), _silo_grain_capacity], "Kapazität: %d / %d"))
 		"windmill":
 			var snapshot: Dictionary = _production.get_snapshot()
+			var pending_products := snapshot.get("produced_items_pending", {}) as Dictionary
+			if pending_products == null:
+				pending_products = {}
 			lines.append(_trf("farm_work.context.grain", [_crop_label(str(snapshot.get("selected_grain_type", CROP_WHEAT)))], "Getreide: %s"))
-			lines.append(_trf("farm_work.context.required_wheat", [int(snapshot.get("required_grain", 0))], "Benötigt: %d Weizen"))
+			lines.append(_trf("farm_work.context.required_input", [
+				int(snapshot.get("required_grain", 0)),
+				_item_label(str(snapshot.get("input_item_id", "wheat_grain"))),
+			], "Benötigt: %d %s"))
+			lines.append(_trf("farm_work.context.output_batch", [
+				int(snapshot.get("output_amount", 0)),
+				_item_label(str(snapshot.get("output_item_id", "flour_sack"))),
+			], "Output: %d %s"))
 			lines.append(_trf("farm_work.context.duration", [float(snapshot.get("duration_sec", 0.0))], "Dauer: %.1fs"))
 			lines.append(_trf("farm_work.context.progress", [int(round(float(snapshot.get("progress_ratio", 0.0)) * 100.0))], "Fortschritt: %d%%"))
-			lines.append(_trf("farm_work.context.flour_ready", [int(snapshot.get("produced_sacks_pending", 0))], "Mehlsäcke bereit: %d"))
+			lines.append(_trf("farm_work.context.products_ready", [_format_product_counts(pending_products)], "Produkte bereit: %s"))
 		"barn":
 			lines.append(_tr("farm_work.inventory.stored_products", "Lagerbestand"))
-			lines.append(_trf("farm_work.context.flour_sacks", [_barn_inventory.get_amount("flour_sack")], "Mehlsäcke: %d"))
+			lines.append(_trf("farm_work.context.products", [_format_product_counts(_barn_inventory.get_snapshot())], "Produkte: %s"))
 			lines.append(_trf("farm_work.context.grain_stock", [
 				_silo_inventory.get_amount("wheat_grain"),
 				_silo_inventory.get_amount("corn_grain"),
@@ -1235,7 +1321,11 @@ func _get_context_lines(interactable) -> PackedStringArray:
 		"machine_yard":
 			lines.append(_tr("farm_work.context.vehicle_pickup", "Fahrzeug: Pickup"))
 			lines.append(_tr("farm_work.context.status_parked", "Status: geparkt"))
-			lines.append(_trf("farm_work.context.cargo_flour", [_pickup_inventory.get_amount("flour_sack")], "Ladung: %d / 6 Mehlsäcke"))
+			lines.append(_trf("farm_work.context.cargo_products", [
+				_product_inventory_total(_pickup_inventory),
+				PICKUP_PRODUCT_CAPACITY,
+				_format_product_counts(_pickup_inventory.get_snapshot()),
+			], "Ladung: %d / %d Produkte (%s)"))
 			if not demand_entries.is_empty():
 				var priority := demand_entries[0]
 				lines.append(_trf("farm_work.context.priority", [
@@ -1262,14 +1352,22 @@ func _get_context_actions(interactable) -> Array[Dictionary]:
 		"silo":
 			actions.append({"id": LIVE_STORE_GRAIN_SILO, "label": _tr("farm_work.action.store_carried_grain", "Getragenes Getreide einlagern")})
 			actions.append({"id": LIVE_TAKE_GRAIN_SILO, "label": _tr("farm_work.action.take_wheat_silo", "Weizen aus Silo nehmen")})
+			actions.append({"id": LIVE_TAKE_CORN_GRAIN_SILO, "label": _tr("farm_work.action.take_corn_silo", "Mais aus Silo nehmen")})
+			actions.append({"id": LIVE_TAKE_SUNFLOWER_GRAIN_SILO, "label": _tr("farm_work.action.take_sunflower_silo", "Sonnenblumen aus Silo nehmen")})
 			actions.append({"id": LIVE_START_WINDMILL, "label": _tr("farm_work.action.send_wheat_windmill", "Weizen zur Windmühle schicken")})
+			actions.append({"id": LIVE_START_CORN_PROCESSING, "label": _tr("farm_work.action.send_corn_windmill", "Mais zur Mühle schicken")})
+			actions.append({"id": LIVE_START_SUNFLOWER_PROCESSING, "label": _tr("farm_work.action.send_sunflower_press", "Sonnenblumen zur Presse schicken")})
 		"windmill":
-			actions.append({"id": LIVE_START_WINDMILL, "label": _tr("farm_work.action.start_production", "Produktion starten")})
+			actions.append({"id": LIVE_START_WINDMILL, "label": _tr("farm_work.action.start_flour", "Mehl mahlen")})
+			actions.append({"id": LIVE_START_CORN_PROCESSING, "label": _tr("farm_work.action.start_cornmeal", "Maismehl mahlen")})
+			actions.append({"id": LIVE_START_SUNFLOWER_PROCESSING, "label": _tr("farm_work.action.start_oil", "Sonnenblumenöl pressen")})
 			actions.append({"id": LIVE_PAUSE_WINDMILL, "label": _tr("farm_work.action.pause_production", "Produktion pausieren")})
-			actions.append({"id": LIVE_COLLECT_FLOUR, "label": _tr("farm_work.action.collect_flour", "Mehlsäcke abholen")})
+			actions.append({"id": LIVE_COLLECT_FLOUR, "label": _tr("farm_work.action.collect_products", "Produkte abholen")})
 		"barn":
-			actions.append({"id": LIVE_STORE_FLOUR_BARN, "label": _tr("farm_work.action.store_flour_sacks", "Mehlsäcke einlagern")})
+			actions.append({"id": LIVE_STORE_FLOUR_BARN, "label": _tr("farm_work.action.store_products", "Produkte einlagern")})
 			actions.append({"id": LIVE_TAKE_FLOUR_BARN, "label": _tr("farm_work.action.take_flour_sacks", "Mehlsäcke nehmen")})
+			actions.append({"id": LIVE_TAKE_CORNMEAL_BARN, "label": _tr("farm_work.action.take_cornmeal_sacks", "Maismehl nehmen")})
+			actions.append({"id": LIVE_TAKE_SUNFLOWER_OIL_BARN, "label": _tr("farm_work.action.take_oil_crates", "Ölkisten nehmen")})
 			actions.append({"id": LIVE_LOAD_PICKUP, "label": _tr("farm_work.action.prepare_pickup", "Pickup-Ladung vorbereiten")})
 		"shed":
 			_append_seed_actions(actions)
@@ -1324,6 +1422,10 @@ func _perform_live_action(action_id: String, interactable) -> Dictionary:
 			result = _take_grain_from_silo(CROP_SUNFLOWER)
 		LIVE_START_WINDMILL:
 			result = _start_windmill()
+		LIVE_START_CORN_PROCESSING:
+			result = _start_processing(CROP_CORN)
+		LIVE_START_SUNFLOWER_PROCESSING:
+			result = _start_processing(CROP_SUNFLOWER)
 		LIVE_PAUSE_WINDMILL:
 			result = _pause_windmill()
 		LIVE_COLLECT_FLOUR:
@@ -1332,6 +1434,10 @@ func _perform_live_action(action_id: String, interactable) -> Dictionary:
 			result = _store_flour_in_barn()
 		LIVE_TAKE_FLOUR_BARN:
 			result = _take_flour_from_barn()
+		LIVE_TAKE_CORNMEAL_BARN:
+			result = _take_product_from_barn("cornmeal_sack")
+		LIVE_TAKE_SUNFLOWER_OIL_BARN:
+			result = _take_product_from_barn("sunflower_oil_crate")
 		LIVE_LOAD_PICKUP:
 			result = _load_pickup()
 		LIVE_USE_PICKUP:
@@ -1456,11 +1562,25 @@ func _take_grain_from_silo(crop_type: String) -> Dictionary:
 
 
 func _start_windmill() -> Dictionary:
-	if _production.start(CROP_WHEAT, _silo_inventory):
+	return _start_processing(CROP_WHEAT)
+
+
+func _start_processing(crop_type: String) -> Dictionary:
+	var cleaned_crop := crop_type.strip_edges()
+	if not SUPPORTED_CROPS.has(cleaned_crop):
+		return _wrong_live_action("unknown_grain_type")
+	var recipe := _processing_recipe(cleaned_crop)
+	if recipe.is_empty():
+		return _wrong_live_action("unknown_grain_type")
+	if _production.start(cleaned_crop, _silo_inventory, recipe):
+		var output_item := str(recipe.get("output_item_id", "flour_sack"))
 		_mark_task_done("start_mill")
-		_set_hint(_tr("farm_work.hint.windmill_started", "Windmühlenproduktion gestartet."))
+		_set_hint(_trf("farm_work.hint.processing_started", [
+			_crop_label(cleaned_crop),
+			_item_label(output_item),
+		], "Produktion gestartet: %s -> %s."))
 		return _ok("windmill_started")
-	return _wrong_live_action("not_enough_wheat_or_running")
+	return _wrong_live_action("not_enough_processing_input_or_running")
 
 
 func _pause_windmill() -> Dictionary:
@@ -1471,49 +1591,83 @@ func _pause_windmill() -> Dictionary:
 
 
 func _collect_flour_sacks() -> Dictionary:
-	var sacks: int = int(_production.collect_sacks())
-	if sacks <= 0:
-		return _wrong_live_action("no_flour_ready")
-	_player_inventory.add_item("flour_sack", sacks)
-	_player_inventory.remove_item("empty_sack", mini(_player_inventory.get_amount("empty_sack"), sacks))
+	var products: Dictionary = _production.collect_items()
+	var moved := _add_product_counts_to_inventory(_player_inventory, products)
+	if moved <= 0:
+		return _wrong_live_action("no_products_ready")
+	_player_inventory.remove_item("empty_sack", mini(_player_inventory.get_amount("empty_sack"), moved))
 	_mark_task_done("collect_flour")
-	_set_hint(_trf("farm_work.hint.collected_flour", [sacks], "%d Mehlsäcke abgeholt."))
+	_set_hint(_trf("farm_work.hint.collected_products", [_format_product_counts(products)], "Produkte abgeholt: %s."))
 	return _ok("flour_collected")
 
 
 func _store_flour_in_barn() -> Dictionary:
-	var moved: int = int(_player_inventory.transfer_to(_barn_inventory, "flour_sack", _player_inventory.get_amount("flour_sack")))
+	var moved := 0
+	for item_id in PRODUCT_ITEM_IDS:
+		moved += _player_inventory.transfer_to(_barn_inventory, str(item_id), _player_inventory.get_amount(str(item_id)))
 	if moved <= 0:
-		return _wrong_live_action("no_flour_to_store")
+		return _wrong_live_action("no_products_to_store")
 	_mark_task_done("store_barn")
-	_set_hint(_trf("farm_work.hint.stored_flour", [moved], "%d Mehlsäcke in der Scheune eingelagert."))
+	_set_hint(_trf("farm_work.hint.stored_products", [moved], "%d Produkte in der Scheune eingelagert."))
 	return _ok("flour_stored")
 
 
 func _take_flour_from_barn() -> Dictionary:
+	return _take_product_from_barn("flour_sack")
+
+
+func _take_product_from_barn(item_id: String) -> Dictionary:
+	var cleaned := item_id.strip_edges()
+	if not PRODUCT_ITEM_IDS.has(cleaned):
+		return _wrong_live_action("unsupported")
 	var moved: int = int(_barn_inventory.transfer_to(
 		_player_inventory,
-		"flour_sack",
-		mini(_barn_inventory.get_amount("flour_sack"), 4)
+		cleaned,
+		mini(_barn_inventory.get_amount(cleaned), 4)
 	))
 	if moved <= 0:
-		return _wrong_live_action("barn_has_no_flour")
-	_set_hint(_trf("farm_work.hint.took_flour", [moved], "%d Mehlsäcke aus der Scheune genommen."))
+		return _wrong_live_action("barn_has_no_product")
+	_set_hint(_trf("farm_work.hint.took_product", [moved, _item_label(cleaned)], "%d %s aus der Scheune genommen."))
 	return _ok("flour_taken")
 
 
 func _load_pickup() -> Dictionary:
-	var from_barn: int = int(_barn_inventory.transfer_to(_pickup_inventory, "flour_sack", mini(_barn_inventory.get_amount("flour_sack"), 6 - _pickup_inventory.get_amount("flour_sack"))))
-	var from_player := 0
-	if from_barn <= 0:
-		from_player = _player_inventory.transfer_to(_pickup_inventory, "flour_sack", mini(_player_inventory.get_amount("flour_sack"), 6 - _pickup_inventory.get_amount("flour_sack")))
-	var moved: int = from_barn + from_player
+	var moved := _transfer_products_to_pickup(_barn_inventory, PICKUP_PRODUCT_CAPACITY - _product_inventory_total(_pickup_inventory))
+	moved += _transfer_products_to_pickup(_player_inventory, PICKUP_PRODUCT_CAPACITY - _product_inventory_total(_pickup_inventory))
 	if moved <= 0:
-		return _wrong_live_action("no_flour_to_load")
+		return _wrong_live_action("no_products_to_load")
 	delivered_crates += moved
 	_mark_task_done("load_pickup")
-	_set_hint(_trf("farm_work.hint.loaded_pickup", [moved], "%d Mehlsäcke auf den Pickup geladen."))
+	_set_hint(_trf("farm_work.hint.loaded_pickup", [moved], "%d Produkte auf den Pickup geladen."))
 	return _ok("pickup_loaded")
+
+
+func _add_product_counts_to_inventory(inventory, counts: Dictionary) -> int:
+	if inventory == null:
+		return 0
+	var moved := 0
+	for item_id in PRODUCT_ITEM_IDS:
+		var amount := maxi(int(counts.get(str(item_id), 0)), 0)
+		if amount > 0:
+			moved += int(inventory.add_item(str(item_id), amount))
+	return moved
+
+
+func _transfer_products_to_pickup(source_inventory, max_units: int) -> int:
+	if source_inventory == null or max_units <= 0:
+		return 0
+	var moved := 0
+	var remaining := max_units
+	for item_id in PRODUCT_ITEM_IDS:
+		if remaining <= 0:
+			break
+		var transfer_amount := mini(source_inventory.get_amount(str(item_id)), remaining)
+		if transfer_amount <= 0:
+			continue
+		var transferred: int = int(source_inventory.transfer_to(_pickup_inventory, str(item_id), transfer_amount))
+		moved += transferred
+		remaining -= transferred
+	return moved
 
 
 func _tick_live_systems(delta: float) -> void:
@@ -1524,9 +1678,9 @@ func _tick_live_systems(delta: float) -> void:
 				_mark_task_done("wait_growth")
 			_live_growth_minutes_added = maxi(_live_growth_minutes_added, int(round(_farm_growth_total_minutes * field.growth)))
 			_set_hint(_trf("farm_work.hint.field_mature", [field.display_name], "%s ist reif."))
-	var produced: int = int(_production.tick(delta))
-	if produced > 0:
-		_set_hint(_trf("farm_work.hint.windmill_produced", [produced], "Windmühle hat %d Mehlsäcke produziert."))
+	var produced: Dictionary = _production.tick(delta)
+	if not produced.is_empty():
+		_set_hint(_trf("farm_work.hint.processing_produced", [_format_product_counts(produced)], "Produktion fertig: %s."))
 	_update_all_field_visuals()
 
 
@@ -1571,16 +1725,26 @@ func _action_error_label(reason: String) -> String:
 			return _tr("farm_work.error.unknown_grain_type", "unbekannte Getreidesorte")
 		"not_enough_wheat_or_running":
 			return _tr("farm_work.error.not_enough_wheat_or_running", "nicht genug Weizen oder Mühle läuft bereits")
+		"not_enough_processing_input_or_running":
+			return _tr("farm_work.error.not_enough_processing_input_or_running", "nicht genug Rohware oder Produktion läuft bereits")
 		"windmill_not_running":
 			return _tr("farm_work.error.windmill_not_running", "Mühle läuft nicht")
 		"no_flour_ready":
 			return _tr("farm_work.error.no_flour_ready", "kein Mehl bereit")
+		"no_products_ready":
+			return _tr("farm_work.error.no_products_ready", "keine Produkte bereit")
 		"no_flour_to_store":
 			return _tr("farm_work.error.no_flour_to_store", "keine Mehlsäcke zum Einlagern")
+		"no_products_to_store":
+			return _tr("farm_work.error.no_products_to_store", "keine Produkte zum Einlagern")
 		"barn_has_no_flour":
 			return _tr("farm_work.error.barn_has_no_flour", "keine Mehlsäcke in der Scheune")
+		"barn_has_no_product":
+			return _tr("farm_work.error.barn_has_no_product", "dieses Produkt ist nicht in der Scheune")
 		"no_flour_to_load":
 			return _tr("farm_work.error.no_flour_to_load", "keine Mehlsäcke zum Beladen")
+		"no_products_to_load":
+			return _tr("farm_work.error.no_products_to_load", "keine Produkte zum Beladen")
 	if reason.begins_with("silo_has_no_"):
 		return _trf("farm_work.error.silo_has_no", [_crop_label(reason.substr("silo_has_no_".length()))], "kein %s im Silo")
 	return reason.replace("_", " ")

@@ -304,7 +304,7 @@ func _validate_windmill_context(scene: Node, role: String) -> void:
 		return
 	var lines := scene.call("_get_context_lines", windmill) as PackedStringArray
 	_expect(_packed_lines_contain(lines, "Benötigt:"), "%s windmill context should show required grain." % role)
-	_expect(_packed_lines_contain(lines, "Mehlsäcke bereit:"), "%s windmill context should show flour output." % role)
+	_expect(_packed_lines_contain(lines, "Output:"), "%s windmill context should show production output." % role)
 	var actions := scene.call("_get_context_actions", windmill) as Array
 	_expect(_actions_contain(actions, LIVE_START_WINDMILL), "%s windmill context should offer production start." % role)
 	_expect(_actions_contain(actions, LIVE_COLLECT_FLOUR), "%s windmill context should offer flour collection." % role)

@@ -11,11 +11,13 @@ const ACTION_WEED := "weed"
 const ACTION_HARVEST := "harvest"
 const ACTION_DELIVER := "deliver"
 const LIVE_TAKE_WHEAT_SEEDS := "take_wheat_seeds"
+const LIVE_TAKE_CORN_SEEDS := "take_corn_seeds"
 const LIVE_SOW_FIELD := "sow_field"
 const LIVE_WATER_FIELD := "water_field"
 const LIVE_HARVEST_FIELD := "harvest_field"
 const LIVE_STORE_GRAIN_SILO := "store_grain_silo"
 const LIVE_START_WINDMILL := "start_windmill"
+const LIVE_START_CORN_PROCESSING := "start_corn_processing"
 const LIVE_COLLECT_FLOUR := "collect_flour"
 const LIVE_STORE_FLOUR_BARN := "store_flour_barn"
 const LIVE_LOAD_PICKUP := "load_pickup"
@@ -125,7 +127,7 @@ func _initialize() -> void:
 	var seed_grid := context_menu.find_child("SeedsGrid", true, false) as GridContainer
 	var product_grid := context_menu.find_child("StoredproductsGrid", true, false) as GridContainer
 	_expect(seed_grid != null and seed_grid.get_child_count() == 3, "farm inventory should render three seed slots", failures)
-	_expect(product_grid != null and product_grid.get_child_count() == 4, "farm inventory should render four product slots", failures)
+	_expect(product_grid != null and product_grid.get_child_count() == 6, "farm inventory should render grain and processed product slots", failures)
 	var wheat_seed_slot := context_menu.find_child("FarmInventorySlot_wheat_seed", true, false) as Button
 	var flour_slot := context_menu.find_child("FarmInventorySlot_flour_sack", true, false) as Button
 	_expect(wheat_seed_slot != null and not wheat_seed_slot.disabled, "stocked seed slot should be clickable", failures)
@@ -238,11 +240,25 @@ func _initialize() -> void:
 	_expect(bool((live.call("debug_perform_live_action", "windmill", LIVE_COLLECT_FLOUR) as Dictionary).get("correct", false)), "live flow should collect flour sacks", failures)
 	_expect(bool((live.call("debug_perform_live_action", "barn", LIVE_STORE_FLOUR_BARN) as Dictionary).get("correct", false)), "live flow should store flour sacks", failures)
 	_expect(bool((live.call("debug_perform_live_action", "machine_yard", LIVE_LOAD_PICKUP) as Dictionary).get("correct", false)), "live flow should load pickup", failures)
+	_expect(bool((live.call("debug_perform_live_action", "field_corn", LIVE_WATER_FIELD) as Dictionary).get("correct", false)), "live flow should water seeded corn", failures)
+	live.call("debug_tick_live", 9.0)
+	var corn_field := live.call("debug_get_field_snapshot", "field_corn") as Dictionary
+	_expect_eq(str(corn_field.get("state_label", "")), "mature", "live corn should mature after test time", failures)
+	_expect(bool((live.call("debug_perform_live_action", "field_corn", LIVE_HARVEST_FIELD) as Dictionary).get("correct", false)), "live flow should harvest corn", failures)
+	_expect(bool((live.call("debug_perform_live_action", "silo", LIVE_STORE_GRAIN_SILO) as Dictionary).get("correct", false)), "live flow should store corn in silo", failures)
+	_expect(bool((live.call("debug_perform_live_action", "windmill", LIVE_START_CORN_PROCESSING) as Dictionary).get("correct", false)), "live flow should start cornmeal processing", failures)
+	live.call("debug_tick_live", 9.0)
+	_expect(bool((live.call("debug_perform_live_action", "windmill", LIVE_COLLECT_FLOUR) as Dictionary).get("correct", false)), "live flow should collect cornmeal sacks", failures)
+	_expect(bool((live.call("debug_perform_live_action", "barn", LIVE_STORE_FLOUR_BARN) as Dictionary).get("correct", false)), "live flow should store cornmeal sacks", failures)
+	_expect(bool((live.call("debug_perform_live_action", "machine_yard", LIVE_LOAD_PICKUP) as Dictionary).get("correct", false)), "live flow should load cornmeal on pickup", failures)
+	_expect(bool((live.call("debug_perform_live_action", "shed", LIVE_TAKE_CORN_SEEDS) as Dictionary).get("correct", false)), "live flow should take corn seeds for replanting", failures)
+	_expect(bool((live.call("debug_perform_live_action", "field_corn", LIVE_SOW_FIELD) as Dictionary).get("correct", false)), "live flow should replant corn after harvest", failures)
 	var pickup_inventory := live.call("debug_get_inventory_snapshot", "pickup") as Dictionary
 	_expect(int(pickup_inventory.get("flour_sack", 0)) > 0, "pickup should receive flour sacks", failures)
+	_expect(int(pickup_inventory.get("cornmeal_sack", 0)) > 0, "pickup should receive cornmeal sacks", failures)
 	var live_result := live.call("get_result") as Dictionary
 	_expect(int(live_result.get("harvested_amount", 0)) > 0, "live result should include harvested wheat", failures)
-	_expect(int(live_result.get("goods_delivered", 0)) > 0, "live result should include loaded flour sacks", failures)
+	_expect_eq(int(live_result.get("goods_delivered", 0)), _product_total(pickup_inventory), "live result should include all loaded processed products", failures)
 	var live_applied: Dictionary = farm.apply_player_work_result(world, player, live_result)
 	_expect(bool(live_applied.get("accepted", false)), "live 3D result should apply", failures)
 	_expect(int(live_applied.get("harvested_amount", 0)) > 0, "live 3D result should store output on Farm", failures)
@@ -254,9 +270,10 @@ func _initialize() -> void:
 	var persisted_pickup := persisted_inventory.get("pickup", {}) as Dictionary
 	_expect_eq(int(persisted_seeds.get("wheat_seed", 0)), 15, "Farm should persist live seed consumption after WorkScene result", failures)
 	_expect_eq(int(persisted_silo.get("wheat_grain", 0)), 2, "Farm should persist unprocessed grain after WorkScene result", failures)
-	_expect_eq(int(persisted_pickup.get("flour_sack", 0)), int(live_result.get("goods_delivered", 0)), "Farm should persist prepared pickup load after WorkScene result", failures)
+	_expect_eq(int(persisted_silo.get("corn_grain", 0)), 4, "Farm should persist unprocessed corn after WorkScene result", failures)
+	_expect_eq(_product_total(persisted_pickup), int(live_result.get("goods_delivered", 0)), "Farm should persist prepared pickup load after WorkScene result", failures)
 	_expect_eq(
-		int(persisted_pickup.get("flour_sack", 0)),
+		_product_total(persisted_pickup),
 		farm.get_product_inventory_amount(farm.get_product_commodity()),
 		"Farm product inventory should mirror sellable WorkScene product state",
 		failures
@@ -382,6 +399,12 @@ func _visible_node_count(nodes: Array) -> int:
 		if node != null and node.visible:
 			count += 1
 	return count
+
+
+func _product_total(inventory: Dictionary) -> int:
+	return int(inventory.get("flour_sack", 0)) \
+		+ int(inventory.get("cornmeal_sack", 0)) \
+		+ int(inventory.get("sunflower_oil_crate", 0))
 
 
 func _demand_contains_target(entries: Array, target_name: String) -> bool:

@@ -29,10 +29,11 @@ const DELIVERY_DEPOT_MAX_LOCAL_MANEUVER_DISTANCE := 16.0
 const MANUAL_DELIVERY_ARRIVAL_RADIUS := 6.0
 const OWNER_MAX_WORK_MINUTES_PER_DAY := 8 * 60
 const PLAYER_WORK_PRODUCT_ITEM := "flour_sack"
+const PLAYER_WORK_PRODUCT_ITEMS := ["flour_sack", "cornmeal_sack", "sunflower_oil_crate"]
 const PLAYER_WORK_SEED_ITEMS := ["wheat_seed", "corn_seed", "sunflower_seed"]
 const PLAYER_WORK_GRAIN_ITEMS := ["wheat_grain", "corn_grain", "sunflower_grain"]
-const PLAYER_WORK_BARN_ITEMS := ["flour_sack"]
-const PLAYER_WORK_PICKUP_ITEMS := ["flour_sack"]
+const PLAYER_WORK_BARN_ITEMS := PLAYER_WORK_PRODUCT_ITEMS
+const PLAYER_WORK_PICKUP_ITEMS := PLAYER_WORK_PRODUCT_ITEMS
 const PLAYER_WORK_DEFAULT_SEED_STOCK := {
 	"wheat_seed": 16,
 	"corn_seed": 12,
@@ -577,8 +578,8 @@ func _apply_player_work_inventory_result(world: World, result: Dictionary) -> in
 		old_grain_total + live_harvested
 	)
 
-	var requested_product_units := _dict_amount(next_barn_inventory, PLAYER_WORK_PRODUCT_ITEM) \
-		+ _dict_amount(next_pickup_inventory, PLAYER_WORK_PRODUCT_ITEM)
+	var requested_product_units := _dict_total(next_barn_inventory, PLAYER_WORK_PRODUCT_ITEMS) \
+		+ _dict_total(next_pickup_inventory, PLAYER_WORK_PRODUCT_ITEMS)
 	var max_product_units := old_product_units + goods_produced
 	var accepted_product_units := mini(requested_product_units, max_product_units)
 	var product_delta := maxi(accepted_product_units - old_product_units, 0)
@@ -685,15 +686,42 @@ func _sanitize_production_state(data: Dictionary) -> Dictionary:
 	var duration := maxf(float(data.get("duration_sec", 8.0)), 0.1)
 	var running := bool(data.get("running", false))
 	var pending_sacks := maxi(int(data.get("produced_sacks_pending", 0)), 0)
+	var pending_items := _sanitize_inventory(
+		_dictionary_from_variant(data.get("produced_items_pending", {})),
+		PLAYER_WORK_PRODUCT_ITEMS
+	)
+	if pending_items.is_empty() and pending_sacks > 0:
+		pending_items[PLAYER_WORK_PRODUCT_ITEM] = pending_sacks
+	var total_items := _sanitize_inventory(
+		_dictionary_from_variant(data.get("total_items_produced", {})),
+		PLAYER_WORK_PRODUCT_ITEMS
+	)
+	var total_sacks := maxi(int(data.get("total_sacks_produced", 0)), pending_sacks)
+	if total_items.is_empty() and total_sacks > 0:
+		total_items[PLAYER_WORK_PRODUCT_ITEM] = total_sacks
+	var selected_grain := str(data.get("selected_grain_type", PLAYER_WORK_CROP_WHEAT)).strip_edges()
+	if not _is_player_work_crop_supported(selected_grain):
+		selected_grain = PLAYER_WORK_CROP_WHEAT
+	var input_item := str(data.get("input_item_id", "%s_grain" % selected_grain)).strip_edges()
+	if not PLAYER_WORK_GRAIN_ITEMS.has(input_item):
+		input_item = "%s_grain" % selected_grain
+	var output_item := str(data.get("output_item_id", PLAYER_WORK_PRODUCT_ITEM)).strip_edges()
+	if not PLAYER_WORK_PRODUCT_ITEMS.has(output_item):
+		output_item = PLAYER_WORK_PRODUCT_ITEM
 	return {
-		"selected_grain_type": str(data.get("selected_grain_type", PLAYER_WORK_CROP_WHEAT)).strip_edges(),
+		"selected_grain_type": selected_grain,
+		"input_item_id": input_item,
+		"output_item_id": output_item,
 		"required_grain": maxi(int(data.get("required_grain", 10)), 1),
+		"output_amount": maxi(int(data.get("output_amount", 3)), 1),
 		"duration_sec": duration,
 		"progress_sec": clampf(float(data.get("progress_sec", 0.0)), 0.0, duration),
 		"running": running,
 		"paused": bool(data.get("paused", false)) and running,
 		"produced_sacks_pending": pending_sacks,
-		"total_sacks_produced": maxi(int(data.get("total_sacks_produced", 0)), pending_sacks),
+		"total_sacks_produced": total_sacks,
+		"produced_items_pending": pending_items,
+		"total_items_produced": total_items,
 	}
 
 func _sanitize_inventory(data: Dictionary, allowed_items: Array) -> Dictionary:
@@ -717,7 +745,8 @@ func _merge_carried_player_work_items(
 		_add_dict_amount(seed_inventory, str(item_id), _dict_amount(carried_inventory, str(item_id)))
 	for item_id in PLAYER_WORK_GRAIN_ITEMS:
 		_add_dict_amount(silo_inventory, str(item_id), _dict_amount(carried_inventory, str(item_id)))
-	_add_dict_amount(barn_inventory, PLAYER_WORK_PRODUCT_ITEM, _dict_amount(carried_inventory, PLAYER_WORK_PRODUCT_ITEM))
+	for item_id in PLAYER_WORK_PRODUCT_ITEMS:
+		_add_dict_amount(barn_inventory, str(item_id), _dict_amount(carried_inventory, str(item_id)))
 
 func _clamp_inventory_total(data: Dictionary, allowed_items: Array, max_total: int) -> Dictionary:
 	var clamped: Dictionary = {}
@@ -740,25 +769,35 @@ func _trim_product_inventory_to_total(
 	total_product_units: int
 ) -> void:
 	var remaining := maxi(total_product_units, 0)
-	var barn_amount := mini(_dict_amount(barn_inventory, PLAYER_WORK_PRODUCT_ITEM), remaining)
-	_set_dict_amount(barn_inventory, PLAYER_WORK_PRODUCT_ITEM, barn_amount)
-	remaining -= barn_amount
-	var pickup_amount := mini(_dict_amount(pickup_inventory, PLAYER_WORK_PRODUCT_ITEM), remaining)
-	_set_dict_amount(pickup_inventory, PLAYER_WORK_PRODUCT_ITEM, pickup_amount)
+	for item_id in PLAYER_WORK_PRODUCT_ITEMS:
+		var cleaned := str(item_id)
+		var barn_amount := mini(_dict_amount(barn_inventory, cleaned), remaining)
+		_set_dict_amount(barn_inventory, cleaned, barn_amount)
+		remaining -= barn_amount
+	for item_id in PLAYER_WORK_PRODUCT_ITEMS:
+		var cleaned := str(item_id)
+		var pickup_amount := mini(_dict_amount(pickup_inventory, cleaned), remaining)
+		_set_dict_amount(pickup_inventory, cleaned, pickup_amount)
+		remaining -= pickup_amount
 
 func _sync_player_work_product_from_inventory() -> void:
 	var target_units := get_product_inventory_amount(get_product_commodity())
-	var current_units := _dict_amount(_player_work_barn_inventory, PLAYER_WORK_PRODUCT_ITEM) \
-		+ _dict_amount(_player_work_pickup_inventory, PLAYER_WORK_PRODUCT_ITEM)
+	var current_units := _dict_total(_player_work_barn_inventory, PLAYER_WORK_PRODUCT_ITEMS) \
+		+ _dict_total(_player_work_pickup_inventory, PLAYER_WORK_PRODUCT_ITEMS)
 	if current_units == target_units:
 		return
 	if current_units < target_units:
 		_add_dict_amount(_player_work_barn_inventory, PLAYER_WORK_PRODUCT_ITEM, target_units - current_units)
 		return
 	var excess := current_units - target_units
-	excess -= _remove_dict_amount(_player_work_pickup_inventory, PLAYER_WORK_PRODUCT_ITEM, excess)
-	if excess > 0:
-		_remove_dict_amount(_player_work_barn_inventory, PLAYER_WORK_PRODUCT_ITEM, excess)
+	for item_id in PLAYER_WORK_PRODUCT_ITEMS:
+		if excess <= 0:
+			break
+		excess -= _remove_dict_amount(_player_work_pickup_inventory, str(item_id), excess)
+	for item_id in PLAYER_WORK_PRODUCT_ITEMS:
+		if excess <= 0:
+			break
+		excess -= _remove_dict_amount(_player_work_barn_inventory, str(item_id), excess)
 
 func _pay_player_work_product_cost(world: World, units: int) -> bool:
 	if units <= 0:
