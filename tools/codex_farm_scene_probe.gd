@@ -100,6 +100,7 @@ func _check_scene_contract(farm: Node, scene_path: String, errors: Array[String]
 	if scene_path == "res://Scenes/Farm_Windmill.tscn":
 		required_nodes.append_array([
 			"Fields/FieldMiddle/FarmlandModel",
+			"Fields/FieldWest2/FarmlandModel",
 			"Obstacles/SideBarnShape",
 			"Obstacles/WindmillShape",
 			"Obstacles/WaterTowerShape",
@@ -161,7 +162,8 @@ func _check_classic_crop_multimeshes(farm: Node, scene_path: String, errors: Arr
 func _check_windmill_crop_multimeshes(farm: Node, scene_path: String, errors: Array[String]) -> void:
 	var crop_paths: Array[String] = [
 		"Fields/FieldMiddle/CropStemInstances/WheatItem",
-		"Fields/FieldWest/CropLeafBInstances3/WheatItem",
+		"Fields/FieldWest/CropCornInstancesWest/CornItem",
+		"Fields/FieldWest2/CropWheatInstancesEast/WheatItem",
 	]
 	for node_path in crop_paths:
 		var node := farm.get_node_or_null(NodePath(node_path))

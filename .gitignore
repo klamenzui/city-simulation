@@ -23,6 +23,7 @@ AI/
 .ai/qdrant_import/
 .ai/.cache/
 .ai/test_runs/
+.ai/screenshots/*
 
 # Python
 __pycache__/

@@ -29,6 +29,10 @@ func _init() -> void:
 		printerr("FAIL: MultiMesh instance_count should be reset before generation.")
 		quit(1)
 		return
+	if item.multimesh.visible_instance_count != 0:
+		printerr("FAIL: MultiMesh visible_instance_count should be reset with instance_count.")
+		quit(1)
+		return
 	if item.multimesh.transform_format != MultiMesh.TRANSFORM_3D:
 		printerr("FAIL: MultiMesh transform_format should be TRANSFORM_3D.")
 		quit(1)
@@ -48,6 +52,28 @@ func _init() -> void:
 		return
 	if item.multimesh.visible_instance_count != 3:
 		printerr("FAIL: MultiMesh generation should restore visible_instance_count to generated instances.")
+		quit(1)
+		return
+
+	item.multimesh.mesh = BoxMesh.new()
+	item._cache_baked_multimesh()
+	item.multimesh = null
+	item._restore_baked_multimesh_if_needed()
+
+	if item.multimesh == null:
+		printerr("FAIL: Baked MultiMesh data should restore a runtime MultiMesh.")
+		quit(1)
+		return
+	if item.multimesh.transform_format != MultiMesh.TRANSFORM_3D:
+		printerr("FAIL: Restored baked MultiMesh should use TRANSFORM_3D.")
+		quit(1)
+		return
+	if item.multimesh.instance_count != 3:
+		printerr("FAIL: Restored baked MultiMesh should keep generated instance_count.")
+		quit(1)
+		return
+	if item.multimesh.visible_instance_count != 3:
+		printerr("FAIL: Restored baked MultiMesh should keep generated visible_instance_count.")
 		quit(1)
 		return
 

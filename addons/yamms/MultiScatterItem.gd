@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 @tool
-extends MultiMeshInstance3D
+extends "res://addons/yamms/BakedMultiMeshInstance3D.gd"
 class_name MultiScatterItem
 
 # The MultiScatterItem is a MultiMesh3D.
@@ -43,10 +43,10 @@ class_name MultiScatterItem
 # ready: Add notification on transform changes to overwrite rotation to 0
 # Because the MultiScatterItem is not supposed to be rotated.
 func _ready() -> void:
+	super._ready()
 	if not Engine.is_editor_hint():
 		return
-	if Engine.is_editor_hint():
-		set_notify_transform(true) 
+	set_notify_transform(true)
 
 # set - overwrite rotation to 0 when changed in editor inspector.
 func _set(property: StringName, value) -> bool:
@@ -60,7 +60,8 @@ func _set(property: StringName, value) -> bool:
 
 # notification - overwrite rotation to 0 when changed by gizmo in editor.
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_TRANSFORM_CHANGED:
+	super._notification(what)
+	if what == NOTIFICATION_TRANSFORM_CHANGED and Engine.is_editor_hint():
 		rotation.x = 0
 		rotation.y = 0
 		rotation.z = 0
@@ -123,15 +124,13 @@ func _prepare_multimesh():
 	
 # Delete all previously generated multi mesh instances.
 func clear():
-	if multimesh == null:
-		return
-	multimesh.visible_instance_count = 0
-	multimesh.instance_count = 0
+	_reset_multimesh_instance_counts()
+	_clear_baked_multimesh()
 
 func _ensure_multimesh_ready_for_3d():
 	if multimesh == null:
 		multimesh = MultiMesh.new()
-	clear()
+	_reset_multimesh_instance_counts()
 	if multimesh.transform_format != MultiMesh.TRANSFORM_3D:
 		multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	

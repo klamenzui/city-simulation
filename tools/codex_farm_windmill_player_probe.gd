@@ -3,6 +3,7 @@ extends SceneTree
 const FarmWorkSceneResource = preload("res://Scenes/WorkScenes/Farm/FarmWorkScene.tscn")
 const WindmillFarmScene = preload("res://Scenes/Farm_Windmill.tscn")
 const CitizenScene = preload("res://Entities/Citizens/CitizenNew.tscn")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 
 const ROLE_WORKER := "worker"
 const ROLE_OWNER := "owner"
@@ -24,10 +25,13 @@ var _capture_dir: String = DEFAULT_CAPTURE_DIR
 var _role_filter: String = "both"
 var _manual_mode: bool = false
 var _manual_fixture: Dictionary = {}
+var _original_language: String = ""
 
 
 func _initialize() -> void:
 	_parse_args()
+	_original_language = LocaleServiceScript.get_language()
+	LocaleServiceScript.set_language("de")
 	if not _capture_dir.is_empty() and DisplayServer.get_name() != "headless":
 		DisplayServer.window_set_size(Vector2i(1440, 900))
 
@@ -89,6 +93,8 @@ func _on_manual_session_finished(result: Dictionary, fixture: Dictionary, role: 
 		str(result),
 		str(applied),
 	])
+	if not _original_language.is_empty():
+		LocaleServiceScript.set_language(_original_language)
 	quit(0 if bool(applied.get("accepted", false)) else 1)
 
 
@@ -135,6 +141,7 @@ func _create_role_fixture(role: String) -> Dictionary:
 		world.queue_free()
 		return {}
 	farm.name = "ProbeWindmillFarm_%s" % role
+	farm.visible = false
 	root.add_child(farm)
 	await process_frame
 	world.register_building(farm)
@@ -277,7 +284,7 @@ func _validate_visual_contract(scene: Node, role: String) -> void:
 	_expect(scene.get_node_or_null("WindmillFarm3D/ExistingFarm/TowerWindmill") != null, "%s scene should render the TowerWindmill." % role)
 	_expect(scene.get_node_or_null("WindmillFarm3D/ExistingFarm/Buildings/BigBarnModel") != null, "%s scene should render the big barn." % role)
 	_expect(scene.get_node_or_null("WindmillFarm3D/ExistingFarm/Buildings/SiloModel") != null, "%s scene should render the silo." % role)
-	_expect(scene.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldWest/FarmlandModel") != null, "%s scene should render the wheat field." % role)
+	_expect(scene.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldWest2/FarmlandModel") != null, "%s scene should render the wheat field." % role)
 	_expect(scene.get_node_or_null("WindmillFarm3D/ExistingFarm/Obstacles/GroundShape") != null, "%s scene should reuse the Windmill Farm ground collider." % role)
 	var player := scene.get_node_or_null("WindmillFarm3D/Player") as CharacterBody3D
 	_expect(player != null, "%s scene should spawn a playable worker body." % role)
@@ -296,8 +303,8 @@ func _validate_windmill_context(scene: Node, role: String) -> void:
 	if windmill == null:
 		return
 	var lines := scene.call("_get_context_lines", windmill) as PackedStringArray
-	_expect(_packed_lines_contain(lines, "Required:"), "%s windmill context should show required grain." % role)
-	_expect(_packed_lines_contain(lines, "Flour sacks ready:"), "%s windmill context should show flour output." % role)
+	_expect(_packed_lines_contain(lines, "Benötigt:"), "%s windmill context should show required grain." % role)
+	_expect(_packed_lines_contain(lines, "Mehlsäcke bereit:"), "%s windmill context should show flour output." % role)
 	var actions := scene.call("_get_context_actions", windmill) as Array
 	_expect(_actions_contain(actions, LIVE_START_WINDMILL), "%s windmill context should offer production start." % role)
 	_expect(_actions_contain(actions, LIVE_COLLECT_FLOUR), "%s windmill context should offer flour collection." % role)
@@ -306,11 +313,13 @@ func _validate_windmill_context(scene: Node, role: String) -> void:
 func _run_windmill_action_flow(scene: Node, role: String) -> void:
 	_expect_action(scene, "shed", LIVE_TAKE_WHEAT_SEEDS, role)
 	_expect_action(scene, "field_wheat", LIVE_SOW_FIELD, role)
+	_expect(_is_node_visible(scene, "WindmillFarm3D/ExistingFarm/Fields/FieldWest2/CropWheatInstancesEast/WheatItem"), "%s wheat crop should be visible after sowing." % role)
 	_expect_action(scene, "field_wheat", LIVE_WATER_FIELD, role)
 	scene.call("debug_tick_live", 9.0)
 	var wheat_field := scene.call("debug_get_field_snapshot", "field_wheat") as Dictionary
 	_expect(str(wheat_field.get("state_label", "")) == "mature", "%s wheat field should mature during probe time." % role)
 	_expect_action(scene, "field_wheat", LIVE_HARVEST_FIELD, role)
+	_expect(not _is_node_visible(scene, "WindmillFarm3D/ExistingFarm/Fields/FieldWest2/CropWheatInstancesEast/WheatItem"), "%s wheat crop should be hidden after harvest." % role)
 	_expect_action(scene, "silo", LIVE_STORE_GRAIN_SILO, role)
 	var silo_inventory := scene.call("debug_get_inventory_snapshot", "silo") as Dictionary
 	_expect(int(silo_inventory.get("wheat_grain", 0)) >= 10, "%s silo should contain enough wheat for the windmill." % role)
@@ -456,6 +465,11 @@ func _actions_contain(actions: Array, action_id: String) -> bool:
 	return false
 
 
+func _is_node_visible(scene: Node, node_path: String) -> bool:
+	var node := scene.get_node_or_null(NodePath(node_path)) as Node3D
+	return node != null and node.is_visible_in_tree()
+
+
 func _expect(condition: bool, message: String) -> void:
 	if not condition:
 		_fail(message)
@@ -466,6 +480,8 @@ func _fail(message: String) -> void:
 
 
 func _finish() -> void:
+	if not _original_language.is_empty():
+		LocaleServiceScript.set_language(_original_language)
 	if _errors.is_empty():
 		print("FARM_WINDMILL_PLAYER_PROBE OK roles=%s captures=%d" % [
 			",".join(_selected_roles()),

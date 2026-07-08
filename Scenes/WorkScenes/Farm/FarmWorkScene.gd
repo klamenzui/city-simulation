@@ -2,6 +2,7 @@ extends Node3D
 class_name FarmWorkScene
 
 const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 const FarmWorkInventoryScript = preload("res://Scenes/WorkScenes/Farm/FarmWorkInventory.gd")
 const FarmWorkFieldDataScript = preload("res://Scenes/WorkScenes/Farm/FarmWorkFieldData.gd")
 const FarmWorkProductionStateScript = preload("res://Scenes/WorkScenes/Farm/FarmWorkProductionState.gd")
@@ -88,25 +89,26 @@ const TASK_FLOW := [
 	"load_pickup",
 ]
 
-const ITEM_LABELS := {
-	"wheat_seed": "Weizensaat",
-	"corn_seed": "Maissaat",
-	"sunflower_seed": "Sonnenblumensaat",
-	"wheat_grain": "Weizen",
-	"corn_grain": "Mais",
-	"sunflower_grain": "Sonnenblumen",
-	"flour_sack": "Mehlsack",
-	"watering_can": "Gießkanne",
-	"sickle": "Sichel",
-	"shovel": "Schaufel",
-	"empty_sack": "Leerer Sack",
+const ITEM_LABEL_KEYS := {
+	"wheat_seed": "farm_work.item.wheat_seed",
+	"corn_seed": "farm_work.item.corn_seed",
+	"sunflower_seed": "farm_work.item.sunflower_seed",
+	"wheat_grain": "farm_work.item.wheat_grain",
+	"corn_grain": "farm_work.item.corn_grain",
+	"sunflower_grain": "farm_work.item.sunflower_grain",
+	"flour_sack": "farm_work.item.flour_sack",
+	"watering_can": "farm_work.item.watering_can",
+	"sickle": "farm_work.item.sickle",
+	"shovel": "farm_work.item.shovel",
+	"empty_sack": "farm_work.item.empty_sack",
 }
 
-const CROP_LABELS := {
-	CROP_WHEAT: "Weizen",
-	CROP_CORN: "Mais",
-	CROP_SUNFLOWER: "Sonnenblume",
+const CROP_LABEL_KEYS := {
+	CROP_WHEAT: "farm_work.crop.wheat",
+	CROP_CORN: "farm_work.crop.corn",
+	CROP_SUNFLOWER: "farm_work.crop.sunflower",
 }
+const SUPPORTED_CROPS := [CROP_WHEAT, CROP_CORN, CROP_SUNFLOWER]
 
 @export var auto_start: bool = true
 @export var session_duration_sec: float = DEFAULT_SESSION_DURATION_SEC
@@ -178,10 +180,12 @@ var _tool_label: Label = null
 var _hint_label: Label = null
 var _demand_label: Label = null
 var _inventory_label: Label = null
+var _leave_button: Button = null
 var _context_panel: PanelContainer = null
 var _context_content: VBoxContainer = null
 var _context_signature: String = ""
 var _ui_refresh_left: float = 0.0
+var _last_locale: String = ""
 
 
 func _ready() -> void:
@@ -280,7 +284,7 @@ func configure_for_farm(
 func start_session() -> void:
 	_reset_session_state()
 	running = true
-	_set_hint("%s: production flow ready." % farm_label)
+	_set_hint(_trf("farm_work.hint.session_ready", [farm_label], "%s: Arbeitsablauf bereit."))
 	_update_all_ui()
 
 
@@ -571,11 +575,11 @@ func _reset_session_state() -> void:
 func _reset_live_fields() -> void:
 	_fields.clear()
 	var wheat = FarmWorkFieldDataScript.new()
-	wheat.configure("field_wheat", "Wheat field", CROP_WHEAT, FIELD_PREPARED)
+	wheat.configure("field_wheat", _field_display_name("field_wheat"), CROP_WHEAT, FIELD_PREPARED)
 	_apply_initial_field_snapshot(wheat)
 	_fields.append(wheat)
 	var corn = FarmWorkFieldDataScript.new()
-	corn.configure("field_corn", "Corn field", CROP_CORN, FIELD_SEEDED)
+	corn.configure("field_corn", _field_display_name("field_corn"), CROP_CORN, FIELD_SEEDED)
 	_apply_initial_field_snapshot(corn)
 	_fields.append(corn)
 	_update_all_field_visuals()
@@ -679,6 +683,9 @@ func _build_player() -> void:
 	capsule.height = 0.62
 	collision.shape = capsule
 	collision.position = Vector3(0.0, 0.31, 0.0)
+	collision.visible = false
+	collision.debug_fill = false
+	collision.debug_color = Color(0.0, 0.0, 0.0, 0.0)
 	_player.add_child(collision)
 
 	var body := PlayerVisualScene.instantiate() as Node3D
@@ -706,13 +713,13 @@ func _build_camera() -> void:
 func _build_existing_farm_interactions() -> void:
 	if _farm_environment == null:
 		return
-	_bind_field_interaction(_fields[0], "Fields/FieldWest/FarmlandModel")
-	_bind_field_interaction(_fields[1], "Fields/FieldMiddle/FarmlandModel")
-	_bind_visual_interaction("barn", "barn", "Farm inventory", "Buildings/BigBarnModel", 3.5)
-	_bind_visual_interaction("shed", "shed", "Tool and seed shed", "VariantDecor/SideBarnModel", 3.2)
-	_bind_visual_interaction("silo", "silo", "Grain silo", "Buildings/SiloModel", 3.0)
-	_bind_visual_interaction("windmill", "windmill", "Windmill production", "TowerWindmill", 3.8)
-	_bind_visual_interaction("gate", "gate", "Farm gate", "Fence/SideGateModel", 2.8)
+	_bind_field_interaction(_fields[0], "Fields/FieldWest2/FarmlandModel")
+	_bind_field_interaction(_fields[1], "Fields/FieldWest/FarmlandModel")
+	_bind_visual_interaction("barn", "barn", _interactable_label("barn"), "Buildings/BigBarnModel", 3.5)
+	_bind_visual_interaction("shed", "shed", _interactable_label("shed"), "VariantDecor/SideBarnModel", 3.2)
+	_bind_visual_interaction("silo", "silo", _interactable_label("silo"), "Buildings/SiloModel", 3.0)
+	_bind_visual_interaction("windmill", "windmill", _interactable_label("windmill"), "TowerWindmill", 3.8)
+	_bind_visual_interaction("gate", "gate", _interactable_label("gate"), "Fence/SideGateModel", 2.8)
 	_update_all_field_visuals()
 
 
@@ -783,8 +790,10 @@ func _get_field_crop_nodes(field_root: Node) -> Array[MultiMeshInstance3D]:
 	var crop_nodes: Array[MultiMeshInstance3D] = []
 	if field_root == null:
 		return crop_nodes
-	for node_name in ["CropStemInstances", "CropLeafAInstances", "CropLeafBInstances"]:
-		var crop_node := field_root.get_node_or_null(node_name) as MultiMeshInstance3D
+	var candidates: Array[Node] = []
+	_collect_nodes_of_type(field_root, MultiMeshInstance3D, candidates)
+	for node in candidates:
+		var crop_node := node as MultiMeshInstance3D
 		if crop_node != null:
 			crop_nodes.append(crop_node)
 	return crop_nodes
@@ -807,6 +816,9 @@ func _add_static_collision_for_visual(visual: Node3D, collision_name: String, ma
 	shape.size = bounds.size + Vector3.ONE * margin
 	var collision := CollisionShape3D.new()
 	collision.shape = shape
+	collision.visible = false
+	collision.debug_fill = false
+	collision.debug_color = Color(0.0, 0.0, 0.0, 0.0)
 	body.add_child(collision)
 
 
@@ -894,11 +906,11 @@ func _build_ui() -> void:
 	_hint_label.custom_minimum_size = Vector2(250, 0)
 	hud_box.add_child(_hint_label)
 
-	var leave_button := Button.new()
-	leave_button.text = "Verlassen"
-	leave_button.custom_minimum_size = Vector2(92, 42)
-	leave_button.pressed.connect(finish_session)
-	hud_box.add_child(leave_button)
+	_leave_button = Button.new()
+	_leave_button.text = _tr("farm_work.hud.leave", "Verlassen")
+	_leave_button.custom_minimum_size = Vector2(92, 42)
+	_leave_button.pressed.connect(finish_session)
+	hud_box.add_child(_leave_button)
 
 	_context_panel = PanelContainer.new()
 	_context_panel.name = "ContextMenu"
@@ -934,26 +946,29 @@ func _make_label(text: String, font_size: int) -> Label:
 
 
 func _update_all_ui() -> void:
+	_sync_locale_state()
 	if _hud_label != null:
-		var role_label := "Besitzer" if actor_role == "owner" else "Arbeiter"
-		_hud_label.text = "%s\n%s | Punkte %d | %02ds" % [
+		var role_label := _tr("farm_work.role.owner", "Besitzer") if actor_role == "owner" else _tr("farm_work.role.worker", "Arbeiter")
+		_hud_label.text = _trf("farm_work.hud.main", [
 			farm_label,
 			role_label,
 			score,
 			int(maxf(session_duration_sec - elapsed_sec, 0.0)),
-		]
+		], "%s\n%s | Punkte %d | %02ds")
 	if _inventory_label != null:
-		_inventory_label.text = "Inventar\n%s" % _player_inventory.format_contents(ITEM_LABELS)
+		_inventory_label.text = _trf("farm_work.hud.inventory", [_player_inventory.format_contents(_localized_item_labels())], "Inventar\n%s")
 	if _task_label != null:
-		_task_label.text = "Aufgabe\n%s" % _get_current_task_label()
+		_task_label.text = _trf("farm_work.hud.task", [_get_current_task_label()], "Aufgabe\n%s")
 	if _demand_label != null:
 		_demand_label.text = _format_demand_hud()
 	if _tool_label != null:
-		_tool_label.text = "Werkzeug\n%s | Pflanze: %s" % [_tool_display_label(_selected_tool), _crop_label(_selected_crop_type)]
+		_tool_label.text = _trf("farm_work.hud.tool", [_tool_display_label(_selected_tool), _crop_label(_selected_crop_type)], "Werkzeug\n%s | Pflanze: %s")
+	if _leave_button != null:
+		_leave_button.text = _tr("farm_work.hud.leave", "Verlassen")
 	if _hint_label != null and _nearest_interactable != null:
-		_hint_label.text = "In der Nähe\n%s" % _nearest_interactable.display_name
+		_hint_label.text = _trf("farm_work.hud.nearby", [_nearest_interactable.display_name], "In der Nähe\n%s")
 	elif _hint_label != null:
-		_hint_label.text = "In der Nähe\n-"
+		_hint_label.text = _trf("farm_work.hud.nearby", ["-"], "In der Nähe\n-")
 	if _context_panel != null and _context_panel.visible and _active_interactable != null:
 		_refresh_context_panel()
 
@@ -997,6 +1012,7 @@ func _get_context_signature(interactable) -> String:
 	var state: Dictionary = {
 		"id": interactable.interactable_id,
 		"type": interactable.interactable_type,
+		"locale": LocaleServiceScript.get_language(),
 		"player": _player_inventory.get_snapshot(),
 	}
 	match interactable.interactable_type:
@@ -1020,52 +1036,52 @@ func _get_context_signature(interactable) -> String:
 
 
 func _build_farm_inventory_context() -> void:
-	var title := _make_label("Farm inventory", 17)
+	var title := _make_label(_tr("farm_work.inventory.title", "Farmlager"), 17)
 	_context_content.add_child(title)
 
-	var help := _make_label("Select an item slot to take one stack.", 12)
+	var help := _make_label(_tr("farm_work.inventory.help", "Wähle einen Slot, um einen Stapel zu nehmen."), 12)
 	help.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
 	_context_content.add_child(help)
 
-	_add_inventory_section("Seeds", [
+	_add_inventory_section(_tr("farm_work.inventory.seeds", "Saatgut"), [
 		_make_inventory_slot_data("wheat_seed", _seed_inventory, LIVE_TAKE_WHEAT_SEEDS),
 		_make_inventory_slot_data("corn_seed", _seed_inventory, LIVE_TAKE_CORN_SEEDS),
 		_make_inventory_slot_data("sunflower_seed", _seed_inventory, LIVE_TAKE_SUNFLOWER_SEEDS),
-	])
-	_add_inventory_section("Stored products", [
+	], "SeedsGrid")
+	_add_inventory_section(_tr("farm_work.inventory.stored_products", "Lagerbestand"), [
 		_make_inventory_slot_data("wheat_grain", _silo_inventory, LIVE_TAKE_GRAIN_SILO),
 		_make_inventory_slot_data("corn_grain", _silo_inventory, LIVE_TAKE_CORN_GRAIN_SILO),
 		_make_inventory_slot_data("sunflower_grain", _silo_inventory, LIVE_TAKE_SUNFLOWER_GRAIN_SILO),
 		_make_inventory_slot_data("flour_sack", _barn_inventory, LIVE_TAKE_FLOUR_BARN),
-	])
+	], "StoredproductsGrid")
 
-	var capacity := _make_label("Barn %d / %d   Silo %d / %d" % [
+	var capacity := _make_label(_trf("farm_work.inventory.capacity", [
 		_barn_inventory.get_total_units(),
 		_barn_product_capacity,
 		_silo_inventory.get_total_units(),
 		_silo_grain_capacity,
-	], 12)
+	], "Scheune %d / %d   Silo %d / %d"), 12)
 	capacity.add_theme_color_override("font_color", UiThemeScript.TEXT_SECONDARY)
 	_context_content.add_child(capacity)
 
-	var carried := _make_label("Carried: %s" % _player_inventory.format_contents(ITEM_LABELS), 12)
+	var carried := _make_label(_trf("farm_work.inventory.carried", [_player_inventory.format_contents(_localized_item_labels())], "Getragen: %s"), 12)
 	carried.add_theme_color_override("font_color", UiThemeScript.TEXT_MUTED)
 	_context_content.add_child(carried)
 
 	var action_row := HBoxContainer.new()
 	action_row.add_theme_constant_override("separation", UiThemeScript.SEPARATION_DENSE)
 	_context_content.add_child(action_row)
-	_add_context_action_button(action_row, LIVE_STORE_FLOUR_BARN, "Store flour")
-	_add_context_action_button(action_row, LIVE_LOAD_PICKUP, "Load pickup")
+	_add_context_action_button(action_row, LIVE_STORE_FLOUR_BARN, _tr("farm_work.action.store_flour", "Mehl einlagern"))
+	_add_context_action_button(action_row, LIVE_LOAD_PICKUP, _tr("farm_work.action.load_pickup", "Pickup beladen"))
 
 
-func _add_inventory_section(label: String, slots: Array[Dictionary]) -> void:
+func _add_inventory_section(label: String, slots: Array[Dictionary], grid_name: String = "") -> void:
 	var heading := _make_label(label, 14)
 	heading.add_theme_color_override("font_color", UiThemeScript.TEXT_SECONDARY)
 	_context_content.add_child(heading)
 
 	var grid := GridContainer.new()
-	grid.name = "%sGrid" % label.replace(" ", "")
+	grid.name = grid_name if not grid_name.is_empty() else "%sGrid" % label.replace(" ", "")
 	grid.columns = 3
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation", UiThemeScript.SEPARATION_DENSE)
@@ -1090,7 +1106,7 @@ func _build_inventory_slot_button(slot: Dictionary) -> Button:
 	var button := Button.new()
 	button.name = "FarmInventorySlot_%s" % item_id
 	button.text = ""
-	button.tooltip_text = "Take %s" % _item_label(item_id)
+	button.tooltip_text = _trf("farm_work.inventory.take_tooltip", [_item_label(item_id)], "%s nehmen")
 	button.custom_minimum_size = Vector2(112, 118)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.focus_mode = Control.FOCUS_NONE
@@ -1171,64 +1187,64 @@ func _get_context_lines(interactable) -> PackedStringArray:
 		"field":
 			var field = _get_field_data(interactable.interactable_id)
 			if field != null:
-				lines.append("Plant: %s" % field.get_crop_label())
-				lines.append("Growth: %d%%" % int(round(field.growth * 100.0)))
-				lines.append("Water: %d%%" % int(round(field.water * 100.0)))
-				lines.append("State: %s" % field.get_state_label())
-				lines.append("Action: %s" % _field_action_hint(field))
+				lines.append(_trf("farm_work.context.field_plant", [_field_crop_label(field)], "Pflanze: %s"))
+				lines.append(_trf("farm_work.context.field_growth", [int(round(field.growth * 100.0))], "Wachstum: %d%%"))
+				lines.append(_trf("farm_work.context.field_water", [int(round(field.water * 100.0))], "Wasser: %d%%"))
+				lines.append(_trf("farm_work.context.field_state", [_field_state_label(field)], "Status: %s"))
+				lines.append(_trf("farm_work.context.field_action", [_field_action_hint(field)], "Nächste Aktion: %s"))
 		"silo":
-			lines.append("Wheat: %d" % _silo_inventory.get_amount("wheat_grain"))
-			lines.append("Corn: %d" % _silo_inventory.get_amount("corn_grain"))
-			lines.append("Sunflowers: %d" % _silo_inventory.get_amount("sunflower_grain"))
-			lines.append("Capacity: %d / %d" % [_silo_inventory.get_total_units(), _silo_grain_capacity])
+			lines.append(_trf("farm_work.context.silo_wheat", [_silo_inventory.get_amount("wheat_grain")], "Weizen: %d"))
+			lines.append(_trf("farm_work.context.silo_corn", [_silo_inventory.get_amount("corn_grain")], "Mais: %d"))
+			lines.append(_trf("farm_work.context.silo_sunflowers", [_silo_inventory.get_amount("sunflower_grain")], "Sonnenblumen: %d"))
+			lines.append(_trf("farm_work.context.capacity", [_silo_inventory.get_total_units(), _silo_grain_capacity], "Kapazität: %d / %d"))
 		"windmill":
 			var snapshot: Dictionary = _production.get_snapshot()
-			lines.append("Grain: %s" % _crop_label(str(snapshot.get("selected_grain_type", CROP_WHEAT))))
-			lines.append("Required: %d wheat" % int(snapshot.get("required_grain", 0)))
-			lines.append("Duration: %.1fs" % float(snapshot.get("duration_sec", 0.0)))
-			lines.append("Progress: %d%%" % int(round(float(snapshot.get("progress_ratio", 0.0)) * 100.0)))
-			lines.append("Flour sacks ready: %d" % int(snapshot.get("produced_sacks_pending", 0)))
+			lines.append(_trf("farm_work.context.grain", [_crop_label(str(snapshot.get("selected_grain_type", CROP_WHEAT)))], "Getreide: %s"))
+			lines.append(_trf("farm_work.context.required_wheat", [int(snapshot.get("required_grain", 0))], "Benötigt: %d Weizen"))
+			lines.append(_trf("farm_work.context.duration", [float(snapshot.get("duration_sec", 0.0))], "Dauer: %.1fs"))
+			lines.append(_trf("farm_work.context.progress", [int(round(float(snapshot.get("progress_ratio", 0.0)) * 100.0))], "Fortschritt: %d%%"))
+			lines.append(_trf("farm_work.context.flour_ready", [int(snapshot.get("produced_sacks_pending", 0))], "Mehlsäcke bereit: %d"))
 		"barn":
-			lines.append("Stored products")
-			lines.append("Flour sacks: %d" % _barn_inventory.get_amount("flour_sack"))
-			lines.append("Grain: wheat %d | corn %d | sunflowers %d" % [
+			lines.append(_tr("farm_work.inventory.stored_products", "Lagerbestand"))
+			lines.append(_trf("farm_work.context.flour_sacks", [_barn_inventory.get_amount("flour_sack")], "Mehlsäcke: %d"))
+			lines.append(_trf("farm_work.context.grain_stock", [
 				_silo_inventory.get_amount("wheat_grain"),
 				_silo_inventory.get_amount("corn_grain"),
 				_silo_inventory.get_amount("sunflower_grain"),
-			])
-			lines.append("Seeds")
-			lines.append("Wheat %d | corn %d | sunflower %d" % [
+			], "Getreide: Weizen %d | Mais %d | Sonnenblumen %d"))
+			lines.append(_tr("farm_work.inventory.seeds", "Saatgut"))
+			lines.append(_trf("farm_work.context.seed_stock", [
 				_seed_inventory.get_amount("wheat_seed"),
 				_seed_inventory.get_amount("corn_seed"),
 				_seed_inventory.get_amount("sunflower_seed"),
-			])
-			lines.append("Storage: barn %d / %d | silo %d / %d" % [
+			], "Weizen %d | Mais %d | Sonnenblume %d"))
+			lines.append(_trf("farm_work.context.storage", [
 				_barn_inventory.get_total_units(),
 				_barn_product_capacity,
 				_silo_inventory.get_total_units(),
 				_silo_grain_capacity,
-			])
+			], "Lager: Scheune %d / %d | Silo %d / %d"))
 		"shed":
-			lines.append("Tools: watering can, sickle, shovel")
-			lines.append("Seeds: wheat %d | corn %d | sunflower %d" % [
+			lines.append(_trf("farm_work.context.tools", [_item_label("watering_can"), _item_label("sickle"), _item_label("shovel")], "Werkzeuge: %s, %s, %s"))
+			lines.append(_trf("farm_work.context.seeds", [
 				_seed_inventory.get_amount("wheat_seed"),
 				_seed_inventory.get_amount("corn_seed"),
 				_seed_inventory.get_amount("sunflower_seed"),
-			])
-			lines.append("Sacks: empty flour sacks")
+			], "Saatgut: Weizen %d | Mais %d | Sonnenblume %d"))
+			lines.append(_tr("farm_work.context.sacks", "Säcke: leere Mehlsäcke"))
 		"machine_yard":
-			lines.append("Vehicle: Pickup placeholder")
-			lines.append("Status: parked")
-			lines.append("Cargo: %d / 6 flour sacks" % _pickup_inventory.get_amount("flour_sack"))
+			lines.append(_tr("farm_work.context.vehicle_pickup", "Fahrzeug: Pickup"))
+			lines.append(_tr("farm_work.context.status_parked", "Status: geparkt"))
+			lines.append(_trf("farm_work.context.cargo_flour", [_pickup_inventory.get_amount("flour_sack")], "Ladung: %d / 6 Mehlsäcke"))
 			if not demand_entries.is_empty():
 				var priority := demand_entries[0]
-				lines.append("Priorität: %s benötigt %d %s" % [
-					str(priority.get("target_name", "Business")),
+				lines.append(_trf("farm_work.context.priority", [
+					str(priority.get("target_name", _tr("farm_work.generic.business", "Business"))),
 					int(priority.get("need", 0)),
-					str(priority.get("target_item_label", "goods")),
-				])
+					str(priority.get("target_item_label", _tr("farm_work.generic.goods", "goods"))),
+				], "Priorität: %s benötigt %d %s"))
 		"gate":
-			lines.append("Exit: returns to the city gate position")
+			lines.append(_tr("farm_work.context.exit_gate", "Ausgang: zurück zum Stadttor"))
 	return lines
 
 
@@ -1239,36 +1255,36 @@ func _get_context_actions(interactable) -> Array[Dictionary]:
 			var field = _get_field_data(interactable.interactable_id)
 			if field != null:
 				var crop_type := str(field.allowed_crop_type)
-				actions.append({"id": "select_%s" % crop_type, "label": "Select %s" % _crop_label(crop_type)})
-			actions.append({"id": LIVE_SOW_FIELD, "label": "Sow"})
-			actions.append({"id": LIVE_WATER_FIELD, "label": "Water"})
-			actions.append({"id": LIVE_HARVEST_FIELD, "label": "Harvest"})
+				actions.append({"id": "select_%s" % crop_type, "label": _trf("farm_work.action.select_crop", [_crop_label(crop_type)], "%s auswählen")})
+			actions.append({"id": LIVE_SOW_FIELD, "label": _tr("farm_work.action.sow", "Säen")})
+			actions.append({"id": LIVE_WATER_FIELD, "label": _tr("farm_work.action.water", "Gießen")})
+			actions.append({"id": LIVE_HARVEST_FIELD, "label": _tr("farm_work.action.harvest", "Ernten")})
 		"silo":
-			actions.append({"id": LIVE_STORE_GRAIN_SILO, "label": "Store carried grain"})
-			actions.append({"id": LIVE_TAKE_GRAIN_SILO, "label": "Take wheat from silo"})
-			actions.append({"id": LIVE_START_WINDMILL, "label": "Send wheat to windmill"})
+			actions.append({"id": LIVE_STORE_GRAIN_SILO, "label": _tr("farm_work.action.store_carried_grain", "Getragenes Getreide einlagern")})
+			actions.append({"id": LIVE_TAKE_GRAIN_SILO, "label": _tr("farm_work.action.take_wheat_silo", "Weizen aus Silo nehmen")})
+			actions.append({"id": LIVE_START_WINDMILL, "label": _tr("farm_work.action.send_wheat_windmill", "Weizen zur Windmühle schicken")})
 		"windmill":
-			actions.append({"id": LIVE_START_WINDMILL, "label": "Start production"})
-			actions.append({"id": LIVE_PAUSE_WINDMILL, "label": "Pause production"})
-			actions.append({"id": LIVE_COLLECT_FLOUR, "label": "Collect flour sacks"})
+			actions.append({"id": LIVE_START_WINDMILL, "label": _tr("farm_work.action.start_production", "Produktion starten")})
+			actions.append({"id": LIVE_PAUSE_WINDMILL, "label": _tr("farm_work.action.pause_production", "Produktion pausieren")})
+			actions.append({"id": LIVE_COLLECT_FLOUR, "label": _tr("farm_work.action.collect_flour", "Mehlsäcke abholen")})
 		"barn":
-			actions.append({"id": LIVE_STORE_FLOUR_BARN, "label": "Store flour sacks"})
-			actions.append({"id": LIVE_TAKE_FLOUR_BARN, "label": "Take flour sacks"})
-			actions.append({"id": LIVE_LOAD_PICKUP, "label": "Prepare pickup load"})
+			actions.append({"id": LIVE_STORE_FLOUR_BARN, "label": _tr("farm_work.action.store_flour_sacks", "Mehlsäcke einlagern")})
+			actions.append({"id": LIVE_TAKE_FLOUR_BARN, "label": _tr("farm_work.action.take_flour_sacks", "Mehlsäcke nehmen")})
+			actions.append({"id": LIVE_LOAD_PICKUP, "label": _tr("farm_work.action.prepare_pickup", "Pickup-Ladung vorbereiten")})
 		"shed":
 			_append_seed_actions(actions)
 		"machine_yard":
-			actions.append({"id": LIVE_USE_PICKUP, "label": "Use pickup"})
-			actions.append({"id": LIVE_LOAD_PICKUP, "label": "Load pickup"})
+			actions.append({"id": LIVE_USE_PICKUP, "label": _tr("farm_work.action.use_pickup", "Pickup nutzen")})
+			actions.append({"id": LIVE_LOAD_PICKUP, "label": _tr("farm_work.action.load_pickup", "Pickup beladen")})
 		"gate":
-			actions.append({"id": LIVE_LEAVE_FARM, "label": "Leave farm"})
+			actions.append({"id": LIVE_LEAVE_FARM, "label": _tr("farm_work.action.leave_farm", "Farm verlassen")})
 	return actions
 
 
 func _append_seed_actions(actions: Array[Dictionary]) -> void:
-	actions.append({"id": LIVE_TAKE_WHEAT_SEEDS, "label": "Take wheat seeds"})
-	actions.append({"id": LIVE_TAKE_CORN_SEEDS, "label": "Take corn seeds"})
-	actions.append({"id": LIVE_TAKE_SUNFLOWER_SEEDS, "label": "Take sunflower seeds"})
+	actions.append({"id": LIVE_TAKE_WHEAT_SEEDS, "label": _tr("farm_work.action.take_wheat_seeds", "Weizensaat nehmen")})
+	actions.append({"id": LIVE_TAKE_CORN_SEEDS, "label": _tr("farm_work.action.take_corn_seeds", "Maissaat nehmen")})
+	actions.append({"id": LIVE_TAKE_SUNFLOWER_SEEDS, "label": _tr("farm_work.action.take_sunflower_seeds", "Sonnenblumensaat nehmen")})
 
 
 func _perform_live_action(action_id: String, interactable) -> Dictionary:
@@ -1320,7 +1336,7 @@ func _perform_live_action(action_id: String, interactable) -> Dictionary:
 			result = _load_pickup()
 		LIVE_USE_PICKUP:
 			result = _ok("pickup_ready")
-			_set_hint("Pickup selected as temporary farm vehicle.")
+			_set_hint(_tr("farm_work.hint.pickup_selected", "Pickup als temporäres Farmfahrzeug ausgewählt."))
 		LIVE_LEAVE_FARM:
 			finish_session()
 			result = _ok("left_farm")
@@ -1333,7 +1349,7 @@ func _perform_live_action(action_id: String, interactable) -> Dictionary:
 
 func _take_seeds(crop_type: String) -> Dictionary:
 	var cleaned_crop := crop_type.strip_edges()
-	if not CROP_LABELS.has(cleaned_crop):
+	if not SUPPORTED_CROPS.has(cleaned_crop):
 		return _wrong_live_action("unknown_seed_type")
 	var seed_id := "%s_seed" % cleaned_crop
 	var moved: int = int(_seed_inventory.transfer_to(
@@ -1353,7 +1369,7 @@ func _take_seeds(crop_type: String) -> Dictionary:
 	_selected_tool = "Seed bag"
 	if cleaned_crop == CROP_WHEAT:
 		_mark_task_done("take_seed")
-	_set_hint("Took %d %s seeds from farm inventory." % [moved, _crop_label(cleaned_crop)])
+	_set_hint(_trf("farm_work.hint.seeds_taken", [moved, _item_label(seed_id)], "%d %s aus dem Farmlager genommen."))
 	return _ok("%s_seeds_taken" % cleaned_crop)
 
 
@@ -1371,7 +1387,7 @@ func _sow_live_field(interactable) -> Dictionary:
 	_selected_tool = "Seed bag"
 	if field.field_id == "field_wheat":
 		_mark_task_done("sow_wheat")
-	_set_hint("%s sowed." % field.get_crop_label())
+	_set_hint(_trf("farm_work.hint.sowed", [_field_crop_label(field)], "%s gesät."))
 	return _ok("sowed")
 
 
@@ -1386,7 +1402,7 @@ func _water_live_field(interactable) -> Dictionary:
 	_selected_tool = "Watering can"
 	if field.field_id == "field_wheat":
 		_mark_task_done("water_wheat")
-	_set_hint("%s watered." % field.display_name)
+	_set_hint(_trf("farm_work.hint.watered", [field.display_name], "%s bewässert."))
 	return _ok("watered")
 
 
@@ -1406,7 +1422,7 @@ func _harvest_live_field(interactable) -> Dictionary:
 	_selected_tool = "Sickle"
 	if field.field_id == "field_wheat":
 		_mark_task_done("harvest_wheat")
-	_set_hint("%s harvested." % field.get_crop_label())
+	_set_hint(_trf("farm_work.hint.harvested", [_field_crop_label(field)], "%s geerntet."))
 	return _ok("harvested")
 
 
@@ -1419,13 +1435,13 @@ func _store_grain_in_silo() -> Dictionary:
 		return _wrong_live_action("no_grain_to_store")
 	delivered_crates += 1
 	_mark_task_done("store_silo")
-	_set_hint("Stored %d grain in the silo." % moved)
+	_set_hint(_trf("farm_work.hint.stored_grain", [moved], "%d Getreide im Silo eingelagert."))
 	return _ok("stored_silo")
 
 
 func _take_grain_from_silo(crop_type: String) -> Dictionary:
 	var cleaned_crop := crop_type.strip_edges()
-	if not CROP_LABELS.has(cleaned_crop):
+	if not SUPPORTED_CROPS.has(cleaned_crop):
 		return _wrong_live_action("unknown_grain_type")
 	var grain_id := "%s_grain" % cleaned_crop
 	var moved: int = int(_silo_inventory.transfer_to(
@@ -1435,21 +1451,21 @@ func _take_grain_from_silo(crop_type: String) -> Dictionary:
 	))
 	if moved <= 0:
 		return _wrong_live_action("silo_has_no_%s" % cleaned_crop)
-	_set_hint("Took %d %s from the silo." % [moved, _crop_label(cleaned_crop)])
+	_set_hint(_trf("farm_work.hint.took_grain", [moved, _crop_label(cleaned_crop)], "%d %s aus dem Silo genommen."))
 	return _ok("%s_grain_taken" % cleaned_crop)
 
 
 func _start_windmill() -> Dictionary:
 	if _production.start(CROP_WHEAT, _silo_inventory):
 		_mark_task_done("start_mill")
-		_set_hint("Windmill production started.")
+		_set_hint(_tr("farm_work.hint.windmill_started", "Windmühlenproduktion gestartet."))
 		return _ok("windmill_started")
 	return _wrong_live_action("not_enough_wheat_or_running")
 
 
 func _pause_windmill() -> Dictionary:
 	if _production.pause():
-		_set_hint("Windmill paused." if _production.paused else "Windmill resumed.")
+		_set_hint(_tr("farm_work.hint.windmill_paused", "Windmühle pausiert.") if _production.paused else _tr("farm_work.hint.windmill_resumed", "Windmühle fortgesetzt."))
 		return _ok("windmill_pause_toggle")
 	return _wrong_live_action("windmill_not_running")
 
@@ -1461,7 +1477,7 @@ func _collect_flour_sacks() -> Dictionary:
 	_player_inventory.add_item("flour_sack", sacks)
 	_player_inventory.remove_item("empty_sack", mini(_player_inventory.get_amount("empty_sack"), sacks))
 	_mark_task_done("collect_flour")
-	_set_hint("Collected %d flour sacks." % sacks)
+	_set_hint(_trf("farm_work.hint.collected_flour", [sacks], "%d Mehlsäcke abgeholt."))
 	return _ok("flour_collected")
 
 
@@ -1470,7 +1486,7 @@ func _store_flour_in_barn() -> Dictionary:
 	if moved <= 0:
 		return _wrong_live_action("no_flour_to_store")
 	_mark_task_done("store_barn")
-	_set_hint("Stored %d flour sacks in the barn." % moved)
+	_set_hint(_trf("farm_work.hint.stored_flour", [moved], "%d Mehlsäcke in der Scheune eingelagert."))
 	return _ok("flour_stored")
 
 
@@ -1482,7 +1498,7 @@ func _take_flour_from_barn() -> Dictionary:
 	))
 	if moved <= 0:
 		return _wrong_live_action("barn_has_no_flour")
-	_set_hint("Took %d flour sacks from the barn." % moved)
+	_set_hint(_trf("farm_work.hint.took_flour", [moved], "%d Mehlsäcke aus der Scheune genommen."))
 	return _ok("flour_taken")
 
 
@@ -1496,7 +1512,7 @@ func _load_pickup() -> Dictionary:
 		return _wrong_live_action("no_flour_to_load")
 	delivered_crates += moved
 	_mark_task_done("load_pickup")
-	_set_hint("Loaded %d flour sacks on the pickup." % moved)
+	_set_hint(_trf("farm_work.hint.loaded_pickup", [moved], "%d Mehlsäcke auf den Pickup geladen."))
 	return _ok("pickup_loaded")
 
 
@@ -1507,10 +1523,10 @@ func _tick_live_systems(delta: float) -> void:
 			if field.field_id == "field_wheat":
 				_mark_task_done("wait_growth")
 			_live_growth_minutes_added = maxi(_live_growth_minutes_added, int(round(_farm_growth_total_minutes * field.growth)))
-			_set_hint("%s is mature." % field.display_name)
+			_set_hint(_trf("farm_work.hint.field_mature", [field.display_name], "%s ist reif."))
 	var produced: int = int(_production.tick(delta))
 	if produced > 0:
-		_set_hint("Windmill produced %d flour sacks." % produced)
+		_set_hint(_trf("farm_work.hint.windmill_produced", [produced], "Windmühle hat %d Mehlsäcke produziert."))
 	_update_all_field_visuals()
 
 
@@ -1522,9 +1538,52 @@ func _wrong_live_action(reason: String) -> Dictionary:
 	mistakes += 1
 	score = maxi(score - 6, 0)
 	quality_score = clampf(quality_score - 0.07, 0.0, 1.0)
-	_set_hint("Action unavailable: %s." % reason)
+	_set_hint(_trf("farm_work.hint.action_unavailable", [_action_error_label(reason)], "Aktion nicht möglich: %s."))
 	mistake_made.emit(reason)
 	return {"correct": false, "reason": reason, "score": score, "mistakes": mistakes}
+
+
+func _action_error_label(reason: String) -> String:
+	match reason:
+		"unsupported":
+			return _tr("farm_work.error.unsupported", "nicht unterstützt")
+		"unknown_seed_type":
+			return _tr("farm_work.error.unknown_seed_type", "unbekannte Saat")
+		"seed_stock_empty":
+			return _tr("farm_work.error.seed_stock_empty", "Saatgut ist leer")
+		"not_field":
+			return _tr("farm_work.error.not_field", "das ist kein Feld")
+		"wrong_crop_or_state":
+			return _tr("farm_work.error.wrong_crop_or_state", "falsche Saat oder Feldzustand")
+		"missing_seed":
+			return _tr("farm_work.error.missing_seed", "Saatgut fehlt")
+		"missing_watering_can":
+			return _tr("farm_work.error.missing_watering_can", "Gießkanne fehlt")
+		"field_not_waterable":
+			return _tr("farm_work.error.field_not_waterable", "Feld braucht gerade kein Wasser")
+		"missing_sickle":
+			return _tr("farm_work.error.missing_sickle", "Sichel fehlt")
+		"field_not_mature":
+			return _tr("farm_work.error.field_not_mature", "Feld ist noch nicht reif")
+		"no_grain_to_store":
+			return _tr("farm_work.error.no_grain_to_store", "kein Getreide zum Einlagern")
+		"unknown_grain_type":
+			return _tr("farm_work.error.unknown_grain_type", "unbekannte Getreidesorte")
+		"not_enough_wheat_or_running":
+			return _tr("farm_work.error.not_enough_wheat_or_running", "nicht genug Weizen oder Mühle läuft bereits")
+		"windmill_not_running":
+			return _tr("farm_work.error.windmill_not_running", "Mühle läuft nicht")
+		"no_flour_ready":
+			return _tr("farm_work.error.no_flour_ready", "kein Mehl bereit")
+		"no_flour_to_store":
+			return _tr("farm_work.error.no_flour_to_store", "keine Mehlsäcke zum Einlagern")
+		"barn_has_no_flour":
+			return _tr("farm_work.error.barn_has_no_flour", "keine Mehlsäcke in der Scheune")
+		"no_flour_to_load":
+			return _tr("farm_work.error.no_flour_to_load", "keine Mehlsäcke zum Beladen")
+	if reason.begins_with("silo_has_no_"):
+		return _trf("farm_work.error.silo_has_no", [_crop_label(reason.substr("silo_has_no_".length()))], "kein %s im Silo")
+	return reason.replace("_", " ")
 
 
 func _mark_task_done(task_id: String) -> void:
@@ -1549,31 +1608,31 @@ func _get_current_task_label() -> String:
 	for task_id in TASK_FLOW:
 		if not _task_flags.has(task_id):
 			return _task_label_for_id(task_id)
-	return "Load complete"
+	return _tr("farm_work.task.load_complete", "Ladung fertig")
 
 
 func _task_label_for_id(task_id: String) -> String:
 	match task_id:
 		"take_seed":
-			return "Weizensaat aus dem Farmlager holen"
+			return _tr("farm_work.task.take_seed", "Weizensaat aus dem Farmlager holen")
 		"sow_wheat":
-			return "Weizen auf dem Weizenfeld säen"
+			return _tr("farm_work.task.sow_wheat", "Weizen auf dem Weizenfeld säen")
 		"water_wheat":
-			return "Weizenfeld bewässern"
+			return _tr("farm_work.task.water_wheat", "Weizenfeld bewässern")
 		"wait_growth":
-			return "Wachstum des Weizens abwarten"
+			return _tr("farm_work.task.wait_growth", "Wachstum des Weizens abwarten")
 		"harvest_wheat":
-			return "Weizen ernten"
+			return _tr("farm_work.task.harvest_wheat", "Weizen ernten")
 		"store_silo":
-			return "Getreide im Silo einlagern"
+			return _tr("farm_work.task.store_silo", "Getreide im Silo einlagern")
 		"start_mill":
-			return "Windmühle starten"
+			return _tr("farm_work.task.start_mill", "Windmühle starten")
 		"collect_flour":
-			return "Mehlsäcke abholen"
+			return _tr("farm_work.task.collect_flour", "Mehlsäcke abholen")
 		"store_barn":
-			return "Säcke in der Scheune lagern"
+			return _tr("farm_work.task.store_barn", "Säcke in der Scheune lagern")
 		"load_pickup":
-			return "Pickup beladen"
+			return _tr("farm_work.task.load_pickup", "Pickup beladen")
 	return task_id
 
 
@@ -1638,7 +1697,7 @@ func _on_interactable_requested(interactable) -> void:
 	if interactable == null:
 		return
 	if _player != null and _planar_distance(_player.global_position, interactable.global_position) > interactable.interaction_radius + 0.75:
-		_set_hint("Move closer to %s." % interactable.display_name)
+		_set_hint(_trf("farm_work.hint.move_closer", [interactable.display_name], "Geh näher zu %s."))
 		return
 	_open_context_for(interactable)
 
@@ -1665,11 +1724,11 @@ func _find_interactable(interactable_id: String):
 
 func _field_action_hint(field) -> String:
 	if field.can_sow(_selected_crop_type):
-		return "Sow"
+		return _tr("farm_work.action.sow", "Säen")
 	if field.can_water():
-		return "Water"
+		return _tr("farm_work.action.water", "Gießen")
 	if field.can_harvest():
-		return "Harvest"
+		return _tr("farm_work.action.harvest", "Ernten")
 	return "-"
 
 
@@ -1689,6 +1748,8 @@ func _update_field_visual(field) -> void:
 			active_index = 1
 		CROP_SUNFLOWER:
 			active_index = 2
+	if crop_nodes.size() == 1:
+		active_index = 0
 	var show_crop := int(field.state) != FIELD_PREPARED and int(field.state) != FIELD_HARVESTED
 	for index in range(crop_nodes.size()):
 		var crop_node := crop_nodes[index] as MultiMeshInstance3D
@@ -1711,29 +1772,125 @@ func _clear_children(node: Node) -> void:
 		child.queue_free()
 
 
+func _sync_locale_state() -> void:
+	var language := LocaleServiceScript.get_language()
+	if language == _last_locale:
+		return
+	_last_locale = language
+	_context_signature = ""
+	_update_localized_field_labels()
+	_update_localized_interactable_labels()
+
+
+func _update_localized_field_labels() -> void:
+	for field in _fields:
+		if field == null:
+			continue
+		field.display_name = _field_display_name(str(field.field_id))
+
+
+func _update_localized_interactable_labels() -> void:
+	for interactable in _interactables:
+		if interactable == null or not is_instance_valid(interactable):
+			continue
+		if interactable.interactable_type == "field":
+			var field = _get_field_data(interactable.interactable_id)
+			if field != null:
+				interactable.display_name = field.display_name
+		else:
+			interactable.display_name = _interactable_label(str(interactable.interactable_id))
+
+
+func _tr(key: String, fallback: String = "") -> String:
+	return LocaleServiceScript.t(key, fallback)
+
+
+func _trf(key: String, args: Array, fallback: String) -> String:
+	return _tr(key, fallback) % args
+
+
+func _localized_item_labels() -> Dictionary:
+	var labels: Dictionary = {}
+	for item_id in ITEM_LABEL_KEYS.keys():
+		labels[item_id] = _item_label(str(item_id))
+	return labels
+
+
+func _field_display_name(field_id: String) -> String:
+	match field_id:
+		"field_wheat":
+			return _tr("farm_work.field.wheat", "Weizenfeld")
+		"field_corn":
+			return _tr("farm_work.field.corn", "Maisfeld")
+	return field_id
+
+
+func _interactable_label(interactable_id: String) -> String:
+	match interactable_id:
+		"barn":
+			return _tr("farm_work.interactable.barn", "Farmlager")
+		"shed":
+			return _tr("farm_work.interactable.shed", "Werkzeug- und Saatlager")
+		"silo":
+			return _tr("farm_work.interactable.silo", "Getreidesilo")
+		"windmill":
+			return _tr("farm_work.interactable.windmill", "Windmühlenproduktion")
+		"gate":
+			return _tr("farm_work.interactable.gate", "Hoftor")
+	return interactable_id
+
+
 func _crop_label(crop_type: String) -> String:
-	return str(CROP_LABELS.get(crop_type, crop_type))
+	var key := str(CROP_LABEL_KEYS.get(crop_type, ""))
+	return _tr(key, crop_type) if not key.is_empty() else crop_type
+
+
+func _field_crop_label(field) -> String:
+	if field == null:
+		return "-"
+	var crop_type := str(field.crop_type)
+	if crop_type.is_empty():
+		crop_type = str(field.allowed_crop_type)
+	return _crop_label(crop_type)
+
+
+func _field_state_label(field) -> String:
+	if field == null:
+		return "-"
+	match int(field.state):
+		FIELD_PREPARED:
+			return _tr("farm_work.field_state.prepared", "vorbereitet")
+		FIELD_SEEDED:
+			return _tr("farm_work.field_state.seeded", "gesät")
+		FIELD_GROWING:
+			return _tr("farm_work.field_state.growing", "wächst")
+		FIELD_MATURE:
+			return _tr("farm_work.field_state.mature", "reif")
+		FIELD_HARVESTED:
+			return _tr("farm_work.field_state.harvested", "geerntet")
+	return str(field.get_state_label())
 
 
 func _item_label(item_id: String) -> String:
-	return str(ITEM_LABELS.get(item_id, item_id))
+	var key := str(ITEM_LABEL_KEYS.get(item_id, ""))
+	return _tr(key, item_id) if not key.is_empty() else item_id
 
 func _tool_display_label(tool: String) -> String:
 	match tool:
 		"Hands":
-			return "Hände"
+			return _tr("farm_work.tool.hands", "Hände")
 		"Seed bag":
-			return "Saatbeutel"
+			return _tr("farm_work.tool.seed_bag", "Saatbeutel")
 		"Watering can":
-			return "Gießkanne"
+			return _tr("farm_work.item.watering_can", "Gießkanne")
 		"Sickle":
-			return "Sichel"
+			return _tr("farm_work.item.sickle", "Sichel")
 	return tool
 
 
 func _set_hint(text: String) -> void:
 	if _hint_label != null:
-		_hint_label.text = "Hint\n%s" % text
+		_hint_label.text = _trf("farm_work.hud.hint", [text], "Hinweis\n%s")
 
 
 func _calculate_units_per_crate() -> int:
@@ -1749,18 +1906,18 @@ func _calculate_work_minutes() -> int:
 
 func _format_demand_hud() -> String:
 	if demand_entries.is_empty():
-		return "Nachfrage\nKeine offenen Bestellungen"
-	var lines := PackedStringArray(["Nachfrage"])
+		return _tr("farm_work.demand.none", "Nachfrage\nKeine offenen Bestellungen")
+	var lines := PackedStringArray([_tr("farm_work.hud.demand_title", "Nachfrage")])
 	var count := mini(demand_entries.size(), 2)
 	for index in range(count):
 		var entry := demand_entries[index]
 		lines.append("%s: %d %s" % [
-			str(entry.get("target_name", "Business")),
+			str(entry.get("target_name", _tr("farm_work.generic.business", "Business"))),
 			int(entry.get("need", 0)),
-			str(entry.get("target_item_label", "goods")),
+			str(entry.get("target_item_label", _tr("farm_work.generic.goods", "goods"))),
 		])
 	if demand_entries.size() > count:
-		lines.append("+%d weitere" % (demand_entries.size() - count))
+		lines.append(_trf("farm_work.demand.more", [demand_entries.size() - count], "+%d weitere"))
 	return "\n".join(lines)
 
 
@@ -1821,15 +1978,15 @@ func _perform_legacy_plot_action(plot_index: int, action_id: String) -> Dictiona
 			plot["watered"] = false
 			plot["weeds"] = 0
 			plot["ready"] = false
-			_legacy_score_correct(plot_index, "Seed set", 10)
+			_legacy_score_correct(plot_index, _tr("farm_work.legacy.seed_set", "Saat gesetzt"), 10)
 			_maintenance_tasks_done += 1
 		ACTION_WATER:
 			plot["watered"] = true
-			_legacy_score_correct(plot_index, "Plant watered", 9)
+			_legacy_score_correct(plot_index, _tr("farm_work.legacy.plant_watered", "Pflanze bewässert"), 9)
 			_maintenance_tasks_done += 1
 		ACTION_WEED:
 			plot["weeds"] = maxi(int(plot.get("weeds", 0)) - 1, 0)
-			_legacy_score_correct(plot_index, "Weeds removed", 11)
+			_legacy_score_correct(plot_index, _tr("farm_work.legacy.weeds_removed", "Unkraut entfernt"), 11)
 			_maintenance_tasks_done += 1
 		ACTION_HARVEST:
 			if _basket_crates >= BASKET_CAPACITY_CRATES:
@@ -1837,7 +1994,7 @@ func _perform_legacy_plot_action(plot_index: int, action_id: String) -> Dictiona
 			plot["harvested"] = true
 			_basket_crates += 1
 			_basket_units += _units_per_crate
-			_legacy_score_correct(plot_index, "%s harvested" % product_display_name, 16)
+			_legacy_score_correct(plot_index, _trf("farm_work.legacy.harvested", [product_display_name], "%s geerntet"), 16)
 		_:
 			return _legacy_wrong_action("unsupported_action", plot_index, action_id, required_action)
 
@@ -1876,7 +2033,7 @@ func _legacy_score_correct(plot_index: int, message: String, points: int) -> voi
 	completed_tasks += 1
 	score += points + mini(player_skill_level, 5)
 	quality_score = clampf(quality_score + 0.015, 0.0, 1.0)
-	_set_hint("Plot %d: %s." % [plot_index + 1, message])
+	_set_hint(_trf("farm_work.hint.plot", [plot_index + 1, message], "Plot %d: %s."))
 	score_changed.emit(score)
 
 

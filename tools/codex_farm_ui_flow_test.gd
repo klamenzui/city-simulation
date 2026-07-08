@@ -126,6 +126,7 @@ func _initialize() -> void:
 	await _run_worker_flow(world, player, farm, target, interaction, selection)
 	await _reset_after_delivery(world, player, farm)
 	await _run_owner_flow(world, player, farm, target, interaction, selection)
+	await _reset_after_delivery(world, player, farm)
 
 	_finish(main)
 
@@ -279,6 +280,8 @@ func _run_owner_flow(
 
 
 func _prepare_player(world: World, player: Citizen) -> void:
+	if player.has_method("exit_keyboard_control_mode"):
+		player.exit_keyboard_control_mode()
 	if player.current_action != null:
 		player.cancel_player_action(world)
 	if player.is_inside_vehicle():

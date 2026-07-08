@@ -39,6 +39,9 @@ func add_box_shape(size: Vector3, offset: Vector3 = Vector3.ZERO) -> CollisionSh
 	collision.name = "InteractionShape"
 	collision.shape = shape
 	collision.position = offset
+	collision.visible = false
+	collision.debug_fill = false
+	collision.debug_color = Color(0.0, 0.0, 0.0, 0.0)
 	add_child(collision)
 	return collision
 

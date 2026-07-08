@@ -3,6 +3,7 @@ extends SceneTree
 const FarmWorkSceneResource = preload("res://Scenes/WorkScenes/Farm/FarmWorkScene.tscn")
 const CitizenScene = preload("res://Entities/Citizens/CitizenNew.tscn")
 const SimulationInteractionControllerScript = preload("res://Simulation/UI/SimulationInteractionController.gd")
+const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 
 const ACTION_PLANT := "plant"
 const ACTION_WATER := "water"
@@ -22,6 +23,8 @@ const LIVE_LOAD_PICKUP := "load_pickup"
 
 func _initialize() -> void:
 	var failures: Array[String] = []
+	var original_language := LocaleServiceScript.get_language()
+	LocaleServiceScript.set_language("de")
 	var world := World.new()
 	world.name = "FarmWorkSceneTestWorld"
 	root.add_child(world)
@@ -64,6 +67,34 @@ func _initialize() -> void:
 	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/Buildings/SiloModel") != null, "FarmWorkScene should reuse the existing silo", failures)
 	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/TowerWindmill") != null, "FarmWorkScene should reuse the existing tower windmill", failures)
 	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldWest/FarmlandModel") != null, "FarmWorkScene should reuse the existing west field", failures)
+	var wheat_visual := game.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldWest2/FarmlandModel") as Node3D
+	var wheat_interactable := game.call("_find_interactable", "field_wheat") as Node3D
+	var wheat_anchor_matches_visual := false
+	if wheat_visual != null and wheat_interactable != null:
+		var wheat_bounds: AABB = game.call("_get_visual_bounds", wheat_visual)
+		wheat_anchor_matches_visual = wheat_interactable.position.distance_to(wheat_bounds.get_center()) < 0.05
+	_expect(
+		wheat_anchor_matches_visual,
+		"FarmWorkScene wheat interaction should anchor to the visual wheat field",
+		failures
+	)
+	var wheat_crop_nodes := game.call(
+		"_get_field_crop_nodes",
+		game.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldWest2")
+	) as Array
+	_expect(wheat_crop_nodes.size() > 0, "FarmWorkScene should find nested YAMMS wheat crop meshes", failures)
+	var corn_crop_nodes := game.call(
+		"_get_field_crop_nodes",
+		game.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldWest")
+	) as Array
+	var dedicated_crop_field_visible := false
+	if corn_crop_nodes.size() == 1:
+		var dedicated_crop_node := corn_crop_nodes[0] as Node3D
+		dedicated_crop_field_visible = dedicated_crop_node != null and dedicated_crop_node.visible
+	_expect(dedicated_crop_field_visible, "FarmWorkScene should keep dedicated single-crop field visuals visible", failures)
+	var runtime_density_decals: Array[Node] = []
+	_collect_nodes_of_type(game.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields"), Decal, runtime_density_decals)
+	_expect(runtime_density_decals.is_empty(), "FarmWorkScene should not render YAMMS density-map Decals at runtime", failures)
 	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/Obstacles/GroundShape") != null, "FarmWorkScene should reuse the Windmill Farm ground collider", failures)
 	_expect(game.get_node_or_null("WindmillFarm3D/GroundCollision") == null, "FarmWorkScene should not duplicate the Windmill Farm ground collider", failures)
 	_expect(game.get_node_or_null("WindmillFarm3D/MainPath") == null, "FarmWorkScene should not generate a primitive replacement path", failures)
@@ -74,10 +105,19 @@ func _initialize() -> void:
 	game.call("_open_context_for", barn_interactable)
 	var context_menu := game.get_node_or_null("FarmWorkHud/HudRoot/ContextMenu") as Control
 	_expect(context_menu != null and context_menu.visible, "clicking an existing farm object should open its context UI", failures)
-	_expect_eq(str(barn_interactable.display_name), "Farm inventory", "barn interaction should open the farm inventory", failures)
+	_expect_eq(str(barn_interactable.display_name), "Farmlager", "barn interaction should open the farm inventory", failures)
 	var barn_context_lines := game.call("_get_context_lines", barn_interactable) as PackedStringArray
-	_expect(barn_context_lines.has("Stored products"), "farm inventory should show stored products", failures)
-	_expect(barn_context_lines.has("Seeds"), "farm inventory should show seed stock", failures)
+	_expect(barn_context_lines.has("Lagerbestand"), "farm inventory should show stored products", failures)
+	_expect(barn_context_lines.has("Saatgut"), "farm inventory should show seed stock", failures)
+	LocaleServiceScript.set_language("en")
+	game.call("_update_all_ui")
+	_expect_eq(str(barn_interactable.display_name), "Farm inventory", "barn interaction should relocalize after language switch", failures)
+	var english_barn_context_lines := game.call("_get_context_lines", barn_interactable) as PackedStringArray
+	_expect(english_barn_context_lines.has("Stored products"), "farm inventory should show English stored-products heading after language switch", failures)
+	_expect(english_barn_context_lines.has("Seeds"), "farm inventory should show English seed heading after language switch", failures)
+	LocaleServiceScript.set_language("de")
+	game.call("_update_all_ui")
+	_expect_eq(str(barn_interactable.display_name), "Farmlager", "barn interaction should relocalize back to German", failures)
 	var initial_seed_inventory := game.call("debug_get_inventory_snapshot", "seeds") as Dictionary
 	_expect(int(initial_seed_inventory.get("wheat_seed", 0)) > 0, "farm inventory should start with wheat seeds", failures)
 	_expect(int(initial_seed_inventory.get("corn_seed", 0)) > 0, "farm inventory should start with corn seeds", failures)
@@ -164,17 +204,34 @@ func _initialize() -> void:
 	root.add_child(live)
 	await process_frame
 	live.call("start_session")
+	var live_wheat_crop_nodes := live.call(
+		"_get_field_crop_nodes",
+		live.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldWest2")
+	) as Array
+	_expect_eq(
+		_visible_node_count(live_wheat_crop_nodes),
+		0,
+		"prepared live wheat crop visuals should start hidden",
+		failures
+	)
 	var wheat_seed_stock_before := int((live.call("debug_get_inventory_snapshot", "seeds") as Dictionary).get("wheat_seed", 0))
 	_expect(bool((live.call("debug_perform_live_action", "shed", LIVE_TAKE_WHEAT_SEEDS) as Dictionary).get("correct", false)), "live flow should take wheat seeds", failures)
 	var wheat_seed_stock_after := int((live.call("debug_get_inventory_snapshot", "seeds") as Dictionary).get("wheat_seed", 0))
 	_expect_eq(wheat_seed_stock_after, wheat_seed_stock_before - 4, "taking seeds should reduce farm seed stock", failures)
 	_expect_eq(int((live.call("debug_get_inventory_snapshot", "player") as Dictionary).get("wheat_seed", 0)), 4, "taken seeds should enter player inventory", failures)
 	_expect(bool((live.call("debug_perform_live_action", "field_wheat", LIVE_SOW_FIELD) as Dictionary).get("correct", false)), "live flow should sow wheat", failures)
+	_expect(_visible_node_count(live_wheat_crop_nodes) > 0, "sowed live wheat crop visuals should become visible", failures)
 	_expect(bool((live.call("debug_perform_live_action", "field_wheat", LIVE_WATER_FIELD) as Dictionary).get("correct", false)), "live flow should water wheat", failures)
 	live.call("debug_tick_live", 9.0)
 	var wheat_field := live.call("debug_get_field_snapshot", "field_wheat") as Dictionary
 	_expect_eq(str(wheat_field.get("state_label", "")), "mature", "live wheat should mature after test time", failures)
 	_expect(bool((live.call("debug_perform_live_action", "field_wheat", LIVE_HARVEST_FIELD) as Dictionary).get("correct", false)), "live flow should harvest wheat", failures)
+	_expect_eq(
+		_visible_node_count(live_wheat_crop_nodes),
+		0,
+		"harvested live wheat crop visuals should hide",
+		failures
+	)
 	_expect(bool((live.call("debug_perform_live_action", "silo", LIVE_STORE_GRAIN_SILO) as Dictionary).get("correct", false)), "live flow should store wheat in silo", failures)
 	_expect(bool((live.call("debug_perform_live_action", "windmill", LIVE_START_WINDMILL) as Dictionary).get("correct", false)), "live flow should start windmill", failures)
 	live.call("debug_tick_live", 9.0)
@@ -277,6 +334,7 @@ func _initialize() -> void:
 	farm.queue_free()
 	world.queue_free()
 
+	LocaleServiceScript.set_language(original_language)
 	if failures.is_empty():
 		print("FARM_WORK_SCENE_TEST OK")
 		quit(0)
@@ -306,6 +364,24 @@ func _expect(condition: bool, message: String, failures: Array[String]) -> void:
 func _expect_eq(actual, expected, message: String, failures: Array[String]) -> void:
 	if actual != expected:
 		failures.append("%s (expected %s, got %s)" % [message, str(expected), str(actual)])
+
+
+func _collect_nodes_of_type(node: Node, target_type: Variant, out: Array[Node]) -> void:
+	if node == null:
+		return
+	if is_instance_of(node, target_type):
+		out.append(node)
+	for child in node.get_children():
+		_collect_nodes_of_type(child, target_type, out)
+
+
+func _visible_node_count(nodes: Array) -> int:
+	var count := 0
+	for node_var in nodes:
+		var node := node_var as Node3D
+		if node != null and node.visible:
+			count += 1
+	return count
 
 
 func _demand_contains_target(entries: Array, target_name: String) -> bool:

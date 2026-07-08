@@ -179,5 +179,5 @@ func generate_transform():
 
 func _apply_generated_instance_count(count: int) -> void:
 	count = clampi(count, 0, amount)
-	multimesh_item.visible_instance_count = count
 	multimesh_item.instance_count = count
+	multimesh_item.visible_instance_count = count

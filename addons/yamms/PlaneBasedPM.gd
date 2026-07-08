@@ -52,6 +52,8 @@ func remove_density_map():
 # Update visuals. Density map might have been added or removed.
 # so show or hide the density map.
 func _update_visuals():
+	if not Engine.is_editor_hint():
+		return
 	if density_map_node == null:
 		create_density_map_node()
 
@@ -68,12 +70,16 @@ func _update_material():
 @export var density_map : Texture2D = null:
 	set(value):
 		density_map = value
-		_update_visuals()
-		_update_material()
+		if Engine.is_editor_hint():
+			_update_visuals()
+			_update_material()
 
 func _ready() -> void:
 	super._ready()
-	_update_visuals()
+	if Engine.is_editor_hint():
+		_update_visuals()
+	else:
+		_remove_visuals()
 	
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_ENTER_TREE and Engine.is_editor_hint():
