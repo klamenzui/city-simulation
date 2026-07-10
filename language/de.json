@@ -574,7 +574,7 @@
 		},
 		"crop": { "wheat": "Weizen", "corn": "Mais", "sunflower": "Sonnenblume" },
 		"tool": { "hands": "Hände", "seed_bag": "Saatbeutel" },
-		"field": { "wheat": "Weizenfeld", "corn": "Maisfeld" },
+		"field": { "wheat": "Weizenfeld", "corn": "Maisfeld", "sunflower": "Sonnenblumenfeld" },
 		"field_state": {
 			"prepared": "vorbereitet",
 			"seeded": "gesät",

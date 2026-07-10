@@ -12,12 +12,14 @@ const ACTION_HARVEST := "harvest"
 const ACTION_DELIVER := "deliver"
 const LIVE_TAKE_WHEAT_SEEDS := "take_wheat_seeds"
 const LIVE_TAKE_CORN_SEEDS := "take_corn_seeds"
+const LIVE_TAKE_SUNFLOWER_SEEDS := "take_sunflower_seeds"
 const LIVE_SOW_FIELD := "sow_field"
 const LIVE_WATER_FIELD := "water_field"
 const LIVE_HARVEST_FIELD := "harvest_field"
 const LIVE_STORE_GRAIN_SILO := "store_grain_silo"
 const LIVE_START_WINDMILL := "start_windmill"
 const LIVE_START_CORN_PROCESSING := "start_corn_processing"
+const LIVE_START_SUNFLOWER_PROCESSING := "start_sunflower_processing"
 const LIVE_COLLECT_FLOUR := "collect_flour"
 const LIVE_STORE_FLOUR_BARN := "store_flour_barn"
 const LIVE_LOAD_PICKUP := "load_pickup"
@@ -69,6 +71,7 @@ func _initialize() -> void:
 	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/Buildings/SiloModel") != null, "FarmWorkScene should reuse the existing silo", failures)
 	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/TowerWindmill") != null, "FarmWorkScene should reuse the existing tower windmill", failures)
 	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldWest/FarmlandModel") != null, "FarmWorkScene should reuse the existing west field", failures)
+	_expect(game.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldMiddle/FarmlandModel") != null, "FarmWorkScene should reuse the middle field for sunflowers", failures)
 	var wheat_visual := game.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldWest2/FarmlandModel") as Node3D
 	var wheat_interactable := game.call("_find_interactable", "field_wheat") as Node3D
 	var wheat_anchor_matches_visual := false
@@ -80,6 +83,32 @@ func _initialize() -> void:
 		"FarmWorkScene wheat interaction should anchor to the visual wheat field",
 		failures
 	)
+	var sunflower_visual := game.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldMiddle/FarmlandModel") as Node3D
+	var sunflower_interactable := game.call("_find_interactable", "field_sunflower") as Node3D
+	var sunflower_anchor_matches_visual := false
+	if sunflower_visual != null and sunflower_interactable != null:
+		var sunflower_bounds: AABB = game.call("_get_visual_bounds", sunflower_visual)
+		sunflower_anchor_matches_visual = sunflower_interactable.position.distance_to(sunflower_bounds.get_center()) < 0.05
+	_expect(
+		sunflower_anchor_matches_visual,
+		"FarmWorkScene sunflower interaction should anchor to the middle field",
+		failures
+	)
+	var sunflower_crop_root := game.get_node_or_null(
+		"WindmillFarm3D/ExistingFarm/Fields/FieldMiddle/SunflowerCropVisual"
+	) as Node3D
+	var sunflower_crop_nodes: Array[Node] = []
+	_collect_nodes_of_type(sunflower_crop_root, MultiMeshInstance3D, sunflower_crop_nodes)
+	_expect_eq(sunflower_crop_nodes.size(), 4, "sunflower field should use four batched low-poly mesh layers", failures)
+	for sunflower_node_var in sunflower_crop_nodes:
+		var sunflower_node := sunflower_node_var as MultiMeshInstance3D
+		_expect(
+			sunflower_node != null and sunflower_node.multimesh != null
+				and sunflower_node.multimesh.transform_format == MultiMesh.TRANSFORM_3D
+				and sunflower_node.multimesh.instance_count > 0,
+			"sunflower MultiMeshes should be initialized in 3D format before instances are assigned",
+			failures
+		)
 	var wheat_crop_nodes := game.call(
 		"_get_field_crop_nodes",
 		game.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldWest2")
@@ -101,7 +130,7 @@ func _initialize() -> void:
 	_expect(game.get_node_or_null("WindmillFarm3D/GroundCollision") == null, "FarmWorkScene should not duplicate the Windmill Farm ground collider", failures)
 	_expect(game.get_node_or_null("WindmillFarm3D/MainPath") == null, "FarmWorkScene should not generate a primitive replacement path", failures)
 	_expect(game.get_node_or_null("WindmillFarm3D/FenceBack") == null, "FarmWorkScene should not generate replacement fences", failures)
-	for interactable_id in ["field_wheat", "field_corn", "barn", "shed", "silo", "windmill", "machine_yard", "gate"]:
+	for interactable_id in ["field_wheat", "field_corn", "field_sunflower", "barn", "shed", "silo", "windmill", "machine_yard", "gate"]:
 		_expect(game.call("_find_interactable", interactable_id) != null, "FarmWorkScene should bind existing interaction: %s" % interactable_id, failures)
 	var barn_interactable = game.call("_find_interactable", "barn")
 	game.call("_open_context_for", barn_interactable)
@@ -114,12 +143,14 @@ func _initialize() -> void:
 	LocaleServiceScript.set_language("en")
 	game.call("_update_all_ui")
 	_expect_eq(str(barn_interactable.display_name), "Farm inventory", "barn interaction should relocalize after language switch", failures)
+	_expect_eq(str(sunflower_interactable.display_name), "Sunflower field", "sunflower field should relocalize after language switch", failures)
 	var english_barn_context_lines := game.call("_get_context_lines", barn_interactable) as PackedStringArray
 	_expect(english_barn_context_lines.has("Stored products"), "farm inventory should show English stored-products heading after language switch", failures)
 	_expect(english_barn_context_lines.has("Seeds"), "farm inventory should show English seed heading after language switch", failures)
 	LocaleServiceScript.set_language("de")
 	game.call("_update_all_ui")
 	_expect_eq(str(barn_interactable.display_name), "Farmlager", "barn interaction should relocalize back to German", failures)
+	_expect_eq(str(sunflower_interactable.display_name), "Sonnenblumenfeld", "sunflower field should relocalize back to German", failures)
 	var initial_seed_inventory := game.call("debug_get_inventory_snapshot", "seeds") as Dictionary
 	_expect(int(initial_seed_inventory.get("wheat_seed", 0)) > 0, "farm inventory should start with wheat seeds", failures)
 	_expect(int(initial_seed_inventory.get("corn_seed", 0)) > 0, "farm inventory should start with corn seeds", failures)
@@ -253,6 +284,30 @@ func _initialize() -> void:
 	_expect(bool((live.call("debug_perform_live_action", "machine_yard", LIVE_LOAD_PICKUP) as Dictionary).get("correct", false)), "live flow should load cornmeal on pickup", failures)
 	_expect(bool((live.call("debug_perform_live_action", "shed", LIVE_TAKE_CORN_SEEDS) as Dictionary).get("correct", false)), "live flow should take corn seeds for replanting", failures)
 	_expect(bool((live.call("debug_perform_live_action", "field_corn", LIVE_SOW_FIELD) as Dictionary).get("correct", false)), "live flow should replant corn after harvest", failures)
+	var live_sunflower_root := live.get_node_or_null(
+		"WindmillFarm3D/ExistingFarm/Fields/FieldMiddle/SunflowerCropVisual"
+	) as Node3D
+	_expect(live_sunflower_root != null and not live_sunflower_root.visible, "prepared sunflower crop should start hidden", failures)
+	_expect(bool((live.call("debug_perform_live_action", "shed", LIVE_TAKE_SUNFLOWER_SEEDS) as Dictionary).get("correct", false)), "live flow should take sunflower seeds", failures)
+	_expect(bool((live.call("debug_perform_live_action", "field_sunflower", LIVE_SOW_FIELD) as Dictionary).get("correct", false)), "live flow should sow sunflowers", failures)
+	_expect(live_sunflower_root != null and live_sunflower_root.visible, "sowed sunflower crop should become visible", failures)
+	_expect(bool((live.call("debug_perform_live_action", "field_sunflower", LIVE_WATER_FIELD) as Dictionary).get("correct", false)), "live flow should water sunflowers", failures)
+	live.call("debug_tick_live", 9.0)
+	var sunflower_field := live.call("debug_get_field_snapshot", "field_sunflower") as Dictionary
+	_expect_eq(str(sunflower_field.get("state_label", "")), "mature", "live sunflowers should mature after test time", failures)
+	var live_sunflower_heads := live.get_node_or_null(
+		"WindmillFarm3D/ExistingFarm/Fields/FieldMiddle/SunflowerCropVisual/Petals"
+	) as Node3D
+	_expect(live_sunflower_heads != null and live_sunflower_heads.is_visible_in_tree(), "mature sunflower heads should be visible", failures)
+	_expect(bool((live.call("debug_perform_live_action", "field_sunflower", LIVE_HARVEST_FIELD) as Dictionary).get("correct", false)), "live flow should harvest sunflowers", failures)
+	_expect(live_sunflower_root != null and not live_sunflower_root.visible, "harvested sunflower crop should hide", failures)
+	_expect(bool((live.call("debug_perform_live_action", "silo", LIVE_STORE_GRAIN_SILO) as Dictionary).get("correct", false)), "live flow should store sunflower grain in silo", failures)
+	_expect(bool((live.call("debug_perform_live_action", "windmill", LIVE_START_SUNFLOWER_PROCESSING) as Dictionary).get("correct", false)), "live flow should start sunflower oil processing", failures)
+	live.call("debug_tick_live", 9.0)
+	_expect(bool((live.call("debug_perform_live_action", "windmill", LIVE_COLLECT_FLOUR) as Dictionary).get("correct", false)), "live flow should collect sunflower oil crates", failures)
+	_expect(bool((live.call("debug_perform_live_action", "barn", LIVE_STORE_FLOUR_BARN) as Dictionary).get("correct", false)), "live flow should store sunflower oil in barn", failures)
+	_expect(int((live.call("debug_get_inventory_snapshot", "barn") as Dictionary).get("sunflower_oil_crate", 0)) > 0, "barn should receive sunflower oil crates", failures)
+	_expect(bool((live.call("debug_perform_live_action", "field_sunflower", LIVE_SOW_FIELD) as Dictionary).get("correct", false)), "live flow should replant sunflowers after harvest", failures)
 	var pickup_inventory := live.call("debug_get_inventory_snapshot", "pickup") as Dictionary
 	_expect(int(pickup_inventory.get("flour_sack", 0)) > 0, "pickup should receive flour sacks", failures)
 	_expect(int(pickup_inventory.get("cornmeal_sack", 0)) > 0, "pickup should receive cornmeal sacks", failures)
@@ -267,15 +322,22 @@ func _initialize() -> void:
 	var persisted_inventory := persisted_context.get("farm_inventory", {}) as Dictionary
 	var persisted_seeds := persisted_inventory.get("seeds", {}) as Dictionary
 	var persisted_silo := persisted_inventory.get("silo", {}) as Dictionary
+	var persisted_barn := persisted_inventory.get("barn", {}) as Dictionary
 	var persisted_pickup := persisted_inventory.get("pickup", {}) as Dictionary
+	var persisted_fields := persisted_context.get("field_states", {}) as Dictionary
 	_expect_eq(int(persisted_seeds.get("wheat_seed", 0)), 15, "Farm should persist live seed consumption after WorkScene result", failures)
 	_expect_eq(int(persisted_silo.get("wheat_grain", 0)), 2, "Farm should persist unprocessed grain after WorkScene result", failures)
 	_expect_eq(int(persisted_silo.get("corn_grain", 0)), 4, "Farm should persist unprocessed corn after WorkScene result", failures)
+	_expect_eq(int(persisted_silo.get("sunflower_grain", 0)), 4, "Farm should persist unprocessed sunflowers after oil processing", failures)
+	_expect_eq(int(persisted_seeds.get("sunflower_seed", 0)), 10, "Farm should persist sunflower seed consumption", failures)
+	_expect(int(persisted_barn.get("sunflower_oil_crate", 0)) > 0, "Farm should persist sunflower oil stored in the barn", failures)
+	var persisted_sunflower_field := persisted_fields.get("field_sunflower", {}) as Dictionary
+	_expect_eq(int(persisted_sunflower_field.get("state", -1)), 1, "Farm should persist replanted sunflower field state", failures)
 	_expect_eq(_product_total(persisted_pickup), int(live_result.get("goods_delivered", 0)), "Farm should persist prepared pickup load after WorkScene result", failures)
 	_expect_eq(
-		_product_total(persisted_pickup),
+		_product_total(persisted_barn) + _product_total(persisted_pickup),
 		farm.get_product_inventory_amount(farm.get_product_commodity()),
-		"Farm product inventory should mirror sellable WorkScene product state",
+		"Farm product inventory should mirror barn and pickup product state",
 		failures
 	)
 

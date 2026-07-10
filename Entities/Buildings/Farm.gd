@@ -47,6 +47,7 @@ const PLAYER_WORK_FIELD_MATURE := 3
 const PLAYER_WORK_FIELD_HARVESTED := 4
 const PLAYER_WORK_CROP_WHEAT := "wheat"
 const PLAYER_WORK_CROP_CORN := "corn"
+const PLAYER_WORK_CROP_SUNFLOWER := "sunflower"
 const VehicleDepotAccessScript := preload("res://Simulation/Transport/VehicleDepotAccess.gd")
 const NetworkEntityRegistryScript := preload("res://Simulation/Multiplayer/shared/NetworkEntityRegistry.gd")
 
@@ -621,11 +622,19 @@ func _sync_player_work_fields_from_crop_state() -> void:
 	_player_work_field_states["field_wheat"] = wheat_field
 	if not _player_work_field_states.has("field_corn"):
 		_player_work_field_states["field_corn"] = _make_player_work_field_snapshot("field_corn", "Corn field", PLAYER_WORK_CROP_CORN, PLAYER_WORK_FIELD_SEEDED)
+	if not _player_work_field_states.has("field_sunflower"):
+		_player_work_field_states["field_sunflower"] = _make_player_work_field_snapshot(
+			"field_sunflower",
+			"Sunflower field",
+			PLAYER_WORK_CROP_SUNFLOWER,
+			PLAYER_WORK_FIELD_PREPARED
+		)
 
 func _build_default_player_work_fields() -> Dictionary:
 	return {
 		"field_wheat": _make_player_work_field_snapshot("field_wheat", "Wheat field", PLAYER_WORK_CROP_WHEAT, PLAYER_WORK_FIELD_PREPARED),
 		"field_corn": _make_player_work_field_snapshot("field_corn", "Corn field", PLAYER_WORK_CROP_CORN, PLAYER_WORK_FIELD_SEEDED),
+		"field_sunflower": _make_player_work_field_snapshot("field_sunflower", "Sunflower field", PLAYER_WORK_CROP_SUNFLOWER, PLAYER_WORK_FIELD_PREPARED),
 	}
 
 func _make_player_work_field_snapshot(field_id: String, label: String, crop_type_key: String, state_value: int) -> Dictionary:
@@ -854,7 +863,7 @@ func _remove_dict_amount(data: Dictionary, item_id: String, amount: int) -> int:
 func _is_player_work_crop_supported(crop_type_key: String) -> bool:
 	return crop_type_key == PLAYER_WORK_CROP_WHEAT \
 		or crop_type_key == PLAYER_WORK_CROP_CORN \
-		or crop_type_key == "sunflower"
+		or crop_type_key == PLAYER_WORK_CROP_SUNFLOWER
 
 func _compute_harvest_yield() -> int:
 	var labor_ratio: float = clamp(float(get_employed_worker_count()) / float(maxi(job_capacity, 1)), 0.15, 1.25)

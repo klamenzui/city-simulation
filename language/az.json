@@ -571,7 +571,7 @@
 		},
 		"crop": { "wheat": "Buğda", "corn": "Qarğıdalı", "sunflower": "Günəbaxan" },
 		"tool": { "hands": "Əllər", "seed_bag": "Toxum kisəsi" },
-		"field": { "wheat": "Buğda sahəsi", "corn": "Qarğıdalı sahəsi" },
+		"field": { "wheat": "Buğda sahəsi", "corn": "Qarğıdalı sahəsi", "sunflower": "Günəbaxan sahəsi" },
 		"field_state": { "prepared": "hazır", "seeded": "əkilib", "growing": "böyüyür", "mature": "yetişib", "harvested": "yığılıb" },
 		"interactable": {
 			"barn": "Ferma anbarı",

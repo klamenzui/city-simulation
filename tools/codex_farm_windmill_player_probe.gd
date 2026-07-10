@@ -10,11 +10,13 @@ const ROLE_OWNER := "owner"
 const DEFAULT_CAPTURE_DIR := "res://.ai/screenshots/farm_windmill_player_probe"
 
 const LIVE_TAKE_WHEAT_SEEDS := "take_wheat_seeds"
+const LIVE_TAKE_SUNFLOWER_SEEDS := "take_sunflower_seeds"
 const LIVE_SOW_FIELD := "sow_field"
 const LIVE_WATER_FIELD := "water_field"
 const LIVE_HARVEST_FIELD := "harvest_field"
 const LIVE_STORE_GRAIN_SILO := "store_grain_silo"
 const LIVE_START_WINDMILL := "start_windmill"
+const LIVE_START_SUNFLOWER_PROCESSING := "start_sunflower_processing"
 const LIVE_COLLECT_FLOUR := "collect_flour"
 const LIVE_STORE_FLOUR_BARN := "store_flour_barn"
 const LIVE_LOAD_PICKUP := "load_pickup"
@@ -285,6 +287,7 @@ func _validate_visual_contract(scene: Node, role: String) -> void:
 	_expect(scene.get_node_or_null("WindmillFarm3D/ExistingFarm/Buildings/BigBarnModel") != null, "%s scene should render the big barn." % role)
 	_expect(scene.get_node_or_null("WindmillFarm3D/ExistingFarm/Buildings/SiloModel") != null, "%s scene should render the silo." % role)
 	_expect(scene.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldWest2/FarmlandModel") != null, "%s scene should render the wheat field." % role)
+	_expect(scene.get_node_or_null("WindmillFarm3D/ExistingFarm/Fields/FieldMiddle/SunflowerCropVisual") != null, "%s scene should render the sunflower field visual." % role)
 	_expect(scene.get_node_or_null("WindmillFarm3D/ExistingFarm/Obstacles/GroundShape") != null, "%s scene should reuse the Windmill Farm ground collider." % role)
 	var player := scene.get_node_or_null("WindmillFarm3D/Player") as CharacterBody3D
 	_expect(player != null, "%s scene should spawn a playable worker body." % role)
@@ -293,7 +296,7 @@ func _validate_visual_contract(scene: Node, role: String) -> void:
 		_expect(player.is_on_floor(), "%s player should settle on the farm floor." % role)
 	var camera := scene.get_node_or_null("WindmillFarm3D/CameraPivot/FarmCamera") as Camera3D
 	_expect(camera != null and camera.current, "%s scene should own the active FarmCamera." % role)
-	for interactable_id in ["field_wheat", "barn", "shed", "silo", "windmill", "machine_yard", "gate"]:
+	for interactable_id in ["field_wheat", "field_corn", "field_sunflower", "barn", "shed", "silo", "windmill", "machine_yard", "gate"]:
 		_expect(scene.call("_find_interactable", interactable_id) != null, "%s scene should bind interactable %s." % [role, interactable_id])
 	_validate_windmill_context(scene, role)
 
@@ -333,6 +336,27 @@ func _run_windmill_action_flow(scene: Node, role: String) -> void:
 	_expect_action(scene, "machine_yard", LIVE_LOAD_PICKUP, role)
 	var pickup_inventory := scene.call("debug_get_inventory_snapshot", "pickup") as Dictionary
 	_expect(int(pickup_inventory.get("flour_sack", 0)) > 0, "%s pickup should be loaded with flour sacks." % role)
+	_expect_action(scene, "shed", LIVE_TAKE_SUNFLOWER_SEEDS, role)
+	_expect_action(scene, "field_sunflower", LIVE_SOW_FIELD, role)
+	_expect_action(scene, "field_sunflower", LIVE_WATER_FIELD, role)
+	scene.call("debug_tick_live", 5.0)
+	_focus_interactable(scene, "field_sunflower")
+	await _capture("%s_sunflower_growing.png" % role)
+	scene.call("debug_tick_live", 4.0)
+	var sunflower_field := scene.call("debug_get_field_snapshot", "field_sunflower") as Dictionary
+	_expect(str(sunflower_field.get("state_label", "")) == "mature", "%s sunflower field should mature during probe time." % role)
+	_expect(
+		_is_node_visible(scene, "WindmillFarm3D/ExistingFarm/Fields/FieldMiddle/SunflowerCropVisual/Petals"),
+		"%s mature sunflower heads should be visible." % role
+	)
+	_expect_action(scene, "field_sunflower", LIVE_HARVEST_FIELD, role)
+	_expect_action(scene, "silo", LIVE_STORE_GRAIN_SILO, role)
+	_expect_action(scene, "windmill", LIVE_START_SUNFLOWER_PROCESSING, role)
+	scene.call("debug_tick_live", 9.0)
+	_expect_action(scene, "windmill", LIVE_COLLECT_FLOUR, role)
+	_expect_action(scene, "barn", LIVE_STORE_FLOUR_BARN, role)
+	var barn_inventory := scene.call("debug_get_inventory_snapshot", "barn") as Dictionary
+	_expect(int(barn_inventory.get("sunflower_oil_crate", 0)) > 0, "%s barn should receive sunflower oil crates." % role)
 
 
 func _expect_action(scene: Node, interactable_id: String, action_id: String, role: String) -> void:

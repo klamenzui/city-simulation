@@ -571,7 +571,7 @@
 		},
 		"crop": { "wheat": "Пшеница", "corn": "Кукуруза", "sunflower": "Подсолнечник" },
 		"tool": { "hands": "Руки", "seed_bag": "Мешок семян" },
-		"field": { "wheat": "Пшеничное поле", "corn": "Кукурузное поле" },
+		"field": { "wheat": "Пшеничное поле", "corn": "Кукурузное поле", "sunflower": "Поле подсолнечника" },
 		"field_state": { "prepared": "подготовлено", "seeded": "засеяно", "growing": "растет", "mature": "созрело", "harvested": "убрано" },
 		"interactable": {
 			"barn": "Склад фермы",

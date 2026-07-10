@@ -120,6 +120,7 @@ Runtime and debug scenes/resources.
 | Scenes/Minigames/ServiceFlow/ServiceFlowMinigame.gd | ServiceFlowMinigame | Control |
 | Scenes/Minigames/TeacherLesson/TeacherLessonMinigame.gd | TeacherLessonMinigame | Control |
 | Scenes/Minigames/WarehouseStack/WarehouseStackMinigame.gd | WarehouseStackMinigame | Control |
+| Scenes/WorkScenes/Farm/FarmSunflowerFieldVisual.gd | FarmSunflowerFieldVisual | Node3D |
 | Scenes/WorkScenes/Farm/FarmWorkFieldData.gd | FarmWorkFieldData | RefCounted |
 | Scenes/WorkScenes/Farm/FarmWorkInteractable.gd | FarmWorkInteractable | Area3D |
 | Scenes/WorkScenes/Farm/FarmWorkInventory.gd | FarmWorkInventory | RefCounted |

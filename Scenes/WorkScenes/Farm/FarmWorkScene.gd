@@ -5,6 +5,7 @@ const UiThemeScript = preload("res://Simulation/UI/UiTheme.gd")
 const LocaleServiceScript = preload("res://Simulation/Localization/LocaleService.gd")
 const FarmWorkInventoryScript = preload("res://Scenes/WorkScenes/Farm/FarmWorkInventory.gd")
 const FarmWorkFieldDataScript = preload("res://Scenes/WorkScenes/Farm/FarmWorkFieldData.gd")
+const FarmSunflowerFieldVisualScript = preload("res://Scenes/WorkScenes/Farm/FarmSunflowerFieldVisual.gd")
 const FarmWorkProductionStateScript = preload("res://Scenes/WorkScenes/Farm/FarmWorkProductionState.gd")
 const FarmWorkInteractableScript = preload("res://Scenes/WorkScenes/Farm/FarmWorkInteractable.gd")
 const ItemIconCatalogScript = preload("res://Simulation/UI/ItemIconCatalog.gd")
@@ -616,6 +617,10 @@ func _reset_live_fields() -> void:
 	corn.configure("field_corn", _field_display_name("field_corn"), CROP_CORN, FIELD_SEEDED)
 	_apply_initial_field_snapshot(corn)
 	_fields.append(corn)
+	var sunflower = FarmWorkFieldDataScript.new()
+	sunflower.configure("field_sunflower", _field_display_name("field_sunflower"), CROP_SUNFLOWER, FIELD_PREPARED)
+	_apply_initial_field_snapshot(sunflower)
+	_fields.append(sunflower)
 	_update_all_field_visuals()
 
 
@@ -749,6 +754,7 @@ func _build_existing_farm_interactions() -> void:
 		return
 	_bind_field_interaction(_fields[0], "Fields/FieldWest2/FarmlandModel")
 	_bind_field_interaction(_fields[1], "Fields/FieldWest/FarmlandModel")
+	_bind_sunflower_field_interaction(_fields[2], "Fields/FieldMiddle/FarmlandModel")
 	_bind_visual_interaction("barn", "barn", _interactable_label("barn"), "Buildings/BigBarnModel", 3.5)
 	_bind_visual_interaction("shed", "shed", _interactable_label("shed"), "VariantDecor/SideBarnModel", 3.2)
 	_bind_visual_interaction("silo", "silo", _interactable_label("silo"), "Buildings/SiloModel", 3.0)
@@ -764,6 +770,37 @@ func _bind_field_interaction(field, node_path: String) -> void:
 		return
 	_field_visuals[field.field_id] = {
 		"crop_nodes": _get_field_crop_nodes(visual.get_parent()),
+	}
+
+
+func _bind_sunflower_field_interaction(field, node_path: String) -> void:
+	var farmland := _farm_environment.get_node_or_null(node_path) as Node3D
+	if farmland == null:
+		push_warning("FarmWorkScene missing sunflower field visual anchor")
+		return
+	farmland.position.y += 0.025
+	var field_root := farmland.get_parent() as Node3D
+	var legacy_crop_root := field_root.get_node_or_null("CropStemInstances") as Node3D
+	if legacy_crop_root != null:
+		legacy_crop_root.visible = false
+	var sunflower_visual := FarmSunflowerFieldVisualScript.new() as Node3D
+	sunflower_visual.name = "SunflowerCropVisual"
+	sunflower_visual.position = farmland.position + Vector3(0.0, 0.025, 0.0)
+	field_root.add_child(sunflower_visual)
+	var interactable = _create_interactable_for_visual(
+		field.field_id,
+		"field",
+		field.display_name,
+		farmland,
+		3.2,
+		0.35
+	)
+	if interactable == null:
+		sunflower_visual.queue_free()
+		return
+	_field_visuals[field.field_id] = {
+		"crop_nodes": [],
+		"custom_visual": sunflower_visual,
 	}
 
 
@@ -1905,6 +1942,12 @@ func _update_field_visual(field) -> void:
 	if field == null or not _field_visuals.has(field.field_id):
 		return
 	var visual: Dictionary = _field_visuals[field.field_id]
+	var show_crop := int(field.state) != FIELD_PREPARED and int(field.state) != FIELD_HARVESTED
+	var ratio := 1.0 if int(field.state) == FIELD_MATURE else clampf(maxf(field.growth, 0.0), 0.0, 1.0)
+	var custom_visual := visual.get("custom_visual", null) as Node3D
+	if custom_visual != null and is_instance_valid(custom_visual):
+		custom_visual.call("set_crop_progress", show_crop, ratio)
+		return
 	var crop_nodes: Array = visual.get("crop_nodes", [])
 	var active_index := 0
 	match field.crop_type if not field.crop_type.is_empty() else field.allowed_crop_type:
@@ -1914,7 +1957,6 @@ func _update_field_visual(field) -> void:
 			active_index = 2
 	if crop_nodes.size() == 1:
 		active_index = 0
-	var show_crop := int(field.state) != FIELD_PREPARED and int(field.state) != FIELD_HARVESTED
 	for index in range(crop_nodes.size()):
 		var crop_node := crop_nodes[index] as MultiMeshInstance3D
 		if crop_node == null or crop_node.multimesh == null:
@@ -1922,9 +1964,9 @@ func _update_field_visual(field) -> void:
 		crop_node.visible = show_crop and index == active_index
 		if not crop_node.visible:
 			continue
-		var ratio := 1.0 if int(field.state) == FIELD_MATURE else clampf(maxf(field.growth, 0.2), 0.2, 1.0)
+		var visible_ratio := clampf(maxf(ratio, 0.2), 0.2, 1.0)
 		crop_node.multimesh.visible_instance_count = clampi(
-			int(ceil(float(crop_node.multimesh.instance_count) * ratio)),
+			int(ceil(float(crop_node.multimesh.instance_count) * visible_ratio)),
 			1,
 			crop_node.multimesh.instance_count
 		)
@@ -1986,6 +2028,8 @@ func _field_display_name(field_id: String) -> String:
 			return _tr("farm_work.field.wheat", "Weizenfeld")
 		"field_corn":
 			return _tr("farm_work.field.corn", "Maisfeld")
+		"field_sunflower":
+			return _tr("farm_work.field.sunflower", "Sonnenblumenfeld")
 	return field_id
 
 

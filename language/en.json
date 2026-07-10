@@ -574,7 +574,7 @@
 		},
 		"crop": { "wheat": "Wheat", "corn": "Corn", "sunflower": "Sunflower" },
 		"tool": { "hands": "Hands", "seed_bag": "Seed bag" },
-		"field": { "wheat": "Wheat field", "corn": "Corn field" },
+		"field": { "wheat": "Wheat field", "corn": "Corn field", "sunflower": "Sunflower field" },
 		"field_state": {
 			"prepared": "prepared",
 			"seeded": "seeded",
